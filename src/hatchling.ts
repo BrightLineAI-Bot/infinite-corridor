@@ -21,7 +21,10 @@ export const HATCHLING = f({
   // The rescue. `band`: Chebyshev sections from the hometown the site may be in; `loads`: at most this many sections previewed for
   // reachable ground (in the hashed order); `guards`: the pack round the pen, drawn from `guardKinds` by the seed; `ring`: tiles from
   // the pen they stand; `penFree`: tiles from the pen the Wayfarer must be to free him.
-  quest: f({ version: 1, band: f([3, 5]), loads: 12, guards: 3, guardKinds: f(["ashenHound", "coilStalker", "ashling", "rootBrute"]), ring: 2.4, penFree: 1.8,
+  // `scaled`: the version from which the guards take the region's threat on every visit (fixes from a 20-hour playthrough, I12: they
+  // took it only on the section's first visit, and stood at bare strength on any later one or after a reload); a rescue begun
+  // before it keeps its guards as they were.
+  quest: f({ version: 1, scaled: 1, band: f([3, 5]), loads: 12, guards: 3, guardKinds: f(["ashenHound", "coilStalker", "ashling", "rootBrute"]), ring: 2.4, penFree: 1.8,
     names: f({ mama: "Mother Triceratops", pen: "Hatchling pen", quest: "Save the hatchling" }),
     messages: f({
       offer: "The mother Triceratops lifts her head from the straw. \"My babies... the pack took one of them. Please. Bring my little one home.\" The place is marked on your Atlas and compass.",

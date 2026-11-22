@@ -39,7 +39,7 @@ export function grantSlainEchoes(save) {
 // beast's: echoDrop is certain (game.ts), and save.roomBeastSlain (additive at schema 14) counts them so grantSlainEchoes can give the
 // Echo on load. ROOM_BEAST_KILL maps the kill ids those spawns carry (spino-rex.ts spinoRoomSpawn and the interloper, wild-stego.ts
 // stegoRoomSpawn) to the beast; a journey that killed one before this release is caught up once from the lasting per-kill flag the
-// Game writes for every rewarded kill (worldFlags `drop:v1:<area>:<enemy id>`). A dino duel's eaten loser is never the Wayfarer's
+// Game wrote for every rewarded kill (worldFlags `drop:v1:<area>:<enemy id>`, kept in the kill ledger now). A dino duel's eaten loser is never the Wayfarer's
 // (game.ts dinoEaten: noRewards), so it is never counted.
 export const ROOM_BEAST_KILL = { spinoRex: /:(spino-rex|spino)$/, wildStego: /:wild-stego$/, earthApato: /:earth-apato$/ };
 export const ROOM_BEAST_IDS = Object.keys(ROOM_BEAST_KILL);
@@ -53,7 +53,9 @@ export function ensureRoomBeastSlain(save, catchUp = true) {
   const out = { ...r }; for (const id of ROOM_BEAST_IDS) { const n = Math.max(0, Math.floor(Number(r[id]) || 0)); if (n > 0 || ROOM_BEAST_FIRST.includes(id)) out[id] = n; else delete out[id]; } // a later beast's count is written once it has one
   if (catchUp && !out.caughtUp) { // once: kills from before this record existed
     out.caughtUp = 1;
-    for (const key of Object.keys(save.worldFlags || {})) if (key.startsWith("drop:v1:") && save.worldFlags[key]) for (const id of ROOM_BEAST_IDS) if (ROOM_BEAST_KILL[id].test(key)) out[id] = Math.max(Number(out[id]) || 0, 1);
+    const keys = Object.keys(save.worldFlags || {}).filter((key) => key.startsWith("drop:v1:") && save.worldFlags[key]);
+    for (const [area, r] of Object.entries(save.killLedger?.areas || {})) for (const kill of Array.isArray(r?.d) ? r.d : []) keys.push(`drop:v1:${area}:${kill}`); // the kill ledger (types.ts KILL_LEDGER) holds them now
+    for (const key of keys) for (const id of ROOM_BEAST_IDS) if (ROOM_BEAST_KILL[id].test(key)) out[id] = Math.max(Number(out[id]) || 0, 1);
   }
   save.roomBeastSlain = out; return out;
 }

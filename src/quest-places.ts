@@ -45,7 +45,7 @@ export const QUEST_WORDS = Object.freeze({
   any: (what) => `${what}: any one will do (none lies close enough to point the compass at).`,
   starfield: "a crossing that opens on stars",
   canyon: "a canyon crater", wreck: "a shipwreck out at sea (you will want a boat)", skyway: "a Sky Stair at least 50 sections out",
-  revenant: "a crossing where a Gate Revenant stalks, at least 50 sections out", pentagon: "a Pentagon", caldera: "the Thornglass Caldera",
+  revenant: "a crossing where a Gate Revenant stalks, at least 50 sections out", pentagon: "a Pentagon (its five-sided sigils, cut in the ground, point the way)", caldera: "the Thornglass Caldera",
   storm: "the Storm Halls", husk: "the Hollow Husk (a Pumice Seed, planted at a Watcher's shrine)",
   giver: (name) => `${name}'s table`,
   speak: (name) => name,
@@ -193,16 +193,19 @@ function tally(save, id, step, at = nowOf(save)) {
   return q.counts[step.key] >= step.need ? mark(save, id, step.key) : false;
 }
 // The giver's words for the quests open with them (`giverId`, an object id), or null: the offer until the first step moves, then
-// the waiting line (the meal: Phase 7's own lines).
+// the waiting line (the meal: Phase 7's own lines). A giver with two quests open says both (fixes from a 20-hour playthrough:
+// Vela spoke only of the metronome, so Arc Wave's boat and Blunderbuss were never heard; Oren likewise hid Power Aegis).
 export function questTalk(save, giverId) {
+  const lines = [];
   for (const id of QUEST_IDS) {
     const Q = QUESTS[id]; if (Q.giver !== giverId || !questOpen(save, id)) continue;
     const step = questStep(save, id); if (!step) continue;
-    if (step.key === "meal") return Number.isFinite(Number(questState(save, id).steps?.meal)) ? Q.again : Q.offer;
-    const q = questState(save, id), moved = Object.keys(q.steps || {}).length || Object.keys(q.counts || {}).length || (q.tokens || []).length;
-    return (moved ? Q.waiting : Q.offer) || null;
+    let line;
+    if (step.key === "meal") line = Number.isFinite(Number(questState(save, id).steps?.meal)) ? Q.again : Q.offer;
+    else { const q = questState(save, id), moved = Object.keys(q.steps || {}).length || Object.keys(q.counts || {}).length || (q.tokens || []).length; line = moved ? Q.waiting : Q.offer; }
+    if (line) lines.push(line);
   }
-  return null;
+  return lines.length ? lines.join(" ") : null;
 }
 // A word with `giverId`: a step that asks for a delivery to them (`on: "speak"`), with the steps it needs done, is done.
 // Returns { line, done }: what is said (the delivery, else the giver's own words, else null) and the quests now complete.

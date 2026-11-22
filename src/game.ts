@@ -51,7 +51,7 @@ import { ensureSlots, slotted, pairingMods, slotReadiness, slotLabel, frameForm,
 import { pressOculusButton, tickOculus } from "./oculus.ts"; // release 874: the Oculus; 2026-11-15: its own button
 import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.ts";
 import { beastCatchUp } from "./stages.ts";
-import { POTIONS, potionToDrink, potionHeal, potionsReady, craftPotion } from "./potions.ts";
+import { POTIONS, potionToDrink, potionHeal, potionsReady, craftPotion, notePotion } from "./potions.ts";
 import { CACHE_PICKUP_VISUAL_MS, CHEST_OPEN_VISUAL_MS, SHOVEL_DIG_VISUAL_MS, STONE_PLACE_VISUAL_MS, CONSUME_VISUAL_MS, cancelCachePickupVisual, cancelConsumeVisual, normalizePersistentCachePickupVisual, normalizeConsumeVisual, normalizeHurtVisual, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from "./consume-visual.ts";
 import { DUNGEON_LADDER, ladderTier, ladderRoll, crossingLadder, ladderGuardian, entranceKind } from "./dungeon-ladder.ts";
 import { diveGate, subGate, underwaterGate, mechGate, droneGate, MECH, MECH_POWER, MECH_LAVA, MECH_WATER, MECH_VOID, DRONE, DRONE_LIFT, DRONE_FIZZLE, INTERIOR_TRAVERSAL, interiorCeilingHeight, interiorArchAt, droneForbiddenAt, droneZoneOf, GLIDER_FORBIDDEN, gliderForbiddenAt, TREE_GLIDE, treeGlideWindowAt, ensureMech, mechAbsorb, voidTick, tickMech, setEmpowered, mechEmpowered, setMechMode } from "./vehicle-gates.ts";
@@ -74,7 +74,7 @@ import {
   actionDone,
 } from "./interactions.ts";
 import { SEED_HUNT_PICK } from "./atlas-view.ts"; // the compass pick of a seed hunt (2026-11-19)
-import { ensurePerceptionInPlace, ensureDungeonDoorNavigation, validCheckpoint, REFUGE_CHECKPOINT, deadFoeRecord, compactArea, isTombstone, tombstoneBlanks, setCompassChoice } from "./types.ts";
+import { ensurePerceptionInPlace, ensureDungeonDoorNavigation, validCheckpoint, REFUGE_CHECKPOINT, deadFoeRecord, compactArea, isTombstone, tombstoneBlanks, setCompassChoice, killPaid, payKill } from "./types.ts";
 import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.ts";
 import { QUANDRIX, quandrixPress, tickQuandrix, savedQuandrixHold, restoreQuandrixHold } from "./quandrix-staff.ts"; // the Quandrix Staff (2026-11-13)
 import { noteArtPress, artFistIntercept, artMeleeHit, artAnchored, tickWeaponArts, transposeBonus, transposeMagic, weaponArtArmed, AWAKENED_ARTS, awakenedFor, WEAPON_ARTS, awakenedUp, landLavaSlash, refundArtCharge } from "./weapon-arts.ts"; // weapon arts (2026-11-13)
@@ -1766,6 +1766,11 @@ export const SECTION_TERRAIN = Object.freeze({ keep: 12 }); // the section, its 
 // crossing, the edge just crossed does not take the Wayfarer back until they have been `depth` tiles inside it or `ms` have
 // passed; for that moment it holds like the rest of the section's border. Arrival points and map generation are unchanged.
 export const EDGE_HOLD = Object.freeze({ depth: .75, ms: 450 });
+// Fixes from a 20-hour playthrough (I14): said when Return home or Wayglass travel finds a displaced Wayfarer with no way on
+// (Game.routeOut); `near`, the tiles beside a physical Wayglass that count as reaching it.
+export const DISPLACEMENT_STRAND = Object.freeze({ message: "Nothing here leads on. The Wayglass line finds you after all.", near: Object.freeze([[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) });
+// Open seas (release 152): what a walker hears at a lane that opens on open sea (Game.seaBeyondLane, transitionSection).
+export const SEA_REFUSAL = "Open sea lies beyond. You need a boat to cross it.";
 // Perf spikes (Tim's r937 probe: a 68 ms `update` on the frame he crossed into a new section, about half of it generating the
 // new section's terrain): within `edge` tiles of a section edge, idle time lays the section beyond it into the sectionTerrain
 // cache (Game.warmCrossingTerrain, main.ts), so the crossing copies kept terrain instead of generating it in its own frame.
@@ -1787,6 +1792,12 @@ export function sectionTerrain(seed, rx, ry, generation, steps) {
   terrainCache.set(key, structuredClone(map)); terrainCache.misses = (terrainCache.misses || 0) + 1;
   while (terrainCache.size > SECTION_TERRAIN.keep) terrainCache.delete(terrainCache.keys().next().value);
   return map;
+}
+// Read-only: the kept terrain itself (no copy, no hit counted), generated and kept on a miss as sectionTerrain does. The caller
+// never edits it (Game.seaBeyondLane reads one tile).
+export function keptSectionTerrain(seed, rx, ry, generation, steps) {
+  const kept = terrainCache.get(JSON.stringify([seed, rx, ry, generation, steps]));
+  return kept || sectionTerrain(seed, rx, ry, generation, steps);
 }
 // The same terrain passes without touching the arrival cache; lead probes own only their scratch map.
 function buildSectionTerrain(seed, rx, ry, generation, steps) {
@@ -3384,6 +3395,7 @@ export class Game {
           if (e.foundryValidated) continue;
           if (e.farArrayBoss || e.worldBeast === "voidWalker" && e.retreating) continue; // A crossing retreat carries its existing health; never rebirth/retune it on a fresh section.
           if (e.towerScaled) continue; // tall towers: a dweller took its region when it was made (createEnemyFromSpawn); a second pass made it ~30x (TALL_TOWERS.dwellerVitals)
+          if (e.hatchScaled) continue; // the hatchling's guards took theirs as they were placed (placeHatchRescue)
           regionalScale(e, q); // balance pack: beasts ramp in from ring 100; ordinary foes take ORDINARY_THREAT
         }
       };
@@ -3429,6 +3441,7 @@ export class Game {
           if (e.foundryValidated) continue;
           if (e.farArrayBoss || e.worldBeast === "voidWalker" && e.retreating) continue; // A crossing retreat carries its existing health; never rebirth/retune it on a fresh section.
           if (e.towerScaled) continue; // tall towers: a dweller took its region when it was made (createEnemyFromSpawn); a second pass made it ~30x (TALL_TOWERS.dwellerVitals)
+          if (e.hatchScaled) continue; // the hatchling's guards took theirs as they were placed (placeHatchRescue)
           regionalScale(e, q); // balance pack: beasts ramp in from ring 100; ordinary foes take ORDINARY_THREAT
         }
       }
@@ -3532,16 +3545,19 @@ export class Game {
       const first = !e.rewarded,
         r = defeat(e);
       if (first && e.kind !== "npc" && !e.ambient && !e.respawned) { // building respawns give no Aperture
-        const guardian = isCrossingGuardian(e);
-        gainAperture(
-          this.save,
-          guardian ? 4 : 1,
-          `${guardian ? "guardian" : "enemy"}:${this.areaId()}:${e.id}`,
-          guardian
-            ? "A guardian’s last perception joins yours."
-            : "The defeated shape leaves a new pattern in your Aperture.",
-          !e.fracReinforcement, // perf pack: a Fractured reinforcement is never stored or restored, so it needs no lasting award key
-        );
+        const guardian = isCrossingGuardian(e), area = this.areaId();
+        if (!killPaid(this.save, "a", area, e.id)) { // once per foe, read from the kill ledger (types.ts KILL_LEDGER)
+          gainAperture(
+            this.save,
+            guardian ? 4 : 1,
+            `${guardian ? "guardian" : "enemy"}:${area}:${e.id}`,
+            guardian
+              ? "A guardian’s last perception joins yours."
+              : "The defeated shape leaves a new pattern in your Aperture.",
+            false,
+          );
+          if (!e.fracReinforcement) payKill(this.save, "a", area, e.id); // perf pack: a Fractured reinforcement is never stored or restored, so it needs no lasting record
+        }
       }
       return r;
     };
@@ -4554,11 +4570,12 @@ export class Game {
     return fallback;
   }
   travelToCheckpoint(key = null) {
+    let strandedHome = false;
     const chosen = key ? this.save.checkpoints?.[key] : this.save.activeCheckpoint;
     if (!chosen || (key && !validCheckpoint(chosen))) return false;
     const c = this.safeCheckpoint(chosen); // release 734
     if (this.rite) { this.message = ASCENDANCY.messages.sealed; return false; } // the Rite of Ascendancy seals Wayglass travel (and returnHome); a Crossing Sigil breaks the rite before it travels
-    if(this.save.session.displacementJourney){this.message="Wayglass travel cannot find you after the displacement. Reach a physical Wayglass—or die—to restore the line, or use a Crossing Sigil.";return false}
+    if(this.save.session.displacementJourney){if(this.area!=="overworld"||this.routeOut()){this.message="Wayglass travel cannot find you after the displacement. Reach a physical Wayglass—or die—to restore the line, or use a Crossing Sigil.";return false}this.save.session.displacementJourney=null;strandedHome=true} // fixes from a 20-hour playthrough (I14): ground with no way on (routeOut) lets the line find you, sigil or none
     if (this.area === "dungeon") {
       this.message =
         "Wayglass travel is sealed inside a dungeon. Reach an exit, die and restart at the entrance, or use a Crossing Sigil.";
@@ -4574,9 +4591,21 @@ export class Game {
     this.effects = [];
     this.traversal = null;
     this.clearCarriedStates(); // release 736 (review F8): you arrive on your feet, not gliding, swimming or held
-    this.message = `Returned to ${c.name || "the active checkpoint"}. Nothing carried was lost.`;
+    this.message = `${strandedHome ? DISPLACEMENT_STRAND.message + " " : ""}Returned to ${c.name || "the active checkpoint"}. Nothing carried was lost.`;
     this.sync();
     return true;
+  }
+  // Fixes from a 20-hour playthrough (I14): after a Watcher's-tomb fold (session.displacementJourney) Wayglass travel and Return
+  // home wait for a physical Wayglass, a death or a Crossing Sigil. Ground the Wayfarer cannot walk out of, with no sigil and
+  // nothing to die to, held a player there for good. Whether they can walk on from where they stand, by the real movement rules
+  // (reachableFrom, thin walls included): to a lane into a section they can enter (not one onto sea they cannot cross), or to a
+  // physical Wayglass here. Overworld only; aboard a skiff, in the robot, gliding or lifted, or on ground without heights, always.
+  routeOut() {
+    const M = this.map, p = this.player; if (this.area !== "overworld" || !M?.landscape || !M.exits || M.pentagon || aboard(this.save) || this.mechUp() || this.glide || this.droneLift || this.wading()) return true;
+    const go = reachableFrom(M, 32, 32, { x: Math.max(0, Math.min(31, Math.floor(p.x + .5))), y: Math.max(0, Math.min(31, Math.floor(p.y + .72))) }, true), at = (x, y) => x >= 0 && y >= 0 && x < 32 && y < 32 && !!go[y * 32 + x];
+    for (const o of M.objects || []) if (o.kind === "checkpoint") for (const [dx, dy] of DISPLACEMENT_STRAND.near) if (at(Math.round(o.x) + dx, Math.round(o.y) + dy)) return true;
+    const E = M.exits; for (const [dx, dy, x, y] of [[-1, 0, 0, E.west], [1, 0, 31, E.east], [0, -1, E.north, 0], [0, 1, E.south, 31]]) for (let k = -1; k <= 1; k++) if (at(dy ? x + k : x, dx ? y + k : y) && !this.seaBeyondLane(dx, dy)) return true;
+    return false;
   }
   returnToCheckpoint() {
     return this.travelToCheckpoint();
@@ -5313,6 +5342,10 @@ export class Game {
   transitionSection(dx, dy) {
     if (this.rite && this.area === "overworld") return this.riteHoldEdge(); // the rite's fire bars every edge
     const from = { rx: this.rx, ry: this.ry, x: this.player.x, y: this.player.y }, wade = this.wading(), fromPent = !!this.map?.pentagon, fromCoherent = !!this._coherence;
+    // Open seas, refused before the crossing (20-hour playthrough I3/I11): a walker held into a lane that lands on open sea is
+    // turned back from the kept terrain alone. Nothing loads (the old way loaded both sections on every frame the stick was
+    // held) and the refused section is not explored. The same refusal stays below for any landing this preview cannot place.
+    if (!wade && !fromPent && !aboard(this.save) && this.seaBeyondLane(dx, dy)) { Object.assign(this.player, { x: from.x, y: from.y, sailVx: 0, sailVy: 0 }); this.message = SEA_REFUSAL; this.sync(); return false; }
     const pursuers=this.enemies.filter(e=>e.gatePredator&&e.aggro&&!e.dead).map(e=>({...e,ai:{...ensureAI(e)}}));
     // Release 259: a fighting world beast may follow the Wayfarer over the edge (world-beasts.ts PURSUIT).
     const fromArea = this.areaStateId(), hunters = this.enemies.filter(e => e.worldBeast && e.aggro && !e.dead && !e.retreating && !e.astralCompanionOf && canPursue(this.save, e.worldBeast, this.rx, this.ry, dx, dy)).map(e => ({ id: e.worldBeast, actorId: e.id, hp: e.hp, maxHp: e.maxHp, damage: e.damage }));
@@ -5354,12 +5387,25 @@ export class Game {
     }
     // Open seas (release 152): a skiff crosses wherever the water runs on; a walker cannot step out into open sea.
     if (aboard(this.save)) { if (!this.sailAcross(dx, dy, from)) return false; }
-    else if (DEEP_WATER.includes(footprintHazard(this.map, 32, this.player.x, this.player.y)) && !canSwim(this.save) && !this.mechUp() && !this.glide /* release 635: a glider is in the air */) { this.returnFrom(from, "Open sea lies beyond. You need a boat to cross it."); return false; }
+    else if (DEEP_WATER.includes(footprintHazard(this.map, 32, this.player.x, this.player.y)) && !canSwim(this.save) && !this.mechUp() && !this.glide /* release 635: a glider is in the air */) { this.returnFrom(from, SEA_REFUSAL); return false; }
     this.worldBeastsFollow(hunters, fromArea, dx, dy);
     for(const pursuer of pursuers){const e={...pursuer,id:`${pursuer.id}-pursuit-${this.rx}-${this.ry}`,dead:false,aggro:true,x:this.player.x-dx*1.4,y:this.player.y-dy*1.4,ai:{...pursuer.ai,homeX:this.player.x,homeY:this.player.y}};placeGatePursuer(e,this.player,this.map,mapWidth(this.map,this.area));resetGateAttack(e, true);this.enemies.push(e)}
     if(pursuers.length)this.message="The Gate Revenant tears through the crossing behind you.";
     this.edgeHold = { dx: -dx, dy: -dy, at: this.lastUpdateNow || 0 }; // perf pack (P6)
     this.sync();
+  }
+  // Whether a walker crossing toward (dx, dy) would land on open sea it cannot enter: no Tidemantle, robot or glide, and the
+  // lane's landing tile in the next section's kept terrain (the same pure terrain and key loadArea uses, with its void scars) is
+  // deep water. Decided once per section and side; reads nothing into the save. A Pentagon beyond is left to the full crossing.
+  seaBeyondLane(dx, dy) {
+    if (this.area !== "overworld" || canSwim(this.save) || this.mechUp() || this.glide) return false;
+    const memo = this._seaLane; if (memo && memo.map === this.map && memo.dx === dx && memo.dy === dy) return memo.sea;
+    const rx = this.rx + dx, ry = this.ry + dy, save = this.save, key = `overworld:${rx}:${ry}:g${save.worldGeneration}`, row = save.voidScars?.areas?.[key];
+    let map = keptSectionTerrain(save.seed, rx, ry, save.worldGeneration, this.sectionTerrainSteps(rx, ry));
+    if (row) { map = structuredClone(map); applyVoidScars({ voidScars: { ...save.voidScars, areas: { [key]: structuredClone(row) } } }, map, key); }
+    const exits = sectionExits(save.seed, rx, ry), x = dx < 0 ? 30.75 : dx > 0 ? .25 : dy < 0 ? exits.south : exits.north, y = dx < 0 ? exits.east : dx > 0 ? exits.west : dy < 0 ? 30.75 : .25;
+    const sea = !map.pentagon && DEEP_WATER.includes(footprintHazard(map, 32, x, y));
+    this._seaLane = { map: this.map, dx, dy, sea }; return sea;
   }
   // Perf pack (P6): whether a crossing toward (dx, dy) is the held edge just crossed (see EDGE_HOLD). Clears the hold once the
   // Wayfarer is `depth` inside that edge or the time has passed.
@@ -8153,7 +8199,7 @@ export class Game {
     if (!hatchMamaHere(this.save)) return { ok: false, message: (this.message = "The straw is empty.") }; // progression Phase 3: not before Infinite II in Exploration
     if (q.state === "active") return { ok: true, message: (this.message = `${M.already} (${q.rx},${q.ry} on your Atlas.)`) };
     const from = homeKey(this.save), site = chooseRescueSite(this.save.seed, from, (rx, ry) => !!seedHuntGround(walkerCrossingMap(this.save, rx, ry)));
-    Object.assign(q, { state: "active", v: Q.version, from, rx: site.rx, ry: site.ry, guards: Array.from({ length: Q.guards }, (_, i) => guardId(i)), cleared: [] });
+    Object.assign(q, { state: "active", v: Q.version, scaled: Q.scaled, from, rx: site.rx, ry: site.ry, guards: Array.from({ length: Q.guards }, (_, i) => guardId(i)), cleared: [] });
     journalOnce(this.save, "hatchling:quest", `${M.offer} (${site.rx},${site.ry})`, "Beast Hotel");
     setCompassChoice(this.save, { follow: { kind: "rescue" } }); // 2026-11-19 (Tim): taking the quest points the compass at it
     (this.questNotices ||= []).push({ title: Q.names.quest.toUpperCase(), detail: `${site.rx},${site.ry} · marked on the Atlas`, kind: "discovery" });
@@ -8178,6 +8224,7 @@ export class Game {
       const id = guardId(i); if (q.cleared.includes(id) || this.enemies.some((e) => e.id === id)) continue;
       let at = null; for (let k = 0; k < 8 && !at; k++) { const a = (i / Q.guards + k / 8) * Math.PI * 2, x = Math.round(q.x + Math.cos(a) * Q.ring), y = Math.round(q.y + Math.sin(a) * Q.ring); if (stands(x, y)) at = { x, y }; }
       const e = this.createEnemyFromSpawn({ id, kind: guardKind(seed, i, q.v || Q.version), ...(at || { x: q.x, y: q.y }) }, "overworld"); this.enemies.push(e);
+      if (Number(q.scaled) >= 1) { this.scaleToRegion(e); e.hatchScaled = true; } // HATCHLING.quest.scaled: the guards take their region here, on every visit (the fresh-section pass skips them)
     }
     pen.state = this.hatchGuardsLeft() ? "guarded" : "open";
     const k = `hatch:${this.rx},${this.ry}`; if (this._hatchTold !== k) { this._hatchTold = k; (this.questNotices ||= []).push({ title: Q.names.quest.toUpperCase(), detail: Q.messages.arrive, kind: "discovery" }); }
@@ -9228,9 +9275,9 @@ export class Game {
     if (!levels) this.message = `Recovered ${marks} mark${marks === 1 ? "" : "s"} from the fallen creature.`;
     if (fracture) { if (fracture.title) this.defeatNotice = { title: fracture.title, detail: fracture.detail, kind: "discovery" }; this.message = fracture.message; } // release 666
     if(this.save.narrative.facts['leads.active']){this.save.worldFlags['lead.hunt.count']=(this.save.worldFlags['lead.hunt.count']||0)+1;if(this.save.worldFlags['lead.hunt.count']>=5)progressLead(this.save,'hunt');if(isCrossingGuardian(e))progressLead(this.save,'guardian')}
-    const key = `drop:v1:${this.areaId()}:${e.id}`;
-    if (!e.fracReinforcement && !this.save.worldFlags[key]) { // release 651: reinforcements leave no lasting flag
-      this.save.worldFlags[key] = true;
+    const key = `drop:v1:${this.areaId()}:${e.id}`; // the draught roll's name (the kill ledger keeps that it was rolled)
+    if (!e.fracReinforcement && !killPaid(this.save, "d", this.areaId(), e.id)) { // release 651: reinforcements leave no lasting record
+      payKill(this.save, "d", this.areaId(), e.id);
       const roll = hashSeed(`${this.save.seed}:${key}`) % 100 < 40;
       if (e.boss || roll || (this.save.worldFlags.flaskPity || 0) >= 2) {
         const n = e.boss ? 2 : 1;
@@ -12255,7 +12302,8 @@ export class Game {
   drinkPotion(now = 0) {
     const id = potionToDrink(this.save), c = this.save.consumables || {};
     if (POTIONS[id]?.cost && !(c[id] > 0) && this.player.hp < this.save.maxHp) { const r = craftPotion(this.save, id); if (!r.ok) { this.message = r.message; return false; } }
-    return this.useConsumable(id, now);
+    const drunk = this.useConsumable(id, now); if (drunk && POTIONS[id]?.cost) notePotion(this.save, id); // a found one drunk is known (potions.ts POTION_KNOWN)
+    return drunk;
   }
   consumeLogicalNow(now = this.lastUpdateNow || 0) { return Math.max(0, Math.min(1e12, (this.paused ? this.pauseStarted : now) - (this.presentationPausedMs || 0))); }
   cancelConsumeVisual(reason) {

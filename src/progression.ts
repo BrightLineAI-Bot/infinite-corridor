@@ -40,7 +40,7 @@ import { GLYPHS, RESONANCES, TRIADS } from "./glyphs.ts";
 import { PAIRINGS } from "./spell-slots.ts";
 import { TESSERACTS, tesseractClass } from "./tesseracts.ts";
 import { MARGINALIA } from "./marginalia.ts";
-import { POTIONS } from "./potions.ts";
+import { POTIONS, potionKnown } from "./potions.ts";
 import { INGREDIENTS } from "./meals.ts";
 import { MOUNT_BEASTS } from "./beast-mounts.ts";
 import { ARCANA_UNLOCKS, arcanaHas } from "./lore.ts";
@@ -393,7 +393,7 @@ export function stateV0(save, row) {
     case "pairing": return s.magicSkills?.pairingsSeen?.[a] ? "owned" : "locked";
     case "tesseract": return (Array.isArray(s.tesseracts?.owned) ? s.tesseracts.owned : []).some((g) => g && (g.kind === a || tesseractClass(g) === TESSERACTS.classes[a])) ? "owned" : "locked";
     case "marginalia": return Array.isArray(s.marginalia?.found) && s.marginalia.found.includes(a) ? "owned" : "locked";
-    case "potion": return num(s.consumables?.[a]) > 0 ? "owned" : "open";
+    case "potion": return potionKnown(s, a) ? "owned" : "open"; // carried, brewed or drunk before, or brewable now (potions.ts potionKnown)
     case "meal": return s.meal && num(s.meal.remaining) > 0 && (s.meal.a === a || s.meal.b === a) ? "owned" : "open";
     case "consumable": return num(s.consumables?.[a]) > 0 ? "owned" : "locked";
     case "rounds": return num(s.rounds?.empowered) > 0 ? "owned" : "locked";
