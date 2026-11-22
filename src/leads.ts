@@ -28,6 +28,7 @@ export const LEADS = Object.freeze({
   maxQuests: 3, // G2: at most this many directed quests open at once (Phase 7's quests read it)
   crossingRadius: 16, // sections searched round the Wayfarer for the errand's nearest crossing (Manhattan rings)
   idleSections: 15, // 4.3: no needle and no lead followed for this many new sections: the Journal button shows a dot
+  wonderMax: 5, // fixes from a 20-hour playthrough (I9): at most this many travellers' wonders stand as leads; a new one replaces the oldest (no other rumour is touched)
 });
 
 // ---------------------------------------------------------------- the first hour (4.1)
@@ -130,7 +131,13 @@ export function rumourLive(save, r) {
   if (K.passive) return !arcanaHas(save, K.passive);
   return K.open(save);
 }
-export const liveRumours = (save) => (Array.isArray(save?.leads?.rumours) ? save.leads.rumours : []).filter((r) => rumourLive(save, r)).map(paidRumourView);
+// Travellers' wonders beyond LEADS.wonderMax, the oldest first: every traveller names one, so from about ten hours thirty of them
+// stood as leads against a floor of two. Only wonder rumours are ever cut; quests, threads and every other rumour stand.
+function wonderOverflow(save, list) {
+  const wonders = list.filter((r) => r?.kind === "wonder" && rumourLive(save, r));
+  return new Set(wonders.slice(0, Math.max(0, wonders.length - LEADS.wonderMax)));
+}
+export const liveRumours = (save) => { const all = Array.isArray(save?.leads?.rumours) ? save.leads.rumours : [], over = wonderOverflow(save, all); return all.filter((r) => !over.has(r) && rumourLive(save, r)).map(paidRumourView); };
 // Quests in progress the player can act on now (the Journal's Leads lists them first, main.ts activeQuests).
 export function questLeadCount(save) {
   let n = 0;
@@ -176,7 +183,9 @@ export function nextRumour(save, rx = 0, ry = 0) {
 // Records a rumour heard (once by id; a rumour heard again replaces the old record). Returns { rumour, first }.
 export function recordRumour(save, rumour, by = "", at = Number(save?.playSeconds) || 0) {
   const L = ensureLeads(save), first = !L.rumours.length, r = { ...rumour, by, at: Math.floor(at) };
-  L.rumours = [...L.rumours.filter((q) => !sameRumour(q, r)), r].slice(-LEAD_RECORD.rumourMax);
+  let list = [...L.rumours.filter((q) => !sameRumour(q, r)), r];
+  if (r.kind === "wonder") { const over = wonderOverflow(save, list); list = list.filter((q) => !over.has(q) && !(q.kind === "wonder" && !rumourLive(save, q))); } // LEADS.wonderMax: the oldest wonder goes (and wonders already reached)
+  L.rumours = list.slice(-LEAD_RECORD.rumourMax);
   return { rumour: r, first };
 }
 // The lead floor (G2): a person's idle line becomes a rumour while fewer than LEADS.floor leads stand. Returns

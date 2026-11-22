@@ -1065,11 +1065,28 @@ export function applyPackBossForm(enemy) {
 
 export function freshPackState() { return { v: MONSTER_PACK_VERSION, state: "move", attack: null, phase: null, t: 0, cd: {}, seq: 0, tele: null, gap: .8, stillT: 0, anchor: null, orbitDir: 0 }; }
 
-// Called when an enemy is restored from a save: transient attack state never resumes mid-swing.
+// Exact resume (fixes from a 20-hour playthrough, I10): what of a foe's pack state a restore keeps besides its cooldowns. Its
+// circling side, its idle wander, its attack count and last attack (the hashes that pick and shape the next attack read
+// them), how long the Wayfarer has stood still near it, and the breath before its next attack (only when it was not
+// mid-attack: an attack never resumes, and one cut short leaves the fresh pause). Each is checked and bounded here.
+export const PACK_RESUME = Object.freeze({ gapMax: 30, stillMax: 60, lastMax: 48, seqMax: 1e9 });
+function resumedPack(old) {
+  if (!old || typeof old !== "object") return {};
+  const out = {}, R = PACK_RESUME, num = (v) => typeof v === "number" && Number.isFinite(v);
+  if (old.orbitDir === 1 || old.orbitDir === -1) out.orbitDir = old.orbitDir;
+  if (num(old.wander)) out.wander = old.wander >= 0 && old.wander < TAU ? old.wander : ((old.wander % TAU) + TAU) % TAU;
+  if (Number.isInteger(old.seq) && old.seq >= 0) out.seq = Math.min(R.seqMax, old.seq);
+  if (typeof old.last === "string" && old.last.length <= R.lastMax) out.last = old.last;
+  if (num(old.stillT) && old.stillT >= 0 && num(old.anchor?.x) && num(old.anchor?.y)) { out.stillT = Math.min(R.stillMax, old.stillT); out.anchor = { x: old.anchor.x, y: old.anchor.y }; }
+  if (!old.attack && old.state !== "attack" && num(old.gap) && old.gap >= 0) out.gap = Math.min(R.gapMax, old.gap);
+  return out;
+}
+
+// Called when an enemy is restored from a save: transient attack state never resumes mid-swing (PACK_RESUME: what is kept).
 export function resetPackRuntime(enemy) {
   if (!enemy?.packKind) return enemy;
   const cd = enemy.pack?.cd || {};
-  enemy.pack = { ...freshPackState(), cd: { ...cd } };
+  enemy.pack = { ...freshPackState(), ...resumedPack(enemy.pack), cd: { ...cd } };
   // A reset Lantern returns to material hover; its discarded leap cannot retain lift.
   if (enemy.kind === "graveLantern") enemy.hopLift = 0;
   if (MONSTER_PACK[enemy.kind]?.duelistKin) { enemy.hopLift = 0; enemy.aloft = false; enemy.duelPose = null; } // the Gaunt: a hop or a cut never resumes mid-air
