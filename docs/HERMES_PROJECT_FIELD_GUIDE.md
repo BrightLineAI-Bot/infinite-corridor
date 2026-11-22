@@ -6,7 +6,7 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
-## Unreleased — world regions: the Cloudfells (landscape 29)
+## Release 1054 — world regions: the Cloudfells (landscape 29)
 
 The daily world-regions step (Tim, 2026-10-29: "find ways to make the map have interesting features... beautiful collections of regions... rich and vibrant... without decreasing performance"). Every idea on his list already has a region (see release 1047's inventory); the thinnest is fog, whose only region, the Fog Moors (617), is a flat grey recolour with drifting weather. The Cloudfells are fog you climb out of: a climbed upland whose hollows lie under a painted sea of cloud, drawn mostly from far mountain regions (so it also widens "great mountain ranges"). Chosen for the most new look and play for the least code: one closed-form height field, the Oasis Ergs' sweeps, cut-checks and cache, and existing mechanics only (one-level jumps, MIRE.slow, wadeable shallows).
 
