@@ -125,7 +125,7 @@ test('weapons are never gated: the Iron Fists, Hammerfall and Great Sweep drop i
   // generateItem reads no mode; its brawler stream (items.ts BRAWLER_LOOT, `brawler-loot:v1`) runs in both modes from the start
   const items = Array.from({ length: 400 }, (_, i) => generateItem(`CINDER-VERGE-47:drop:${i}`, 1 + (i % 30), i % 3 ? null : { ordinaryMonster: true }));
   assert.equal(hash(items), '9958f4bd0b2a3fa6', 'pinned: every roll as before Phase 3');
-  const drops = (save) => { save.inventory = []; const g = new Game(save, 0); for (let i = 0; i < 40; i++) { g.obtainDrop('monster', i % 2 === 0); if (save.inventory.length > 30) save.inventory = []; } return [save.inventory, save.dropCounter]; };
+  const drops = (save) => { save.inventory = []; save.keepDuplicateGear = true; /* spare gear (2026-11-22) off: the pin is the rolls and the pack's own rule */ const g = new Game(save, 0); for (let i = 0; i < 40; i++) { g.obtainDrop('monster', i % 2 === 0); if (save.inventory.length > 30) save.inventory = []; } return [save.inventory, save.dropCounter]; };
   const old = freshSave(); old.seed = 'CINDER-VERGE-47'; assert.equal(hash(drops(old)), '53317e384b1ff0b1', 'an old (Classic) save drops exactly as before');
   const v1 = v1Save('CINDER-VERGE-47'); assert.equal(hash(drops(v1)), '53317e384b1ff0b1', 'an Exploration journey on that seed drops the same');
   const names = new Set(); for (let i = 0; i < 600; i++) { const s = v1Save(`LOOT-${i % 3}`); void s; names.add(generateItem(`LOOT-${i}:monster:${i}`, 2).name); }
