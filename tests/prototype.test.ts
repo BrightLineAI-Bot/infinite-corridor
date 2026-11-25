@@ -3020,7 +3020,7 @@ test("overworld performance caches structure geometry and failed chase retries",
   assert.match(game,/ai\.pathRetryAt=now\+350/);
   assert.match(game,/activeEnemySet\.has\(e\)/);
   assert.match(main,/const pending=save\.scenes\?\.pending/);
-  assert.match(main,/if \(\(clock \+= dt\) > 8\)/);
+  assert.match(main,/if \(autosaveDue\(clock \+= dt, saveWanted, fightNow\)\) persist\(\);/); // the Briar Stag fight stutter: the 8 s autosave is persistence.ts AUTOSAVE.every (30 s in a fight)
 });
 
 test("story scenes are deterministic bounded and commit exactly once",()=>{const a=freshSave(),b=freshSave();assert.equal(sceneVariant(a,"rift-arrival","one"),sceneVariant(b,"rift-arrival","one"));assert.equal(Object.keys(SCENE_DEFINITIONS).length,4);assert.equal(queueScene(a,"rift-arrival","one"),true);const full=scenePlaybackPlan(a,"rift-arrival",{quality:"high"}),low=scenePlaybackPlan(a,"rift-arrival",{quality:"low",reduceMotion:true});assert.ok(full.shots.length>=2);assert.equal(low.layers,1);assert.ok(low.shots.every(q=>q.camera==="still"));assert.equal(commitScene(a,"rift-arrival"),true);assert.equal(commitScene(a,"rift-arrival"),false);assert.deepEqual(scenePlaybackPlan(a,"rift-arrival"),null);assert.equal(a.narrative.facts["scene.riftArrival"],true)});
