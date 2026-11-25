@@ -7,7 +7,9 @@ import { freshSave } from '../src/types.ts';
 import { storeInventoryItem, packVictim, packKeepCompare, PACK_KEEP, EQUIPMENT_CAPACITY, BRAWLER_GEAR } from '../src/game.ts';
 
 const piece = (id, tier, power, extra = {}) => ({ id, name: `Blade ${id}`, slot: 'primary', property: 'steady', power, basePower: power, upgradeRank: 0, tier, affixes: [], ...extra });
-const full = (make) => { const s = freshSave(); s.inventory = Array.from({ length: EQUIPMENT_CAPACITY }, (_, i) => make(i)); return s; };
+// Spare gear (2026-11-22, game.ts SPARE_GEAR): these packs are piles of one kind per slot, so they keep duplicates to weigh the
+// full pack's own rule (PACK_KEEP) alone; tests/spare-gear.test.ts covers spare salvage.
+const full = (make) => { const s = freshSave(); s.keepDuplicateGear = true; s.inventory = Array.from({ length: EQUIPMENT_CAPACITY }, (_, i) => make(i)); return s; };
 
 test('the keep order is tier, then power, then worked-on, then the oldest', () => {
   assert.deepEqual([...PACK_KEEP.order], ['tier', 'power', 'worked']);
