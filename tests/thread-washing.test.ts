@@ -41,7 +41,7 @@ test('written in full, never a wave: six bundles in order, an ending, its own re
 });
 
 test('story version 6 is the gate: the budget stays 0.12, and crossings pinned at 0 to 5 roll exactly as with the Washing never written', () => {
-  assert.equal(STORY_BUDGET.version, V); assert.equal(STORY_BUDGET.byVersion[V], .12); assert.equal(budgetFor(V), .12); assert.equal(storyVersionFor(false), V); assert.equal(storyVersionFor(true), 0);
+  assert.ok(STORY_BUDGET.version >= V); assert.equal(STORY_BUDGET.byVersion[V], .12); assert.equal(budgetFor(V), .12); assert.equal(storyVersionFor(false), STORY_BUDGET.version); // story version 7 (every offered goal can be completed) adds an entry assert.equal(storyVersionFor(true), 0);
   const sample = []; for (const d of DISTANCES) sample.push(...ring(d, 2400, 'g'));
   const now = sample.map(([seed, id]) => [0, 1, 2, 3, 4, 5].map((v) => [0, 1, 2].map((r) => threadIn(seed, id, v, r))));
   const was = without(() => sample.map(([seed, id]) => [0, 1, 2, 3, 4, 5].map((v) => [0, 1, 2].map((r) => threadIn(seed, id, v, r)))));
@@ -85,7 +85,7 @@ for (const mode of ['classic', 'exploration']) test(`in the game (${mode}): the 
   assert.equal(trailBegun(s, ID), false); assert.equal(trailPlace(s, ID), null); assert.equal(compassFollowTarget(s, { kind: 'quest', id: trailFollowId(ID) }), null, 'nothing to follow before it is begun');
   const leadsBefore = questLeadCount(s), marks = s.currency;
   let p = firstCrossing(s), g = enter(s, p);
-  assert.equal(s.consequences.dungeons[p.dungeon].storyVersion, V, 'a new crossing pins to version 6');
+  assert.equal(s.consequences.dungeons[p.dungeon].storyVersion, STORY_BUDGET.version, 'a new crossing pins to the current version (6 or later)');
   let { o, r } = readIn(g); assert.ok(r.ok && r.first && !r.done, g.message); assert.equal(o.thread, ID); assert.equal(o.index, 0);
   assert.deepEqual(s.guidance.follow, { kind: 'quest', id: trailFollowId(ID) }, 'taking it up chooses it for the compass');
   assert.ok(g.questNotices.some((q) => q.title === 'DOWNSTREAM')); assert.ok(s.narrative.journal.some((j) => j.recordId === 'thread:washing:0'));
@@ -96,7 +96,7 @@ for (const mode of ['classic', 'exploration']) test(`in the game (${mode}): the 
     assert.deepEqual(compassFollowTarget(s, s.guidance.follow), { area: 'overworld', rx: at.rx, ry: at.ry, kind: 'guidance', name: T.title });
     const row = trailLeads(s)[0]; assert.equal(row.title, T.title); assert.deepEqual(row.at, { rx: at.rx, ry: at.ry }); assert.deepEqual(row.follow, s.guidance.follow); assert.match(row.detail, new RegExp(`${i} of 6 bundles`));
     assert.equal(crossingAt(s, at.rx, at.ry), at.dungeon, 'an ordinary crossing not yet entered');
-    g = enter(s, at); assert.equal(s.consequences.dungeons[at.dungeon].storyVersion, V); ({ o, r } = readIn(g));
+    g = enter(s, at); assert.equal(s.consequences.dungeons[at.dungeon].storyVersion, STORY_BUDGET.version); ({ o, r } = readIn(g));
     assert.equal(o.index, i, 'the next bundle, in order'); assert.ok(r.ok && r.first); assert.equal(r.done, i === T.pieces.length - 1);
   }
   assert.ok(threadsDone(s).includes(ID) && threadsStarted(s).includes(ID)); assert.equal(threadFound(s, ID).length, 6);
