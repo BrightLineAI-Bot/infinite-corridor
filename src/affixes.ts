@@ -78,7 +78,7 @@ export function tickAffixes(game, dt, now, hurt, poison) {
   // The hazards: a burst strikes once as it lands; burning ground and poison pools keep hurting while stood in.
   for (const h of hz) {
     if (now < h.armAt) continue; const inside = Math.hypot(px - h.x, py - h.y) <= h.radius;
-    if (h.kind === "volcanic") { if (inside && now >= (h.nextTick || 0)) { h.nextTick = now + 1000; hurt(h.damage); } }
+    if (h.kind === "volcanic") { if (inside && now >= (h.nextTick || 0)) { h.nextTick = now + 1000; hurt(h.damage, h.kind); } } // the kind: a burn (world-routes.ts BURNS)
     else if (h.kind === "venomous") { if (inside && now >= (h.nextTick || 0)) { h.nextTick = now + 1000; poison(...AFFIXES.venomous.poison); } }
     else if (!h.struck) { h.struck = true; if (inside) hurt(h.damage); }
   }

@@ -11,7 +11,8 @@
 // only for the journey in play (journey-start.ts frameFor; main.ts and game.ts call it with the journey's Game made).
 // Save: save.lore.trails = { threadId: { n, rx, ry, dungeon } | { n, none: true } } (created on first use; additive, normalised by
 // threads.ts ensureThreadTrails with save.lore.threadGifts; unknown ids kept). Pure rules: no DOM.
-import { THREADS, THREAD_TRAILS, STORY_BUDGET, threadIn, threadFound, storyVersionOf } from "./threads.ts";
+import { THREADS, THREAD_TRAILS, STORY_BUDGET, threadIn, threadFound, storyVersionOf, threadHeld, threadDue, certainThread, settleThreadLot, threadRelicFloor } from "./threads.ts";
+import { secondFootprintsIn } from "./second-wayfarer.ts";
 import { ARCANA_REGIONS, arcanaHint, arcanaToward, regionVersionFor, regionVersionOf } from "./lore.ts";
 import { saveStart, saveFrame } from "./journey-start.ts";
 import { crossingAt } from "./quest-places.ts";
@@ -31,11 +32,22 @@ const plain = (v) => !!v && typeof v === "object" && !Array.isArray(v);
 export function trailBegun(save, id) { const T = THREADS[id], n = threadFound(save, id).length; return !!THREAD_TRAILS[id] && !!T && n > 0 && n < T.pieces.length; }
 const entered = (save, id) => { const h = save?.consequences?.dungeons?.[id]; return !!(h && (h.generatorVersion !== undefined || (Number(h.visits) || 0) > 0)) || !!save?.session?.areas?.[id]; };
 // The thread crossing `cid` would hold when entered: its pinned versions if it has them, else those a first entry pins now.
+// From story version 7 a new crossing may hold a begun thread's piece for certain (threads.ts THREAD_CERTAIN): as it would decide
+// if entered now, never where the Second Wayfarer's footprints lie.
 function wouldHold(save, cid) {
   const h = save?.consequences?.dungeons?.[cid];
-  if (h && h.storyVersion !== undefined) return threadIn(save?.seed, cid, storyVersionOf(save, cid), regionVersionOf(save, cid));
+  if (h && h.storyVersion !== undefined) return threadHeld(save, cid);
   if (h && h.layoutVersion !== undefined) return null; // generated before: it keeps version 0, which holds no trail thread
-  return threadIn(save?.seed, cid, STORY_BUDGET.version, regionVersionFor(false, ARCANA_REGIONS.live, saveStart(save)));
+  const v = STORY_BUDGET.version, r = regionVersionFor(false, ARCANA_REGIONS.live, saveStart(save)), natural = threadIn(save?.seed, cid, v, r), m = ORDINARY.exec(cid);
+  if (!m || secondFootprintsIn(save?.seed, cid, v, r)) return natural;
+  return certainThread(save, Number(m[1]), Number(m[2]), v, natural) || natural;
+}
+// Dresses a crossing's thread the first time it loads (game.ts, just before threads.ts addThreadRelic): from story version 7, the
+// begun thread made certain there, if any, decided once and counted (threads.ts settleThreadLot). A map that takes no piece (a
+// multi-level crossing, an arena) is not counted; nor is a crossing where the Second Wayfarer's footprints lie.
+export function settleCrossingThread(map, save, cid) {
+  if (!threadRelicFloor(map)) return null;
+  return settleThreadLot(save, cid, secondFootprintsIn(save?.seed, cid, storyVersionOf(save, cid), regionVersionOf(save, cid)));
 }
 // The crossing the last piece was read in, as a section (the search's centre), or the Refuge.
 function lastSection(save, id) { const list = threadFound(save, id), m = ORDINARY.exec(String(list[list.length - 1] || "")); return m ? { rx: Number(m[1]), ry: Number(m[2]) } : { rx: 0, ry: 0 }; }
@@ -64,11 +76,11 @@ export function nearestTrailCrossing(save, id, cx, cy, radius = THREAD_TRAILS[id
 // piece read since, or the crossing pointed at entered), and the answer saved.
 export function trailPlace(save, id) {
   if (!trailBegun(save, id)) return null;
-  const n = threadFound(save, id).length, lore = save.lore, rec = plain(lore.trails) ? lore.trails[id] : null;
-  let t = plain(rec) && rec.n === n && (rec.none === true || (typeof rec.dungeon === "string" && !entered(save, rec.dungeon))) ? rec : null;
+  const n = threadFound(save, id).length, lore = save.lore, rec = plain(lore.trails) ? lore.trails[id] : null, due = threadDue(save, id);
+  let t = plain(rec) && rec.n === n && !!rec.due === due && (rec.none === true || (typeof rec.dungeon === "string" && !entered(save, rec.dungeon))) ? rec : null; // `due`: the next crossing became certain (THREAD_CERTAIN)
   if (!t) {
     const c = lastSection(save, id), m = homeAt(save, id, "middle"), p = nearestTrailCrossing(save, id, c.rx, c.ry) || (m && nearestTrailCrossing(save, id, m.rx, m.ry)); // then round the middle of its home
-    t = p ? { n, rx: p.rx, ry: p.ry, dungeon: p.dungeon } : { n, none: true };
+    t = p ? { n, rx: p.rx, ry: p.ry, dungeon: p.dungeon } : { n, none: true }; if (due) t.due = true;
     lore.trails = { ...(plain(lore.trails) ? lore.trails : {}), [id]: t };
   }
   if (t.none !== true) return { rx: t.rx, ry: t.ry, dungeon: t.dungeon };
@@ -98,7 +110,8 @@ export function trailLeads(save) {
     if (!trailBegun(save, id)) continue;
     const T = THREADS[id], R = THREAD_TRAILS[id], n = threadFound(save, id).length, p = trailPlace(save, id);
     const where = p?.dungeon ? "The next lies in the crossing the compass can point to." : p?.home ? `The rest most likely lie ${arcanaHint(id, saveFrame(save))}.` : "The rest lie in crossings of the middle distance and farther.";
-    out.push({ id, title: T.title, detail: `${R.lead}: ${n} of ${T.pieces.length} ${R.unit} found. ${where}`, at: p ? { rx: p.rx, ry: p.ry } : null, follow: { kind: "quest", id: trailFollowId(id) } });
+    const sure = threadDue(save, id) ? " The next new crossing of its stretch is sure to hold one." : "";
+    out.push({ id, title: T.title, detail: `${R.lead}: ${n} of ${T.pieces.length} ${R.unit} found. ${where}${sure}`, at: p ? { rx: p.rx, ry: p.ry } : null, follow: { kind: "quest", id: trailFollowId(id) } });
   }
   return out;
 }
