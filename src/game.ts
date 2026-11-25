@@ -5517,6 +5517,7 @@ export class Game {
     if (this.area !== "overworld" || canSwim(this.save) || this.mechUp() || this.glide) return false;
     const memo = this._seaLane; if (memo && memo.map === this.map && memo.dx === dx && memo.dy === dy) return memo.sea;
     const rx = this.rx + dx, ry = this.ry + dy, save = this.save, key = `overworld:${rx}:${ry}:g${save.worldGeneration}`, row = save.voidScars?.areas?.[key];
+    if (farDomainAt(save, rx, ry, !!save.atlas?.[`${rx},${ry}`])) { this._seaLane = { map: this.map, dx, dy, sea: false }; return false; } // a far domain is built whole on arrival (loadArea), whatever its base terrain: the full crossing decides
     let map = keptSectionTerrain(save.seed, rx, ry, save.worldGeneration, this.sectionTerrainSteps(rx, ry));
     if (row) { map = structuredClone(map); applyVoidScars({ voidScars: { ...save.voidScars, areas: { [key]: structuredClone(row) } } }, map, key); }
     const exits = sectionExits(save.seed, rx, ry), x = dx < 0 ? 30.75 : dx > 0 ? .25 : dy < 0 ? exits.south : exits.north, y = dx < 0 ? exits.east : dx > 0 ? exits.west : dy < 0 ? 30.75 : .25;
