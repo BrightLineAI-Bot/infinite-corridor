@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1068 (this merge, #740); production serves `r1059-3629aeded9d0` (Publish run 195, 45646565675, succeeded 2026-11-25; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1069 (this merge, #741); production serves `r1059-3629aeded9d0` (Publish run 195, 45646565675, succeeded 2026-11-25; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 1069 | Claude | claude/female-wayfarer / #741 | Choose a male or female Wayfarer | Merged (#741); preview follows. |
 | 1068 | Claude | claude/compass-ribbon / #740 | The compass, rebuilt: Ribbon, edge arrow, hint arcs, nearby places, one target everywhere | Merged (#740); preview follows. |
 | 1067 | Claude | claude/less-loot / #739 | Less loot from ordinary monsters, every weapon and tool from the start | Merged (#739); preview follows. |
 | 1066 | Claude | claude/starfield-edges / #738 | Rarer Starfields on new ground, safe rims on all raised ground | Merged (#738); preview follows. |

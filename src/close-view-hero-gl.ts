@@ -55,20 +55,22 @@ void main() {
 export function createHeroGL(gl, compile, vertexCommon, fragmentCommon) {
   return { program: compile(gl, vertexCommon + HERO_VERTEX_BODY, fragmentCommon + HERO_FRAGMENT_BODY), asset: null, vao: null, dynamic: null, static: null, indices: null, texture: null, ready: false, failed: false, uploadBytes: 0 };
 }
-export function disposeHeroGL(gl, s, destroyProgram = false) {
+export function disposeHeroGL(gl, s, destroyProgram = false, keepTexture = false) {
   if (!s) return;
   for (const b of [s.dynamic,s.static,s.indices]) if(b) gl.deleteBuffer(b);
-  if(s.vao) gl.deleteVertexArray(s.vao); if(s.texture) gl.deleteTexture(s.texture);
+  if(s.vao) gl.deleteVertexArray(s.vao); if(s.texture&&!keepTexture) gl.deleteTexture(s.texture);
   if(destroyProgram&&s.program?.p)gl.deleteProgram(s.program.p);
-  s.asset=null; s.ready=false; s.dynamic=s.static=s.indices=s.vao=s.texture=null;
+  s.asset=null; s.ready=false; s.dynamic=s.static=s.indices=s.vao=null; if(!keepTexture){s.texture=null;s.images=null;}
 }
 export function prepareHeroGL(gl, s, asset) {
   if (!s || s.failed || !asset || gl.isContextLost?.()) return false;
   if (s.asset === asset && s.ready) return true;
   if (asset.images?.length !== 2 || asset.images.some(i => !i || i.width !== 1024 || i.height !== 1024)) return false;
   try {
-    disposeHeroGL(gl,s);
-    s.vao=gl.createVertexArray(); s.dynamic=gl.createBuffer(); s.static=gl.createBuffer(); s.indices=gl.createBuffer(); s.texture=gl.createTexture();
+    // A body switch (close-view-hero.ts closeViewHeroBodyAsset) shares the source textures: only the buffers are rebuilt.
+    const reuse=!!s.texture&&s.images===asset.images;
+    disposeHeroGL(gl,s,false,reuse);
+    s.vao=gl.createVertexArray(); s.dynamic=gl.createBuffer(); s.static=gl.createBuffer(); s.indices=gl.createBuffer(); if(!reuse)s.texture=gl.createTexture();
     if(!s.vao||!s.dynamic||!s.static||!s.indices||!s.texture) throw new Error('Hero GL resources');
     gl.bindVertexArray(s.vao); const a=s.program.A;
     gl.bindBuffer(gl.ARRAY_BUFFER,s.dynamic); gl.bufferData(gl.ARRAY_BUFFER,asset.vertexCount*6*4,gl.DYNAMIC_DRAW);
@@ -78,14 +80,14 @@ export function prepareHeroGL(gl, s, asset) {
     for(let i=0;i<asset.vertexCount;i++){data[i*4]=asset.arrays.uvs[i*2];data[i*4+1]=asset.arrays.uvs[i*2+1];data[i*4+2]=asset.arrays.materialLayers[i];data[i*4+3]=asset.arrays.paletteClasses[i];}
     gl.bindBuffer(gl.ARRAY_BUFFER,s.static);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);attr('a_uv',2,16,0);attr('a_layer',1,16,8);attr('a_class',1,16,12);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,s.indices);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,asset.arrays.indices,gl.STATIC_DRAW);
-    gl.activeTexture(gl.TEXTURE3);gl.bindTexture(gl.TEXTURE_2D_ARRAY,s.texture);
+    if(!reuse){gl.activeTexture(gl.TEXTURE3);gl.bindTexture(gl.TEXTURE_2D_ARRAY,s.texture);
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,false);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);
     gl.texStorage3D(gl.TEXTURE_2D_ARRAY,11,gl.RGBA8,1024,1024,2);
     for(let layer=0;layer<2;layer++) gl.texSubImage3D(gl.TEXTURE_2D_ARRAY,0,0,0,layer,1024,1024,1,gl.RGBA,gl.UNSIGNED_BYTE,asset.images[layer]);
     gl.texParameteri(gl.TEXTURE_2D_ARRAY,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);gl.texParameteri(gl.TEXTURE_2D_ARRAY,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D_ARRAY,gl.TEXTURE_WRAP_S,gl.REPEAT);gl.texParameteri(gl.TEXTURE_2D_ARRAY,gl.TEXTURE_WRAP_T,gl.REPEAT);gl.generateMipmap(gl.TEXTURE_2D_ARRAY);
+    gl.texParameteri(gl.TEXTURE_2D_ARRAY,gl.TEXTURE_WRAP_S,gl.REPEAT);gl.texParameteri(gl.TEXTURE_2D_ARRAY,gl.TEXTURE_WRAP_T,gl.REPEAT);gl.generateMipmap(gl.TEXTURE_2D_ARRAY);}
     if (typeof gl.getError==='function') { const error=gl.getError(); if(typeof error==='number'&&error!==gl.NO_ERROR) throw new Error('Hero GL upload'); }
-    s.asset=asset;s.ready=true;s.uploadBytes=asset.vertexCount*24;
+    s.asset=asset;s.images=asset.images;s.ready=true;s.uploadBytes=asset.vertexCount*24;
     return true;
   } catch { disposeHeroGL(gl,s);s.failed=true;return false; }
   finally { gl.bindVertexArray(null);gl.activeTexture(gl.TEXTURE0); }

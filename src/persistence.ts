@@ -1,6 +1,7 @@
 import { freshSave, migrateSave, unsupportedVersion, compactedAreas } from "./types.ts";
 import { ensureProductionTriceratops } from "./beast-mounts.ts";
 import { startJourney } from "./progression.ts";
+import { setWayfarerBody } from "./journey-start.ts";
 
 const DB = "infinite-corridor", STORE = "saves", SLOT_COUNT = 3;
 const LEGACY_MIRROR = "infinite-corridor:active-v2", ACTIVE_SLOT = "infinite-corridor:active-slot-v1", SETTINGS = "infinite-corridor:settings-v1";
@@ -347,7 +348,7 @@ export async function listJourneySlots(){try{await migrateLegacy()}catch{}const 
 export function randomSeed(){let tail="";try{const a=new Uint32Array(2);crypto.getRandomValues(a);tail=a[0].toString(36)+a[1].toString(36)}catch{tail=Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2)}return`CORRIDOR-${Date.now().toString(36)}${tail.slice(0,6)}`.toUpperCase().slice(0,64)}
 // A new journey (progression.ts startJourney): its name, its seed (typed, or random), and the creator's choices: the mode
 // (Exploration unless Classic is chosen), the weapon and the tool. Every new journey is created at start version 1.
-export function namedFresh(name,seed,choices={}){const save=ensureProductionTriceratops(freshSave());save.name=String(name||"Wayfarer").slice(0,40);save.seed=String(String(seed||"").trim()||randomSeed()).slice(0,64);return startJourney(save,{mode:choices.mode,weapon:choices.weapon,tool:choices.tool})}
+export function namedFresh(name,seed,choices={}){const save=ensureProductionTriceratops(freshSave());save.name=String(name||"Wayfarer").slice(0,40);save.seed=String(String(seed||"").trim()||randomSeed()).slice(0,64);setWayfarerBody(save,choices.body);/* the creator's body choice (journey-start.ts WAYFARER_BODY) */return startJourney(save,{mode:choices.mode,weapon:choices.weapon,tool:choices.tool})}
 async function snapshotRecovery(slot,raw,checked=false){if(!raw||!checked&&validateJourney(raw).health!=="healthy")return;const previous=await read(`recovery:${slot}:1`);if(previous)await write(`recovery:${slot}:2`,previous);await write(`recovery:${slot}:1`,raw)}
 export async function createJourney(slot,options={}){const current=await readJourney(slotKey(slot))||mirrorRead(slot);if(current&&!options.replace)throw new Error("That journey slot is occupied.");if(current)await snapshotRecovery(slot,current);const save=namedFresh(options.name,options.seed,options);replaced(slot);await writeJourney(slotKey(slot),save);mirrorWrite(slot,save);return journeyMetadata(save,slot)}
 export async function renameJourney(slot,name){const raw=await readJourney(slotKey(slot)),valid=validateJourney(raw);if(valid.health!=="healthy")throw new Error("Only a healthy journey can be renamed.");valid.save.name=String(name||valid.save.name).slice(0,40);valid.save.updatedAt=Date.now();await writeJourney(slotKey(slot),valid.save);mirrorWrite(slot,valid.save);return journeyMetadata(valid.save,slot)}

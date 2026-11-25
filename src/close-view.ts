@@ -7,7 +7,8 @@ import { buildVisualRevision, hasStoneBuilds } from "./building.ts";
 import { importedEmitterAppearance, heldToolKind, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, normalizeMeleeActionVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage, cleaverCarryFrame, sampleCleaverChoreography } from "./action-motion.ts";
 import { swingVisualProgress } from "./melee-swing.ts"; // the weighted swing's clock (2026-11-14)
 import { creaturePoseFamily, creatureFootprint, MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, writeCloseViewHeroKit, HERO_SLOT_EXTRA_TRIANGLES, closeViewToolEmissionPoint, closeViewHeldMuzzlePoint } from "./close-view-models.ts";
-import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero, aerialHandsFree } from './close-view-hero.ts';
+import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero, aerialHandsFree, closeViewHeroBodyAsset } from './close-view-hero.ts';
+import { wayfarerBody } from './journey-start.ts'; // the Wayfarer's body: which hero asset is drawn
 import { actorPresentation, actorProfile, designedAlpha, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight, shotVisualHeight } from "./actor-presentation.ts";
 import { closeViewHeldToolKind, writeCloseViewHeldTool } from './close-view-sweep-gear.ts'; // the Great Sweep and the Orrery held in the right hand (2026-11-14)
 import { closeViewPlayerForm, closeViewWaterState, closeViewWaterLift, closeViewSwimPhases, CLOSE_VIEW_WATER, playerFormModelKey, cleaverHandRoles, closeViewHeldHand, CLOSE_VIEW_HELD_GEAR, carbineRecoil, ordinaryJumpPresentation, ordinaryFallPresentation, ordinaryDefeatPresentation, ordinaryLandingPresentation } from './close-view-player-presentation.ts';
@@ -4556,7 +4557,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     track.attacking = attack;
     let imported = false, heroWaiting = false;
     if (who === player && importedPlayer && count < limit) {
-      const asset = getCloseViewHeroAsset(), heroReady = !!asset && prepareCloseViewHeroGL(asset);
+      const sourceHero = getCloseViewHeroAsset(), asset = sourceHero && closeViewHeroBodyAsset(sourceHero, wayfarerBody(g.save)), heroReady = !!asset && prepareCloseViewHeroGL(asset); // the female body is a cached derivative of the source asset
       heroWaiting = !heroReady && (!!asset || closeViewHeroAssetStatus() === 'loading'); // 926 bug 11: the real model is on its way
       if (heroReady) {
         if (state.heroAsset !== asset || !state.heroPose) {
