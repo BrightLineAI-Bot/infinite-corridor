@@ -36,7 +36,7 @@ function harness(immediate = false) {
     setInterval: (fn, ms) => {intervals.push({fn, ms});},
     SPELLS: {'ember-ring': {name: 'Ember Ring'}}, viewportSeq: null,
     closeViewScreenToWorld: () => null, screenToWorld: () => ({x: 4, y: 5}),
-    persist: () => calls.push(['persist']), performance: {now: () => 1234},
+    persist: () => calls.push(['persist']), persistSoon: () => calls.push(['persistSoon']), performance: {now: () => 1234}, // the Briar Stag fight stutter: a world tap asks for a save (persistSoon)
     openInteraction: (id) => calls.push(['interaction', id]),
   };
   const run = new AsyncFunction(...Object.keys(dependencies), startup);
@@ -71,7 +71,7 @@ for (const immediate of [false, true]) test(`game UI waits for ${immediate ? 'im
   const tap = {detail: {clientX: 10, clientY: 20}};
   h.listeners.get('worldtap')(tap);
   assert.equal(h.calls.filter((c) => c[0] === 'attack').length, 1);
-  assert.equal(h.calls.filter((c) => c[0] === 'persist').length, 1);
+  assert.equal(h.calls.filter((c) => c[0] === 'persistSoon').length, 1); assert.equal(h.calls.filter((c) => c[0] === 'persist').length, 0);
   h.game.paused = true;
   h.listeners.get('worldtap')(tap);
   assert.equal(h.calls.filter((c) => c[0] === 'attack').length, 1);

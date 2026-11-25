@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Game, SKY_SUMMIT, skySummitLanding } from '../src/game.ts';
+import { Game, SKY_SUMMIT, skySummitLanding, canopyDoorDest } from '../src/game.ts';
+import { starPlaceAt } from '../src/wonders.ts';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { skylandAdmission, beginSkyland } from '../src/skylands.ts';
-import { canopyGateDestination } from '../src/trees.ts';
 import { createLabFixture, scenariosForLab, labReport } from '../src/proving-ground-labs.ts';
 
 function start() {
@@ -54,7 +54,7 @@ test('admission probes are deterministic, bounded and leave the source save unto
   const load = Game.prototype.loadArea; let loads = 0, a, b;
   try {
     Game.prototype.loadArea = function (...args) {
-      loads++; assert.equal(canopyGateDestination(this.save.seed, this.rx, this.ry), 'cloud', 'known Starfield candidates never construct a Game');
+      loads++; assert.equal(canopyDoorDest(this.save.seed, this.rx, this.ry, starPlaceAt(this.save, this.rx, this.ry)), 'cloud', 'known Starfield candidates never construct a Game'); // Starfield placement 2: unseen ground's doors
       return load.apply(this, args);
     };
     a = g.planSkySummit(); b = g.planSkySummit();

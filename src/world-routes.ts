@@ -40,9 +40,25 @@ export const MILESTONES = Object.freeze([
   { key: "deepFloors", ability: "anchor:alt", need: 10, name: "Deep floors cleared" },
   { key: "glideTiles", ability: "field:drift-field", need: 1000, name: "Tiles glided" },
   { key: "beatKills", ability: "field:ki-blast", need: 15, name: "Foes felled by the Iron Fists on the beat" },
-  { key: "magmaKills", ability: "field:lava-slash", need: 30, name: "Foes felled in the Magma Rivers" },
+  { key: "magmaKills", ability: "field:lava-slash", need: 30, name: "Foes felled on molten ground" },
   { key: "chargedReleases", ability: "field:rapid-reload", need: 200, name: "Charged releases landed" },
 ].map((m) => Object.freeze(m)));
+// What the two fire milestones count (every offered goal can be completed). Before, a burn was only the Briar Stag's burning grove,
+// and a magma kill only a kill in the Magma Rivers (landscape version 27, 52 or more sections out: a 60-hour run never reached
+// them). The counts are unchanged; every equivalent source now counts.
+//   BURNS: a burn is any fire that lands on the Wayfarer: a blow, a breath, a pool or trail of flame or lava (`sources`, and any
+//          creature attack tagged `tag` in monster-pack.ts ATTACK_MODULES), the elite Volcanic affix's burning ground (`affix`),
+//          a lava footing's heat under a mount or a suit, or being set alight. Lived through: no fire for `quiet` s, still standing,
+//          counts one (however many blows the one burn took).
+//   MOLTEN: a foe felled on molten ground: the Magma Rivers and the Firelands (`landscapes`), any tile of lava or magma
+//          (`kinds`, a tile's `magma` or `volcanic` mark), or within `near` tiles of one, in the overworld or any crossing.
+export const BURNS = Object.freeze({ tag: "fire", affix: "volcanic", quiet: 3,
+  sources: Object.freeze(["burnTree", "burnTreeBlast", "lavaBomb", "ember", "wormLava", "flameTrail", "gateFireball", "gateBreath", "dragonScorch", "dragonFlameWave", "dragonMeteor", "dragonBlast", "doomTarFire", "lampFlare", "lava"]) });
+export const MOLTEN = Object.freeze({ landscapes: Object.freeze(["magma", "volcanic"]), kinds: Object.freeze(["lava"]), near: 1 });
+// Whether tile `t` is molten ground (MOLTEN).
+export const moltenTile = (t) => !!t && (MOLTEN.landscapes.includes(t.landscape) || MOLTEN.kinds.includes(t.kind) || !!t.magma || t.volcanic === true || t.environment === "lava");
+// Whether a fire source landed (BURNS): `source` a hurt's source id, `tags` its attack module's tags.
+export const burnSource = (source, tags = []) => !!source && (BURNS.sources.includes(source) || (Array.isArray(tags) && tags.includes(BURNS.tag)));
 export const MILESTONE_BY_KEY = Object.freeze(Object.fromEntries(MILESTONES.map((m) => [m.key, m])));
 export const MILESTONE_FOR = Object.freeze(Object.fromEntries(MILESTONES.map((m) => [m.ability, m])));
 
@@ -61,8 +77,10 @@ export const RELIQUARY = Object.freeze({
   name: "Reliquary",
 });
 // ---------------------------------------------------------------- pity (G3) and the horde rumour (2.7)
-export const PITY = Object.freeze({ sections: 200, radius: 15, floors: 20 }); // floors: how deep a shaft's strong lead looks for its reliquary
-export const HORDE_RUMOUR = Object.freeze({ tier: 12, radius: 24 }); // from Infinite II: the nearest unentered horde crossing
+// Every offered goal can be completed (2026-11-25): the searches look farther (pity 15 → 40, the horde rumour 24 → 48 sections), so a
+// lead names a horde or a shaft that waits anywhere within a reasonable walk, not only close by; how often either exists is unchanged.
+export const PITY = Object.freeze({ sections: 200, radius: 40, floors: 20 }); // floors: how deep a shaft's strong lead looks for its reliquary
+export const HORDE_RUMOUR = Object.freeze({ tier: 12, radius: 48 }); // from Infinite II: the nearest unentered horde crossing
 
 // Exactly the c and R abilities (progression.ts rows whose Exploration route is c or R; a test holds the two together).
 export const WORLD_WITHHELD = Object.freeze([...MILESTONES.map((m) => m.ability), ...RELIQUARY.pool]);

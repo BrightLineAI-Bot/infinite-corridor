@@ -12,9 +12,24 @@ import { skylandSection, SKY_PLACE } from "./skylands.ts";
 import { TREES_V14 } from "./trees.ts";
 import { guideHost } from "./waymark-guides.ts";
 
+// Starfield rolls by placement (Tim, 2026-11-25: "Starfield should be relatively rare; it's just another dungeon, so it shouldn't
+// be prioritised for any reason"). A crossing's Starfield roll (one hash, `chasm-crossing:v1`) is made once, at its first entry, and
+// kept in its history; the chance it is made against is pinned per section in the Atlas (`starPlace`): sections first seen from now
+// on take `place`, sections seen before keep placement 1 (release 672's .2, raised from .12) for crossings not yet entered. The hash
+// is the same, so a placement 2 Starfield is also a placement 1 one. Placement 2 also makes a great tree's canopy door a Starfield
+// only at the same chance (game.ts canopyDoorDest; placement 1: half of them). game.ts CHASM reads this table.
+export const STARFIELD_ROLL = { place: 2, chances: { 1: .2, 2: .1 } };
+export const starfieldChance = (place = STARFIELD_ROLL.place) => STARFIELD_ROLL.chances[place] ?? STARFIELD_ROLL.chances[STARFIELD_ROLL.place];
+export const starfieldRolls = (seed, id, place = STARFIELD_ROLL.place) => (hashSeed(`${seed}:chasm-crossing:v1:${id}`) % 1000) / 1000 < starfieldChance(place);
+// The placement a section's crossings roll at: its Atlas pin; a section explored before the Atlas pinned it keeps 1; new ground, `place`.
+export function starPlaceAt(save, rx, ry) { const e = save?.atlas?.[`${rx},${ry}`]; return e ? Number(e.starPlace) || 1 : save?.explored?.[`${rx},${ry}`] ? 1 : STARFIELD_ROLL.place; }
+const SECTION_OF = /^dungeon:[^:]*:g\d+:(-?\d+):(-?\d+):/;
+// The same for a crossing's id (its section's placement); an id with no section (the Refuge's own crossing) keeps 1.
+export function starPlaceOfId(save, id) { const m = String(id || "").match(SECTION_OF); return m ? starPlaceAt(save, Number(m[1]), Number(m[2])) : 1; }
+
 export const WONDERS = {
   radius: 24, // sections searched round the Wayfarer (Manhattan)
-  chasmChance: .2, // game.ts CHASM.chance (kept equal by a test; not imported, so this module stays free of the game)
+  chasmChance: starfieldChance(), // game.ts CHASM.chance on new ground (kept equal by a test; not imported, so this module stays free of the game)
   kinds: {
     skyway: { name: "a skyway", atlas: "Skyway (rumoured)", color: "#9fd8ff" },
     tree: { name: "a great tree", atlas: "Great tree (said to stand)", color: "#7fd36a" },
@@ -23,7 +38,7 @@ export const WONDERS = {
 };
 export const WONDER_KINDS = Object.keys(WONDERS.kinds);
 
-export function wonderAt(seed, rx, ry, kind, generation = 1) {
+export function wonderAt(seed, rx, ry, kind, generation = 1, starPlace = STARFIELD_ROLL.place) {
   if (rx === 0 && ry === 0) return false;
   if (kind === "skyway") return skylandSection(seed, rx, ry, SKY_PLACE.version) || guideHost(seed, "skyway", rx, ry); // waymark guides: new ground also holds each cell's guided skyway
   if (kind === "tree") { const type = sectionRegion(seed, rx, ry, 14).type, R = TREES_V14.regions[type]; return !!R && !dreamsHere(seed, rx, ry, DREAM_VERSION, 18) && (hashSeed(`${seed}:canopy-grow:v2:${type}:${ry * 7919 + rx}`) % 1000) / 1000 < R.chance; } // landscape 18: no tree where the Far Sleep dreams
@@ -31,7 +46,7 @@ export function wonderAt(seed, rx, ry, kind, generation = 1) {
     if (farSleepSection(rx, ry)) return false; // a Far Sleep crossing may be a Sleeper's Hall instead
     const r = rng(`${seed}:dungeon-entrance:v1:g${generation}:${rx}:${ry}`); if (r() >= .28) return false; r(); // world.ts addDungeonLandmark: the roll, the spot, the id
     const id = dungeonId(seed, generation, rx, ry, `dungeon-g${generation}-${rx}-${ry}-${Math.floor(r() * 1e6)}`);
-    return (hashSeed(`${seed}:chasm-crossing:v1:${id}`) % 1000) / 1000 < WONDERS.chasmChance;
+    return starfieldRolls(seed, id, starPlace);
   }
   return false;
 }
@@ -45,7 +60,7 @@ export function nearestWonders(save, rx, ry) {
     for (let i = 0; i < 4 * d; i++) {
       const k = i % d, side = Math.floor(i / d), x = rx + [d - k, -k, -d + k, k][side], y = ry + [k, d - k, -k, -d + k][side];
       if (atlas[`${x},${y}`]) continue;
-      for (const kind of WONDER_KINDS) if (!found[kind] && wonderAt(seed, x, y, kind, gen)) found[kind] = { kind, rx: x, ry: y, d };
+      for (const kind of WONDER_KINDS) if (!found[kind] && wonderAt(seed, x, y, kind, gen, starPlaceAt(save, x, y))) found[kind] = { kind, rx: x, ry: y, d };
     }
   const out = Object.values(found).sort((a, b) => a.d - b.d);
   if (memo.size > 64) memo.clear(); memo.set(key, out);

@@ -106,6 +106,7 @@ export function sanitizeSaveShape(raw){
 export function migrateSave(raw){
  raw=sanitizeSaveShape(raw);const unsupported=unsupportedVersion(raw);if(unsupported)throw new Error(unsupported);/* release 734 (S1) */
  const input=raw?.version>=10&&raw?.version<=14?{...raw,version:9}:raw,s=migrateLegacySave(input),base=freshConsequences(),old=s.consequences||{};
+ if(raw&&typeof raw==='object'&&!(Number(raw.closeViewDefaults)>0))s.closeViewDefaults=0;/* close-view.ts CLOSE_VIEW.defaults (2026-11-25): a save from before them is judged by its own camera, not the fresh save's */
  s.codex={...codex(),...s.codex,creatures:{...s.codex?.creatures},places:{...s.codex?.places},features:{...s.codex?.features},variants:{...s.codex?.variants},peoplePlaces:{...s.codex?.peoplePlaces},...(s.codex?.foundry?{foundry:{...s.codex.foundry}}:{})};
  s.consequences={...base,...old,npcs:{...base.npcs,...old.npcs},settlements:{...base.settlements,...old.settlements},choices:{...old.choices},threads:{...base.threads,...old.threads},dungeons:{...old.dungeons}};
  for(const n of REFUGE_NPCS){const prior=s.consequences.npcs[n.id];s.consequences.npcs[n.id]={...base.npcs[n.id],...prior};}/* Tim 2026-11-20: an old `<id>:dead` flag no longer kills the resident on load (townsfolk.ts) */

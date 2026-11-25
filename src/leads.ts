@@ -105,7 +105,10 @@ export const RUMOURS = Object.freeze({
     line: (where) => `Washing turns up in the crossings ${where}, they say: bundles tied in clean sheets, still damp, with a slip pinned on. Somebody's whole village, by the sound of it.` }),
   // Phase 6 (2.7): from Infinite II, the nearest Revenant horde crossing not yet entered, while the first horde's certain reliquary
   // waits and the pool still holds something to find. Found by the horde's own hash (world-finds.ts nearestHorde).
-  horde: Object.freeze({ modes: [1], tier: HORDE_RUMOUR.tier, title: "A Revenant horde",
+  // Every offered goal can be completed (2026-11-25): told floor or not (`always`), like the strong lead: the first horde's reliquary
+  // is certain and this is its only lead, yet a player with goals in hand never fell below the floor (a 60-hour run held 9 to 15
+  // leads throughout, while an unentered horde crossing lay 8 sections from the Refuge, and so never heard it).
+  horde: Object.freeze({ modes: [1], tier: HORDE_RUMOUR.tier, title: "A Revenant horde", always: true,
     open: (save) => !save?.feats?.reliquary?.firsts?.horde && RELIQUARY.pool.some((id) => worldWithheld(save, id)),
     line: (h) => `A crossing ${h.d} section${h.d === 1 ? "" : "s"} off is thick with Gate Revenants, they say. Whoever breaks a horde finds something at the bottom.` }),
   // Phase 8: a rumour bought with Divine Viscera (world-finds.ts buyVisceraRumour); never chosen by nextRumour.
@@ -163,11 +166,12 @@ function homeEdge(save, set) {
   const h = ARCANA_REGIONS.sets[set], deg = ARCANA_REGIONS.headings[arcanaToward(set, saveFrame(save))], a = (deg * Math.PI) / 180;
   return { rx: Math.round(Math.cos(a) * h.from) + 0, ry: Math.round(-Math.sin(a) * h.from) + 0 };
 }
-// The next rumour worth telling at (rx, ry), or null: the first eligible kind not already a live rumour.
-export function nextRumour(save, rx = 0, ry = 0) {
+// The next rumour worth telling at (rx, ry), or null: the first eligible kind not already a live rumour (`always`: only the
+// kinds told floor or not).
+export function nextRumour(save, rx = 0, ry = 0, always = false) {
   const live = liveRumours(save), mode = modeOf(save), tier = tierOf(save);
   for (const kind of RUMOUR_ORDER) {
-    const K = RUMOURS[kind]; if (!K.modes.includes(mode) || (K.tier != null && tier < K.tier)) continue;
+    const K = RUMOURS[kind]; if (!K.modes.includes(mode) || (K.tier != null && tier < K.tier) || (always && !K.always)) continue;
     if (kind === "wonder") {
       const list = nearestWonders(save, rx, ry).filter((w) => !live.some((r) => r.kind === "wonder" && r.rx === w.rx && r.ry === w.ry));
       const w = list[0]; if (!w) continue;
@@ -188,14 +192,14 @@ export function recordRumour(save, rumour, by = "", at = Number(save?.playSecond
   L.rumours = list.slice(-LEAD_RECORD.rumourMax);
   return { rumour: r, first };
 }
-// The lead floor (G2): a person's idle line becomes a rumour while fewer than LEADS.floor leads stand. Returns
+// The lead floor (G2): a person's idle line becomes a rumour while fewer than LEADS.floor leads stand (or, floor or not, one whose
+// kind is told `always`: the horde rumour). Returns
 // { text, rumour, first } or null (the idle line stands).
 // Phase 6 (G3): once the dry spell has run its course, the next person who tells rumours gives the strong lead, floor or not.
 export function rumourTurn(save, by, rx = 0, ry = 0) {
   const strong = pityLead(save, rx, ry);
   if (strong) { const out = recordRumour(save, strong, by); return { text: strong.text, strong: true, ...out }; }
-  if (!needsRumour(save)) return null;
-  const r = nextRumour(save, rx, ry); if (!r) return null;
+  const r = nextRumour(save, rx, ry, !needsRumour(save)); if (!r) return null; // above the floor, only a rumour told floor or not (`always`)
   const out = recordRumour(save, r, by); return { text: r.text, ...out };
 }
 // A traveller's wonder (release 674, wonders.ts wonderRumour) is kept as a lead too: the same wonder the traveller named.
