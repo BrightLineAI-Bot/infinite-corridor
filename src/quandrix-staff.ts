@@ -43,7 +43,10 @@ const enemyBodyRadius = (e) => Math.max(.28, Number(e?.bodyRadius) || .38);
 export const QUANDRIX = Object.freeze({
   passive: "mages-hand", // lattice-fields.ts TOOL_FORMS key
   damageType: "magic", // every blow (hands, ticks, bursts) is magic: never scattered as plain steel is
-  hand: Object.freeze({ cadenceMs: 420, speed: 2.2, life: 2.2, radius: .35, rehit: .3, share: .32, maxLive: 5, lift: .45, stun: .08, step: .2 }),
+  // `share` (Tim, 2026-11-25: "I just wasn't doing enough damage" with a Focus build against world bosses ~200 sections out): .32
+  // before. Measured on the real Game at matched gear (tests/focus-damage.test.ts), the staff's hands dealt .67 to .83 of the
+  // Verge Cleaver's damage per second at the same weapon bonus (the share varies with the beast's body); at .4, about .84 to 1.04.
+  hand: Object.freeze({ cadenceMs: 420, speed: 2.2, life: 2.2, radius: .35, rehit: .3, share: .4, maxLive: 5, lift: .45, stun: .08, step: .2 }),
   hold: Object.freeze({ grace: .2 }),
   // Let go before the charge is done (Tim, 2026-11-14): the hand lingers, keeps working and bursts when its clock runs out.
   // `tapWhileLive`: while one lingers a held press is a plain hand (one hold at a time). `record`: its saved shape's version.
