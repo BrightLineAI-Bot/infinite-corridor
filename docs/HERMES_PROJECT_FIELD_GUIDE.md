@@ -6,7 +6,7 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
-## Unreleased — every offered goal can be completed
+## Release 1060 — every offered goal can be completed
 
 Tim's decision (2026-11-25): the pace is fine and rarity and balance stay as they are; fix only goals the game offers that cannot be completed on a given world ("make it so you can hold all the leads that are required, so you can actually complete the quests"). A 60-hour passive-hunting run on `CORRIDOR-ED889D959F` found the candidates; each was checked against the real code.
 
