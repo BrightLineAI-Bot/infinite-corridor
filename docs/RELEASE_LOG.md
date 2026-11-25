@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1065 (this merge, #737); production serves `r1059-3629aeded9d0` (Publish run 195, 45646565675, succeeded 2026-11-25; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1066 (this merge, #738); production serves `r1059-3629aeded9d0` (Publish run 195, 45646565675, succeeded 2026-11-25; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 1066 | Claude | claude/starfield-edges / #738 | Rarer Starfields on new ground, safe rims on all raised ground | Merged (#738); preview follows. |
 | 1065 | Claude | claude/aim-camera-fixes / #737 | Aim follows the lock, skyway shot height, over-the-shoulder default camera, Journal crossings fold | Merged (#737); preview follows. |
 | 1064 | Claude | claude/mouth-moves / #736 | The Listener's Mouth moves every five relays (cycle v3), with a new town each time | Merged (#736); preview follows. |
 | 1063 | Claude | claude/apato-sockets-focus / #735 | Earth Resolve 15%/8%, the Apatosaurus from Infinite IV, awakening adds a socket, Quandrix hands hit harder | Merged (#735); preview follows. |

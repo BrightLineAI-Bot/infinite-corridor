@@ -5,11 +5,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { freshSave } from '../src/types.ts';
 import { Game, generatePinnedDungeon, CHASM, chasmRoll } from '../src/game.ts';
-import { LETHAL_KINDS } from '../src/landscape.ts';
+import { LETHAL_KINDS, farSleepSection } from '../src/landscape.ts';
 import { readFileSync } from 'node:fs';
 
 const seed = 'CH593';
-const ids = (want, n) => { const out = []; for (let x = 1; x < 400 && out.length < n; x++) { const id = `dungeon:${seed}:g1:${x}:${x % 7}:room`; if (chasmRoll(seed, id) === want) out.push(id); } return out; };
+const ids = (want, n) => { const out = []; for (let x = 1; x < 400 && out.length < n; x++) { const id = `dungeon:${seed}:g1:${x}:${x % 7}:room`; if (chasmRoll(seed, id) === want && !farSleepSection(x, x % 7)) out.push(id); } return out; }; // the Far Sleep's crossings may be Sleeper's Halls
 const save = () => { const s = freshSave(); s.seed = seed; return s; };
 
 test('about one crossing in eight is a chasm, decided once per crossing', () => {

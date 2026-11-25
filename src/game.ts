@@ -84,7 +84,7 @@ import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank,
 import { tickAffixes, rollAffixes, phaseShielded, PHASE_SHIELD } from "./affixes.ts";
 import { stalkerCaught, stalkerTrapAttempt, cancelStalkerAct, STALKER, ensureStalker, stalkerUnlocked, stalkerTrack, stalkerWarning, stalkerNewSection, stalkerEngaged, stalkerLost, stalkerWaitAtDoor, stalkerDoorHere, stalkerPlayerFell, stalkerSlain, stalkerVitals, stalkerLair, stalkerEscaped, ambushSpots, updateStalker } from "./stalker.ts"; // release 678: the Stalker
 import { applyBossKit, tickBossKit } from "./boss-kit.ts";
-import { wonderRumour, wonderAt } from "./wonders.ts";
+import { wonderRumour, wonderAt, STARFIELD_ROLL, starfieldChance, starfieldRolls, starPlaceAt, starPlaceOfId } from "./wonders.ts";
 import { firstJourneyLine, rumourTurn, noteWonderLead, RUMOUR_SPEAKERS } from "./leads.ts"; // progression Phase 4: first-journey lines, rumours and the lead floor
 import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
 import { sectionAtlasColor } from "./atlas-colors.ts";
@@ -318,7 +318,7 @@ export function crownSpot(map) {
 }
 export const PASS_CLEAR = .25; // release 643: how far past a body a projectile must be before its next pass counts as a new hit
 export const CANOPY_FALL_MS = 2500; // release 633: how long after leaving the great tree's crown a fall still opens the glider (637); 2026-11-13: crown or canopy (Game.treeLaunch)
-export const CHASM = { version: 1, chance: .2, /* release 672: was .12; rolled once, at a crossing's first entry, and kept */ keepWalls: .12, name: "Starfield" }; // release 613 (Tim: "the chasm dungeons... those are now called Starfield dungeons"): was "Chasm"
+export const CHASM = { version: 1, chance: starfieldChance(), /* on new ground (wonders.ts STARFIELD_ROLL: placement 2, .1; placement 1, .2, release 672; .12 before it); rolled once, at a crossing's first entry, and kept */ place: STARFIELD_ROLL.place, chances: STARFIELD_ROLL.chances, keepWalls: .12, name: "Starfield" }; // release 613 (Tim: "the chasm dungeons... those are now called Starfield dungeons"): was "Chasm"
 // Release 613 (Tim, 2026-10-31: "moving platforms... you can jump on them... take a ride like a conveyance... across a larger
 // [chasm]... those moving platforms can be in the... Starfield dungeons"): rafts of stone glide to and fro over straight runs of
 // the drop between two walkways (`span` tiles of drop), up to `count` per map at least `apart` tiles from each other, at `speed`
@@ -371,7 +371,12 @@ export function platformUnder(map, x, y, t) {
   return null;
 }
 const WORLD_JOURNAL = Object.freeze({ c: "Milestones", R: "Reliquaries", b: "Quests", d: "Threads" }); // progression Phases 6-7: where a find is journalled
-export const chasmRoll = (seed, id) => (hashSeed(`${seed}:chasm-crossing:v1:${id}`) % 1000) / 1000 < CHASM.chance;
+// `place`: the crossing's section's Starfield placement (wonders.ts starPlaceOfId); new ground's when left out.
+export const chasmRoll = (seed, id, place = CHASM.place) => starfieldRolls(seed, id, place);
+// A great tree's canopy door: placement 1 sends half of them to a Starfield (trees.ts canopyGateDestination, as generated);
+// from placement 2 a door opens on stars only at the Starfield chance any crossing has (`canopy-door:v2`), else on cloud.
+export const CANOPY_DOOR = { names: { starfield: "A door in the great tree, full of stars", cloud: "A door in the great tree, full of cloud" } };
+export const canopyDoorDest = (seed, rx, ry, place = CHASM.place) => place >= 2 ? ((hashSeed(`${seed}:canopy-door:v2:${ry * 7919 + rx}`) % 1000) / 1000 < starfieldChance(place) ? "starfield" : "cloud") : canopyGateDestination(seed, rx, ry);
 function carveChasm(map, seed, id) {
   const w = map.width || Math.round(Math.sqrt(map.tiles.length)), h = map.height || Math.ceil(map.tiles.length / w), at = (x, y) => x >= 0 && y >= 0 && x < w && y < h ? map.tiles[y * w + x] : null;
   const walkway = (t) => t && !t.blocked && !t.chasm;
@@ -690,14 +695,14 @@ export function generatePinnedDungeon(save, id, options = {}) {
   const ordinary = fresh && id.startsWith('dungeon:') && !id.includes(':deep-v');
   if (ordinary && history.ladder === undefined) history.ladder = { version: DUNGEON_LADDER.version, tier: ladderTier(save) };
   const rungOf = (kind) => history.ladder ? ladderRoll(save.seed, id, kind, history.ladder.tier) : 'full';
-  if (fresh && history.deepAnnex === undefined) { history.deepAnnex = ordinary || /:annex[23]$/.test(id) ? annexRecord(save.seed, id, chasmRoll(save.seed, id)) : false; if (history.deepAnnex) history.dream = 0; if (history.deepAnnex?.floor === 3) history.generationOptions = { ...history.generationOptions, theme: annexThird(save.seed, history.deepAnnex.base) }; } // release 675: a Starfield Deep Annex floor
+  if (fresh && history.deepAnnex === undefined) { history.deepAnnex = ordinary || /:annex[23]$/.test(id) ? annexRecord(save.seed, id, chasmRoll(save.seed, id, starPlaceOfId(save, id))) : false; if (history.deepAnnex) history.dream = 0; if (history.deepAnnex?.floor === 3) history.generationOptions = { ...history.generationOptions, theme: annexThird(save.seed, history.deepAnnex.base) }; } // release 675: a Starfield Deep Annex floor
   if (fresh && history.mire === undefined) { const rung = !/:canopy$/.test(id) && !history.deepAnnex && rollMireCrypt(save.seed, id, history.layoutPool) ? rungOf('poisonCrypt') : null; history.mire = rung ? { version: MIRE_CRYPT.version, merged: 0, found: false, ...(rung === 'taste' ? { taste: true } : {}) } : false; } // release 303: the Poison Crypt; 319: a taste is a small one
   if (ordinary && history.ladder && !rungOf('gatePredator')) history.gatePredatorSpawnThreshold = 0; // release 319
   if (fresh && history.threefoldLayout === undefined && id.endsWith(':deep-v2:threefold')) history.threefoldLayout = 2;
   if (fresh && history.deepPlacement === undefined && isDeepV2Id(id)) history.deepPlacement = DEEP_PLACEMENT.version; // release 735: deep-v2 placements (deep-dungeons.ts)
   // Release 351 (docs/narrative-bible.md section 7, step 4): a crossing first found in the Far Sleep is a Sleeper's Hall.
   if (ordinary && history.dream === undefined) { const at = id.match(/:g\d+:(-?\d+):(-?\d+):/); if (at && farSleepSection(Number(at[1]), Number(at[2])) && !/:canopy$/.test(id) && !history.deepAnnex) history.dream = dreamHallRoll(save.seed, id) ? DREAM_HALL.version : 0; } // release 435: a share of them, not every one (0 pins "ordinary")
-  if ((ordinary || history.deepAnnex) && history.chasm === undefined) history.chasm = /:canopy$/.test(id) || (history.deepAnnex && history.deepAnnex.floor < 3) || (!history.deepAnnex && !history.mire && !history.dream && chasmRoll(save.seed, id)) ? CHASM.version : 0; // release 593; 631: the canopy's crossing is always a Starfield
+  if ((ordinary || history.deepAnnex) && history.chasm === undefined) history.chasm = /:canopy$/.test(id) || (history.deepAnnex && history.deepAnnex.floor < 3) || (!history.deepAnnex && !history.mire && !history.dream && chasmRoll(save.seed, id, starPlaceOfId(save, id))) ? CHASM.version : 0; // release 593; 631: the canopy's crossing is always a Starfield
   let map;
   // Dive generator pinned per history: 1 = the release-107 Sunken Reach, 2 = themed grottoes (release 108).
   if (isArenaRun(id)) map = generateListenerArena(save.seed, id); // release 375: the Listening Hall
@@ -1638,9 +1643,10 @@ export function footprintTouchesCanyon(map, width, x, y) {
     return map.tiles[ty*width+tx]?.kind === "canyon";
   });
 }
+const FOOTPRINT_HAZARDS=new Set(["canyon","river","dungeonWater","lava","abyss",...DEEP_WATER]);
+export const footprintHazardKind=(tile)=>FOOTPRINT_HAZARDS.has(tile?.kind)?tile.kind:null;
 export function footprintHazard(map,width,x,y){
-  const tile=map.tiles[Math.floor(y+.72)*width+Math.floor(x+.5)];
-  return ["canyon","river","dungeonWater","lava","abyss",...DEEP_WATER].includes(tile?.kind)?tile.kind:null;
+  return footprintHazardKind(map.tiles[Math.floor(y+.72)*width+Math.floor(x+.5)]);
 }
 export function footprintInsideStructure(map,width,x,y){
   if(structureOccupancy(map.tiles,width,x,y))return true;
@@ -3966,6 +3972,7 @@ export class Game {
       if (this.map.mushrooms && !this._coherence && !this.save.narrative.journal.some((j) => j.recordId === "great-mushrooms")) { journalOnce(this.save, "great-mushrooms", `${GREAT_MUSHROOMS.text} (${this.rx},${this.ry})`, "The great mushrooms"); if (!this.message) this.message = GREAT_MUSHROOMS.text; } // release 721
       if (!prior) stalkerNewSection(this.save); // release 678: new sections count toward the Stalker's return
       this.markDeepAnnexes(); // release 675
+      this.placeCanopyDoors(prior ? Number(prior.starPlace) || 1 : this.save.explored?.[key] ? 1 : CHASM.place); // a great tree's door, by the section's Starfield placement
       if ((prior ? prior.deepVersion : THE_DEEP.version) && !this.map.settlement && !this.map.hamlet && !this.map.farDomain && shaftHere(this.save.seed, this.rx, this.ry)) this.placeDeepShaft(); // release 677
       if ((prior ? prior.canyonVersion : CANYON.version) && !this.map.settlement && !this.map.hamlet && !this.map.farDomain && canyonHere(this.save.seed, this.rx, this.ry)) this.placeCrater(); // Canyon craters: only in sections first seen from now on
       if ((prior ? prior.ascendVersion : ASCENDANCY.version) && !this.map.settlement && !this.map.hamlet && !this.map.farDomain && !this.map.canopy && saplingHere(this.save.seed, this.rx, this.ry)) this.placeSapling(); // the Rite of Ascendancy
@@ -4000,6 +4007,7 @@ export class Game {
         ...(prior ? (prior.guideVersion ? { guideVersion: prior.guideVersion } : {}) : { guideVersion: WAYMARK_GUIDES.version }), // waymark guides: the marks lead to hosts, and hosts hold their destinations, on ground first seen from now on
         ...(prior ? (prior.skyVersion ? { skyVersion: prior.skyVersion } : {}) : { skyVersion: SKYLANDS.version }), // release 571: Sky Stairs only in sections first seen from now on
         ...(prior ? (prior.skyPlace ? { skyPlace: prior.skyPlace } : {}) : { skyPlace: SKY_PLACE.version }), // release 672: where Sky Stairs stand, pinned per section
+        ...(prior ? (prior.starPlace ? { starPlace: prior.starPlace } : {}) : this.save.explored?.[key] ? {} : { starPlace: CHASM.place }), // the Starfield placement (wonders.ts STARFIELD_ROLL): new ground only
         ...(!prior && !this.save.explored?.[key] && !this.save.session.areas?.[this.areaStateId()] ? { triceratopsHerdVersion: TRICERATOPS_HERDS.version } : {}),
         ...(prior ? {} : { skySummitVersion: SKY_SUMMIT.version }), // old tree doors retain their original routes
         ...(prior ? {} : { wayfarerDreadVersion: WAYFARER_DREAD.version }), // the Wayfarer's dread (lore.ts WAYFARER_DREAD): new ground only
@@ -4531,16 +4539,26 @@ export class Game {
   // the Wayfarer cannot stand on (a blocked lava or abyss tile: walls stop them first) is tried out on a copy, and the
   // hazard is read where that copy stopped; ground the Wayfarer can enter (open lava, deep water, canyon) is unchanged.
   hazardWhereMoved(p, dx, dy, nx, ny, width, now) {
-    const h = footprintHazard(this.map, width, nx, ny); if (h && this.onWoodAbove(nx, ny, width)) return null; // GREAT_CROWN: feet on a great tree's wood, high over water at its rim
+    const h = footprintHazard(this.map, width, nx, ny); if (h && this.onRaisedAbove(nx, ny, width)) return null; // feet on raised ground (onRaisedAbove), high over water or lava at its rim
     if (!h || footprintOpen(this.map, width, nx, ny, true)) return h;
     const probe = { ...p, isPlayer: true, jumping: now < (this.jumpUntil || 0), voidSuit: this.mechUp() && this.area !== "dungeon" };
     moveAxis(probe, dx, dy, this.map, width, true);
-    return footprintHazard(this.map, width, probe.x, probe.y);
+    const q = footprintHazard(this.map, width, probe.x, probe.y); return q && this.onRaisedAbove(probe.x, probe.y, width) ? null : q;
   }
-  // GREAT_CROWN: the feet (tileUnder) stand on a great tree's wood more than FALL.minDrop over the hazard the box's front edge reaches
-  // (footprintHazard reads .03 of a tile nearer the rim than the feet): the Wayfarer is up on the wood, not in the water or lava below.
-  // Stepping off is a fall, judged where it lands.
-  onWoodAbove(x, y, width) { const u = tileUnder(this.map, width, x, y), h = this.map.tiles[Math.floor(y + .72) * width + Math.floor(x + .5)]; return !!u?.canopy && !u.blocked && u !== h && (u.elev || 0) - (h?.elev || 0) > FALL.minDrop; }
+  // Raised edges (release 1056's GREAT_CROWN rule, Tim 2026-11-25: "all raised ground", not just great-tree wood): footprintHazard reads
+  // .03 of a tile nearer the rim than the feet (tileUnder), so a Wayfarer standing at the edge of any raised tile (a ledge, roof,
+  // mesa, levee, bridge or platform, or a great tree's wood) whose box overhangs water or lava read as in it. When the feet stand on
+  // ground of their own (not the hazard's tile, not blocked, not itself water, lava or a drop) more than FALL.minDrop above the hazard
+  // the box's front edge reaches, the Wayfarer is up on that ground, not in what lies below. Stepping off is a fall, judged where it
+  // lands; ground at the hazard's own level (a shore, a lava field's rim) is unchanged, so swimming, wading and lava there are too.
+  onRaisedAbove(x, y, width) { const M = this.map, h = M?.tiles?.[Math.floor(y + .72) * width + Math.floor(x + .5)]; if (!h) return false;
+    const deck = this.standingDeck(), onDeck = !!deck && !!roofDeckAt(M, x + .5, y + .75), u = tileUnder(M, width, x, y);
+    if (!onDeck && (!u || u === h || u.blocked || footprintHazardKind(u))) return false;
+    const heights = !!M.landscape || !!u?.canopy, inside = interiorTerrain(M);
+    const feet = onDeck ? deck.level : !heights ? 0 : inside ? interiorSurfaceLevel(M, x + .5, y + .75) : u.elev || 0;
+    const below = !heights ? 0 : inside ? interiorSurfaceLevel(M, x + .5, y + .72) : h.elev || 0;
+    return feet - below > FALL.minDrop; }
+  onWoodAbove(x, y, width) { return this.onRaisedAbove(x, y, width); } // release 1056's name
   actorContactPlatformSupport(body, x, y, ground, phase = null, carrier = null) {
     if (!body?.isPlayer) return null;
     if (body.jumping && Number.isFinite(this.discAir))
@@ -5729,7 +5747,7 @@ export class Game {
     const target = skylandHop(`summit:v1:${this.save.seed}:${from.rx},${from.ry}:${run}`, from.rx, from.ry), candidates = [];
     for (let dy = -SKY_SUMMIT.radius; dy <= SKY_SUMMIT.radius; dy++) for (let dx = -SKY_SUMMIT.radius; dx <= SKY_SUMMIT.radius; dx++) {
       const rx = target.rx + dx, ry = target.ry + dy;
-      if ((rx === from.rx && ry === from.ry) || this.save.atlas?.[`${rx},${ry}`] || canopyGateDestination(this.save.seed, rx, ry) !== "cloud" || !wonderAt(this.save.seed, rx, ry, "tree")) continue;
+      if ((rx === from.rx && ry === from.ry) || this.save.atlas?.[`${rx},${ry}`] || canopyDoorDest(this.save.seed, rx, ry, starPlaceAt(this.save, rx, ry)) !== "cloud" || !wonderAt(this.save.seed, rx, ry, "tree")) continue;
       candidates.push({ rx, ry, distance: dx * dx + dy * dy });
     }
     candidates.sort((a, b) => a.distance - b.distance || a.ry - b.ry || a.rx - b.rx);
@@ -11084,12 +11102,21 @@ export class Game {
     return mode;
   }
   fracturedOpen(x, y, w = mapWidth(this.map, this.area)) { const p = this.player; return footprintOpen(this.map, w, x, y) && !footprintHazard(this.map, w, x, y) && !(this.map.tiles[y * w + x]?.canopy) && Math.hypot(x - p.x, y - p.y) >= 4; }
+  // A great tree's canopy door, by its section's Starfield placement (CHASM.place, wonders.ts STARFIELD_ROLL): placement 1 keeps the
+  // door as generated (half open on stars); from 2 a door opens on stars only at the chance any crossing is a Starfield, else on
+  // cloud. Set on the loaded map each time it is built, so the section's tiles and every generator are unchanged.
+  placeCanopyDoors(place) {
+    if (!(place >= 2)) return 0; let n = 0;
+    for (const o of this.map?.objects || []) { if (o.kind !== "canopyGate") continue; const dest = canopyDoorDest(this.save.seed, this.rx, this.ry, place);
+      if (o.dest !== dest) { o.dest = dest; o.name = CANOPY_DOOR.names[dest]; n++; } }
+    return n;
+  }
   // Release 675 (deep-annex.ts): a crossing never entered that is a Starfield Deep Annex says so on its entrance.
   markDeepAnnexes() {
     let found = false;
     for (const o of this.map?.objects || []) { if (o.kind !== "dungeon" || o.dungeonType) continue;
       const id = o.dungeonId || dungeonId(this.save.seed, this.save.worldGeneration, this.rx, this.ry, o.id), h = this.save.consequences?.dungeons?.[id];
-      const annex = h && h.generatorVersion !== undefined ? h.deepAnnex?.floor === 1 : !this.save.session.areas?.[id] && !!annexRecord(this.save.seed, id, chasmRoll(this.save.seed, id));
+      const annex = h && h.generatorVersion !== undefined ? h.deepAnnex?.floor === 1 : !this.save.session.areas?.[id] && !!annexRecord(this.save.seed, id, chasmRoll(this.save.seed, id, starPlaceOfId(this.save, id)));
       if (annex) { o.deepAnnex = true; o.name = DEEP_ANNEX.name; o.identity = "three floors down; its far door lets you out elsewhere"; found = true; } }
     if (found && !this.message) this.message = DEEP_ANNEX.messages.entrance;
     return found;
@@ -11741,6 +11768,7 @@ export class Game {
   raiseRiteTree(at) {
     const tree = growRiteTree(this.map, this.save.seed, this.rx, this.ry), rec = riteRecord(this.save, this.rx, this.ry);
     if (tree && !riteSkyway(this.save.seed, this.rx, this.ry)) this.map.objects = this.map.objects.filter((o) => o.id !== `canopy-gate-${this.rx}-${this.ry}`);
+    if (tree) this.placeCanopyDoors(starPlaceAt(this.save, this.rx, this.ry)); // its door, by the section's Starfield placement
     if (rec.bloom || this.map.objects.some((o) => o.kind === "visceraBloom")) return tree;
     let spot = at;
     if (tree) { const crown = this.map.tiles.filter((t) => t.kind === "canopyTrunk" && t.elev === tree.top && !this.map.objects.some((o) => Math.round(o.x) === t.x && Math.round(o.y) === t.y)).sort((a, b) => (a.y - b.y) || (a.x - b.x)); if (crown[0]) spot = { x: crown[0].x, y: crown[0].y }; }

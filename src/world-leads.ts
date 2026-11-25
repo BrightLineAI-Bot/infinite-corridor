@@ -13,7 +13,7 @@ import { hamletSection, legacyMouthHamlet } from "./settlements.ts";
 import { farDomainAt } from "./far-realms.ts";
 import { rollMireCrypt } from "./underlands.ts";
 import { annexRecord, DEEP_ANNEX } from "./deep-annex.ts";
-import { WONDERS } from "./wonders.ts";
+import { starfieldRolls, starPlaceAt } from "./wonders.ts";
 
 // game.ts installs the pure physical probe after its module loads. Early/standalone callers cannot promise an unverified site.
 let worldLeadProbe = null;
@@ -55,7 +55,7 @@ function hordeAt(save, x, y, tier, knownEntrance = false) {
   const rung = h?.ladder ? ladderRoll(seed, id, "horde", h.ladder.tier) : fresh ? ladderRoll(seed, id, "horde", tier) : undefined;
   if (!h?.horde && (hashSeed(`${seed}:revenant-horde:v${HORDE.version}:${id}`) % 1000 >= HORDE.perThousand || rung === null)) return null;
   if (fresh && h?.mire === undefined) {
-    const starfield = (hashSeed(`${seed}:chasm-crossing:v1:${id}`) % 1000) / 1000 < WONDERS.chasmChance;
+    const starfield = starfieldRolls(seed, id, starPlaceAt(save, x, y));
     const annex = h?.deepAnnex === undefined ? annexRecord(seed, id, starfield) : h.deepAnnex;
     const mireRung = h?.ladder ? ladderRoll(seed, id, "poisonCrypt", h.ladder.tier) : ladderRoll(seed, id, "poisonCrypt", tier);
     if (!annex && rollMireCrypt(seed, id, h?.layoutPool ?? 5) && mireRung !== null) return null;
