@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1060 (this merge, #732); production serves `r1059-3629aeded9d0` (Publish run 195, 45646565675, succeeded 2026-11-25; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1061 (this merge, #PRNUM); production serves `r1059-3629aeded9d0` (Publish run 195, 45646565675, succeeded 2026-11-25; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 1061 | Claude | claude/stag-fight-stutter / #PRNUM | Briar Stag fight stutter: Stalker pool/mist prowl crash, dodges through crowding bodies, coalesced autosave in fights | Merged (#PRNUM); preview follows. |
 | 1060 | Claude | claude/completable-goals / #732 | Every offered goal can be completed: thread carriers guaranteed (story v7), burn and magma milestones count every source, horde lead told, Blade Stream lanterns, Sela's Pumice Seed | Merged (#732); preview follows. |
 | 1059 | Claude | claude/sea-lane-domains / #731 | Sea-lane pre-check no longer refuses lanes into far domains (pre-publish review blocker) | Merged (#731); preview follows. |
 | 1058 | Claude | claude/auto-salvage-dupes / #730 | Duplicate gear salvages itself (on pickup and once on load), with a Keep duplicate gear toggle | Merged (#730); preview follows. |
