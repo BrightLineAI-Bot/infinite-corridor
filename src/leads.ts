@@ -204,9 +204,27 @@ export function noteWonderLead(save, rx, ry, who = "") {
   const w = list[hashSeed(`${save?.seed}:rumour:${who}`) % list.length];
   return recordRumour(save, { id: `wonder:${w.rx},${w.ry}`, kind: "wonder", text: RUMOURS.wonder.line(w, rx, ry), rx: w.rx, ry: w.ry, name: WONDERS.kinds[w.kind].atlas }, who);
 }
-// The Journal's rumour rows: live rumours, newest first, each with its compass point when it has one.
+// A rumour is a hint, not a pin (2026-11-25, the compass rebuilt): its compass point carries a zone the thing lies in, so the compass
+// shows an uncertainty arc that narrows as the Wayfarer nears and turns warm inside, never a needle at the exact spot. An Arcana
+// home: its middle and half its depth (capped by atlas-view.ts COMPASS_RIBBON.hint.maxRadius when shown). A wonder or a horde: the
+// site's section is real (`site`), the zone's centre a seeded step off it so the arc's middle never gives the spot away.
+export const RUMOUR_ZONE = Object.freeze({ siteRadius: 2 });
+export function rumourZone(save, r) {
+  if (!r || !Number.isInteger(r.rx) || !Number.isInteger(r.ry)) return null;
+  const set = RUMOURS[r.kind]?.set;
+  if (set && ARCANA_REGIONS.sets[set]) {
+    const h = ARCANA_REGIONS.sets[set], a = (ARCANA_REGIONS.headings[arcanaToward(set, saveFrame(save))] * Math.PI) / 180, mid = (h.from + h.to) / 2;
+    return { rx: Math.round(Math.cos(a) * mid) + 0, ry: Math.round(-Math.sin(a) * mid) + 0, r: Math.max(1, (h.to - h.from) / 2), site: false };
+  }
+  if (r.kind === "wonder" || r.kind === "horde") {
+    const n = RUMOUR_ZONE.siteRadius - 1, k = hashSeed(`${save?.seed}:compass-zone:${r.id}`), span = 2 * n + 1;
+    return { rx: r.rx + (k % span) - n, ry: r.ry + (Math.floor(k / span) % span) - n, r: RUMOUR_ZONE.siteRadius, site: true };
+  }
+  return null;
+}
+// The Journal's rumour rows: live rumours, newest first, each with its compass point when it has one (and its hint zone).
 export function rumourLeads(save) {
-  return liveRumours(save).slice().reverse().map((r) => ({ id: r.id, title: r.name || RUMOURS[r.kind]?.title || "A rumour", detail: r.text, ...(Number.isInteger(r.rx) ? { at: { rx: r.rx, ry: r.ry } } : {}) }));
+  return liveRumours(save).slice().reverse().map((r) => { const zone = rumourZone(save, r); return { id: r.id, title: r.name || RUMOURS[r.kind]?.title || "A rumour", detail: r.text, ...(Number.isInteger(r.rx) ? { at: { rx: r.rx, ry: r.ry } } : {}), ...(zone ? { zone } : {}) }; });
 }
 
 // ---------------------------------------------------------------- the Journal dot (4.3)
