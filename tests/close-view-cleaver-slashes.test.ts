@@ -165,9 +165,9 @@ test('Salvage Blade reskin: the grip transform is unchanged and the model stays 
     const end = writeCloseViewHeroGear(out, 0, { profile, leftSocket: id, rightSocket: id }), tris = end / MODEL_FLOATS / 3;
     assert.ok(tris > 0 && tris <= 58 && tris <= HERO_EQUIPMENT_MAX_TRIANGLES, `${profile}: ${tris} triangles, within the old 58`);
     assert.ok(Array.from(out.subarray(0, end)).every(Number.isFinite));
-    // The spike points straight up the socket axis, to the accepted point.
+    // The whole tine points up the socket axis, to the accepted point (the forked blade, 2026-11-25).
     let far = -Infinity; for (let k = 0; k < end; k += MODEL_FLOATS) far = Math.max(far, out[k]);
-    assert.ok(Math.abs(far - (F.blade.tip + .004 - .79) * .82) < 1e-5);
+    assert.ok(Math.abs(far - (F.blade.tip - .79) * .82) < 1e-5);
     const frame = createHeroFrame(asset), s = createHeroPoseState(asset); sampleCloseViewHero(asset, s, { ...base, nowMs: 1500, heldProfile: profile, handProfile: profile }, frame);
     assert.equal(writeCloseViewHeroEquipment(out, 0, { profile, primaryStage: null, leftSocket: frame.leftSocket, rightSocket: frame.rightSocket }, frame) / MODEL_FLOATS / 3, tris);
   }

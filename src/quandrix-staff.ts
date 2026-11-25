@@ -3,17 +3,17 @@
 // is items.ts QUANDRIX_STAFF; game.ts supplies the hooks (quandrixPower, quandrixBlow, quandrixOpen, quandrixDrag,
 // quandrixAim, quandrixCastVisual) and calls quandrixPress from primaryAttack and tickQuandrix every frame.
 //
-// - Tap: a slow spectral hand (an open palm, fingers splayed) drifts forward `hand.speed` tiles/s for `hand.life` s. It
+// - Tap: a spectral hand (an open palm, fingers splayed) drifts forward `hand.speed` tiles/s for `hand.life` s. It
 //   passes through foes, striking each it touches for `hand.share` of the staff's power, again every `hand.rehit` s while it
 //   is still inside that foe (a per-foe interval, so a big body takes more blows than a small one). It dissipates on a wall
 //   or a blocked tile. At most `hand.maxLive` hands are out; a new one past that takes the oldest's place.
 // - Mage's Hand (a selectable Lattice passive, lattice-fields.ts TOOL_FORMS["mages-hand"]; nothing with another weapon):
-//   holding Attack past `hold.grace` s clenches the most recently cast live hand into a fist. The fist grabs every foe it
+//   holding Attack past `hold.grace` s clenches the hand cast before this press's (see "The penultimate hand") into a fist. The fist grabs every foe it
 //   touches (at most `fist.maxGrab`) and drags them toward the Wayfarer; after `fist.time` s it bursts wherever it is (far away,
 //   it never got home). The burst strikes everything within `fist.burst.radius`. Letting go early (Tim, 2026-11-14) no longer
 //   ends it: see "Let go" below.
-// - Awakened (constellation.ts awaken; this replaces the crescent for the staff): holding Attack slams the most recent hand
-//   down where it is. While held it strikes everything under it every `slam.tick` s. A ring round the Wayfarer fills toward the
+// - Awakened (constellation.ts awaken; this replaces the crescent for the staff): holding Attack slams the hand cast before
+//   this press's down where it is. While held it strikes everything under it every `slam.tick` s. A ring round the Wayfarer fills toward the
 //   perfect window (`slam.perfect`, s after the slam); letting go inside it bursts at once for the strongest burst, and holding
 //   to `slam.max` overcharges it and it bursts on its own for less than a perfect release.
 // - Awakened with Mage's Hand: the slammed hand becomes a suction cup: it pulls foes within `suction.radius` into itself (at
@@ -25,6 +25,10 @@
 //   out (`fist.time`, `slam.max`) it bursts where it is, home or not, for the full charge's burst (`fist.burst.share`,
 //   `slam.burst.released`). The Wayfarer is free at once: a press while it lingers casts an ordinary hand (never a second
 //   hold; `release.tapWhileLive`), and a knock-down no longer drops a hand already let go.
+// - The penultimate hand (Tim, 2026-11-25): every press throws its own hand, held or not, and a hold takes the hand cast just
+//   before it (the penultimate cast): tap then hold throws hand 2 and slams hand 1; tap, tap, hold throws hand 3 and slams
+//   hand 2. A hold with no earlier hand out (the first press, or the earlier hand gone) makes its hold right at the Wayfarer's
+//   feet (`hold.feet`). The hold's hand is never echoed or cloned and costs no cadence.
 // - Bosses, world beasts, elites and the other anchored foes (`anchored`) are never grabbed, dragged or pulled (as the
 //   Gravity Well's boss rule holds them); they still take every blow and the burst.
 // - Echo glyphs and the Shadow Clone (Tim, 2026-11-13: yes to both): an Echo in the weapon casts an echo hand from the
@@ -46,8 +50,14 @@ export const QUANDRIX = Object.freeze({
   // `share` (Tim, 2026-11-25: "I just wasn't doing enough damage" with a Focus build against world bosses ~200 sections out): .32
   // before. Measured on the real Game at matched gear (tests/focus-damage.test.ts), the staff's hands dealt .67 to .83 of the
   // Verge Cleaver's damage per second at the same weapon bonus (the share varies with the beast's body); at .4, about .84 to 1.04.
-  hand: Object.freeze({ cadenceMs: 420, speed: 2.2, life: 2.2, radius: .35, rehit: .3, share: .4, maxLive: 5, lift: .45, stun: .08, step: .2 }),
-  hold: Object.freeze({ grace: .2 }),
+  // .36 with the faster hands below (2026-11-25): the faster hands no longer give way to the sixth while still striking a big
+  // body, so at .4 they dealt .96 to 1.21 of the Cleaver's; at .36, about .86 to 1.09 (the slower hands at .4: .94 to 1.10).
+  // `speed`, `life`, `rehit` (Tim, 2026-11-25: the hands fly faster): 2.2 tiles/s, 2.2 s and .3 s before. The reach (speed x
+  // life, items.ts PRIMARY_PROFILES 4.84) is kept, and `rehit` shrinks with the speed so a hand still lands the same blows per
+  // tile it passes through a body (speed x rehit .66 tiles). `step`: the most a hand moves between wall and body checks, so
+  // a long frame at the faster speed never carries it past a foe (no tunnelling).
+  hand: Object.freeze({ cadenceMs: 420, speed: 3.025, life: 1.6, radius: .35, rehit: .218, share: .36, maxLive: 5, lift: .45, stun: .08, step: .2 }),
+  hold: Object.freeze({ grace: .2, feet: 0 }), // `feet`: how far ahead of the Wayfarer's centre a hold with no earlier hand is made (tiles)
   // Let go before the charge is done (Tim, 2026-11-14): the hand lingers, keeps working and bursts when its clock runs out.
   // `tapWhileLive`: while one lingers a held press is a plain hand (one hold at a time). `record`: its saved shape's version.
   release: Object.freeze({ tapWhileLive: true, record: 1 }),
@@ -92,7 +102,7 @@ export function quandrixState(game) {
   return (game.quandrix ||= {
     seq: 0, where: "",
     hands: Array.from({ length: QUANDRIX.hand.maxLive }, newHand),
-    press: { on: false, held: 0, action: "", dx: 1, dy: 0, tap: false, owed: 0 }, // `tap`: let go before the hold began, its hand cast once the staff is ready; `owed`: such a hand still to cast when the next press came (at most one)
+    press: { on: false, held: 0, action: "", dx: 1, dy: 0, tap: false, owed: 0, thrown: false, holding: false, prev: null, prevSeq: 0 }, // `tap`: let go before the hold began; `owed`: an earlier press's hand still to cast when this press came (at most one); `thrown`: this press's own hand is out; `prev`/`prevSeq`: the hand out before it (the one a hold takes)
     hold: { on: false, released: false, mode: "", hand: null, held: 0, tick: 0, power: 0, action: "", grab: Array.from({ length: Math.max(QUANDRIX.fist.maxGrab, QUANDRIX.suction.maxPull) }, () => ""), n: 0 },
     flashes: Array.from({ length: QUANDRIX.flash.max }, () => ({ life: 0, x: 0, y: 0, r: 0, kind: "" })),
     extras: Array.from({ length: QUANDRIX.extra.maxLive }, newHand), // echo and clone hands (never a hold's)
@@ -100,6 +110,7 @@ export function quandrixState(game) {
   });
 }
 const clearHits = (h) => { for (const k in h.hits) delete h.hits[k]; };
+function dropPress(P) { P.on = false; P.tap = false; P.owed = 0; P.thrown = false; P.holding = false; P.prev = null; P.prevSeq = 0; P.held = 0; }
 function endHold(K) { const H = K.hold; H.on = false; H.released = false; H.mode = ""; H.hand = null; H.held = 0; H.tick = 0; H.n = 0; for (let i = 0; i < H.grab.length; i++) H.grab[i] = ""; }
 // Drops every hand and any hold (an area change, the staff put away, a fall): nothing bursts.
 export function clearQuandrix(game) {
@@ -107,7 +118,7 @@ export function clearQuandrix(game) {
   for (const h of K.hands) { h.on = false; clearHits(h); }
   for (const h of K.extras) { h.on = false; clearHits(h); }
   for (const q of K.queue) q.on = false;
-  K.press.on = false; K.press.tap = false; K.press.owed = 0; endHold(K);
+  dropPress(K.press); endHold(K);
   for (const f of K.flashes) f.life = 0;
 }
 export const liveHands = (game) => { let n = 0; for (const h of game.quandrix?.hands || []) if (h.on) n++; return n; };
@@ -164,26 +175,45 @@ function castCopies(game, now, ux, uy, power) {
     slot.on = true; slot.left = Math.max(0, Number(copy.delay) || 0) / 1000; slot.dx = ux; slot.dy = uy; slot.power = power * (Number(copy.share) || 0);
   }
 }
-// A press of Attack with the staff. With a held button (`action`) and a hold to make, the choice waits: let go within
-// `hold.grace` and it is a tap (a hand); hold on and the hold begins (tickQuandrix). Otherwise a hand at once.
+// A press of Attack with the staff. Every press throws its own hand the moment the staff is ready; with a held button
+// (`action`) and a hold to make, the press is kept: let go within `hold.grace` and it was a tap; hold on and the hold begins on
+// the hand that was out before this press's own (the penultimate cast), or at the Wayfarer's feet when there was none.
 // Reliable holds (Tim, 2026-11-25: "I hit it 3 times and then hold the last hit, and it won't make the hand slam down"): a
-// button press that lands while the staff is between hands (`hand.cadenceMs`) is no longer dropped. It waits as the press: let
-// go, it casts its hand the moment the staff is ready (a quick tap-tap-tap casts three); held past `hold.grace`, the hold
-// begins on the newest hand, so "hit three times, hold the last" slams the hand the taps just cast. A press that lands while a
-// tap still waits for its hand takes over the press and the tap's hand stays owed (`owed`, at most one): it is cast first.
-// A press with no button (a world tap) is still refused while the staff recovers.
+// button press that lands while the staff is between hands (`hand.cadenceMs`) is not dropped. It waits as the press and throws
+// its hand the moment the staff is ready (a quick tap-tap-tap casts three); held past `hold.grace`, its hold begins at once
+// (once an owed tap's hand is out) on the hand before its own, and its own hand follows when the staff is ready. A press that lands while a tap still waits for its hand takes over the press and the tap's hand stays owed
+// (`owed`, at most one): it is cast first. A press with no button (a world tap) is still refused while the staff recovers.
 export function quandrixPress(game, now, dir, action = null) {
   const K = quandrixState(game), p = game.player, P0 = K.press;
-  if ((P0.on && !(P0.tap && action)) || (K.hold.on && !K.hold.released) || !(p.hp > 0)) return false;
-  if (P0.on) P0.owed = 1; // a tap still waiting: its hand is cast before this press's
+  if ((P0.on && !(P0.tap && action && !P0.thrown)) || (K.hold.on && !K.hold.released) || !(p.hp > 0)) return false;
+  const owed = P0.on ? 1 : 0; // a tap still waiting: its hand is cast before this press's
   const early = now < (p.attackReadyAt || 0); if (early && !action) return false;
   const d = game.quandrixAim(dir); if (!K.hold.on) K.where = game.orreryWhere();
-  if (!early && (!action || !holdMode(game) || (K.hold.on && QUANDRIX.release.tapWhileLive))) return !!castHand(game, now, d.x, d.y); // a hand let go still lingering: a plain hand
-  const P = K.press; if (!P.on) P.owed = 0; P.on = true; P.held = 0; P.tap = false; P.action = action; P.dx = d.x; P.dy = d.y; return true;
+  const plain = !action || !holdMode(game) || (K.hold.on && QUANDRIX.release.tapWhileLive); // a hand let go still lingering: a plain hand
+  if (!early && plain) return !!castHand(game, now, d.x, d.y);
+  const P = K.press; dropPress(P); P.on = true; P.owed = owed; P.action = action; P.dx = d.x; P.dy = d.y;
+  if (!early) throwOwn(game, now, P);
+  return true;
+}
+// The press's own hand, noting the hand out before it (the one its hold would take).
+function throwOwn(game, now, P) {
+  const prev = latestHand(game); P.prev = prev; P.prevSeq = prev ? prev.seq : 0; P.thrown = true;
+  castHand(game, now, P.dx, P.dy);
+}
+// A hand made for a hold with no earlier hand: at the Wayfarer's feet. No cadence, no Echo or clone copy, no cast pose.
+function feetHand(game, dx, dy) {
+  const K = game.quandrix, p = game.player; let slot = null;
+  for (const h of K.hands) { if (!h.on) { slot = h; break; } if (h.mode === "drift" && (!slot || h.seq < slot.seq)) slot = h; }
+  if (!slot) return null;
+  const m = Math.hypot(dx, dy) || 1, ux = dx / m, uy = dy / m, f = QUANDRIX.hold.feet;
+  slot.on = true; slot.mode = "drift"; slot.kind = "own"; slot.seq = ++K.seq; slot.x = p.x + .5 + ux * f; slot.y = p.y + .45 + uy * f; slot.dx = ux; slot.dy = uy;
+  slot.age = 0; slot.life = QUANDRIX.hand.life; slot.power = Number(game.quandrixPower()) || 0; clearHits(slot);
+  return slot;
 }
 function beginHold(game, now) {
   const K = game.quandrix, P = K.press, mode = holdMode(game); if (!mode || K.hold.on) return false;
-  const hand = latestHand(game) || castHand(game, now, P.dx, P.dy); if (!hand) return false;
+  const prev = P.prev && P.prev.on && P.prev.mode === "drift" && P.prev.kind === "own" && P.prev.seq === P.prevSeq ? P.prev : null;
+  const hand = prev || feetHand(game, P.dx, P.dy); if (!hand) return false;
   const H = K.hold; endHold(K);
   H.on = true; H.mode = mode; H.hand = hand; H.held = 0; H.tick = QUANDRIX.slam.tick; H.power = Number(game.quandrixPower()) || 0; H.action = P.action;
   hand.mode = mode === "fist" ? "fist" : "slam"; clearHits(hand);
@@ -196,11 +226,18 @@ function driftHand(game, h, dt, now) {
   const Q = QUANDRIX.hand; h.age += dt;
   if (h.age >= h.life) { h.on = false; return; }
   const dist = Q.speed * dt, steps = Math.max(1, Math.ceil(dist / Q.step)), step = dist / steps;
-  for (let i = 0; i < steps; i++) { const nx = h.x + h.dx * step, ny = h.y + h.dy * step; if (!game.quandrixOpen(nx, ny)) { h.on = false; flash(game.quandrix, h.x, h.y, .5, "puff"); return; } h.x = nx; h.y = ny; }
+  for (let i = 0; i < steps; i++) { // bodies are checked at every sub-step: a long frame cannot carry the hand past a foe
+    const nx = h.x + h.dx * step, ny = h.y + h.dy * step; if (!game.quandrixOpen(nx, ny)) { h.on = false; flash(game.quandrix, h.x, h.y, .5, "puff"); return; } h.x = nx; h.y = ny;
+    handBlows(game, h, now, i === steps - 1);
+  }
+}
+// The blows of a drifting hand where it is now. `last`: the frame's final sub-step, which also forgets foes it has left.
+function handBlows(game, h, now, last) {
+  const Q = QUANDRIX.hand;
   for (const e of game.enemies) {
     if (!hittable(e)) continue;
     const id = e.id, at = h.hits[id];
-    if (!touching(e, h.x, h.y, Q.radius)) { if (at !== undefined && h.age >= at) delete h.hits[id]; continue; } // gone and its interval passed: forgotten
+    if (!touching(e, h.x, h.y, Q.radius)) { if (last && at !== undefined && h.age >= at) delete h.hits[id]; continue; } // gone and its interval passed: forgotten
     if (at !== undefined && h.age < at) continue;
     h.hits[id] = h.age + Q.rehit;
     game.quandrixBlow(e, h.power * Q.share, now, Q.stun, h.x, h.y);
@@ -270,14 +307,19 @@ export function tickQuandrix(game, dt, now, held) {
   const p = game.player;
   if (K.where !== game.orreryWhere() || !game.quandrixEquipped() || !(p.hp > 0)) { clearQuandrix(game); K.where = game.orreryWhere(); return; }
   for (const f of K.flashes) if (f.life > 0) f.life = Math.max(0, f.life - dt);
-  if (now < (p.stunnedUntil || 0)) { K.press.on = false; K.press.tap = false; K.press.owed = 0; if (K.hold.on && !K.hold.released) { const h = K.hold.hand; if (h) { h.on = false; clearHits(h); } endHold(K); } } // knocked down: a hold still held is lost, nothing bursts (a hand let go keeps on)
+  if (now < (p.stunnedUntil || 0)) { dropPress(K.press); if (K.hold.on && !K.hold.released) { const h = K.hold.hand; if (h) { h.on = false; clearHits(h); } endHold(K); } } // knocked down: a hold still held is lost, nothing bursts (a hand let go keeps on)
   const P = K.press;
-  if (P.on) { // the press waiting to be a tap or a hold; a hand is never cast before the staff is ready (`attackReadyAt`)
+  if (P.on) { // the press: its hand is thrown when the staff is ready (`attackReadyAt`), then it is a tap or a hold
     if (P.owed && now >= (p.attackReadyAt || 0)) { P.owed = 0; castHand(game, now, P.dx, P.dy); } // an earlier tap's hand first
-    const ready = !P.owed && now >= (p.attackReadyAt || 0), plain = !holdMode(game) || (K.hold.on && QUANDRIX.release.tapWhileLive);
-    if (!held) P.tap = true; // let go: a tap
-    if (P.tap || plain) { if (ready) { P.on = false; P.tap = false; castHand(game, now, P.dx, P.dy); } }
-    else { P.held += dt; if (P.held >= QUANDRIX.hold.grace && !P.owed && (ready || latestHand(game))) { P.on = false; beginHold(game, now); } }
+    if (!P.thrown && !P.owed && now >= (p.attackReadyAt || 0)) throwOwn(game, now, P);
+    const plain = !holdMode(game) || (K.hold.on && QUANDRIX.release.tapWhileLive);
+    if (P.holding) { if (P.thrown) dropPress(P); } // its hold began during the cadence: only its own hand was still to throw
+    else if (!held) P.tap = true; // let go: a tap
+    if (!P.on || P.holding) { /* done, or waiting to throw */ }
+    else if (P.tap || plain) { if (P.thrown) dropPress(P); }
+    else { P.held += dt; if (P.held >= QUANDRIX.hold.grace && !P.owed) { // the hold begins on the hand before this press's own; that hand, if the cadence still holds it, is thrown when ready
+      if (!P.thrown) { const prev = latestHand(game); P.prev = prev; P.prevSeq = prev ? prev.seq : 0; }
+      beginHold(game, now); if (P.thrown) dropPress(P); else P.holding = true; } }
   }
   if (K.hold.on) tickHold(game, dt, now, held);
   for (const q of K.queue) { if (!q.on) continue; q.left -= dt; if (q.left <= 0) { q.on = false; const c = centre(game); castExtra(game, c.x, c.y, q.dx, q.dy, q.power, "echo"); } } // as the swing's Echo: from where the Wayfarer is now

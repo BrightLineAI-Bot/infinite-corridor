@@ -185,8 +185,15 @@ export const CLOSE_VIEW_HERO_WEAPON_FORM = Object.freeze({
   // Salvage Blade: held beneath the guard like a long spike. Grip and pommel are unchanged (the hold);
   // the reskin (Tim, 2026-11-12) is a diamond spike blade, a diamond bevelled guard plate and a wrapped grip.
   salvage: Object.freeze({ grip: Object.freeze([.700, .742]), gripRadius: .018, pommel: Object.freeze([.664, .684, .700]),
-    blade: Object.freeze({ axisX: .162, base: .785, baseWidth: .040, baseThick: .016, shoulder: .87, width: .052, thick: .018, tip: 1.40 }),
-    guard: Object.freeze({ z: Object.freeze([.750, .788, .801]), corner: Object.freeze([.072, .102]), bevel: .62 }), pommelRadius: .024, wrapTwist: .5 }),
+    // The forked blade (Tim, 2026-11-25: "a blue forked blade, with one of the forks broken off halfway up"): a blue body from
+    // the guard (`base`) widening to the fork (`fork`, `width`), then two tines `tine.off` either side of the axis, leaning out
+    // `tine.spread` by their ends. The +Y tine runs to the point (`tip`); the -Y tine is snapped `broken.at` of the way up,
+    // its break a jagged top (`broken.jag`: the four corners' heights above or below the break).
+    blade: Object.freeze({ axisX: .162, base: .785, baseWidth: .040, baseThick: .016, fork: 1.02, width: .060, thick: .018, tip: 1.40,
+      tine: Object.freeze({ off: .032, width: .024, thick: .015, sink: .03, spread: .014 }),
+      broken: Object.freeze({ at: .5, jag: Object.freeze([.028, -.018, .010, -.032]), narrow: .8 }) }),
+    guard: Object.freeze({ z: Object.freeze([.750, .788, .801]), corner: Object.freeze([.072, .102]), bevel: .62 }), pommelRadius: .024, wrapTwist: .5,
+    colors: Object.freeze({ blade: 0x3f74d8, tine: 0x5b8fe6, break: 0xa9c6f2 }) }), // blue steel; the snapped face bright where it broke
   // Fourfold Daggers (2026-11-14): one short dagger in each hand, drawn once per hand socket. A wrapped grip the fist's
   // length, a narrow cross guard, a diamond blade to a needle point (a third of the Cleaver's length).
   dagger: Object.freeze({ grip: Object.freeze([.700, .800]), gripRadius: .018, pommel: Object.freeze([.672, .700]), pommelRadius: .022,
@@ -747,32 +754,33 @@ function wayfarerToolMaterials(parts) {
   const map = new Map([...WAYFARER_TOOL_COLORS].map(([from, to]) => [key(from), [(to >> 16) / 255, ((to >> 8) & 255) / 255, (to & 255) / 255]]));
   return Object.freeze(parts.map(p => { const mesh = Float32Array.from(p.mesh); for (let i = 0; i < mesh.length; i += MESH_FLOATS) { const to = map.get([mesh[i + 6], mesh[i + 7], mesh[i + 8]].join()); if (to) { mesh[i + 6] = to[0]; mesh[i + 7] = to[1]; mesh[i + 8] = to[2]; } } return { ...p, mesh }; }));
 }
-// Salvage Blade for the imported hero: 54 triangles, inside the old 58. Tim, 2026-11-12: keep the hold
-// beneath the guard, "almost like a long nail or a long spike", and make it look cooler. A bronze
-// diamond spike swells from the guard to a shoulder, then tapers straight to a needle point (12); a
-// bright verge line rides both edges (4) and a dark fuller runs up both ridges (2); a clean diamond
-// gunmetal guard plate, the nail head, bevelled toward the blade (20); the unchanged grip, wrapped in
-// leather with twisted facets (12); and a pointed brass pommel cap (4). Same palette as the other
-// held weapons.
+// Salvage Blade for the imported hero: 58 triangles (the held primary and the largest tool share one 256-triangle slot). Tim,
+// 2026-11-12: held beneath the guard like a long spike; 2026-11-25: "a blue forked blade, with one of the forks broken off
+// halfway up". A blue diamond body from the guard to the fork (8);
+// the whole tine, a diamond to its point (4); the broken tine, a diamond snapped halfway with a jagged, bright break (10); the
+// diamond gunmetal guard plate (20); the wrapped leather grip (12); the pointed brass pommel cap (4). Baked once.
 const heroSalvageBlade = (() => {
-  const F = CLOSE_VIEW_HERO_WEAPON_FORM.salvage, B = F.blade, G = F.guard, X = .17, Y = -.25, XB = B.axisX;
-  // Diamond rings: thickness along recipe X (the ridges), width along recipe Y (the edges).
-  const ring = (z, w, t) => [[XB + t, Y, z], [XB, Y + w, z], [XB - t, Y, z], [XB, Y - w, z]], tip = [XB, Y, B.tip];
-  const a = ring(B.base, B.baseWidth, B.baseThick), b = ring(B.shoulder, B.width, B.thick), blade = [];
-  for (let i = 0; i < 4; i++) { const j = (i + 1) % 4; blade.push([a[i], a[j], b[j]], [a[i], b[j], b[i]], [b[i], b[j], tip]); }
-  const fromAxis = c => [c[0] - XB, c[1] - Y, 0];
-  // Edge lines in the blade's mid-plane, just proud of each edge from the shoulder to the point.
-  const edges = [-1, 1].map(side => [[XB, Y + side * (B.width + .003), B.shoulder], [XB, Y + side * (B.width - .006), B.shoulder], [XB, Y + side * .0012, B.tip + .004]]);
-  // Fuller: a dark sliver along each ridge, floating just above it.
-  const fuller = [-1, 1].map(side => { const r = z => side * (B.thick * (B.tip - z) / (B.tip - B.shoulder) + .0016); return [[XB + r(.90), Y - .006, .90], [XB + r(.90), Y + .006, .90], [XB + r(1.30), Y, 1.30]]; });
+  const F = CLOSE_VIEW_HERO_WEAPON_FORM.salvage, B = F.blade, T = B.tine, K = B.broken, C = F.colors, G = F.guard, X = .17, Y = -.25, XB = B.axisX;
+  // Diamond rings: thickness along recipe X (the ridges), width along recipe Y (the edges), centred at (XB, cy).
+  const ring = (z, w, t, cy = Y) => [[XB + t, cy, z], [XB, cy + w, z], [XB - t, cy, z], [XB, cy - w, z]];
+  const loft = (a, b, out) => { for (let i = 0; i < 4; i++) { const j = (i + 1) % 4; out.push([a[i], a[j], b[j]], [a[i], b[j], b[i]]); } return out; };
+  const body = loft(ring(B.base, B.baseWidth, B.baseThick), ring(B.fork, B.width, B.thick), []); // open at the fork: the tines' roots, sunk into it, close it
+  const root = (side) => ring(B.fork - T.sink, T.width, T.thick, Y + side * T.off);
+  const whole = [], r0 = root(1), point = [XB, Y + T.off + T.spread, B.tip];
+  for (let i = 0; i < 4; i++) whole.push([r0[i], r0[(i + 1) % 4], point]);
+  const breakZ = B.fork + (B.tip - B.fork) * K.at, cy = Y - T.off - T.spread * K.at, w = T.width * (1 - K.at * (1 - K.narrow)), t = T.thick * (1 - K.at * (1 - K.narrow));
+  const snap = ring(breakZ, w, t, cy).map((v, i) => [v[0], v[1], v[2] + K.jag[i]]), broken = loft(root(-1), snap, []);
+  const face = [[snap[0], snap[1], snap[2]], [snap[0], snap[2], snap[3]]];
+  const axis = (cy) => c => [c[0] - XB, c[1] - cy, 0];
   // Wrapped grip: the same radius and length, its top ring turned so the facets spiral like a wrap.
   const wrap = [], n = 6, R = F.gripRadius, ringAt = (z, turn) => Array.from({ length: n }, (_, i) => { const q = (i + .5 + turn) * 2 * Math.PI / n; return [X + R * Math.cos(q), Y + R * Math.sin(q), z]; });
   const lo = ringAt(F.grip[0], 0), hi = ringAt(F.grip[1], F.wrapTwist);
   for (let i = 0; i < n; i++) { const j = (i + 1) % n; wrap.push([lo[i], lo[j], hi[j]], [lo[i], hi[j], hi[i]]); }
   return Object.freeze([
-    heldFacets(blade, bronze, fromAxis),
-    part(membrane(edges[0]), 0, 0, 0, 1, 1, 1, 0xaaa69a, -2, 0, 1.19), part(membrane(edges[1]), 0, 0, 0, 1, 1, 1, 0xaaa69a, -2, 0, 1.19),
-    heldFacets(fuller, WAYFARER_GUNMETAL, c => [c[0] - XB, 0, 0]),
+    heldFacets(body, C.blade, axis(Y)),
+    heldFacets(whole, C.tine, axis(Y + T.off)),
+    heldFacets(broken, C.tine, axis(cy)),
+    heldFacets(face, C.break, () => [0, 0, 1]),
     heldTube([[XB, Y, G.z[0], G.corner[0], G.corner[1]], [XB, Y, G.z[1], G.corner[0], G.corner[1]], [XB, Y, G.z[2], G.corner[0] * G.bevel, G.corner[1] * G.bevel]], 4, WAYFARER_GUNMETAL, { caps: 3, flat: true, phase: 0 }),
     heldFacets(wrap, WAYFARER_LEATHER, c => [c[0] - X, c[1] - Y, 0]),
     heldTube([[X, Y, F.pommel[0], 0], [X, Y, F.pommel[2], F.pommelRadius]], 4, brass, { flat: true }),

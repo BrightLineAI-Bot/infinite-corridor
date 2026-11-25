@@ -53,7 +53,7 @@ test('the staff: one data table, a magic primary scaling with Focus', () => {
   assert.ok(isQuandrixStaff(staff()) && isValidItem(staff()) && !isQuandrixStaff({ name: 'Salvage Blade' }));
   assert.ok(Math.abs(P.range - H.speed * H.life) < .01, 'the profile reach is where a hand dissipates');
   assert.equal(QUANDRIX.damageType, 'magic'); assert.equal(weaponScaling(staff()), 'magic'); assert.ok(scaledGearNames('magic').includes('Quandrix Staff'));
-  assert.ok(H.speed <= 2.5, 'slow'); assert.ok(H.maxLive >= 4 && H.maxLive <= 5); assert.ok(S.perfect[0] < S.perfect[1] && S.perfect[1] < S.max);
+  assert.ok(H.speed >= 2.2 * 1.3 && H.speed <= 2.2 * 1.4, 'faster than the first 2.2 tiles/s by about a third (Tim, 2026-11-25)'); assert.ok(Math.abs(H.speed * H.rehit - 2.2 * .3) < .01, 'the same blows per tile'); assert.ok(H.maxLive >= 4 && H.maxLive <= 5); assert.ok(S.perfect[0] < S.perfect[1] && S.perfect[1] < S.max);
   assert.ok(F.time >= 1.2 && F.time <= 1.6, 'the fist holds 1.2-1.6 s');
   // Focus, not Might: the matched build's bonus is +2 a rank, as every primary's own stat gives.
   const hit = (stats) => { const { g } = arena([[3, 0]], { stats }); press(g, 1000, null); run(g, 1000, 3800, undefined, pinned(g)); return { dealt: taken(g.enemies[0]), power: g.quandrixPower() }; };
@@ -92,12 +92,13 @@ test('Mage\'s Hand: hold clenches only the last hand, drags foes toward the Wayf
     const { g } = arena([], { mageHand: true }); let t = 1000; press(g, t, null); const older = latestHand(g); t = run(g, t, t + 200);
     g.player.attackReadyAt = 0; press(g, t, null); const newer = latestHand(g); assert.notEqual(older, newer); t = run(g, t, t + 100);
     g.player.attackReadyAt = 0; press(g, t); run(g, t, t + 260, () => true);
-    assert.equal(g.quandrix.hold.hand, newer); assert.equal(newer.mode, 'fist'); assert.ok(older.on && older.mode === 'drift'); assert.equal(liveHands(g), 2, 'no new hand for the hold'); }
+    assert.equal(g.quandrix.hold.hand, newer, 'the hand before the held press\'s own (Tim, 2026-11-25: the penultimate cast)'); assert.equal(newer.mode, 'fist'); assert.ok(older.on && older.mode === 'drift');
+    assert.equal(liveHands(g), 3, 'the held press threw its own hand'); assert.ok(latestHand(g) !== newer && latestHand(g) !== older); }
   // a tap toward the foe (let go at once), then a held press
   const r = arena([[3.4, 0]], { mageHand: true }), e = r.g.enemies[0]; let t = 1000;
   press(r.g, t); t = run(r.g, t, t + 60, () => false); assert.equal(liveHands(r.g), 1, 'let go within the grace: a tap');
   const first = latestHand(r.g); t = run(r.g, t, t + 900); // it has reached the foe
-  r.g.player.attackReadyAt = 0; press(r.g, t); const down = t; t = run(r.g, t, t + 260, () => true);
+  r.g.player.attackReadyAt = 0; press(r.g, t); const down = t; latestHand(r.g).on = false; /* its own hand, put away so only the fist's blows count */ t = run(r.g, t, t + 260, () => true);
   assert.equal(r.g.quandrix.hold.mode, 'fist'); assert.equal(r.g.quandrix.hold.hand, first, 'the last cast live hand, not a new one'); assert.equal(first.mode, 'fist');
   const x0 = e.x; t = run(r.g, t, t + 700, () => true);
   assert.ok(r.g.quandrix.hold.n >= 1, 'it grabbed the foe'); assert.ok(e.x < x0 - .3, `dragged toward the Wayfarer (${x0} -> ${e.x})`);
@@ -108,13 +109,13 @@ test('Mage\'s Hand: hold clenches only the last hand, drags foes toward the Wayf
 
 test('Mage\'s Hand: a far fist bursts where it is; letting go early leaves it working until its time (2026-11-14); the grab cap; bosses hold their ground', () => {
   // far: the hand has drifted over four tiles; the fist cannot get home in its hold, and bursts out there
-  { const { g } = arena([[4.1, 0]], { mageHand: true }), e = g.enemies[0]; let t = 1000; press(g, t); t = run(g, t, t + 40); t = run(g, t, 2600);
-    g.player.attackReadyAt = 0; press(g, t); const h = latestHand(g); t = run(g, t, t + 220 + F.time * 1000 + 100, () => true);
+  { const { g } = arena([[4.1, 0]], { mageHand: true }), e = g.enemies[0]; let t = 1000; press(g, t); t = run(g, t, t + 40); t = run(g, t, t + Math.round(1560 * 2.2 / H.speed)); /* over four tiles out, at any hand speed */
+    const h = latestHand(g); g.player.attackReadyAt = 0; press(g, t); t = run(g, t, t + 220 + F.time * 1000 + 100, () => true);
     assert.equal(g.quandrix.hold.on, false); assert.ok(taken(e) > 0, 'the foe it held takes the burst'); const burst = g.quandrix.flashes.find((f) => f.kind === 'fist');
     assert.ok(burst && burst.x - (g.player.x + .5) > F.arrive + .3, `burst ${burst.x - (g.player.x + .5)} tiles out, short of the Wayfarer`); assert.equal(h.on, false); }
   // early release
   { const { g } = arena([[2.4, 0]], { mageHand: true }), e = g.enemies[0]; let t = 1000; press(g, t); t = run(g, t, t + 40); t = run(g, t, t + 300);
-    g.player.attackReadyAt = 0; press(g, t); t = run(g, t, t + 240, () => true); assert.equal(g.quandrix.hold.mode, 'fist'); const before = taken(e);
+    g.player.attackReadyAt = 0; press(g, t); latestHand(g).on = false; /* its own hand put away */ t = run(g, t, t + 240, () => true); assert.equal(g.quandrix.hold.mode, 'fist'); const before = taken(e);
     t = run(g, t, t + 40, () => false); assert.ok(g.quandrix.hold.on && g.quandrix.hold.released, 'let go: it stays (Tim, 2026-11-14)'); assert.equal(taken(e), before, 'no burst yet');
     run(g, t, t + F.time * 1000, () => false); assert.equal(g.quandrix.hold.on, false); assert.ok(taken(e) > before, 'it bursts when its time is up'); }
   // the grab cap

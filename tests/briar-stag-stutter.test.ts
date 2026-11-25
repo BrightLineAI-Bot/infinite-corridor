@@ -1,14 +1,16 @@
 // The Briar Stag fight stutter (Tim, 2026-11-22, r1050 on his phone, Frenzied, section -185,-203: "Fighting the Briar Stag,
 // everything just locked up and started skipping"). Four causes, each pinned here:
 // 1. a Stalker in the fight threw in Game.update every frame it stood in reach (the world stopped, nothing was drawn);
-// 2. bodies pressed against the Wayfarer from every side ate whole dodges;
+// 2. bodies pressed against the Wayfarer from every side ate whole dodges (release 1061 let the dodge roll through them; Tim,
+//    2026-11-25: "Dodge should not take you through enemies ... you can get boxed in and you just can't dodge through them":
+//    bodies are solid to a dodge again, and only a minor foe a dodge runs into is staggered and nudged aside);
 // 3. the probe logged a dodge from the frame the press came in, so most read "moved 0" on a 120 Hz screen;
 // 4. every world tap and every resume saved at once (37 saves in 277 s of the fight).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { STALKER, updateStalker } from '../src/stalker.ts';
-import { ACTOR_CONTACT, DODGE_CONTACT, touchingBodies, boxedIn } from '../src/actor-contact.ts';
+import { ACTOR_CONTACT, DODGE_SHOVE } from '../src/actor-contact.ts';
 import { footprintOpen } from '../src/game.ts';
 import { createCombatant, enemyBodyRadius } from '../src/combat.ts';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
@@ -54,37 +56,62 @@ function arena(foes) {
 const ring = (g, gap = 0, turn = 0) => [0, 1, 2].map((i) => { const a = turn + i * Math.PI * 2 / 3, e = foe(0, 0), r = ACTOR_CONTACT.playerRadius + enemyBodyRadius(e) + gap; e.x = g.player.x + Math.cos(a) * r; e.y = g.player.y + Math.sin(a) * r; return e; });
 const run = (g, x, y, action, frames = 12, start = 1000) => { const x0 = g.player.x, y0 = g.player.y; for (let i = 0; i < frames; i++) g.update(.05, input(x, y, i === 0 ? action : ''), start + i * 50); return Math.hypot(g.player.x - x0, g.player.y - y0); };
 
-test('boxed in by bodies: walking stays solid, but a dodge in any direction goes through the crush', () => {
+const minor = (x, y, boss = false) => Object.assign(createCombatant('ashling', x, y, boss), { hitStun: 0, damage: 0, cooldown: 1e6, aggro: false });
+const freeze = (g) => { for (const e of g.enemies) e.hitStun = Math.max(e.hitStun, 1e6); };
+
+test('boxed in by big bodies: neither walking nor a dodge in any direction leaves the ring', () => {
   for (const dir of [0, Math.PI / 3, Math.PI, 4]) {
-    const g = arena([]); g.enemies = ring(g, .002);
-    assert.ok(boxedIn(g, (x, y) => footprintOpen(g.map, g.map.width, x, y)), 'the ring boxes the Wayfarer in');
+    const g = arena([]); g.enemies = ring(g, .002); const at = g.enemies.map((e) => [e.x, e.y]);
+    assert.ok(enemyBodyRadius(g.enemies[0]) > DODGE_SHOVE.maxRadius, 'root brutes are not minor foes');
     assert.ok(run(g, Math.cos(dir), Math.sin(dir), '', 6) < .05, 'walking cannot leave the ring');
     const moved = run(g, Math.cos(dir), Math.sin(dir), 'dodge', 6, 2000);
-    assert.ok(g.player.dodgeUntil > 0);
-    assert.ok(moved > 1, `dodge at ${dir.toFixed(2)} covers ground (${moved.toFixed(2)})`);
-    assert.ok(footprintOpen(g.map, g.map.width, g.player.x, g.player.y));
+    assert.ok(g.player.dodgeUntil > 0, 'the dodge itself happens (stamina, i-frames)');
+    assert.ok(moved < .05, `dodge at ${dir.toFixed(2)} is stopped by the bodies (${moved.toFixed(3)})`);
+    assert.deepEqual(g.enemies.map((e) => [e.x, e.y]), at, 'big bodies are not shoved');
+    for (const e of g.enemies) assert.ok(Math.hypot(e.x - g.player.x, e.y - g.player.y) >= ACTOR_CONTACT.playerRadius + enemyBodyRadius(e) - 1e-6, 'no overlap');
   }
 });
 
-test('a crush that leaves a way out keeps contact: a dodge at a foe a step away stops at it, as before', () => {
+test('a dodge at a foe a step away stops at it', () => {
   const g = arena([foe(11.2, 8)]), e = g.enemies[0], r = ACTOR_CONTACT.playerRadius + enemyBodyRadius(e);
-  assert.ok(Math.hypot(e.x - g.player.x, e.y - g.player.y) - r > DODGE_CONTACT.touch);
-  assert.equal(boxedIn(g, (x, y) => footprintOpen(g.map, g.map.width, x, y)), false);
   run(g, 1, 0, 'dodge');
   assert.ok(Math.abs(Math.hypot(e.x - g.player.x, e.y - g.player.y) - r) < 1e-6, 'stopped at contact');
-  // and the bodies touched when the dodge began were noted, bounded by the area's creatures
-  const out = []; touchingBodies(g, out); assert.deepEqual(out, [e]);
+  assert.equal(e.x, 11.2, 'not shoved');
 });
 
-test('the dodge through is planned only when bodies eat the step, and walls and ground still stop it', () => {
-  const g = arena([]); g.enemies = ring(g, .002);
-  for (const t of g.map.tiles) if (t.x >= 12) t.blocked = true; // a wall just east of the ring
-  const moved = run(g, 1, 0, 'dodge');
-  assert.ok(g.player.x + .76 <= 12 + 1e-6, 'the wall stops the roll');
-  assert.ok(footprintOpen(g.map, g.map.width, g.player.x, g.player.y)); assert.ok(moved < 1.3);
+test('a minor foe a dodge runs into is staggered and nudged aside; elites, bosses and big bodies stay solid', () => {
+  const g = arena([minor(11.1, 8.05)]), e = g.enemies[0], x0 = g.player.x;
+  let stun = 0; for (let i = 0; i < 12; i++) { g.update(.05, input(1, 0, i === 0 ? 'dodge' : ''), 1000 + i * 50); stun = Math.max(stun, e.hitStun); }
+  assert.ok(stun > 0 && stun <= DODGE_SHOVE.stun, `staggered (${stun})`);
+  assert.ok(g.player.x - x0 > 1, `the dodge carries on past it (${(g.player.x - x0).toFixed(2)})`);
+  assert.ok(Math.abs(e.y - 8.05) > .2 && Math.abs(e.y - 8.05) <= DODGE_SHOVE.nudge + 1e-6, `nudged sideways (${e.y.toFixed(3)})`);
+  assert.ok(e.y > 8.05, 'away from the line, on its own side');
+  assert.ok(footprintOpen(g.map, g.map.width, e.x, e.y));
+  // the same small creature as an elite or a boss is solid
+  for (const make of [() => minor(11.1, 8.05, true), () => Object.assign(minor(11.1, 8.05), { eliteId: 'x' }), () => Object.assign(minor(11.1, 8.05), { staggerImmune: true })]) {
+    const h = arena([make()]), f = h.enemies[0], y0 = f.y; freeze(h); run(h, 1, 0, 'dodge');
+    assert.ok(Math.abs(f.y - y0) < .05 && f.hitStun < DODGE_SHOVE.stun * .5 || f.hitStun > 1e5, `not nudged or staggered (${(f.y - y0).toFixed(3)})`);
+    assert.ok(h.player.x < f.x, 'still in front');
+    assert.ok(Math.hypot(f.x - h.player.x, f.y - h.player.y) >= ACTOR_CONTACT.playerRadius + enemyBodyRadius(f) - 1e-6, 'and not passed');
+  }
+});
+
+test('a minor foe against a wall cannot be nudged aside and stays in the way; walking never shoves', () => {
+  const g = arena([minor(11.1, 8.0)]); for (const t of g.map.tiles) if (t.y <= 7 || t.y >= 9) t.blocked = true; // a one-tile corridor
+  const e = g.enemies[0], moved = run(g, 1, 0, 'dodge');
+  assert.ok(moved < 1, `blocked in the corridor (${moved.toFixed(2)})`);
+  assert.ok(e.x - g.player.x >= ACTOR_CONTACT.playerRadius + enemyBodyRadius(e) - 1e-6 || Math.abs(e.y - 8) > 1e-6);
+  const h = arena([minor(10.9, 8.0)]), f = h.enemies[0]; freeze(h); run(h, 1, 0, '', 12);
+  assert.equal(f.y, 8.0, 'walking into a minor foe does not shove it');
   // a dodge with nothing in its way is the plain move it always was
-  const h = arena([foe(4, 4)]), x0 = h.player.x; run(h, 1, 0, 'dodge', 6); const plain = h.player.x - x0;
+  const a = arena([foe(4, 4)]), xa = a.player.x; run(a, 1, 0, 'dodge', 6); const plain = a.player.x - xa;
   const k = arena([]), x1 = k.player.x; run(k, 1, 0, 'dodge', 6); assert.equal(plain, k.player.x - x1);
+});
+
+test('solid dodges: game.ts no longer re-plans a dodge past bodies', () => {
+  const src = readFileSync(new URL('../src/game.ts', import.meta.url), 'utf8');
+  assert.ok(!src.includes('dodgeThrough'), 'the release 1061 pass-through is gone');
+  assert.ok(!/DODGE_CONTACT|touchingBodies|boxedIn/.test(readFileSync(new URL('../src/actor-contact.ts', import.meta.url), 'utf8')));
 });
 
 // --- 3. the probe's dodge event ---------------------------------------------------------------------------------------

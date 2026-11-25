@@ -139,5 +139,5 @@ test('the weapon is put away for Aerial Step\'s cast in both views, and back whe
   const cv = fs.readFileSync(new URL('../src/close-view.ts', import.meta.url), 'utf8'), rd = fs.readFileSync(new URL('../src/renderer.ts', import.meta.url), 'utf8');
   assert.match(cv, /const handsFree=aerialHandsFree\(state\.heroPose\);if\(handsFree\)gear\.profile='';/, 'Close View: no weapon drawn');
   assert.match(cv, /if \(offhandTool && !handsFree\) offset = writeCloseViewHeldTool/, 'nor the off-hand tool');
-  assert.match(rd, /if \(!STD_HANDS_FREE\) rect\(p\[2\]/, 'the standard view: no blade'); assert.match(rd, /!handsFree && g\.save\.activeWeaponSlot !== "secondary" && isQuandrixStaff/, 'nor the Quandrix Staff');
+  assert.match(rd, /if \(STD_HANDS_FREE\) \{ \/\* AERIAL_HANDS_FREE: the weapon put away/, 'the standard view: no blade (neither the plain one nor the forked Salvage Blade)'); assert.match(rd, /!handsFree && g\.save\.activeWeaponSlot !== "secondary" && isQuandrixStaff/, 'nor the Quandrix Staff');
 });

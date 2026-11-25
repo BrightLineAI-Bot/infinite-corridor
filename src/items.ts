@@ -21,7 +21,10 @@ export const CARBINE_RANK=BLUNDERBUSS_RANK;
 // A Spark Coil: the starter's id, or a dropped one (generateItem's `secondary-<n>` id); other ids stay unknown, as before.
 const sparkCoilItem=(item)=>item.id==='spark-coil'||item.name==='Spark Coil'&&/^secondary-\d+$/.test(String(item.id));
 const sparkCoilRanked=(item)=>sparkCoilItem(item)&&(Number(item.upgradeRank)||0)>=CARBINE_RANK;
-export const PRIMARY_PROFILES={'primary-iron-fists':{shape:'cone',range:1.3,arc:90,damage:10,fist:true},'salvage-blade':{shape:'cone',range:1.7,arc:100,damage:7},'primary-cinder-pike':{shape:'thrust',range:2.45,arc:32,damage:8},'primary-verge-cleaver':{shape:'arc',range:1.75,arc:180,damage:9},'primary-fourfold-daggers':{shape:'daggers',range:1.6,arc:20,damage:8},'primary-quandrix-staff':{shape:'staff',range:4.84,arc:20,damage:8,staff:true}};
+// `share` (the Salvage Blade, Tim 2026-11-25: Focus weapons get the Quandrix Staff's boost): each cut's multiplier. At the same
+// weapon bonus the blade dealt about .77 of the Verge Cleaver's damage per second (his save, world beasts at ring 200); at 1.2,
+// about .92. A profile without it cuts at 1.
+export const PRIMARY_PROFILES={'primary-iron-fists':{shape:'cone',range:1.3,arc:90,damage:10,fist:true},'salvage-blade':{shape:'cone',range:1.7,arc:100,damage:7,share:1.2},'primary-cinder-pike':{shape:'thrust',range:2.45,arc:32,damage:8},'primary-verge-cleaver':{shape:'arc',range:1.75,arc:180,damage:9},'primary-fourfold-daggers':{shape:'daggers',range:1.6,arc:20,damage:8},'primary-quandrix-staff':{shape:'staff',range:4.84,arc:20,damage:8,staff:true}};
 // The Fourfold Daggers (Tim, 2026-11-12): a pair of daggers, one in each hand; every press makes two quick cuts ("//"), each a
 // narrow cone angled across the facing from its own hand, so the two cross just ahead like an X. A foe close in front is in
 // both cuts, one off at an angle in one, one straight ahead but further out in the gap between them: a skill weapon, good on

@@ -133,7 +133,9 @@ test('walls, solid ground edges and lethal ground stop the charge as they stoppe
 
 // Damage and healing per second with Shadow Boxing, measured over 30 s with the real game code. The reference numbers are
 // the same scenarios run on release 951 (the one-update carry): measured 2026-11-14 with scratch script meas/dps.ts.
-const BASE = { 'blade/spread': [70.2, 5.71], 'blade/kite': [74.67, 5.04], 'cleaver/spread': [59.13, 5.68], 'cleaver/kite': [71.03, 4.74] };
+// The blade rows re-measured 2026-11-25 with the Salvage Blade's cuts at 1.2 (items.ts PRIMARY_PROFILES share; were 70.2/5.71 and
+// 74.67/5.04 at 1, the carry itself unchanged); the Cleaver rows are untouched.
+const BASE = { 'blade/spread': [93.37, 6.85], 'blade/kite': [93.33, 6.16], 'cleaver/spread': [59.13, 5.68], 'cleaver/kite': [71.03, 4.74] };
 function boxing(weapon: string, mode: string, secs = 30) {
   const g = room(weapon); let t = 1000, dealt = 0, healed = 0, n = 0, dashes = 0, lastJump = t; const dt = 16;
   const spawn = () => { const a = n * 2.1, d = mode === 'spread' ? 4 : 1.2; g.enemies = [dummy(`f${n++}`, Math.max(2, Math.min(37, g.player.x + Math.cos(a) * d)), Math.max(2, Math.min(37, g.player.y + Math.sin(a) * d)), mode === 'spread' ? 120 : 1e9)]; };
