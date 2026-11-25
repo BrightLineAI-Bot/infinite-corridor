@@ -34,6 +34,7 @@ import { THREADS, ARCANA_SETS, arcanaWhere, threadFound } from "./threads.ts";
 import { RELAY_TARGET } from "./relay-network.ts";
 import { relaysAwayOf } from "./far-array.ts";
 import { rescueGuidance } from "./hatchling.ts";
+import { compassChoiceIs } from "./types.ts";
 import { WORLD_ROUTE_OF, MILESTONES, MILESTONE_FOR, RELIQUARY, worldWithheld, earnedWorld, featCount, milestoneLine } from "./world-routes.ts";
 import { QUESTS, QUEST_IDS, QUEST_FOR, THREAD_REWARDS, SEEDED_REWARDS, SEEDED_IDS, STORY_ROUTE_OF, STORY_SEEN, VISCERA_SHOP, seededPick, questOpen, questStep, questState, stepCount, stepDone, stepPlace, questFollowId, storyWithheld, boughtRumour } from "./quests.ts";
 
@@ -154,7 +155,7 @@ function placeChips(ctx, at, ring = null) {
   if (ring != null) { const threat = threatAt(ring, 0); return { at: null, away: null, heading: null, ring, threat, bold: threat > ctx.reach * PATHS.bold }; }
   return { at: null, away: null, heading: null, threat: null, bold: false };
 }
-const following = (ctx, c) => !!c && (c.follow ? !ctx.compass.pin && ctx.compass.follow?.kind === c.follow.kind && (ctx.compass.follow.id ?? null) === (c.follow.id ?? null) : !!c.pin && ctx.compass.pin?.rx === c.pin.rx && ctx.compass.pin?.ry === c.pin.ry);
+const following = (ctx, c) => compassChoiceIs(ctx.compass, c); // 2026-11-25: the one matcher the Journal's Leads and the quick menu use (types.ts)
 // `steps` is the ordered list behind `step` (a quest's every step, done or not; one step otherwise), so a family can later carry
 // ranked lines of steps without the entries changing shape; `step` and `progress` are always the current one's.
 function entry(ctx, row, state, step, extra = {}) {

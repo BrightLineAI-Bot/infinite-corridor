@@ -56,7 +56,7 @@ import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKn
 import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.ts";
 import { linksKnown } from "./linked-dungeons.ts";
 import { DIG } from "./digging.ts";
-import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces, MAP_MARKS, mapMarkAt, toggleMapMark, dungeonWayfinding, dungeonNavigationDoors, renderDungeonWayfindingPanel, compassGuidance, compassQuest, seedHuntGuidance, seedHuntObjectives, objectiveKey, compassMenuModel, COMPASS_ARRIVAL, compassTargetArrived, compassArrivalState, compassArrivalReset, compassArrivalStep } from "./atlas-view.ts";
+import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces, MAP_MARKS, mapMarkAt, toggleMapMark, dungeonWayfinding, dungeonNavigationDoors, renderDungeonWayfindingPanel, compassGuidance, compassQuest, seedHuntGuidance, seedHuntObjectives, objectiveKey, compassMenuModel, COMPASS_ARRIVAL, compassTargetArrived, compassArrivalState, compassArrivalReset, compassArrivalStep, COMPASS_RIBBON, RIBBON_CARDINALS, RIBBON_SLOTS, ribbonLayout, compassReadoutState, compassReadout, compassDistanceText, ribbonArc, compassEdge, nearbyPlaces, compassDiscovery, senseRadius } from "./atlas-view.ts";
 import { GLIMPSES, GLIMPSE_ORDER, glimpseFor, witnessGlimpse, witnessedGlimpses, glimpseAllowed } from "./glimpses.ts";
 import { startGlimpse, paintRule } from "./glimpse-render.ts";
 import { eldersHeard, elderProgress, ruleRows } from "./elders.ts";
@@ -191,7 +191,7 @@ import {
 } from "./game.ts";
 import { createInput } from "./input.ts";
 import { render as baseRender, renderScaleForViewport } from "./renderer.ts";
-import { STATS, freshSave, setCompassChoice } from "./types.ts";
+import { STATS, freshSave, setCompassChoice, setCompassDoor, compassChoiceIs } from "./types.ts";
 import { SPELLS, explorationGateOpen, ITEM_TIERS, itemTier, itemScore, describeAffixes, compareItemStats, upgradeCost, lateUpgradeOpen, LATE_UPGRADE, REFINEMENT, refinementOpen, refinementHint, visceraHeld, SMELT, smeltSphere, APERTURE_SKILLS, availableApertureSkills, skillRank, learnApertureSkill, apertureBand, APERTURE_BANDS, spellOpen, scalingOf, SCALING_LABELS, scaledGearNames } from "./items.ts";
 import { TESSERACTS, ensureTesseracts, setTesseract, shatterTesseract, tesseractLine, tesseractClassText } from "./tesseracts.ts";
 import { PENTAGON_LORE, PENTAGON_FINDING, inscriptionsRead } from "./pentagon.ts";
@@ -259,7 +259,7 @@ import {
   apertureTier,
   APERTURE_THRESHOLDS,
   perceived,
-  wayfindingTargets,
+  wayfindingTargets, sectionSignals,
   wayfindingCues,
 } from "./world.ts";
 import { warmWayfindingSignals } from "./world.ts";
@@ -670,7 +670,7 @@ const objective = $("#objective"),
   navGuidanceArrow = $("#navGuidanceArrow"),
   navManualArrow = $("#navManualArrow");
 let navigationCache = { key: null, map: null, guidance: null, manual: null };
-const compassArrival = compassArrivalState(); // 2026-11-19 (Tim): WAYPOINT REACHED for the compass's target (atlas-view.ts COMPASS_ARRIVAL)
+const compassArrival = compassArrivalState(true); // quiet (2026-11-25): a journey resumed at its target gives no second banner; 2026-11-19 (Tim): WAYPOINT REACHED for the compass's target (atlas-view.ts COMPASS_ARRIVAL)
 // Release 153: the compass always has somewhere to point. Objectives are ranked nearest first (ties by kind, in this
 // order); tapping the compass steps to the next one. Explored sections still holding an unfinished challenge (an
 // Atlas site whose dungeon or arena is not resolved) count as objectives, as do story targets and nearby signals.
@@ -701,7 +701,7 @@ function objectiveList(){
   // Release 159: a cheap key first (section and one-second bucket), so the frame loop does no counting between rebuilds.
   const quick=`${game.rx},${game.ry},${Math.floor(performance.now()/1000)}`;if(objectiveCache.quick===quick)return objectiveCache.list;
   const resolvedCount=Object.values(save.consequences?.dungeons||{}).filter((h)=>h?.resolved).length,
-    liveHunts=activeSeedHunts(save),key=[game.rx,game.ry,Object.keys(save.atlas||{}).length,resolvedCount,save.viewport?.activeHuntId,save.relayNetwork?.coordinate?.rx,save.questingBeast?.active?.rx,save.wanderer?.quest?.done,Math.floor(performance.now()/5000),liveHunts.map((h)=>`${h.tower}|${h.where}|${h.x}|${h.y}|${h.door?.x}|${h.door?.y}`).join(";")].join(":");
+    liveHunts=activeSeedHunts(save),key=[game.rx,game.ry,Object.keys(save.atlas||{}).length,resolvedCount,save.viewport?.activeHuntId,save.relayNetwork?.coordinate?.rx,save.questingBeast?.active?.rx,save.wanderer?.quest?.done,Math.floor(performance.now()/5000),liveHunts.map((h)=>`${h.tower}|${h.where}|${h.x}|${h.y}|${h.door?.x}|${h.door?.y}`).join(";"),compassPick].join(":");
   if(objectiveCache.key===key){objectiveCache.quick=quick;return objectiveCache.list}
   const byKey=new Map(),add=(o)=>{const k=`${o.rx},${o.ry}`,prior=byKey.get(k);if(!prior||OBJECTIVE_KINDS[o.kind].rank<OBJECTIVE_KINDS[prior.kind].rank)byKey.set(k,o)},open=openChallengeSections();
   for(const t of wayfindingTargets(save.seed,game.rx,game.ry,save.worldGeneration,save))if(t.kind!=="beacon"&&!(t.kind==="crossing"&&save.explored[`${t.rx},${t.ry}`]&&!open.has(`${t.rx},${t.ry}`)))add({kind:t.kind==="story"&&t.name===save.viewport?.contracts?.[save.viewport?.activeHuntId]?.title?"hunt":t.kind,rx:t.rx,ry:t.ry,name:t.name});
@@ -709,7 +709,10 @@ function objectiveList(){
   const here=(o)=>Math.max(Math.abs(o.rx-game.rx),Math.abs(o.ry-game.ry));
   const all=[...byKey.values()].filter((o)=>here(o)>0||o.kind==="challenge").sort((a,b)=>here(a)-here(b)||OBJECTIVE_KINDS[a.kind].rank-OBJECTIVE_KINDS[b.kind].rank);
   const hunts=seedHuntObjectives(liveHunts,Object.fromEntries(liveHunts.map((h)=>[h.kind,SEEDS[h.kind]?.name])),game.rx,game.ry); // 2026-11-19 (Tim): each live seed hunt is a quest the tap cycles through, first in the list (atlas-view.ts seedHuntObjectives)
-  objectiveCache={key,quick,list:[...hunts,...all.slice(0,COMPASS_OBJECTIVE_LIMIT)],all:[...hunts,...all]}; // release 279: the chosen target is looked up in all of them
+  // 2026-11-25 (the compass, rebuilt): a chosen signal the Wayfarer has walked away from (the waymarks list only the near ones) stays
+  // the target while its section is unexplored and still holds the signal; explored, it is done, as the list itself says.
+  const kept=[];if(typeof compassPick==="string"&&/^-?\d+,-?\d+$/.test(compassPick)&&!all.some((o)=>`${o.rx},${o.ry}`===compassPick)&&!save.explored?.[compassPick]){const[prx,pry]=compassPick.split(",").map(Number),sig=sectionSignals(save.seed,prx,pry,save.worldGeneration||1);if(sig?.crossing||sig?.event)kept.push({kind:sig.crossing?"crossing":"event",rx:prx,ry:pry,name:sig.crossing?"a buried crossing":"an unusual site"})}
+  objectiveCache={key,quick,list:[...hunts,...all.slice(0,COMPASS_OBJECTIVE_LIMIT)],all:[...hunts,...all,...kept]}; // release 279: the chosen target is looked up in all of them
   return objectiveCache.list;
 }
 function compassObjective(){if(compassPick===null)return null;objectiveList();return objectiveCache.all.find((o)=>objectiveKey(o)===compassPick)||null} // release 279: a pick that is merely far off is kept; 2026-11-12: a finished one leaves the compass without a needle (no nearest objective by default)
@@ -723,7 +726,7 @@ function navigationTargets() {
   const f=compassPin?null:compassFollow,pick=game.area==="overworld"&&!compassPin&&!f?compassObjective():null;
   const hunt=f?.kind==="hunt"?save.viewport?.contracts?.[f.id]:null,far=f?.kind==="far"?save.farQuests?.[f.id]:null,rescueQ=f?.kind==="rescue"?save.mounts?.hatchling?.quest:null,
     mark=f?.kind==="marker"?(f.id==="waypoint"?save.manualWaypoint:(save.mapMarks||[]).find(m=>`mark:${m?.color}`===f.id)):null,quest=f&&(f.kind==="quest"||hunt?.kind==="tracking")?compassQuest(save):null;const sw=f?.kind==="quest"&&f.id==="second"?save.lore?.second:null,swKey=sw?`${sw.found}:${sw.spot?.i},${sw.spot?.x},${sw.spot?.y}`:"",pq=f?.kind==="quest"?questOfFollow(f.id):null,pqKey=pq?`${questStep(save,pq)?.key}:${(questState(save,pq)?.places||[]).length}`:"";/* progression Phase 7: a followed quest's step and place *//* the Second Wayfarer: its next sighting moves as traces are read */
-  const key=[game.area,game.rx,game.ry,pick?.rx,pick?.ry,pick?.x,pick?.y,pick?.name,compassPin?.rx,compassPin?.ry,compassPin?.name,f?.kind,f?.id,hunt?.status,hunt?.target?.rx,hunt?.target?.ry,hunt?.title,far?.status,far?.rx,far?.ry,rescueQ?.state,rescueQ?.rx,rescueQ?.ry,rescueQ?.x,save.mounts?.hatchling?.owned,mark?.area,mark?.rx,mark?.ry,mark?.label,(save.mapMarks||[]).length,quest,swKey,pqKey].join(":");
+  const key=[game.area,game.rx,game.ry,pick?.rx,pick?.ry,pick?.x,pick?.y,pick?.name,compassPin?.rx,compassPin?.ry,compassPin?.name,f?.kind,f?.id,hunt?.status,hunt?.target?.rx,hunt?.target?.ry,hunt?.title,far?.status,far?.rx,far?.ry,rescueQ?.state,rescueQ?.rx,rescueQ?.ry,rescueQ?.x,save.mounts?.hatchling?.owned,mark?.area,mark?.rx,mark?.ry,mark?.label,(save.mapMarks||[]).length,quest,swKey,pqKey,save.relayNetwork?.coordinate?.rx,save.relayNetwork?.coordinate?.ry,typeof f?.id==="string"&&f.id.startsWith("thread:")?(save.lore?.threads?.[f.id.slice(7)]||[]).length:""].join(":"); // 2026-11-25: the live Mouth (a Mouth pin follows it) and a followed thread's pieces read
   if(navigationCache.map===game.map&&navigationCache.key===key)return navigationCache;
   navigationStats.rebuilds++;
   const cues=game.area==="overworld"&&quest?game.map.objects.filter(q=>q.kind==="wayfindingCue"):[];
@@ -732,16 +735,20 @@ function navigationTargets() {
   navigationCache={key,map:game.map,guidance,manual:null};
   return navigationCache;
 }
-function updateNavigationArrow(arrow,target){
+// 2026-11-25 (the compass, rebuilt): with `r` (the frame's readout, atlas-view.ts compassReadout of this same target) the needle
+// turns by the readout's own vector, so the dial, the Ribbon and the edge arrow can never disagree; a hinted lead aims at its zone
+// and inside it the needle gives way to a warm glow with no direction.
+function updateNavigationArrow(arrow,target,r=null){
   if(arrow.hidden!==!target)arrow.hidden=!target;if(!target)return null;
-  const dormant=game.area!==target.area,arrived=!dormant&&target.rx===game.rx&&target.ry===game.ry&&!Number.isFinite(target.x);
-  hudSet(arrow,"class:dormant",dormant);hudSet(arrow,"class:arrived",arrived);
+  const dormant=game.area!==target.area,warm=!!(r&&r.on&&r.warm),hinted=!!(r&&r.on&&r.hinted),arrived=!dormant&&!hinted&&target.rx===game.rx&&target.ry===game.ry&&!Number.isFinite(target.x);
+  hudSet(arrow,"class:dormant",dormant);hudSet(arrow,"class:arrived",arrived||warm);hudSet(arrow,"class:warm",warm);hudSet(arrow,"class:hinted",hinted&&!warm);
   // A target with a known site position points at the site itself; otherwise at the middle of its section.
-  if(!dormant&&!arrived){const dx=(target.rx-game.rx)*32+(Number.isFinite(target.x)?target.x+.5:16)-game.player.x,dy=(target.ry-game.ry)*32+(Number.isFinite(target.y)?target.y+.5:16)-game.player.y;hudSet(arrow,"transform",`rotate(${compassRotation(dx,dy)}deg)`)}else hudSet(arrow,"transform","");
+  if(!dormant&&!arrived&&!warm){const dx=r&&r.on&&!r.dormant?r.dx:(target.rx-game.rx)*32+(Number.isFinite(target.x)?target.x+.5:16)-game.player.x,dy=r&&r.on&&!r.dormant?r.dy:(target.ry-game.ry)*32+(Number.isFinite(target.y)?target.y+.5:16)-game.player.y;hudSet(arrow,"transform",`rotate(${compassRotation(dx,dy)}deg)`)}else hudSet(arrow,"transform","");
   const away=Math.max(Math.abs(target.rx-game.rx),Math.abs(target.ry-game.ry));
+  if(hinted)return warm?`${target.name}: close, somewhere near here`:`${target.name}: somewhere ${compassHeading(Math.sign(Math.round(r.dx/16)),Math.sign(Math.round(r.dy/16)))}`;
   return dormant?`${target.name} resumes beyond this ${game.area}`:arrived?`${target.name} reached`:away?`${target.name}, ${away} section${away===1?"":"s"} ${compassHeading(target.rx-game.rx,target.ry-game.ry)}`:`${target.name}, in this section`;
 }
-let dungeonCompassPick = null;
+let dungeonCompassPick = save.guidance?.door ?? null; // 2026-11-25: kept in the save (types.ts setCompassDoor), so a reload or an exact resume keeps the chosen door point
 const activeDungeonDoors = g => g.area === "dungeon" ? dungeonNavigationDoors(g.save, g.map, g.areaId(), currentDungeonDoors(g.map,g.areaId())) : [];
 CLOSE_VIEW_HOOKS.navigationDoors = activeDungeonDoors;
 let compassDoorList = null, compassDoorPoints = [];
@@ -814,15 +821,77 @@ function updateNavigationCompass(now = performance.now()) {
   if (game.area === "dungeon") {
     const points = dungeonCompassPoints();
     pointDungeonCompass(points.find(door => door.id === dungeonCompassPick) || points[0]);
+    { const point = points.find(door => door.id === dungeonCompassPick) || points[0] || null; readCompass(point ? doorTarget(point) : null); renderCompassViews(now); }
     return;
   }
-  const targets=navigationTargets(),guidanceLabel=updateNavigationArrow(navGuidanceArrow,targets.guidance),manualLabel=updateNavigationArrow(navManualArrow,targets.manual),labels=[];
+  const targets=navigationTargets(),shown=targets.guidance||dormantPick(),reading=readCompass(shown),guidanceLabel=updateNavigationArrow(navGuidanceArrow,shown,reading),manualLabel=updateNavigationArrow(navManualArrow,targets.manual),labels=[];
   if(guidanceLabel)labels.push(`Guidance: ${guidanceLabel}`);if(manualLabel)labels.push(`Manual waypoint: ${manualLabel}`);
   // 2026-11-19 (Tim): "WAYPOINT REACHED" once per arrival at whatever the compass points at (a pick, a pin, a followed hunt, quest,
   // marker or seed hunt), by the needle's own rule; it re-arms after leaving or choosing again.
   { const g=targets.guidance;if(compassArrivalStep(compassArrival,compassTargetArrived(g,game.area,game.rx,game.ry,game.player.x,game.player.y),g?.name??null,g?.rx,g?.ry,g?.x??NaN,g?.y??NaN))showEventBanner(COMPASS_ARRIVAL.banner,g.name,"discovery"); }
+  renderCompassViews(now); // the Ribbon (Close View), the edge arrow (standard view) and the nearby places, from the same readout
   if(!labels.length){idleCompass();return}hudSet(navCompass,"class:north",false);if(navCompass.hidden)navCompass.hidden=false;
   const label=labels.join(". ");hudSet(navCompass,"aria-label",label);hudSet(navCompass,"title",label);
+}
+// ---------------------------------------------------------------- the compass, rebuilt (Tim, 2026-11-25)
+// One readout a frame (atlas-view.ts compassReadout) of the one target navigationTargets resolved (or the dungeon's door point):
+// the dial's needle (updateNavigationArrow), the Ribbon in Close View and the edge arrow in the standard view all draw it. The
+// elements are made once; every write goes through hudSet or a number cache, so an unchanged frame writes and allocates nothing.
+const compassNow=compassReadoutState(),compassHere={area:"overworld",rx:0,ry:0,x:.5,y:.5,yaw:NaN,elev:NaN,targetElev:NaN},compassPlaces=new Float64Array(RIBBON_SLOTS),compassEdgeOut={on:false,x:0,y:0,deg:0,spread:0,lx:NaN,ly:NaN,ld:NaN},compassArcOut={x0:0,x1:0};
+const doorTargetOut={local:true,x:0,y:0,level:0,id:null};
+function doorTarget(p){doorTargetOut.x=p.x;doorTargetOut.y=p.y;doorTargetOut.id=p.id;doorTargetOut.level=/^UP\b/.test(p.label||"")?1:/^DOWN\b/.test(p.label||"")?-1:0;return doorTargetOut}
+const tileElev=(x,y)=>{const m=game.map,w=m?.width||32,t=m?.tiles?.[Math.floor(y)*w+Math.floor(x)];return Number.isFinite(t?.elev)?t.elev:NaN};
+function readCompass(t){
+  const h=compassHere;h.area=game.area;h.rx=game.rx;h.ry=game.ry;h.x=game.player.x;h.y=game.player.y;
+  h.elev=tileElev(game.player.x,game.player.y);h.targetElev=t&&!t.local&&t.rx===game.rx&&t.ry===game.ry&&Number.isFinite(t.x)?tileElev(t.x,t.y):NaN;
+  h.yaw=closeViewShowing(game)&&compassFrame.ready?compassFrame.yaw:NaN; // in `here`, not as an argument: V8 boxes a changing double passed to a call
+  return compassReadout(compassNow,t,h);
+}
+// Outside the overworld a chosen objective (a pick) waits, shown dormant as a pin or a followed source is (one rule for all three).
+function dormantPick(){if(game.area==="overworld"||compassPin||compassFollow||compassPick===null)return null;const o=objectiveCache.all.find((q)=>objectiveKey(q)===compassPick);if(!o)return null;dormantPickOut.rx=o.rx;dormantPickOut.ry=o.ry;dormantPickOut.name=o.name;return dormantPickOut}
+const dormantPickOut={area:"overworld",rx:0,ry:0,kind:"guidance",name:""};
+const compassRibbon=(()=>{const el=document.createElement("div");el.id="compassRibbon";el.className="compass-ribbon";el.hidden=true;el.setAttribute("aria-hidden","true");
+  const track=document.createElement("div");track.className="cr-track";const cards=RIBBON_CARDINALS.map((c)=>{const i=document.createElement("i");i.className=c.major?"cr-card major":"cr-card";if(c.major)i.textContent=c.label;if(c.label==="N")i.classList.add("north");track.append(i);return i});
+  const arc=document.createElement("i");arc.className="cr-arc";const warm=document.createElement("i");warm.className="cr-warm";track.prepend(arc,warm);
+  const marks=Array.from({length:COMPASS_RIBBON.marksMax},()=>{const i=document.createElement("i");i.className="cr-mark off";track.append(i);return i});
+  const target=document.createElement("span");target.className="cr-target off";const diamond=document.createElement("b");diamond.className="cr-diamond";const dist=document.createElement("span");dist.className="cr-dist";target.append(diamond,dist);
+  el.append(track,target);document.body.append(el);return{el,cards,arc,marks,target,dist}})();
+const compassEdgeEl=(()=>{const el=document.createElement("div");el.className="compass-edge";el.hidden=true;el.setAttribute("aria-hidden","true");const rot=document.createElement("span");rot.className="ce-rot";rot.innerHTML='<i class="ce-glow"></i><i class="ce-chev"></i>';const dist=document.createElement("span");dist.className="ce-dist";el.append(rot,dist);document.body.append(el);return{el,rot,dist}})();
+const compassWarmEl=(()=>{const el=document.createElement("div");el.className="compass-warm";el.setAttribute("aria-hidden","true");document.body.append(el);return el})();
+// `q`: the place in thousandths of the bar (an integer: nothing boxed); the style is written only when it moves.
+const compassNums=new WeakMap();function compassPct(el,q){if(compassNums.get(el)===q)return;compassNums.set(el,q);el.style.left=`${q/10}%`}
+let compassDistKey=NaN,compassArrivals=compassArrival.count,compassCollapseUntil=0,compassMarks=[],compassMarksMap=null,compassMarksSense=-1,compassMarksCheck=0,compassSensed=new Set(),compassSpread=-1,compassArcW=-1;
+// The nearby places (atlas-view.ts nearbyPlaces): rebuilt only on a new section (a new map) or a new Aperture band, never a frame.
+function refreshCompassMarks(now){
+  if(game.area!=="overworld"){if(compassMarks.length)compassMarks=[];compassMarksMap=game.map;return}
+  if(compassMarksMap===game.map&&now<compassMarksCheck)return;compassMarksCheck=now+1000;const sense=senseRadius(save);if(compassMarksMap===game.map&&sense===compassMarksSense)return;
+  compassMarksMap=game.map;compassMarksSense=sense;compassMarks=nearbyPlaces(save,game.rx,game.ry,game.player.x,game.player.y,[]);
+  const found=compassDiscovery(save,compassSensed,compassMarks);if(found&&now>=compassCollapseUntil)showEventBanner(COMPASS_RIBBON.discovered,found,"discovery"); // a hollow mark filled: DISCOVERED · <place>
+  compassSensed=new Set(compassMarks.filter((m)=>!m.known).map((m)=>m.key));
+}
+function renderCompassViews(now){
+  const r=compassNow,close=closeViewShowing(game),R=compassRibbon,P=compassPlaces;
+  if(compassArrival.count!==compassArrivals){compassArrivals=compassArrival.count;compassCollapseUntil=now+COMPASS_RIBBON.collapseMs;navigator.vibrate?.(COMPASS_RIBBON.haptic)} // arrival: the diamond collapses into the centre, a short tick
+  if(!Object.is(r.distKey,compassDistKey)){compassDistKey=r.distKey;const t=compassDistanceText(r);hudSet(R.dist,"text",t);hudSet(compassEdgeEl.dist,"text",r.warm?"":t)}
+  // Close View: the Ribbon
+  if(R.el.hidden!==!close)R.el.hidden=!close;
+  if(close){
+    refreshCompassMarks(now);ribbonLayout(P,compassHere,compassMarks); // the cardinals, then the nearby places (atlas-view.ts)
+    for(let i=0;i<R.cards.length;i++){const el=R.cards[i],on=P[i]===P[i];hudSet(el,"class:off",!on);if(on)compassPct(el,Math.round(P[i]*1000))}
+    for(let i=0;i<R.marks.length;i++){const el=R.marks[i],j=R.cards.length+i,on=P[j]===P[j];hudSet(el,"class:off",!on);if(on){compassPct(el,Math.round(P[j]*1000));hudSet(el,"class:sensed",!compassMarks[i].known)}}
+    const collapsing=now<compassCollapseUntil,reached=compassArrival.on&&!collapsing,show=r.on&&!reached;
+    hudSet(R.target,"class:off",!show);hudSet(R.target,"class:dormant",r.dormant);hudSet(R.target,"class:collapse",collapsing);hudSet(R.target,"class:behind",r.behind&&!collapsing);hudSet(R.target,"class:hinted",r.hinted);
+    if(show){const q=collapsing||r.dormant||r.warm?500:Math.round(r.x*1000);compassPct(R.target,q);hudSet(R.target,"class:at-left",q<160);hudSet(R.target,"class:at-right",q>840)}
+    hudSet(R.el,"class:warm",r.on&&r.warm);
+    const arc=ribbonArc(r,compassArcOut);hudSet(R.arc,"class:off",!arc);if(arc){compassPct(R.arc,Math.round(arc.x0*1000));const wq=Math.round((arc.x1-arc.x0)*1000);if(compassArcW!==wq){compassArcW=wq;R.arc.style.width=`${wq/10}%`}}
+  }
+  // the standard view: an edge arrow toward the target, and a soft all-round glow when warm
+  const edge=!close&&r.on&&!r.dormant?compassEdge(compassEdgeOut,r,innerWidth,innerHeight,Math.round(Math.max(28,Math.min(44,innerWidth/12)))):null,on=!!edge?.on;
+  if(compassEdgeEl.el.hidden!==!on)compassEdgeEl.el.hidden=!on;
+  if(on){const x=edge.x,y=edge.y,d=edge.deg;if(x!==compassEdgeOut.lx||y!==compassEdgeOut.ly){compassEdgeOut.lx=x;compassEdgeOut.ly=y;compassEdgeEl.el.style.transform=`translate(${x}px,${y}px)`}
+    if(d!==compassEdgeOut.ld){compassEdgeOut.ld=d;compassEdgeEl.rot.style.transform=`rotate(${d}deg)`}if(edge.spread!==compassSpread){compassSpread=edge.spread;compassEdgeEl.el.style.setProperty("--spread",`${edge.spread}px`)}hudSet(compassEdgeEl.el,"class:hinted",r.hinted);hudSet(compassEdgeEl.el,"class:at-left",x<72);hudSet(compassEdgeEl.el,"class:at-right",x>innerWidth-72)} // the distance stays on screen
+  hudSet(compassWarmEl,"class:on",!close&&r.on&&r.warm);
+  if(game.area==="dungeon"&&dungeonCompassPick!==(save.guidance?.door??null)&&(dungeonCompassPick===null||dungeonCompassPoints().some((d)=>d.id===dungeonCompassPick)))setCompassDoor(save,dungeonCompassPick); // the chosen door point is kept (exact resume)
 }
 // Active quests (Journal tab, release 155): every hunt, errand and story lead in progress, with where it is and a
 // button that points the compass at it. Nothing here is drawn on the compass itself.
@@ -859,13 +928,13 @@ function threadLeads(){
 // (leads.ts rumourLeads), each with "Point compass here" when it has a place (a hinted home's nearest edge, a wonder's section).
 function renderQuests(out){
   const h=document.createElement("h3");h.textContent="Leads";out.append(h);
-  const row=(title,detail,at,name,follow=null)=>{const card=document.createElement("div"),t=document.createElement("strong"),d=document.createElement("p");card.className="item";t.textContent=title;const away=at?Math.max(Math.abs(at.rx-game.rx),Math.abs(at.ry-game.ry)):0;d.textContent=detail+(at?` · section ${at.rx},${at.ry} · ${away?`${away} section${away===1?"":"s"} ${compassHeading(at.rx-game.rx,at.ry-game.ry)}`:"in this section"}`:"");card.append(t,d);
-    if(follow){const followed=!compassPin&&compassFollow?.kind===follow.kind&&(compassFollow.id??null)===(follow.id??null);card.append(uiButton(followed?"Compass points here":"Point compass here",()=>{chooseGuidance({follow});openJournal("quests")}))}
-    else if(at){const pinned=compassPin?.rx===at.rx&&compassPin?.ry===at.ry;card.append(uiButton(pinned?"Compass points here":"Point compass here",()=>{compassPin={rx:at.rx,ry:at.ry,name};rememberGuidance();openJournal("quests")}))}out.append(card)};
+  const row=(title,detail,at,name,follow=null,zone=null)=>{const card=document.createElement("div"),t=document.createElement("strong"),d=document.createElement("p");card.className="item";t.textContent=title;const away=at?Math.max(Math.abs(at.rx-game.rx),Math.abs(at.ry-game.ry)):0;d.textContent=detail+(at?` · section ${at.rx},${at.ry} · ${away?`${away} section${away===1?"":"s"} ${compassHeading(at.rx-game.rx,at.ry-game.ry)}`:"in this section"}`:"");card.append(t,d);
+    if(follow){const followed=compassChoiceIs(save.guidance,{follow});/* 2026-11-25: the one matcher (types.ts) */card.append(uiButton(followed?"Compass points here":"Point compass here",()=>{chooseGuidance({follow});openJournal("quests")}))}
+    else if(at){const pinned=compassChoiceIs(save.guidance,{pin:{rx:at.rx,ry:at.ry,name}});card.append(uiButton(pinned?"Compass points here":"Point compass here",()=>{compassPin={rx:at.rx,ry:at.ry,name,...(zone?{zone}:{})};rememberGuidance();openJournal("quests")}))}out.append(card)};
   const quests=activeQuests(),rumours=rumourLeads(save);if(!quests.length&&!rumours.length){const p=document.createElement("p");p.className="options-note";p.textContent="No leads yet. Talk to the people of the Refuge: Maud by the cairn has work. Viewport posts hunts; Old Quillon gives errands on the road.";out.append(p)}
   if(quests.length){const qh=document.createElement("h3");qh.textContent="Quests";out.append(qh)}
   for(const q of quests)row(q.title,q.detail,q.at,q.title,q.follow);
-  if(rumours.length){const rh=document.createElement("h3");rh.textContent="Rumours";out.append(rh);for(const r of rumours)row(r.title,r.detail,r.at||null,r.title)}
+  if(rumours.length){const rh=document.createElement("h3");rh.textContent="Rumours";out.append(rh);for(const r of rumours)row(r.title,r.detail,r.at||null,r.title,null,r.zone||null)}
   {const ms=milestonesUnderWay(save);if(ms.length){const mh=document.createElement("h3");mh.textContent="Milestones";out.append(mh);for(const m of ms)row(m.line,`Something answers at ${m.need.toLocaleString("en-US")}.`,null,m.line)}} // Phase 6: each shown from its first count
   {const ts=threadLeads();if(ts.length){const th=document.createElement("h3");th.textContent="Threads";out.append(th);for(const t of ts)row(t.title,t.detail,null,t.title)}} // Phase 7: a hinted thread reward, once its thread is begun
   const near=objectiveList().filter((o)=>o.kind==="challenge");if(near.length){const h2=document.createElement("h3");h2.textContent="Unfinished challenges you have found";out.append(h2);for(const o of near)row(o.name,"Not yet cleared",{rx:o.rx,ry:o.ry},o.name)}
@@ -927,7 +996,7 @@ function compassMenuData(){
   if(game.area==="dungeon")return compassMenuModel({area:"dungeon",here,doors:dungeonCompassPoints(),doorPick:dungeonCompassPick});
   if(game.area!=="overworld")return compassMenuModel({area:game.area});
   syncGuidance();const objectives=objectiveList().map(o=>({...o,tag:OBJECTIVE_KINDS[o.kind]?.label||""}));
-  return compassMenuModel({area:"overworld",here,quests:[...activeQuests(),...rumourLeads(save).filter((r)=>r.at).map((r)=>({title:r.title,detail:r.detail,at:r.at}))]/* Phase 4: rumours with a place */,objectives,waypoint:save.manualWaypoint,marks:save.mapMarks,pin:compassPin,follow:compassPin?null:compassFollow,pickKey:compassPin||compassFollow?null:compassPick}); // exactly the choice (Tim, 2026-11-19)
+  return compassMenuModel({area:"overworld",here,quests:[...activeQuests(),...rumourLeads(save).filter((r)=>r.at).map((r)=>({title:r.title,detail:r.detail,at:r.at,...(r.zone?{zone:r.zone}:{})}))]/* Phase 4: rumours with a place */,objectives,waypoint:save.manualWaypoint,marks:save.mapMarks,pin:compassPin,follow:compassPin?null:compassFollow,pickKey:compassPin||compassFollow?null:compassPick}); // exactly the choice (Tim, 2026-11-19)
 }
 function renderCompassMenu(){
   const m=compassMenuData(),out=[];
@@ -953,7 +1022,7 @@ function chooseCompassTarget(r){
   const c=r.choose;
   if(c.kind==="door"){dungeonCompassPick=c.id;compassArrivalReset(compassArrival)}
   else if(c.kind==="pick")chooseGuidance({pick:c.key}); // 2026-11-19 (Tim): nothing leads a choice any more, so a pick is only a pick
-  else if(c.kind==="pin")chooseGuidance({pin:{rx:c.rx,ry:c.ry,name:c.name}});
+  else if(c.kind==="pin")chooseGuidance({pin:{rx:c.rx,ry:c.ry,name:c.name,...(c.zone?{zone:c.zone}:{})}});
   else if(c.kind==="follow")chooseGuidance({follow:c.follow}); // a hunt or quest followed, or one of your markers (opt-in)
   else chooseGuidance();
   closeCompassMenu();
@@ -1597,7 +1666,7 @@ function renderFarGate(out){
   const where=cyc.cycle>=3?(cyc.state==="away"&&f.moves?`The Listener's Mouth: ${c.rx}, ${c.ry}. The Listener has left it; answer ${moveIn} (restore or sever) and the Mouth moves, with a Listener waiting at the new one.`:cyc.state==="away"?`The Listener's Mouth: ${c.rx}, ${c.ry}. The Listener is away; answer ${relays} (restore or sever) and a Listener returns to this Mouth. The Mouth moves in ${moveIn}.`:`The Listener's Mouth: ${c.rx}, ${c.ry}. A Listener waits there${f.listeners?", beyond the Listener's Dais beside the Mouth":", in the Mouth's next run"}. The Mouth moves in ${moveIn}.`):cyc.state==="unlocked"?`The Gate is unlocked. The Mouth at ${c.rx}, ${c.ry} is spent: a town and a way into the Deep. No coordinate for the next Mouth yet: answer ${relays} (restore or sever) and the line will give it.`:cyc.state==="away"?`The Listener's Mouth: ${c.rx}, ${c.ry}. The Listener is away; answer ${relays} (restore or sever) and a Listener returns to this Mouth.`:`The Listener's Mouth: ${c.rx}, ${c.ry}. A Listener waits there${f.listeners?", beyond the Listener's Dais beside the Mouth":", in the Mouth's next run"}${LISTENER_CYCLE.sealsCall&&f.pieces<piecesNeeded(f.gate)?` once the seals of its call are broken (${f.pieces}/${piecesNeeded(f.gate)})`:""}.`;
   if(cyc.cycle>=3)p.textContent=`${where} Gate ${f.gate} pieces: ${cyc.pieces}/${cyc.piecesToUnlock}. Each Listener you fell locks one, and so does each Gate Revenant horde you break; ${left} more unlock the Gate. Every ${LISTENER_CYCLE.moveRelays} relays the Mouth moves farther out and a Listener waits at the new one; the pieces go with you, and every old Mouth stays a town. Relays answered: ${lean.answered} (${lean.restored} restored, ${lean.severed} severed); every relay answered makes the Listener stronger, and it ${form==="open"?"wears your face":form==="walled"?"starves behind walls":"is both, by turns"}.`;
   else p.textContent=`${where} Gate ${f.gate} pieces: ${cyc.pieces}/${cyc.piecesToUnlock}. Each Listener you fell locks one, and so does each Gate Revenant horde you break; ${left} more unlock the Gate, and then ${R} more relays give a new Mouth. After every kill the Listener leaves, and ${R} more relays call it back to this Mouth until its Gate is unlocked. Relays answered: ${lean.answered} (${lean.restored} restored, ${lean.severed} severed); every relay answered makes the Listener stronger, and it ${form==="open"?"wears your face":form==="walled"?"starves behind walls":"is both, by turns"}.`;
-  if(cyc.coordinate){const pinned=compassPin?.rx===c.rx&&compassPin?.ry===c.ry;out.append(uiButton(pinned?"The compass points to the Mouth":"Point compass to the Array Mouth",()=>{compassPin={rx:c.rx,ry:c.ry,name:"The Array Mouth"};rememberGuidance();openJournal("gate")}));} // release 443 (Tim: "a button... make this your active compass... so I can just start navigating to it")
+  if(cyc.coordinate){const pinned=compassChoiceIs(save.guidance,{pin:{rx:c.rx,ry:c.ry,name:"The Array Mouth"}});out.append(uiButton(pinned?"The compass points to the Mouth":"Point compass to the Array Mouth",()=>{compassPin={rx:c.rx,ry:c.ry,name:"The Array Mouth"};rememberGuidance();openJournal("gate")}));} // release 443 (Tim: "a button... make this your active compass... so I can just start navigating to it")
   const canvas=document.createElement("canvas");canvas.width=300;canvas.height=220;canvas.style.width="100%";canvas.style.maxWidth="300px";canvas.style.display="block";canvas.style.margin="8px auto";out.append(canvas);drawGate(canvas,f);
   const stats=document.createElement("p");stats.className="options-note";stats.textContent=`Runs ${f.runs} · Listeners felled ${f.listeners}${f.ending?` · You chose to ${f.ending==="close"?"close the last line":"leave the line open"}`:""}`;out.append(stats);
   if(f.offer.length){const t=document.createElement("h3");t.textContent="Choose a boon";out.append(t);for(const id of f.offer){const b=BOONS[id];out.append(settingRow(b.name,uiButton("Take",()=>{chooseBoon(save,id);syncCharacterStats(save);persist();openJournal("gate")}),b.text))}}
@@ -1752,7 +1821,7 @@ async function handOverJourney(button,{yard=null,say=optionMessage,place="the Pr
   if(saveBlocked())return say(`This journey is not being saved just now, so ${place} cannot take a copy of it.`,true);
   const target=new URL(PROVING_GROUND_HANDOFF.entryPath,location.href).href;button.disabled=true;say(`Saving your journey for ${place}…`);
   try{if(!navigator.onLine){const reg=await navigator.serviceWorker?.getRegistration?.(target);if(!reg?.scope?.endsWith("/proving-ground/"))throw new Error("it needs one online visit before it works offline")}
-    const result=await journeyOperation.run(async()=>{await persist();await flushSaves();await writeHandoff(handoffRecord(save,{release:1067,slot:getActiveSlot(),returnUrl:location.href.split("#")[0],yard}))});
+    const result=await journeyOperation.run(async()=>{await persist();await flushSaves();await writeHandoff(handoffRecord(save,{release:1068,slot:getActiveSlot(),returnUrl:location.href.split("#")[0],yard}))});
     if(result.busy){button.disabled=false;return say("Another journey operation is already finishing.",true)}
     leavingForProvingGround=true;setTimeout(()=>{leavingForProvingGround=false},5000);location.assign(target)}
   catch(error){button.disabled=false;say(`Could not enter ${place} (${error?.message||error}). Your journey is unchanged.`,true)}}
@@ -1781,7 +1850,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)),settingRow("Soundtrack",selectSetting("soundtrack",[["adaptive","Adaptive"],["calm","Calm only"]]),"Adaptive: the music grows urgent in a fight and settles after. Calm only: no combat lift."),settingRow("Music in background",toggleSetting("backgroundMusic"),"Keeps the music playing when you switch apps or lock the screen. The game stays paused and effects are silent. Lock-screen play and pause control the music only."));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:1067,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 1067\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:1068,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 1068\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);provingGroundRows(grid); // release 791
@@ -1793,7 +1862,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};{const T=sectionTerrainCacheStats();probeTerrain={hits:T.hits,misses:T.misses,warms:crossWarms}}probePhases={};probePrevious=null;probe.start({release:1067,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};{const T=sectionTerrainCacheStats();probeTerrain={hits:T.hits,misses:T.misses,warms:crossWarms}}probePhases={};probePrevious=null;probe.start({release:1068,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
