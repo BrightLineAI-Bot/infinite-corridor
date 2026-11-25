@@ -17,7 +17,7 @@ const legacyRig = (run) => { CV.CLOSE_VIEW_HOOKS.orbit = false; try { run(); } f
 
 // An open room: the Heart, the Wayfarer at the middle of its widest clear square, and foes placed by hand (clones of one).
 function room(scenario = 'heart', keep = false) {
-  const f = createLabFixture({ lab: 'close-view', scenario, now: 1000 }), g = f.game, w = g.map.width, h = g.map.height, open = (x, y) => x >= 0 && y >= 0 && x < w && y < h && !g.map.tiles[y * w + x].blocked;
+  const f = createLabFixture({ lab: 'close-view', scenario, now: 1000 }), g = f.game; g.save.closeViewPreset = 'standard'; /* 2026-11-25: the standard preset's numbers (the default before overShoulder) */ const w = g.map.width, h = g.map.height, open = (x, y) => x >= 0 && y >= 0 && x < w && y < h && !g.map.tiles[y * w + x].blocked;
   let best = null; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let r = 0; while (r < 6) { let ok = true; for (let dy = -r - 1; dy <= r + 1 && ok; dy++) for (let dx = -r - 1; dx <= r + 1 && ok; dx++) ok = open(x + dx, y + dy); if (!ok) break; r++; } if (!best || r > best.r) best = { x, y, r }; }
   const proto = g.enemies.find((e) => !e.dead) || g.enemies[0]; for (const e of g.enemies) e.dead = true;
   const foe = (id, dx, dy, extra = {}) => { const e = { ...proto, id, x: best.x + dx, y: best.y + dy, dead: false, hidden: false, ambient: false, hp: 50, maxHp: 50, ...extra }; g.enemies.push(e); return e; };

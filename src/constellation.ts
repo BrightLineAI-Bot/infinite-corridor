@@ -11,7 +11,7 @@
 import { unharmablePerson } from "./townsfolk.ts"; // Tim (2026-11-20): no non-hostile person can be harmed
 import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade, APERTURE_BANDS, apertureBand, isQuandrixStaff, weaponKey, rangedWeapon, explorationGateOpen } from "./items.ts";
 import { HAMMER_CLAP } from "./brawler-spells.ts"; // the awakened Hammerfall's clap (2026-11-14)
-import { resonancesOf, RESONANCES, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.ts";
+import { resonancesOf, RESONANCES, normalizeSockets, AWAKENED_SOCKETS, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.ts";
 import { pairingMods } from "./spell-slots.ts";
 import { latticePassives, toggleLatticeSlot } from "./transit-lattice.ts";
 import { fieldForm, FIELD_KEYS, TOOL_FORM_KEYS } from "./lattice-fields.ts";
@@ -462,8 +462,8 @@ export function awaken(save, slot) {
   if ((save.materials.lumenDust || 0) < AWAKEN_COST) return { ok: false, message: `Awakening needs ${AWAKEN_COST} lumen dust.` };
   save.materials.lumenDust -= AWAKEN_COST;
   const item = save.equipment[slot];
-  item.awakened = { resonance: check.resonance, version: CONSTELLATION_VERSION };
-  return { ok: true, message: `${item.name} awakens in ${RESONANCES[check.resonance].name}. ${slot === "primary" ? isQuandrixStaff(item) ? "Hold Attack to slam your last hand down; let go in the ring's gold window for a perfect burst. Let go early and it stays, working, until its charge runs out." : `${awakenedMove(item).name}: ${awakenedMove(item).text}.` : awakenedToolText(item, true)}` };
+  item.awakened = { resonance: check.resonance, version: CONSTELLATION_VERSION }; normalizeSockets(item); // 2026-11-25: and opens AWAKENED_SOCKETS more glyph sockets (glyphs.ts socketCount)
+  return { ok: true, message: `${item.name} awakens in ${RESONANCES[check.resonance].name}, and opens ${AWAKENED_SOCKETS === 1 ? "a new glyph socket" : `${AWAKENED_SOCKETS} new glyph sockets`}. ${slot === "primary" ? isQuandrixStaff(item) ? "Hold Attack to slam your last hand down; let go in the ring's gold window for a perfect burst. Let go early and it stays, working, until its charge runs out." : `${awakenedMove(item).name}: ${awakenedMove(item).text}.` : awakenedToolText(item, true)}` };
 }
 // An awakened tool: the Hammerfall claps (brawler-spells.ts HAMMER_CLAP), the Great Sweep freezes what its blades touch (great-sweep.ts SWEEP_FREEZE); every other tool fans its shots.
 function awakenedToolText(item, sentence = false) {

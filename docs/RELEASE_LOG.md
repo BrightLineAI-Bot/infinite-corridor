@@ -15,12 +15,20 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1058 (this merge, #730); production still serves `r1050-2ea30cdbc905` (Publish run 44858081445 succeeded; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1066 (this merge, #738); production serves `r1059-3629aeded9d0` (Publish run 195, 45646565675, succeeded 2026-11-25; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 1066 | Claude | claude/starfield-edges / #738 | Rarer Starfields on new ground, safe rims on all raised ground | Merged (#738); preview follows. |
+| 1065 | Claude | claude/aim-camera-fixes / #737 | Aim follows the lock, skyway shot height, over-the-shoulder default camera, Journal crossings fold | Merged (#737); preview follows. |
+| 1064 | Claude | claude/mouth-moves / #736 | The Listener's Mouth moves every five relays (cycle v3), with a new town each time | Merged (#736); preview follows. |
+| 1063 | Claude | claude/apato-sockets-focus / #735 | Earth Resolve 15%/8%, the Apatosaurus from Infinite IV, awakening adds a socket, Quandrix hands hit harder | Merged (#735); preview follows. |
+| 1062 | Claude | claude/charge-holds / #734 | Reliable charged attacks on touch: no long-press menu, holds survive, Quandrix tap-tap-hold slam, Carbine and Iron Fists held presses, Gathered Breath beads | Merged (#734); preview follows. |
+| 1061 | Claude | claude/stag-fight-stutter / #733 | Briar Stag fight stutter: Stalker pool/mist prowl crash, dodges through crowding bodies, coalesced autosave in fights | Merged (#733); preview follows. |
+| 1060 | Claude | claude/completable-goals / #732 | Every offered goal can be completed: thread carriers guaranteed (story v7), burn and magma milestones count every source, horde lead told, Blade Stream lanterns, Sela's Pumice Seed | Merged (#732); preview follows. |
+| 1059 | Claude | claude/sea-lane-domains / #731 | Sea-lane pre-check no longer refuses lanes into far domains (pre-publish review blocker) | Merged (#731); preview follows. |
 | 1058 | Claude | claude/auto-salvage-dupes / #730 | Duplicate gear salvages itself (on pickup and once on load), with a Keep duplicate gear toggle | Merged (#730); preview follows. |
 | 1057 | Claude | claude/paths-model / #729 | Paths part 1: the read-only progression model, three Arcanum message fixes, a first Paths tab | Merged (#729); preview follows. |
 | 1056 | Claude | claude/great-tree-fix / #728 | Great trees: the crown only by the climb, real falls and glides, no crown death loop | Merged (#728); preview follows. |

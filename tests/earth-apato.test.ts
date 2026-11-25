@@ -22,6 +22,7 @@ import { createCombatant } from '../src/combat.ts';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { Game, generatePinnedDungeon, PLAYER_CLOCKS, RESUME_PLAYER_CLOCKS } from '../src/game.ts';
 import { ensureWorldBeasts } from '../src/world-beasts.ts';
+import { APERTURE_THRESHOLDS } from '../src/world.ts';
 
 const MOVES = MONSTER_PACK.earthApato.attacks, CLONE_MOVES = MONSTER_PACK.apatoClone.attacks;
 // Starts `id` now (as the brain would, aimed at the Wayfarer) and runs `seconds`; returns what happened.
@@ -207,10 +208,10 @@ test('big rooms: version-pinned per floor history; a floor generated before neve
   let held = 0; for (let i = 0; i < 300; i++) { const q = apatoRoomSpawn('S', `building:S:${i}:f1`, map, 'building'); if (q) { held++; assert.equal(q.kind, 'earthApato'); assert.ok(q.apatoRoom); } }
   assert.ok(held > 0 && held < 300 * APATO_ROOMS.chance * 2, `${held}`); assert.equal(apatoRoomSpawn('S', 'x', map, 'building', 0), null, 'no version, none');
   assert.equal(apatoRoomSpawn('S', 'x', map, 'dungeon', 1), null); assert.equal(apatoRoomSpawn('S', 'x', map, 'building', 1, true), null, 'a stego or Spinosaurus already there');
-  let found = null; for (let i = 0; i < 300 && !found; i++) { const s = freshSave(); s.seed = 'APATO-ROOMS'; const id = `building:APATO-ROOMS:${i}:2:${i % 2 ? 'keep' : 'apartment'}:4:f1`, m = generatePinnedDungeon(s, id);
+  let found = null; for (let i = 0; i < 300 && !found; i++) { const s = freshSave(); s.seed = 'APATO-ROOMS'; s.perception.aperture = APERTURE_THRESHOLDS[APATO_ROOMS.tier - 1]; /* 2026-11-25: rooms hold one only from Infinite IV */ const id = `building:APATO-ROOMS:${i}:2:${i % 2 ? 'keep' : 'apartment'}:4:f1`, m = generatePinnedDungeon(s, id);
     assert.equal(s.consequences.dungeons[id].apatoRooms, APATO_ROOMS.version); const q = m.enemySpawns.find((e) => e.kind === 'earthApato'); if (q) found = { id, m }; }
   assert.ok(found, 'some fresh floor holds one');
-  const s = freshSave(); s.seed = 'APATO-ROOMS'; generatePinnedDungeon(s, found.id); delete s.consequences.dungeons[found.id].apatoRooms; const m = generatePinnedDungeon(s, found.id);
+  const s = freshSave(); s.seed = 'APATO-ROOMS'; s.perception.aperture = APERTURE_THRESHOLDS[APATO_ROOMS.tier - 1]; generatePinnedDungeon(s, found.id); delete s.consequences.dungeons[found.id].apatoRooms; const m = generatePinnedDungeon(s, found.id);
   assert.ok(!m.enemySpawns.some((e) => e.kind === 'earthApato'), 'generated before: keeps what it had');
   const fresh = JSON.parse(JSON.stringify(found.m)); fresh.enemySpawns = fresh.enemySpawns.filter((e) => e.kind !== 'earthApato'); assert.equal(JSON.stringify(m), JSON.stringify(fresh), 'and is otherwise byte for byte the same floor');
 });
@@ -240,7 +241,7 @@ test('Earth Resolve (its Echo): planted only by an attack made standing still, a
 test('Earth Resolve: hits landed inside grow and extend it, to its caps; lifesteal inside; nothing outside; it never hurts a foe', () => {
   const { g, p } = resolveGame(), now = 50000; g.resolveMovedAt = 0; const q = earthResolvePlant(g, now), max = g.save.maxHp;
   const foe = createCombatant('rootBrute', p.x + 1, p.y, true, []); foe.hp = foe.maxHp = 500; g.enemies.push(foe);
-  p.hp = 50; assert.equal(earthResolveHit(g, 100, now), Math.floor(100 * APATO_ECHO.lifesteal), 'heals its share of the damage dealt'); assert.equal(p.hp, 50 + 10);
+  p.hp = 50; assert.equal(earthResolveHit(g, 100, now), Math.floor(100 * APATO_ECHO.lifesteal), 'heals its share of the damage dealt'); assert.equal(p.hp, 50 + 8); // 2026-11-25: lifesteal .1 → .08
   assert.ok(Math.abs(q.r - (APATO_ECHO.radius + APATO_ECHO.grow)) < 1e-9 && q.until === now + (APATO_ECHO.seconds + APATO_ECHO.extend) * 1000, 'grown and extended');
   for (let i = 0; i < 40; i++) earthResolveHit(g, 10, now); assert.equal(q.r, APATO_ECHO.maxRadius, 'to its largest'); assert.equal(q.until, q.at + APATO_ECHO.cap * 1000, 'never past 10 s');
   assert.equal(foe.hp, 500, 'it never touches a foe'); for (let t = 0; t < 30; t++) tickEarthResolve(g, now + t * 33); assert.equal(foe.hp, 500);
@@ -248,7 +249,7 @@ test('Earth Resolve: hits landed inside grow and extend it, to its caps; lifeste
   assert.equal(tickEarthResolve(g, now + 100), 1, 'outside: no guard'); p.x = q.x - .5; p.y = q.y - .45; assert.equal(tickEarthResolve(g, now + 100), 1 - APATO_ECHO.guard, 'inside: the guard');
   p.hp = max; p.invulnerableUntil = 0; g.update(1 / 30, still, now + 200); const a0 = p.hp; g.packHurt(null, 200, {}, now + 300); const inside = a0 - p.hp;
   p.x = q.x + 6; p.hp = max; p.invulnerableUntil = 0; g.update(1 / 30, still, now + 400); const b0 = p.hp; g.packHurt(null, 200, {}, now + 500); const outside = b0 - p.hp;
-  assert.ok(inside > 0 && inside < outside * .85, `less damage inside (${inside} vs ${outside})`);
+  assert.ok(inside > 0 && inside < outside && Math.abs(inside / outside - (1 - APATO_ECHO.guard)) < .03, `less damage inside, by the guard (${inside} vs ${outside})`); // 2026-11-25: guard .25 → .15 (was `< outside * .85`)
 });
 test('Earth Resolve resumes as the other Echo clocks: the cooldown comes back, the sigil does not', () => {
   assert.ok(PLAYER_CLOCKS.includes('echoResolveReadyAt') && RESUME_PLAYER_CLOCKS.includes('echoResolveReadyAt'));
