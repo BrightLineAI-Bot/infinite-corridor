@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Unreleased — less loot from monsters, every weapon and tool from the start
+
+Tim (2026-11-25): "Monsters should just drop less loot. I'm getting so much gear and so much cinder iron." and "Make all weapons and tools available from the start." His 42 h save held 61,491 cinder iron from 28,736 drops.
+
+**CODE:** `game.ts` `RANK_AND_FILE_LOOT` {version 1, stream `rank-and-file-gear:v1`, gear .5, dropIron 0, salvageShare .5, guardianRoles}, `DROP_IRON` 1, `rankAndFileKill(e)` (ordinary creatures, dungeon ecology foes and building respawns; not bosses, guardian roles, world or questing beasts, the Stalker, sea creatures, elites, champions and rares, Aperture encounters, summons), `rankAndFileGear(seed, areaId, id, counter)` (pure). `defeatEnemy` rolls it before `obtainDrop`; `respawnReward` multiplies `respawnDropRate` by `gear`. `obtainDrop` pays `dropIron` for a rank-and-file drop and passes `salvageShare` to `storeInventoryItem`/`salvageInventoryItem`; only the drop itself salvaged on arrival pays the share (rounded down, at least 1). `items.ts` `ORRERY_LOOT.band` 0 (was 13); `VENDOR_LOOT` lets vendor and dungeon stock roll the Orrery. Tests: `less-loot` (6); `great-sweep-orrery` and `pentagon-revived-loot` updated.
+
+**BOUNDARY:** Schema 14, no save change; no generator change; item rolls are byte for byte the same. Bosses, guardians, world beasts, elites, champions, Aperture encounters, chests, caches, one-time and milestone gifts, salvage tables, `ECONOMY`, glyph, Echo and Sigil drops, and the draught roll and its pity are unchanged. Measured: gear per ordinary kill 1.0 → 0.5; iron per ordinary kill about 4.9 → 1.0 mid and late game (2.5 → 0.5 early).
+
 ## Release 1058 — duplicate gear salvages itself
 
 Tim (2026-11-22): "We should just automatically salvage duplicates. There's no need to keep them." His 41-hour journey carried 63 pieces (16 Quiet Compasses, 8 Kiln Mantles, 8 Glassweave Coats, 7 Iron Fists, 5 Rift Bombards); a 70-minute one about 60. No release number is taken here.
