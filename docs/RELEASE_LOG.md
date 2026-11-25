@@ -15,13 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1058 (this merge, #PRNUM); production still serves `r1050-2ea30cdbc905` (Publish run 44858081445 succeeded; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1058 (this merge, #730); production still serves `r1050-2ea30cdbc905` (Publish run 44858081445 succeeded; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 1058 | Claude | claude/auto-salvage-dupes / #PRNUM | Duplicate gear salvages itself (on pickup and once on load), with a Keep duplicate gear toggle | Merged (#PRNUM); preview follows. |
+| 1058 | Claude | claude/auto-salvage-dupes / #730 | Duplicate gear salvages itself (on pickup and once on load), with a Keep duplicate gear toggle | Merged (#730); preview follows. |
 | 1057 | Claude | claude/paths-model / #729 | Paths part 1: the read-only progression model, three Arcanum message fixes, a first Paths tab | Merged (#729); preview follows. |
 | 1056 | Claude | claude/great-tree-fix / #728 | Great trees: the crown only by the climb, real falls and glides, no crown death loop | Merged (#728); preview follows. |
 | 1055 | Claude | claude/sim20h-fixes / #727 | Fixes from a 20-hour playthrough: sea-lane reload loop, kill ledger (smaller saves), pack resume, hatchling guards, quest-giver lines, wonder-lead cap, a way out when stranded, potion compendium | Merged (#727); preview follows. |
