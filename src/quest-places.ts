@@ -15,7 +15,7 @@
 // steps move on (questEvent: a kill, a salvage, a word with the giver, a token collected, a place cleared, a beast come home).
 import { rng, hashSeed } from "./random.ts";
 import { dungeonId, regionSettled, CROSSING_ROLLS } from "./world.ts";
-import { WONDERS } from "./wonders.ts";
+import { starfieldRolls, starPlaceAt } from "./wonders.ts";
 import { openSeaQuick, farSleepSection, SEA_FEATURES } from "./landscape.ts";
 import { canyonHere, canyonIdFor } from "./canyon.ts";
 import { skylandSection, SKY_PLACE } from "./skylands.ts";
@@ -57,14 +57,14 @@ export const QUEST_WORDS = Object.freeze({
 
 // ---------------------------------------------------------------- places
 // A Starfield crossing at section (x, y) not yet entered, or null: the section's landmark crossing (world.ts addDungeonLandmark's
-// own draws), its Starfield roll (game.ts chasmRoll; wonders.ts keeps the chance equal), and nothing that would make it something
+// own draws), its Starfield roll (game.ts chasmRoll, at the section's placement: wonders.ts STARFIELD_ROLL), and nothing that would make it something
 // else on first entry (game.ts generateDungeonFor: a Poison Crypt, unless it is a Deep Annex's first floor; the Far Sleep's halls).
 export function starfieldAt(save, x, y) {
   const seed = save?.seed, gen = Number(save?.worldGeneration) || 1;
   if ((x === 0 && y === 0) || regionSettled(x, y, seed) || farSleepSection(x, y)) return null;
   const r = rng(`${seed}:${CROSSING_ROLLS[0].key}:g${gen}:${x}:${y}`); if (r() >= CROSSING_ROLLS[0].chance) return null; r(); // its spot
   const id = dungeonId(seed, gen, x, y, `dungeon-g${gen}-${x}-${y}-${Math.floor(r() * 1e6)}`);
-  if ((hashSeed(`${seed}:chasm-crossing:v1:${id}`) % 1000) / 1000 >= WONDERS.chasmChance) return null;
+  if (!starfieldRolls(seed, id, starPlaceAt(save, x, y))) return null; // the section's Starfield placement (wonders.ts STARFIELD_ROLL)
   if (!annexRecord(seed, id, true) && rollMireCrypt(seed, id, QUEST_PLACES.layoutPool)) return null; // it might be a Poison Crypt
   if (openSeaQuick(seed, x, y)) return null; // an island's crossing: no boat asked for
   const h = save?.consequences?.dungeons?.[id];
