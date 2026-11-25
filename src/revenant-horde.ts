@@ -51,7 +51,7 @@ export function hordeKill(save, history) {
   }
   // Tim, 2026-11-05: "if you complete a Revenant horde dungeon it locks other pieces of the gate".
   const lock = lockGatePiece(save, "horde", f);
-  return { sigils, message: `${broken} ${lock.text}${lock.unlocked ? " The Listener leaves this Mouth for good: the next relays will give a new one." : ""}`, cleared: true, unlocked: lock.unlocked };
+  return { sigils, message: `${broken} ${lock.text}${lock.unlocked && f.cycle < 3 ? " The Listener leaves this Mouth for good: the next relays will give a new one." : ""}`, cleared: true, unlocked: lock.unlocked };
 }
 // The spawn points for a horde dungeon: open tiles far from the entrance, spread out.
 export function hordeSpawnPoints(map, entry, n = 6, reach = null) {

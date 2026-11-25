@@ -12,7 +12,7 @@ const answered = (n) => { const s = freshSave(); s.seed = 'LIST'; const net = en
 const answer = (s, i) => commitRelayNode(s, { areaId: `dungeon:LIST:g1:${i}:9:new` }, 'restore', { guardianDefeated: true });
 
 test('the first Listener is where it always was; after it falls the Mouth goes quiet until five more relays answer', () => {
-  const s = answered(6), first = { ...s.relayNetwork.coordinate };
+  const s = answered(6), first = { ...s.relayNetwork.coordinate }; s.farArray.cycle = 2; // 2026-11-25: the v2 move (v3: tests/listener-mouth-moves-v3.test.ts)
   assert.equal(ensureFarArray(s).quiet, false);
   s.farArray.toNext = 4; /* 2026-11-05 (LISTENER_CYCLE v2): the Mouth moves once its Gate is unlocked, five pieces */
   listenerFelled(s); assert.equal(s.farArray.quiet, true); assert.equal(relaysUntilReturn(s), LISTENER_RETURN.returnRelays);

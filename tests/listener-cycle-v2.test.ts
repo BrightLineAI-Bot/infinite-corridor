@@ -16,12 +16,12 @@ import { freshSave, migrateSave } from '../src/types.ts';
 let n = 0;
 const answer = (s, choice = n % 2 ? 'sever' : 'restore') => commitRelayNode(s, { areaId: `dungeon:${s.seed}:g1:${n++}:11:v2` }, choice, { guardianDefeated: true });
 const relays = (s, k) => { let last = null; for (let i = 0; i < k; i++) last = answer(s); return last; };
-const start = (seed = 'VTWO') => { n = 0; const s = freshSave(); s.seed = seed; relays(s, RELAY_TARGET); return s; };
+const start = (seed = 'VTWO') => { n = 0; const s = freshSave(); s.seed = seed; s.farArray.cycle = 2; /* 2026-11-25: pinned to the v2 cycle these tests describe */ relays(s, RELAY_TARGET); return s; };
 const reload = (s) => migrateSave(JSON.parse(JSON.stringify(s)));
 const kill = (s) => { const text = listenerFelled(s); s.narrative.journal.push({ recordId: `far-array:${s.farArray.runs++}`, title: 'The Far Gate', text }); ensureHometowns(s); grantCoordinates(s); return text; };
 
 test('the data table: five pieces a Gate, five relays a return, the relays are the call, towns on the first kill, coordinates per Gate', () => {
-  assert.equal(LISTENER_CYCLE.version, 2); assert.equal(LISTENER_CYCLE.gatePieces, 5); assert.equal(LISTENER_CYCLE.sealsCall, false); assert.equal(LISTENER_CYCLE.leavesAfterKill, true);
+  assert.equal(LISTENER_CYCLE.version, 3); /* 2026-11-25: v3 is current; these tests pin journeys at 2 */ assert.equal(LISTENER_CYCLE.gatePieces, 5); assert.equal(LISTENER_CYCLE.sealsCall, false); assert.equal(LISTENER_CYCLE.leavesAfterKill, true);
   assert.equal(LISTENER_RETURN.returnRelays, 5); assert.equal(HOMETOWNS.townWhen, 'kill'); assert.equal(TRANSIT_LATTICE.payPer, 'gate');
   for (const g of [1, 2, 4, 9]) { assert.equal(piecesToUnlock(g), 5); assert.equal(coordinatesForGate(g), 6); }
 });
@@ -106,7 +106,7 @@ function journey757({ toNext = 1, killAfterMove = true, gate = 4 } = {}) {
   s.narrative.facts['relay.networkAnswered'] = true; net.coordinate = { rx: 62, ry: -48 }; net.pastMouths = [{ rx: 50, ry: 46 }, { rx: -53, ry: -62 }, { rx: -50, ry: -44 }];
   const j = s.narrative.journal; j.push({ recordId: 'far-array:5', text: 'The Listener falls silent. ...' }, { recordId: 'listener-moved-1', text: '' }, { recordId: 'far-array:9', text: 'The Listener falls silent. ...' }, { recordId: 'listener-moved-2', text: '' }, { recordId: 'far-array:14', text: 'The Listener falls silent. ...' }, { recordId: 'listener-moved-3', text: '' }, { recordId: 'far-array:20', text: 'A seal of the Listener’s call breaks (2/6).' });
   if (killAfterMove) j.push({ recordId: 'far-array:24', text: 'The Listener falls silent. A piece of the Gate locks into place (1/4).' });
-  s.farArray = { v: 1, gate, pieces: 0, runs: 24, listeners: killAfterMove ? 4 : 3, boons: ['dead-line', 'open-line'], offer: ['far-signal', 'relay-step', 'deep-breath'], ending: 'close', endingPending: false, history: [], activeRun: null, quiet: false, relaysAt: 32, mouth: 3, toNext, custom: 'kept' };
+  s.farArray = { v: 1, gate, pieces: 0, runs: 24, listeners: killAfterMove ? 4 : 3, boons: ['dead-line', 'open-line'], offer: ['far-signal', 'relay-step', 'deep-breath'], ending: 'close', endingPending: false, history: [], activeRun: null, quiet: false, relaysAt: 32, mouth: 3, toNext, custom: 'kept', cycle: 2 };
   s.hometowns = { towns: [{ rx: 50, ry: 46, name: 'Mosscross', listener: 1, mouth: true }, { rx: -53, ry: -62, name: 'Brinewatch', listener: 2, mouth: true }, { rx: -50, ry: -44, name: 'Glassgate', listener: 3, mouth: true }], home: '50,46' };
   s.lattice = { coordinates: 17, paidFor: s.farArray.listeners, extra: { passive: 1, echo: 0 }, passives: [], echoes: [] };
   return s;
