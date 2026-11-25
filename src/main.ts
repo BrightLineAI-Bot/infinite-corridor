@@ -23,7 +23,7 @@ import { drawPentagonSigilIcon } from "./renderer.ts";
 import { closeViewSurfacePick } from "./close-view.ts"; // roof decks: the aimed Rift Step's tap
 import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, CLOSE_VIEW_PROPS, closeViewDrawsProps, closeViewPlaceAllowed, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewCompassRotation, closeViewBodyFacingYaw, compassFacingStep, closeViewScreenToWorld, mountCloseViewControls, closeViewLookActive, closeViewLookLabel, closeViewLookToggle, closeViewLookSet, closeViewLookActions, closeViewLookGuard, closeViewLookZoomBy, closeViewHomeZoomTake, createLookHold, closeViewPrewarmDue, prewarmCloseView, prewarmCloseViewGL } from "./close-view.ts"; // Close View (2026-11-06): interiors from behind the Wayfarer
 import { renderTimings } from "./renderer.ts";
-import { createProbe, PROBE } from "./diagnostic-probe.ts";
+import { createProbe, createDodgeWatch, PROBE } from "./diagnostic-probe.ts";
 import { vendorShop, buyFromVendor, walkerCrossingMap, shiftClocks, currentDungeonDoors, sectionTerrainCacheStats } from "./game.ts";
 import { IMBUE, imbueAmount, ESSENCE_WALK, essenceExempt, FIST_CALLOUT, fistStatusLevel } from "./brawler-spells.ts"; // Imbue Weapon: the Arcanum shows what it adds now; Essence Walk its costs
 import { sectionAtlasColor } from "./atlas-colors.ts";
@@ -175,7 +175,7 @@ function openShop(vendorId = "vendor-vela") {
   if (!panel.open) panel.showModal();
 }
 
-import { loadSave, saveGame, setWriteTimingListener, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, journeyStats, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, saveBlocked, markSlotDamaged, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.ts";
+import { loadSave, saveGame, autosaveDue, fightUnderway, setWriteTimingListener, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, journeyStats, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, saveBlocked, markSlotDamaged, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.ts";
 import {
   Game,
   actionReadiness,
@@ -300,9 +300,9 @@ setTimeout(() => {
         e.detail.clientX - r.left,
         e.detail.clientY - r.top,
       );
-    if (game.riftAimArmed?.()) { const at = closeViewSurfacePick(game, r.width, r.height, e.detail.clientX - r.left, e.detail.clientY - r.top); game.placeRiftAim(at ? at.x : q.x, at ? at.y : q.y, undefined, at ? at.z : null); persist(); return; } // RIFT_AIM: the tap after arming Rift Step picks its point (the ground or a roof under the finger)
+    if (game.riftAimArmed?.()) { const at = closeViewSurfacePick(game, r.width, r.height, e.detail.clientX - r.left, e.detail.clientY - r.top); game.placeRiftAim(at ? at.x : q.x, at ? at.y : q.y, undefined, at ? at.z : null); persistSoon(); return; } // RIFT_AIM: the tap after arming Rift Step picks its point (the ground or a roof under the finger)
     const hit = save.aimMode !== "build" && save.aimMode !== "act" && game.enemyAt(q.x, q.y); // release 309: tap a creature to lock on
-    if (!hit && game.placeShadowClone?.(q.x, q.y)) { persist(); return; } // release 365: the tap after a Shadow Clone sets it; 387: a tap on a creature locks it instead
+    if (!hit && game.placeShadowClone?.(q.x, q.y)) { persistSoon(); return; } // release 365: the tap after a Shadow Clone sets it; 387: a tap on a creature locks it instead
     if (hit) { game.lockTarget(hit.id); return; }
     game.aimAt(q.x, q.y);
     const direction = {
@@ -315,7 +315,7 @@ setTimeout(() => {
       game.fireSecondary(performance.now(), direction);
     else if (save.aimMode === "act") game.interactAt(q.x, q.y);
     else if (save.aimMode === "build") game.buildAt(q.x, q.y); // release 267: build mode
-    persist();
+    persistSoon(); // the Briar Stag fight stutter: coalesced (AUTOSAVE), not a save a tap
   });
   setInterval(() => {
     if (game.interactionRequested) {
@@ -364,7 +364,7 @@ game.deathBeat = VIEWPORT_CLOSED.fall; // Viewport Closed (2026-11-04): every de
 game.deathBeastBeat = VIEWPORT_CLOSED.fall + VIEWPORT_CLOSED.close; // with a great beast there, the world stays live (it looms over the corpse) until black
 function applyPresentationSettings(){/* release 345 beastTries: retired 2026-11-18 (world-beasts.ts BEAST_ENGAGEMENT); the setting is still kept in saved settings */game.damageNumbers=settings.damageNumbers!==false;/* release 461 */document.documentElement.style.setProperty("--ui-scale",String(settings.uiScale));document.documentElement.style.fontSize=`${16*settings.textScale}px`;document.body.classList.toggle("high-contrast",settings.highContrast);document.body.classList.toggle("reduce-motion",settings.reduceMotion||settings.safeMode);game.presentation={...settings,effectiveQuality:currentQuality()};if(audioGain)audioGain.gain.value=masterLevel();backgroundMusic.setMasterLevel(masterLevel());backgroundMusic.setEnabled(settings.backgroundMusic);if(musicBus)musicBus.gain.value=AUDIO_MIX.music*settings.musicVolume;if(director)director.calmOnly=settings.soundtrack==="calm";if(soundtrack)soundtrack.setQuality(currentQuality());if(battleSfx){battleSfx.setVolume(settings.effectsVolume);battleSfx.setQuality(currentQuality())}resize()}
 // Diagnostic probe (release 165): a timed recording started from Options → System; see diagnostic-probe.ts.
-const probe = createProbe(), PROBE_REPORT_KEY = "corridor-probe-report";
+const probe = createProbe(), probeDodge = createDodgeWatch(), PROBE_REPORT_KEY = "corridor-probe-report";
 setWriteTimingListener((t)=>probe.save(t)); // release 555: each save write, with the database's main-thread copy time
 let probePhases = {}, probeGround = { builds: 0, patches: 0 }, probeInterval = 0, probePrevious = null;
 // Perf spikes: what the render phase draws after render() (the dungeon systems and ranged effects; Viewport Closed), and the
@@ -377,7 +377,7 @@ function probeSample(interval){
   const T=sectionTerrainCacheStats(),terrain={hits:T.hits-probeTerrain.hits,misses:T.misses-probeTerrain.misses,warms:crossWarms-probeTerrain.warms};probeTerrain={hits:T.hits,misses:T.misses,warms:crossWarms};
   const parts={ground:renderTimings.ground,world:renderTimings.world,overlay:renderTimings.overlay,view:renderTimings.view,groundImage:renderTimings.groundImage,effects:probeRenderExtra.effects,viewport:probeRenderExtra.viewport};
   parts.other=Math.max(0,(probePhases.render||0)-parts.ground-parts.world-parts.overlay-parts.view-parts.effects-parts.viewport); // simClockDraw's own work, or anything else render() did not time (groundImage is inside ground)
-  const current={phases:probePhases,render:parts,ground,terrain,context:{area:game.area,aboard:!!save.boat?.aboard,openSea:!!game.map?.openSea,section:game.area==="overworld"?`${game.rx},${game.ry}`:String(game.areaId?.()||"").split(":").slice(-2).join(":"),enemies:game.enemies.length,projectiles:game.projectiles.length,effects:game.effects.length,visibleTiles:r.visibleTiles,visibleObjects:r.visibleObjects}};
+  const current={phases:probePhases,render:parts,ground,terrain,context:{area:game.area,steps:simClock.steps/* the Briar Stag fight stutter: world steps this frame (0 on about half the frames of a 120 Hz screen, by design) */,aboard:!!save.boat?.aboard,openSea:!!game.map?.openSea,section:game.area==="overworld"?`${game.rx},${game.ry}`:String(game.areaId?.()||"").split(":").slice(-2).join(":"),enemies:game.enemies.length,projectiles:game.projectiles.length,effects:game.effects.length,visibleTiles:r.visibleTiles,visibleObjects:r.visibleObjects}};
   // Release 167: the interval ending at this frame's start covers the previous frame (its work and the browser painting
   // it), so it is paired with that frame's phases; release 165 paired it with this frame's and misplaced every hitch.
   if(probePrevious)probe.frame({interval,...probePrevious});
@@ -1483,7 +1483,11 @@ resize();
 applyPresentationSettings();
 let leavingForProvingGround = false; // release 791: the journey was flushed for the Proving Ground and the page is leaving
 // Save hide fix (941 review): the save made as the page hides is written at once, not after a timer a hidden page throttles.
-const persist = (urgent = false) => leavingForProvingGround ? Promise.resolve() : measured("persist", () => saveGame(game.exportSnapshot(performance.now()), { urgent }));
+let saveWanted = false; // the Briar Stag fight stutter: a save asked for (persistSoon), made by the autosave below
+const persist = (urgent = false) => { clock = 0; saveWanted = false; return leavingForProvingGround ? Promise.resolve() : measured("persist", () => saveGame(game.exportSnapshot(performance.now()), { urgent })); };
+// The Briar Stag fight stutter (persistence.ts AUTOSAVE): a tap on the world or a resume asks for a save, and the autosave
+// makes it at the next calm moment (in a fight, with the fight's own cadence) instead of one long frame a tap.
+const persistSoon = () => { saveWanted = true; }, fightNow = () => fightUnderway(game); // fightNow: made once, asked only when a save is due
 function pause(show = true, urgent = false) {
   if (show) { overlayPause = false; closeViewLookSet(game, false, true); } // the pause menu ends Look mode; a talk, a shop or another panel over the world keeps it
   if (show) closeCompassMenu(false); // 2026-11-19: the pause menu closes the compass's quick menu (it stays paused under the menu)
@@ -1504,7 +1508,7 @@ function resume() {
   game.setPaused(false, performance.now());
   input.reset();
   last = performance.now();
-  persist();
+  persistSoon(); // the Briar Stag fight stutter: pause() saved as the game stopped; nothing has run since but the menus, which save their own changes
 }
 pausePanel.addEventListener("cancel",(event)=>event.preventDefault());
 // Release 125: Android's back gesture can close the pause menu even though its cancel is prevented (Chrome skips the
@@ -1745,7 +1749,7 @@ async function handOverJourney(button,{yard=null,say=optionMessage,place="the Pr
   if(saveBlocked())return say(`This journey is not being saved just now, so ${place} cannot take a copy of it.`,true);
   const target=new URL(PROVING_GROUND_HANDOFF.entryPath,location.href).href;button.disabled=true;say(`Saving your journey for ${place}…`);
   try{if(!navigator.onLine){const reg=await navigator.serviceWorker?.getRegistration?.(target);if(!reg?.scope?.endsWith("/proving-ground/"))throw new Error("it needs one online visit before it works offline")}
-    const result=await journeyOperation.run(async()=>{await persist();await flushSaves();await writeHandoff(handoffRecord(save,{release:1057,slot:getActiveSlot(),returnUrl:location.href.split("#")[0],yard}))});
+    const result=await journeyOperation.run(async()=>{await persist();await flushSaves();await writeHandoff(handoffRecord(save,{release:1061,slot:getActiveSlot(),returnUrl:location.href.split("#")[0],yard}))});
     if(result.busy){button.disabled=false;return say("Another journey operation is already finishing.",true)}
     leavingForProvingGround=true;setTimeout(()=>{leavingForProvingGround=false},5000);location.assign(target)}
   catch(error){button.disabled=false;say(`Could not enter ${place} (${error?.message||error}). Your journey is unchanged.`,true)}}
@@ -1757,6 +1761,9 @@ async function renderSettings(category){const grid=document.createElement("div")
     sel.value=save.fractured||"";const note=FRACTURED.modes[save.fractured]?.text||"Creatures as they have always been: a cleared place stays cleared.";
     sel.onchange=()=>{save.fractured=sel.value||null;persist();game.message=save.fractured?`${FRACTURED.modes[save.fractured].name} mode: the Corridor is breaking open. Towns, home and cleared dungeons stay safe.`:"Fractured mode off."};
     grid.append(settingRow("Fractured mode (this journey)",sel,`${note} More creatures, in packs with champions and rares, and more keep coming; towns, home, the Refuge lands and cleared dungeons stay safe. Takes full effect in the next place you enter.`));
+    // Spare gear (game.ts SPARE_GEAR, 2026-11-22): off by default, so spares are salvaged on pickup and once on load.
+    const dup=document.createElement("input");dup.type="checkbox";dup.checked=save.keepDuplicateGear===true;dup.onchange=()=>{if(dup.checked)save.keepDuplicateGear=true;else delete save.keepDuplicateGear;persist();game.message=dup.checked?"Duplicate gear is kept in your Pack.":"Spare duplicate gear is salvaged as you pick it up."};
+    grid.append(settingRow("Keep duplicate gear (this journey)",dup,"Off by default: a piece you pick up is salvaged at once when a piece of the same kind you keep matches or beats it on every count (tier, power, rank, sockets, glyphs, affixes), for what salvaging it by hand pays. Equipped, preset and sling gear is never touched."));
   }
   if(category==="Camera"){const cv=document.createElement("input");cv.type="checkbox";cv.checked=save.closeView===true;cv.onchange=()=>{save.closeView=cv.checked;persist();game.message=cv.checked?"Close View on: inside the Pentagon, buildings and keeps, the camera walks behind you.":"Close View off."};grid.append(settingRow("Close View: third-person camera indoors (prototype, this journey)",cv,"Off by default. Turn it on and step inside the Pentagon, a great building or a keep: a low camera follows behind the Wayfarer and turns with them; use the left joystick to walk the way the view looks. Drag the open screen outside the joystick to turn the view (or use the crescent, below); the bullseye at the right edge locks on. Hold the stick back toward the camera and swipe down on the right for a quick turnaround. Use Overworld Close View for courts, roofs and the rest of the game."));
     const worldCv=document.createElement("input");
@@ -1771,7 +1778,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)),settingRow("Soundtrack",selectSetting("soundtrack",[["adaptive","Adaptive"],["calm","Calm only"]]),"Adaptive: the music grows urgent in a fight and settles after. Calm only: no combat lift."),settingRow("Music in background",toggleSetting("backgroundMusic"),"Keeps the music playing when you switch apps or lock the screen. The game stays paused and effects are silent. Lock-screen play and pause control the music only."));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:1057,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 1057\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:1061,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 1061\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);provingGroundRows(grid); // release 791
@@ -1783,7 +1790,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};{const T=sectionTerrainCacheStats();probeTerrain={hits:T.hits,misses:T.misses,warms:crossWarms}}probePhases={};probePrevious=null;probe.start({release:1057,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};{const T=sectionTerrainCacheStats();probeTerrain={hits:T.hits,misses:T.misses,warms:crossWarms}}probePhases={};probePrevious=null;probe.start({release:1061,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -2969,11 +2976,11 @@ function frame(now) {
   if(tickScene(now))return;
   const viewportBefore = viewportSeq ? viewportClosedStage(viewportSeq, viewportReduced()) : null;
   // Release 281 (Tim's Dodge probes): the probe records what became of every Dodge press: dodged (and how far), or why not.
-  const dodgeAsked = probe.running && input.state.dodge ? { x: game.player.x, y: game.player.y, stamina: game.player.stamina, held: now < (game.player.heldUntil || 0), stunned: now < (game.player.stunnedUntil || 0) } : null;
+  const dodgeAsked = probe.running && input.state.dodge; if (dodgeAsked) probeDodge.before(game.player, now); // the Briar Stag fight stutter (diagnostic-probe.ts createDodgeWatch): one event a press, the whole dodge's ground
   if (!viewportBefore || viewportBefore.world) measured("update", () => simClockStep(simClock, game, dt, now, (stepDt, stepNow) => { const steer = !viewportSeq && closeViewSteer(game, input.state, stepNow); try { game.update(stepDt, viewportSeq ? VIEWPORT_QUIET_INPUT : input, stepNow); } finally { if (steer) closeViewUnsteer(input.state); } })); /* feel pass 1 (sim-clock.ts): the clamped frame dt feeds fixed 60 Hz steps, each at its own time */ // Close View: movement relative to the view
   duelSounds(); // the dino duel's sounds of battle (battle-sfx.ts)
   if (game.parryCue) { game.parryCue = false; playNoticeSound("parry"); } // Power Aegis: a perfect parry's ring (hit-cast-passives.ts POWER_AEGIS)
-  if (dodgeAsked) probe.event("dodge", game.player.dodgeUntil > now ? { result: "dodged", stamina: Math.round(dodgeAsked.stamina), moved: Math.round(Math.hypot(game.player.x - dodgeAsked.x, game.player.y - dodgeAsked.y) * 100) / 100 } : { result: dodgeAsked.stunned ? "stunned" : dodgeAsked.held ? "held (struggle)" : dodgeAsked.stamina < 15 ? "no stamina" : "refused", stamina: Math.round(dodgeAsked.stamina) });
+  if (probe.running) { const refused = dodgeAsked ? probeDodge.after(game.player, now, !input.state.dodge) : null, dodged = probeDodge.end(game.player, now); if (refused) probe.event("dodge", refused); if (dodged) probe.event("dodge", dodged); }
   closeViewLookGuard(game); // Look mode ends with a new area, death or leaving Close View (the pause menu, Pack, Map and Journal end it as they open)
   if (game.paused) return;
   const viewportStage = viewportFrame(probeInterval / 1000, now);
@@ -3025,10 +3032,7 @@ function frame(now) {
     if(probe.running){const left=Math.ceil(probe.remaining);buffs.push(`PROBE ${Math.floor(left/60)}:${String(left%60).padStart(2,"0")}`)}
     $("#buff").textContent = buffs.join(" · ");
   }
-  if ((clock += dt) > 8) {
-    clock = 0;
-    persist();
-  }
+  if (autosaveDue(clock += dt, saveWanted, fightNow)) persist(); // persistence.ts AUTOSAVE: 8 s calm, 30 s in a fight
   } catch(error) {
     console.error("Infinite Corridor frame recovered from an error",error);
     game.message="The Corridor stuttered, then found its rhythm again.";
