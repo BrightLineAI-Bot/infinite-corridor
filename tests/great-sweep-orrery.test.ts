@@ -57,15 +57,16 @@ function play(g: any, foes: any[], from: number, ms: number, input: any = calm, 
 }
 
 // ---------------------------------------------------------------- the Aether Orrery drops
-test('the Aether Orrery drops from its own versioned stream: about one tool drop in thirteen once its gift band is reached', () => {
-  assert.ok(Object.isFrozen(ORRERY_LOOT)); assert.equal(ORRERY_LOOT.stream, 'aether-orrery-loot:v1'); assert.equal(ORRERY_LOOT.band, 13);
+test('the Aether Orrery drops from its own versioned stream: about one tool drop in thirteen, from the start', () => {
+  assert.ok(Object.isFrozen(ORRERY_LOOT)); assert.equal(ORRERY_LOOT.stream, 'aether-orrery-loot:v1'); assert.equal(ORRERY_LOOT.band, 0, '2026-11-25 (Tim): every weapon and tool from the start (was 13)');
   const s: any = freshSave(); s.seed = 'ORRERY-DROPS'; s.level = 31; s.perception.aperture = APERTURE_BANDS[18].threshold; // Tim: Infinite VIII, level 31
   const g: any = new Game(s, 0); let tools = 0, orr = 0;
   for (let i = 0; i < 6000; i++) { s.inventory = []; g.obtainDrop(i % 2 ? 'rootBrute' : 'chest', i % 3 === 0); const it = s.inventory[0]; if (it?.slot === 'secondary') { tools++; if (it.name === 'Aether Orrery') { orr++; assert.ok(isValidItem(it)); assert.equal(rangedWeapon(it).orrery, true); } } }
   const rate = orr / tools; assert.ok(rate > 1 / 20 && rate < 1 / 8, `1 in ${(tools / orr).toFixed(1)} tool drops`);
-  // below the band it never drops (it is still given once at the band, as before)
-  const low: any = freshSave(); low.seed = 'ORRERY-DROPS'; low.level = 31; low.perception.aperture = APERTURE_BANDS[12].threshold; const gl: any = new Game(low, 0);
-  for (let i = 0; i < 1500; i++) { low.inventory = []; gl.obtainDrop('chest'); assert.notEqual(low.inventory[0]?.name, 'Aether Orrery'); }
+  // 2026-11-25: below its gift's band it drops too (it is still given once at that band, as before)
+  const low: any = freshSave(); low.seed = 'ORRERY-DROPS'; low.level = 31; low.perception.aperture = 0; const gl: any = new Game(low, 0); let lowOrr = 0;
+  for (let i = 0; i < 1500; i++) { low.inventory = []; gl.obtainDrop('chest'); if (low.inventory[0]?.name === 'Aether Orrery') lowOrr++; }
+  assert.ok(lowOrr > 0, 'it drops at band 0');
 });
 
 test('existing seeds generate byte for byte as before; the Orrery roll only renames an ordinary secondary drop', () => {

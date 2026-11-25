@@ -975,8 +975,28 @@ function recordRelayChain(save, areaId) {
 // Only the ordinary kill's normal gear roll enters the Salvage Blade pool. Extra rarity drops and named/special foes retain
 // their established tables and deterministic streams; this also keeps static caches and shop stock outside the channel.
 export function ordinaryMonsterGearDrop(e) {
-  return !!e && !e.boss && !e.elite && !e.eliteId && !e.unique && !e.worldBoss && !e.worldBeast && !e.questingBeast && !e.stalker && !e.seaKind && !e.apertureEncounter && !e.dungeonRole && !e.fracRank && !e.fracReinforcement && !e.domainReinforcement && !e.summonedBy && !e.noRewards && !isCrossingGuardian(e);
+  return rankAndFileFoe(e) && !e.dungeonRole;
 }
+const rankAndFileFoe = (e) => !!e && !e.boss && !e.elite && !e.eliteId && !e.unique && !e.worldBoss && !e.worldBeast && !e.questingBeast && !e.stalker && !e.seaKind && !e.apertureEncounter && !e.fracRank && !e.fracReinforcement && !e.domainReinforcement && !e.summonedBy && !e.noRewards && !isCrossingGuardian(e);
+// Less loot from monsters (Tim, 2026-11-25: "Monsters should just drop less loot. I'm getting so much gear and so much cinder
+// iron. It's totally broken."). The rank and file (rankAndFileKill: an ordinary creature, a dungeon's ordinary foe, which carries
+// its ecology role in `dungeonRole` (any role but `guardianRoles`), and a building's respawned creature) drop a piece only `gear` of the time,
+// from their own seeded stream (`stream`, keyed by the journey, the area, the foe and the drop counter); a piece they drop pays
+// `dropIron` cinder iron with it (every other drop still pays DROP_IRON), and when that piece is salvaged on arrival (a spare,
+// or the least-kept piece of a full pack) it pays `salvageShare` of its tier's salvage iron (rounded down, at least 1). Bosses,
+// guardians, world beasts, elites, champions and rares, Aperture encounters, chests, caches and every one-time reward are
+// unchanged, and so is the draught roll and its pity (game.ts defeatEnemy). Measured in tests/less-loot.test.ts.
+export const RANK_AND_FILE_LOOT = Object.freeze({ version: 1, stream: "rank-and-file-gear:v1", gear: .5, dropIron: 0, salvageShare: .5,
+  guardianRoles: Object.freeze(["gateWarden", "objectiveGuardian", "wingMiniboss", "finalBoss", "skyland", "seedRealmHeart", "canyonWarden"]) });
+export const DROP_IRON = 1; // the cinder iron every other drop brings (as before)
+export function rankAndFileKill(e) {
+  return rankAndFileFoe(e) && !(e.dungeonRole && RANK_AND_FILE_LOOT.guardianRoles.includes(e.dungeonRole));
+}
+// Whether this rank-and-file kill drops its piece. Pure: the same journey, area, foe and drop counter answer the same.
+export function rankAndFileGear(seed, areaId, id, counter) {
+  const L = RANK_AND_FILE_LOOT; return L.gear >= 1 || hashSeed(`${seed}:${L.stream}:${areaId}:${id}:${counter}`) % 1000 < L.gear * 1000;
+}
+const sharedIron = (iron, share) => (share >= 1 ? iron : share > 0 ? Math.max(1, Math.floor(iron * share)) : 0);
 const MILESTONE_GEAR = [
   [4, { id: "milestone-cinder-pike", name: "Cinder Pike", slot: "primary", power: 5, property: "reach" }],
   [8, { id: "milestone-needle-caster", name: "Needle Caster", slot: "secondary", power: 8, property: "quick" }],
@@ -1064,11 +1084,11 @@ export function regiftOrreryGear(save) {
 export const ECONOMY = { autoSalvageShare: 1, marks: { boss: 6, aperture: 3, common: 1 } };
 const salvageIron = (item) => SMITHY.salvage.iron[itemTier(item)] ?? 1;
 const autoSalvageIron = (item) => ECONOMY.autoSalvageShare > 0 ? Math.max(1, Math.floor(salvageIron(item) * ECONOMY.autoSalvageShare)) : 0;
-export function salvageInventoryItem(save, index, auto = false) {
+export function salvageInventoryItem(save, index, auto = false, share = 1) {
   const item = save.inventory?.[index];
   if (!item) return null;
   save.inventory.splice(index, 1);
-  const paid = paySalvage(save, auto ? autoSalvageIron(item) : salvageIron(item)); // 2026-11-18: cinder iron or lumen dust (smithy.ts SALVAGE_YIELD)
+  const paid = paySalvage(save, sharedIron(auto ? autoSalvageIron(item) : salvageIron(item), share)); // `share`: RANK_AND_FILE_LOOT.salvageShare for a rank-and-file drop salvaged on arrival // 2026-11-18: cinder iron or lumen dust (smithy.ts SALVAGE_YIELD)
   save.glyphDust = (save.glyphDust || 0) + salvageDust(item);
   for (const g of item.glyphs || []) if (g) save.glyphs[g] = (save.glyphs[g] || 0) + 1; // socketed glyphs come back
   return { item, iron: paid.iron, lumenDust: paid.lumenDust };
@@ -1128,13 +1148,15 @@ export function packVictim(save, spareBrawler = false) {
 // Spare gear (2026-11-22): a drop that is a spare of a piece you keep (SPARE_GEAR) is salvaged on arrival, by hand's own
 // salvage (`spare` lists it). A drop kept into a full pack makes room with the oldest copy of its kind it makes spare, when
 // there is one, before the full pack's own rule. Only the drop is judged otherwise: older copies are left as they are.
-export function storeInventoryItem(save, item, keep = false) {
+// `share` (2026-11-25, RANK_AND_FILE_LOOT.salvageShare): the share of its salvage iron the drop itself pays when it is salvaged on
+// arrival; a piece already in the pack that makes room pays in full.
+export function storeInventoryItem(save, item, keep = false, share = 1) {
   save.inventory ||= [];
-  if (keep || !spareSalvageOn(save) || !item || typeof item !== "object") return storeInPack(save, item, keep);
+  if (keep || !spareSalvageOn(save) || !item || typeof item !== "object") return storeInPack(save, item, keep, share);
   const n = save.inventory.length, plan = spareGearPlan(save, spareKind(item), item);
-  if (plan.includes(n)) { save.inventory.push(item); const r = salvageInventoryItem(save, n); return { stored: false, salvaged: item, iron: r.iron, lumenDust: r.lumenDust, spare: [r] }; }
+  if (plan.includes(n)) { save.inventory.push(item); const r = salvageInventoryItem(save, n, false, share); return { stored: false, salvaged: item, iron: r.iron, lumenDust: r.lumenDust, spare: [r] }; }
   if (plan.length && n >= EQUIPMENT_CAPACITY) { const r = salvageInventoryItem(save, plan[0]); save.inventory.push(item); return { stored: true, salvaged: r.item, iron: r.iron, lumenDust: r.lumenDust, spare: [r] }; }
-  return storeInPack(save, item, false);
+  return storeInPack(save, item, false, share);
 }
 // Spare gear (Tim, 2026-11-22: "We should just automatically salvage duplicates. There's no need to keep them."). A spare is a
 // piece in the pack of the same kind (slot, name and property: "Quiet Compass") as a piece you keep, which that kept piece
@@ -1218,7 +1240,7 @@ export function spareSalvageText(save, tally) {
   return `Salvaged ${what}: ${paid}`;
 }
 // The pack as stored before spare gear: room is made by the full pack's rule.
-function storeInPack(save, item, keep = false) {
+function storeInPack(save, item, keep = false, share = 1) {
   if (save.inventory.length < EQUIPMENT_CAPACITY) {
     save.inventory.push(item);
     return { stored: true, salvaged: null };
@@ -1231,7 +1253,7 @@ function storeInPack(save, item, keep = false) {
   const inv = save.inventory, n = inv.length, victim = packVictimIn(n + 1, (k) => (k === n ? item : inv[k]), (q, i) => (i === n ? !fresh && !keep : (!fresh || !isBrawlerGear(q)) && q?.refined !== true /* refinement: Divine Viscera went into it; only salvaged by hand */));
   const weakest = victim < 0 || victim === n ? packVictim(save, fresh) : victim;
   if (victim === n) { // release 545: a drop below everything you keep is salvaged (2026-11-18: within its slot, tier then power); at the same keep the oldest goes instead
-    const paid = paySalvage(save, autoSalvageIron(item)); // 2026-11-11: a full pack's salvage pays iron again (release 607 paid none); 2026-11-18: in the chosen yield
+    const paid = paySalvage(save, sharedIron(autoSalvageIron(item), share)); // 2026-11-11: a full pack's salvage pays iron again (release 607 paid none); 2026-11-18: in the chosen yield
     save.glyphDust = (save.glyphDust || 0) + salvageDust(item);
     return { stored: false, salvaged: item, iron: paid.iron, lumenDust: paid.lumenDust };
   }
@@ -2583,6 +2605,9 @@ export function updateEffects(effects, enemies, dt, onDefeat = () => {}, damageF
 function vendorRotation(save) {
   return Math.floor(Math.max(0, Object.keys(save.explored || {}).length - 1) / 4);
 }
+// 2026-11-25 (Tim: every weapon and tool from the start): stock rolled from now on may be an Aether Orrery (its own stream, so a
+// stock already stored for this rotation, and every other roll, is unchanged).
+const VENDOR_LOOT = Object.freeze({ orreryLoot: ORRERY_LOOT.version });
 function rotatingShop(save, vendorId, count = 2) {
   const rotation = vendorRotation(save), r = hashSeed(`${save.seed}:${vendorId}:stock:v2:${rotation}`);
   return {
@@ -2595,7 +2620,7 @@ function rotatingShop(save, vendorId, count = 2) {
     },
     purchased: {},
     equipment: Array.from({ length: count }, (_, i) =>
-      generateItem(`${save.seed}:${vendorId}:stock:v2:${rotation}:${i}`, Math.max(2, save.level + (i % 2))),
+      generateItem(`${save.seed}:${vendorId}:stock:v2:${rotation}:${i}`, Math.max(2, save.level + (i % 2)), VENDOR_LOOT), // 2026-11-25: the Aether Orrery can be stocked (items.ts ORRERY_LOOT)
     ),
   };
 }
@@ -2605,7 +2630,7 @@ function refreshShop(save, vendorId, shop, count) {
   if (shop.rotation === undefined) shop.rotation = rotation;
   return shop.rotation === rotation ? shop : rotatingShop(save, vendorId, count);
 }
-function dungeonShop(save,vendorId){const rotation=vendorRotation(save),prior=save.shops?.[vendorId];if(prior?.rotation===rotation&&prior.profile==="dungeon-relics")return prior;return{version:1,profile:"dungeon-relics",rotation,limited:{},purchased:{},equipment:Array.from({length:4},(_,i)=>generateItem(`${save.seed}:${vendorId}:relic-stock:v1:${rotation}:${i}`,Math.max(8,save.level+6+i%2)))}}
+function dungeonShop(save,vendorId){const rotation=vendorRotation(save),prior=save.shops?.[vendorId];if(prior?.rotation===rotation&&prior.profile==="dungeon-relics")return prior;return{version:1,profile:"dungeon-relics",rotation,limited:{},purchased:{},equipment:Array.from({length:4},(_,i)=>generateItem(`${save.seed}:${vendorId}:relic-stock:v1:${rotation}:${i}`,Math.max(8,save.level+6+i%2),VENDOR_LOOT))}}
 export function velaShop(save) {
   save.shop = refreshShop(save, "vendor-vela", save.shop, 3);
   if (save.shop.limited.crossingSigil === undefined)
@@ -9417,7 +9442,8 @@ export class Game {
       this.player.maxStamina = this.save.maxStamina;
       this.message = `Level ${this.save.level} reached — health and stamina increased. ${this.save.statPoints} stat point${this.save.statPoints === 1 ? "" : "s"} available in Pack.`;
     }
-    if (!e.fracReinforcement || hashSeed(`${this.save.seed}:frac-drop:${this.save.dropCounter}:${e.id}`) % 100 < FRACTURED.trashDrop * 100) this.obtainDrop(e.kind, ordinaryMonsterGearDrop(e)); // release 651: a reinforcement seldom drops
+    const ranks = rankAndFileKill(e); // RANK_AND_FILE_LOOT (2026-11-25): the rank and file drop less
+    if ((!e.fracReinforcement || hashSeed(`${this.save.seed}:frac-drop:${this.save.dropCounter}:${e.id}`) % 100 < FRACTURED.trashDrop * 100) && (!ranks || rankAndFileGear(this.save.seed, this.areaId(), e.id, this.save.dropCounter))) this.obtainDrop(e.kind, ordinaryMonsterGearDrop(e), ranks); // release 651: a reinforcement seldom drops
     if (e.fracRank) for (let i = 0; i < (e.fracRank === "rare" ? 2 : 1); i++) this.obtainDrop(e.kind); // champions and rares drop more
     if (!e.summonedBy && !e.noRewards) { const g = glyphDrop(this.save, `${this.areaId()}:${e.id}`, this.save.dropCounter, e.boss || isCrossingGuardian(e)); if (g) this.glyphNotice = `${GLYPHS[g].name} glyph recovered.`; }
     echoEvent(this, "kill", this.lastUpdateNow || 0, { enemy: e });
@@ -12040,8 +12066,8 @@ export class Game {
     if (levels) { this.player.hp = Math.min(this.save.maxHp, this.player.hp + this.save.maxHp - oldHp); this.player.stamina = Math.min(this.save.maxStamina, this.player.stamina + this.save.maxStamina - oldStamina); this.player.maxStamina = this.save.maxStamina; this.message = `Level ${this.save.level} reached — health and stamina increased. ${this.save.statPoints} stat point${this.save.statPoints === 1 ? "" : "s"} available in Pack.`; }
     else this.message = `Recovered ${R.marks} mark${R.marks === 1 ? "" : "s"} from the fallen creature.`;
     this.defeatNotice = enemyDefeatNotice(e, this.area);
-    const rate = respawnDropRate(respawnPlace(this.areaId())); // a Pentagon's respawned creatures drop as freshly laid ones do (Tim, 2026-11-12)
-    if (rate >= 1 || hashSeed(`${this.save.seed}:respawn-drop:${this.save.dropCounter}:${this.areaStateId()}:${e.id}`) % 1000 < rate * 1000) this.obtainDrop(e.kind, ordinaryMonsterGearDrop(e));
+    const ranks = rankAndFileKill(e), rate = respawnDropRate(respawnPlace(this.areaId())) * (ranks ? RANK_AND_FILE_LOOT.gear : 1); // a Pentagon's respawned creatures drop as freshly laid ones do (Tim, 2026-11-12), and the rank and file less (RANK_AND_FILE_LOOT)
+    if (rate >= 1 || hashSeed(`${this.save.seed}:respawn-drop:${this.save.dropCounter}:${this.areaStateId()}:${e.id}`) % 1000 < rate * 1000) this.obtainDrop(e.kind, ordinaryMonsterGearDrop(e), ranks);
     echoEvent(this, "kill", this.lastUpdateNow || 0, { enemy: e });
     onConstellationKill(this);
   }
@@ -12423,15 +12449,16 @@ export class Game {
     if (!this.glyphNotice || (prev && this.glyphNotice === prev.text)) this.glyphNotice = t.text;
     return t.text;
   }
-  obtainDrop(src, ordinaryMonster = false) {
+  // `rankAndFile` (RANK_AND_FILE_LOOT): the drop of a rank-and-file kill, which pays its own cinder iron and salvage share.
+  obtainDrop(src, ordinaryMonster = false, rankAndFile = false) {
     const n = this.save.dropCounter++;
     const deep = this.area === "dungeon" && this.map?.deepFloor ? lootBonus(this.map.deepFloor, deepShaft(this.save, this.areaId()).best) : 0; // release 677: deeper loot, only near your deepest floor
-    const orrery = APERTURE_BANDS.indexOf(apertureBand(this.save.perception?.aperture || 0)) >= ORRERY_LOOT.band ? ORRERY_LOOT.version : 0; // items.ts ORRERY_LOOT: the Aether Orrery drops once its gift's band is reached
+    const orrery = APERTURE_BANDS.indexOf(apertureBand(this.save.perception?.aperture || 0)) >= ORRERY_LOOT.band ? ORRERY_LOOT.version : 0; // items.ts ORRERY_LOOT: the Aether Orrery drops once its band is reached (band 0 since 2026-11-25: from the start)
     const item = generateItem(`${this.save.seed}:${src}:${n}`, this.save.level + deep, ordinaryMonster || orrery ? { ...(ordinaryMonster ? { ordinaryMonster: true } : {}), ...(orrery ? { orreryLoot: orrery } : {}) } : null);
-    const r = storeInventoryItem(this.save, item);
+    const r = storeInventoryItem(this.save, item, false, rankAndFile ? RANK_AND_FILE_LOOT.salvageShare : 1);
     if (r.spare?.length) this.noteSpare(r.spare); // SPARE_GEAR: one quiet line, merged while nothing else is said
     if (r.stored && (item.property === "brawler" || item.property === "orrery")) this.glyphNotice ||= `${item.name} found: it is in your Pack.`; // release 513: say so
-    this.save.materials.cinderIron++;
+    const iron = rankAndFile ? RANK_AND_FILE_LOOT.dropIron : DROP_IRON; if (iron > 0) this.save.materials.cinderIron = (Number(this.save.materials.cinderIron) || 0) + iron;
   }
   upgrade() {
     if (this.save.materials.cinderIron < 3) {
