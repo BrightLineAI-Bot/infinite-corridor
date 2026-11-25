@@ -1,3 +1,4 @@
+import { wayfarerBody } from "./journey-start.ts"; // the Wayfarer's body (Standard View: STD_FEMALE)
 import { hatchlingDraw, drawHatchMama, drawHatchPen } from "./hatchling-render.ts"; // the Triceratops hatchling
 import { FOURFOLD_DAGGERS, isQuandrixStaff } from "./items.ts"; // the Fourfold Daggers' X of cuts; the Quandrix Staff in hand
 import { vulnerableUntil, glyphMinesOf, GLYPH_MINE, riftMinesOf, riftVoidOf, RIFT_MINE, encumberedLeft, pullMeterOf } from "./hit-cast-passives.ts"; // Tempo marks, Glyph Mine sigils, rift mines and their void, Encumbered (2026-11-19)
@@ -120,6 +121,13 @@ function drawLowHealth(ctx, g, w, h, now, fallCue) {
   drawLowHealthEdge(ctx, st, w, h, LHE_ART.frames);
 }
 let STD_HANDS_FREE = false; // set around the Wayfarer's own sprite draw (actor reads it for "player")
+let STD_BODY = "male"; // the same: the Wayfarer's body (journey-start.ts WAYFARER_BODY)
+// The female Wayfarer in Standard View (Tim, 2026-11-25): a slimmer frame and smaller head, and a small white braid brought
+// forward over the shoulder that is not holding the weapon, hanging down the front to the chest. A few rects, no new cost.
+export const STD_FEMALE = Object.freeze({ torso: Object.freeze([-0.185, -0.57, 0.37, 0.5]), head: Object.freeze([-0.165, -0.755, 0.33, 0.27]), visor: Object.freeze([-0.11, -0.685, 0.22, 0.13]), eyes: Object.freeze([-0.065, 0.035, -0.655, 0.035]), feet: Object.freeze([-0.17, 0.065, -0.08, 0.105, 0.12]),
+  braid: Object.freeze({ hair: "#e6e3da", shade: "#b9b5aa", tie: "#5a4632", x: 0.135, width: 0.06, top: -0.6, plaits: Object.freeze([0, 0.065, 0.13]), plait: 0.06, tieAt: 0.19, tieH: 0.025, tuft: 0.035 }) });
+// The off-hand side for a facing (the blade is drawn on the left when facing left, otherwise on the right): -1 left, 1 right.
+export const stdBraidSide = (facing) => facing === "left" ? 1 : -1;
 const AERIAL_STD_ARMS = Object.freeze({ lean: .16, back: .34, up: .1, hang: .26, spread: .17, arm: "#3b2e23", hand: "#e0b48c" });
 function drawAerialArmsStd(ctx, x, y, s, facing, k) {
   const A = AERIAL_STD_ARMS, cx = (x + .5) * s, cy = (y + .38) * s, side = facing === "right" ? 1 : facing === "left" ? -1 : 0, up = facing === "up";
@@ -1862,6 +1870,12 @@ function actor(
     }
   }
   if (kind === "player") {
+    if (STD_BODY === "female") { const F = STD_FEMALE, B = F.braid, side = stdBraidSide(facing), bx = side * B.x - B.width / 2;
+      if (facing === "up") rect(B.hair, bx, B.top, B.width, B.plait * 2); // from behind, only where it crosses the shoulder
+      rect(p[1], ...F.torso); rect(p[0], ...F.head); rect("#171817", ...F.visor); rect(p[2], F.eyes[0], F.eyes[2], F.eyes[3], F.eyes[3]); rect(p[2], F.eyes[1], F.eyes[2], F.eyes[3], F.eyes[3]);
+      rect("#24231f", F.feet[0], F.feet[2], F.feet[3], F.feet[4]); rect("#24231f", F.feet[1], F.feet[2], F.feet[3], F.feet[4]);
+      if (facing !== "up") { B.plaits.forEach((y, i) => rect(i & 1 ? B.shade : B.hair, bx + (i & 1 ? B.width * .15 : 0), B.top + y, B.width * (i & 1 ? .7 : 1), B.plait)); rect(B.tie, bx + B.width * .1, B.top + B.tieAt, B.width * .8, B.tieH); rect(B.hair, bx + B.width * .2, B.top + B.tieAt + B.tieH, B.width * .6, B.tuft); }
+    } else {
     rect(p[1], -0.22, -0.57, 0.44, 0.5);
     rect(p[0], -0.18, -0.76, 0.36, 0.28);
     rect("#171817", -0.12, -0.69, 0.24, 0.14);
@@ -1869,6 +1883,7 @@ function actor(
     rect(p[2], 0.04, -0.66, 0.04, 0.04);
     rect("#24231f", -0.2, -0.08, 0.13, 0.12);
     rect("#24231f", 0.07, -0.08, 0.13, 0.12);
+    }
     if (!STD_HANDS_FREE) rect(p[2], facing === "left" ? -0.38 : 0.2, -0.48, 0.18, 0.05); // the blade in hand (AERIAL_HANDS_FREE: put away for Aerial Step's cast)
   } else if(kind==='vesperwing'){rect(p[1],-.09,-.62,.18,.56);ctx.fillStyle=p[0];ctx.beginPath();ctx.moveTo(k-s*.08*sc,base-s*.5*sc);ctx.lineTo(k-s*.7*sc,base-s*.85*sc);ctx.lineTo(k-s*.48*sc,base-s*.22*sc);ctx.closePath();ctx.fill();ctx.beginPath();ctx.moveTo(k+s*.08*sc,base-s*.5*sc);ctx.lineTo(k+s*.7*sc,base-s*.85*sc);ctx.lineTo(k+s*.48*sc,base-s*.22*sc);ctx.closePath();ctx.fill();rect(p[2],-.07,-.55,.14,.18)}
   else if(kind==='gravitantBell'){ctx.fillStyle=p[0];ctx.beginPath();ctx.ellipse(k,base-s*.48*sc,s*.38*sc,s*.43*sc,0,0,7);ctx.fill();ctx.strokeStyle=p[2];ctx.stroke();for(let q=-2;q<=2;q++)rect(p[1],q*.12,-.18,.06,.28)}
@@ -3344,7 +3359,7 @@ export function render(ctx, g, w, h, now) {
       if (mech && !suited) drawSubmersible(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, "back", 0, false, g.mechBoosting);
       const subHidden = g.area === "overworld" && g.save.boat?.aboard && g._subDive > 0; if (subHidden) { ctx.save(); ctx.globalAlpha = .12; } // release 311: under the surface
       const aerialK = kd || suited || mech || seatInfo ? 0 : aerialCastStd(g, now); // Aerial Step's cast: lean and arms swept back
-      const handsFree = !kd && !suited && !mech && aerialHandsFreeStd(g, now); STD_HANDS_FREE = handsFree; // AERIAL_HANDS_FREE: the weapon put away for the cast
+      const handsFree = !kd && !suited && !mech && aerialHandsFreeStd(g, now); STD_HANDS_FREE = handsFree; STD_BODY = wayfarerBody(g.save); // AERIAL_HANDS_FREE: the weapon put away for the cast
       const rushLean = (kd || suited || mech || seatInfo ? 0 : cleaverRushLean(g)) + (aerialK > 0 ? AERIAL_STD_ARMS.lean * aerialK * (p.facing === "right" ? 1 : p.facing === "left" ? -1 : 0) : 0); // the Verge Cleaver's Lava Slash rush (2026-11-14): tipped into the charge
       if (aerialK > 0 && p.facing === "down") drawAerialArmsStd(ctx, p.x, p.y - (lift + seat) / s, s, p.facing, aerialK); // facing the camera, the arms go behind the body
       if (rushLean) { const fx = (p.x + .5) * s, fy = (p.y + .9) * s - lift; ctx.save(); ctx.translate(fx, fy); ctx.rotate(rushLean); ctx.translate(-fx, -fy); }
@@ -3358,7 +3373,7 @@ export function render(ctx, g, w, h, now) {
         p.facing,
         Math.floor(p.walkPhase || 0),
         now < (p.attackUntil || 0) ? "attack" : "walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1,
-      ); STD_HANDS_FREE = false;
+      ); STD_HANDS_FREE = false; STD_BODY = "male";
       if (aerialK > 0 && p.facing !== "down") drawAerialArmsStd(ctx, p.x, p.y - (lift + seat) / s, s, p.facing, aerialK); // inside the lean
       if (rushLean) { ctx.restore(); if (cleaverRushLean(g)) drawCleaverRushBlade(ctx, g, s, lift); } // the blade carried low and trailing
       if (!suited && !mech) drawAerialRingsStd(ctx, g, (p.x + .5) * s, (p.y + .82) * s - lift - seat, s, now, 1); // Aerial Step: the near halves, over them

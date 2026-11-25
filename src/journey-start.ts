@@ -250,3 +250,18 @@ export function ensureQuests(save) {
   save.quests = { ...raw, v: R.v, open, threads };
   return save.quests;
 }
+
+// ---------------------------------------------------------------- the Wayfarer's body
+// save.wayfarer (additive at schema 14; normalised by ensureWayfarerBody from freshSave and migrateSave, unknown fields
+// kept): { body } is "male" (every journey from before, and the default) or "female". Presentation only: Close View
+// (close-view-hero.ts closeViewHeroBodyAsset) and Standard View (renderer.ts) draw it; no rule, stat or generator reads it.
+export const WAYFARER_BODY = Object.freeze({ bodies: Object.freeze(["male", "female"]), default: "male", labels: Object.freeze({ male: "Male", female: "Female" }) });
+export const wayfarerBodyOf = (value) => WAYFARER_BODY.bodies.includes(value) ? value : WAYFARER_BODY.default;
+export function ensureWayfarerBody(save, from = save) {
+  if (!save || typeof save !== "object") return save;
+  const prior = from?.wayfarer, record = prior && typeof prior === "object" && !Array.isArray(prior) ? prior : {};
+  save.wayfarer = { ...record, body: wayfarerBodyOf(record.body) };
+  return save;
+}
+export const wayfarerBody = (save) => wayfarerBodyOf(save?.wayfarer?.body);
+export function setWayfarerBody(save, body) { ensureWayfarerBody(save); save.wayfarer.body = wayfarerBodyOf(body); return save.wayfarer.body; }
