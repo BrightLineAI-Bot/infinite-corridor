@@ -1,7 +1,7 @@
 import { playerDroneVisualAnchor, projectileLaunchMetadata, actorPresentation, PLAYER_DRONE_VISUAL } from './actor-presentation.ts';
 import { playerFormPresentation } from './close-view-player-presentation.ts'; // Close View occlusion: the drawn height of the robot, the suit or the Ember Form
 import { canopyGateDestination } from './trees.ts';
-import { ACTOR_CONTACT, actorContactContext, ordinaryContactEnemy, ordinaryContactPlayer } from "./actor-contact.ts";
+import { ACTOR_CONTACT, DODGE_CONTACT, actorContactContext, ordinaryContactEnemy, ordinaryContactPlayer, touchingBodies, boxedIn } from "./actor-contact.ts";
 import { PRIMARY_SWINGS, swingSpec, swingStep, swingTimes, sampleSwing, damageAngle, damageReach, swingBlades, circleTouchesSector, circleTouchesSegment, clampTempo, normalizePendingSwing } from "./melee-swing.ts";
 import { simpleToolAppearanceKind, heldToolKind, stowHeldTool, ACTION_MOTION, CLOSE_VIEW_MELEE_TIMING, TOOL_ACTION_TIMING, TOOL_USE_STARTUP_MS, toolUseStartupMs, normalizeHammerfallStartup, normalizePendingMeleeContact, normalizePendingToolUse, sampleToolActionMotion, attackVisualDeadline, attackVisualRemaining, normalizeActionVisualMotion, normalizeAttackVisual, normalizeCastVisual, normalizeDodgeVisual, normalizePrimaryCombo, acceptCleaverChoreography, advancePrimaryCombo, recentHeroPresentation, stampAttackVisual, stampCastVisual, cancelCastVisual } from "./action-motion.ts";
 import { DEEP_PLACEMENT, isDeepV2Id } from "./deep-dungeons.ts";
@@ -4588,8 +4588,8 @@ export class Game {
     const speed = (dodging ? 4.8 : 2.4) * (1 + (characterStats(this.save).moveSpeed || 0)), most = Math.abs(off) / Math.max(1e-6, speed * Math.max(dt, 1e-3));
     return Math.sign(off) * Math.min(Math.abs(off) * TREE_KEEL.pull, TREE_KEEL.max, most) * major;
   }
-  planGroundedPlayerMove(dx, dy, width, now, carrier = null) {
-    const contacts = actorContactContext(this, this.player, dx, dy); if (!contacts) return null;
+  planGroundedPlayerMove(dx, dy, width, now, carrier = null, pass = null) {
+    const contacts = actorContactContext(this, this.player, dx, dy, pass); if (!contacts) return null;
     const probe = contacts.probe, p = this.player, from = tileUnder(this.map, width, p.x, p.y), jumping = now < (this.jumpUntil || 0);
     // Simulation flags match the commit path, without mutating the player, lift or action clocks.
     probe.x = p.x; probe.y = p.y; probe.isPlayer = true; probe.jumping = jumping; probe.voidSuit = this.mechUp() && this.area !== "dungeon";
@@ -4617,6 +4617,20 @@ export class Game {
     moveAxis(probe, dx, dy, this.map, width, true, null, false, contacts);
     contacts.record = false; contacts.canExit = null; contacts.carrier = null; contacts.endX = probe.x; contacts.endY = probe.y;
     return contacts;
+  }
+  // DODGE_CONTACT (the Briar Stag fight stutter): a dodge step that bodies cut to less than `eaten` of its length is planned
+  // again past the bodies that touched the Wayfarer when the dodge began (`dodgeThrough`), and taken when it goes further.
+  // Only the shared context is reused (no allocation); the ordinary plan is made again when the second is no better, so the
+  // trace committed is always the plan's own.
+  planGroundedPlayer(dx, dy, width, now, carrier = null, dodging = false) {
+    const plan = this.planGroundedPlayerMove(dx, dy, width, now, carrier), p = this.player, want = Math.hypot(dx, dy), pass = this.dodgeThrough;
+    if (!plan || !dodging || !pass?.length || !(want > ACTOR_CONTACT.epsilon)) return plan;
+    const got = Math.hypot(plan.endX - p.x, plan.endY - p.y);
+    if (got >= want * DODGE_CONTACT.eaten) return plan;
+    const through = this.planGroundedPlayerMove(dx, dy, width, now, carrier, pass);
+    if (!through) return null; // no other body near: the ordinary terrain move
+    if (Math.hypot(through.endX - p.x, through.endY - p.y) > got + ACTOR_CONTACT.epsilon) return through;
+    return this.planGroundedPlayerMove(dx, dy, width, now, carrier);
   }
   // Release 736 (review F4/F8): the states that belong to where the Wayfarer was, cleared by a death and by Wayglass travel.
   clearCarriedStates() {
@@ -12750,7 +12764,8 @@ export class Game {
       if (r.ok && TREE_FOOTING.dodgeAxes === 4 && this.area === "overworld" && this.map?.canopy && !this.droneLift && (this.skyAir != null || tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.canopy)) { // great-tree footing: on a branch a dodge goes along an axis
         const ax = Math.abs(p.dodgeX) >= Math.abs(p.dodgeY); p.dodgeX = ax ? Math.sign(p.dodgeX) || 1 : 0; p.dodgeY = ax ? 0 : Math.sign(p.dodgeY) || 1; p.lastMoveVector = { x: p.dodgeX, y: p.dodgeY };
       }
-      if (r.ok) { const f = this.fall && this.fallApplies() && !this.aerialHeld() ? this.fall : null; if (f && f.rollT == null) f.rollT = Number(f.t) || 0; } // FALL.roll: the fall's first dodge is its landing-roll try, timed on the fall's own clock (saved with it)
+      if (r.ok) { const f = this.fall && this.fallApplies() && !this.aerialHeld() ? this.fall : null; if (f && f.rollT == null) f.rollT = Number(f.t) || 0; }
+      if (r.ok) { const w = mapWidth(this.map, this.area); touchingBodies(this, this.dodgeThrough ||= [], boxedIn(this, (bx, by) => footprintOpen(this.map, w, bx, by)) ? DODGE_CONTACT.boxTouch : DODGE_CONTACT.touch); } // DODGE_CONTACT: the bodies this dodge began pressed against (runtime only; a dodge resumed from a save keeps ordinary contact) // FALL.roll: the fall's first dodge is its landing-roll try, timed on the fall's own clock (saved with it)
       if (r.ok) { const logicalNow=now-(this.presentationPausedMs||0),prior=recentHeroPresentation(p,logicalNow,p.x,p.y),canonicalYaw=(yaw)=>Math.atan2(Math.sin(yaw),Math.cos(yaw));p.dodgeVisual = prior ? { facingYaw: canonicalYaw(prior.yaw), gaitPhase: prior.gaitPhase, moving: prior.speed > .01, speed: prior.speed, poseMs: prior.now } : { facingYaw: canonicalYaw(facingYaw), gaitPhase: (Number(p.walkPhase) || 0) * Math.PI, moving: Math.hypot(Number(x) || 0, Number(y) || 0) > .15, speed: Math.hypot(Number(x) || 0, Number(y) || 0) > .15 ? 2.4 : 0, poseMs: Math.max(0,logicalNow) }; }
       if (!r.ok && mired) { if (now >= (p.invulnerableUntil || 0)) { p.hp = Math.max(0, p.hp - Math.max(1, Math.ceil((this.save.maxHp || p.maxHp || 100) * STAG.mire.exhaustedShare))); p.invulnerableUntil = now + 200; } this.message = "The mire drags at you, and you have nothing left to pull free with."; } // release 708 (Tim: "if you dodge while you have zero stamina in the mire, then you take damage")
       else if (!r.ok) this.message = "Not enough stamina to dodge.";
@@ -12867,7 +12882,7 @@ export class Game {
     { const h = this.edgeHold; if (h && this.edgeHeld(h.dx, h.dy, now)) { if (h.dx < 0) nx = Math.max(nx, 0); else if (h.dx > 0) nx = Math.min(nx, SECTION_SIZE - .78 - 1e-3); else if (h.dy < 0) ny = Math.max(ny, 0); else ny = Math.min(ny, SECTION_SIZE - .9 - 1e-3); } } // perf pack (P6): the edge just crossed holds for a moment
     if (!sailing && !gliding) { this.holdDeckJump(now); p.deckReach = this.deckReach(now < (this.jumpUntil || 0)); } else p.deckReach = null; // roof decks
     p.propLevel = this.propLevel(now); // solid props (926 bug 5): the height the Wayfarer's feet are at, for the collision mover
-    const groundedMotion = !sailing && !gliding ? this.planGroundedPlayerMove(nx - p.x, ny - p.y, mapWidth(this.map, this.area), now, carrier) : null;
+    const groundedMotion = !sailing && !gliding ? this.planGroundedPlayer(nx - p.x, ny - p.y, mapWidth(this.map, this.area), now, carrier, dodging) : null;
     if (groundedMotion) { nx = groundedMotion.endX; ny = groundedMotion.endY; }
     if ((sailing || (this.area === "overworld" && this.wading())) && (nx < 0 || ny < 0 || nx + .76 >= SECTION_SIZE - .02 || ny + .88 >= SECTION_SIZE - .02)) { /* release 507: the robot wading crosses anywhere, like a skiff */
       this.transitionSection(nx < 0 ? -1 : nx + .76 >= SECTION_SIZE - .02 ? 1 : 0, nx < 0 || nx + .76 >= SECTION_SIZE - .02 ? 0 : ny < 0 ? -1 : 1);
