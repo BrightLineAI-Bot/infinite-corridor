@@ -17,7 +17,7 @@
 // statue line and the Viewport's first hunt) turns the section's coordinates into the journey's frame first, then asks the
 // same question it always asked, so the stories keep their places relative to each other and every distance is unchanged.
 // A journey at start version 0 has the identity frame: every answer is exactly what it was. The Refuge stays at 0,0.
-import { hashSeed } from "./random.js?v=r1050-2ea30cdbc905";
+import { hashSeed } from "./random.js?v=r1059-3629aeded9d0";
 
 export const START_FRAME = Object.freeze({
   version: 1, // the start version that turns the frame

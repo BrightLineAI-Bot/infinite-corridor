@@ -13,7 +13,7 @@
 //   lands the last one itself. The kill is the other beast's: the Wayfarer gets nothing for it (game.ts dinoEaten), and the winner
 //   feeds `feed` s. "escape": the loser breaks off and flees (game.ts dinoEscape: a world beast's own retreat, keeping its wounds;
 //   any other off the edge of the area). The winner stays. If the Wayfarer kills one first, it is hers, with every reward.
-import { hashSeed } from "./random.js?v=r1050-2ea30cdbc905";
+import { hashSeed } from "./random.js?v=r1059-3629aeded9d0";
 
 export const DINO_DUEL = {
   version: 1,

@@ -1,17 +1,17 @@
 // Raw recipes are RGB meshes; compiled vertices add explicit scalar alpha for the GPU model stream.
-import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r1050-2ea30cdbc905';
-import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.js?v=r1050-2ea30cdbc905';
-import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.js?v=r1050-2ea30cdbc905';
-import { CLOSE_VIEW_PENTAGON_MODELS, STILLWORKS_WALKER_MODEL } from './close-view-pentagon-models.js?v=r1050-2ea30cdbc905';
-import { CLOSE_VIEW_ADVENTURE_MODELS, ADVENTURE_JOINT_KINDS, adventureJointPose } from './close-view-adventure-models.js?v=r1050-2ea30cdbc905'; // adventure creatures
-import { CLOSE_VIEW_PLAYER_FORM_MODELS, CLOSE_VIEW_SKIFF_MODEL, CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES, CLOSE_VIEW_WAYFARER_KIT, CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT, CLOSE_VIEW_SUIT_KIT_TRIANGLES } from './close-view-player-forms.js?v=r1050-2ea30cdbc905';
-import { CLOSE_VIEW_COMPANION_MODELS, CLOSE_VIEW_EFFECT_MODELS } from './close-view-companion-models.js?v=r1050-2ea30cdbc905';
-import { PLAYER_FORM_HANDS, CLOSE_VIEW_RIFLE_GRIP, closeViewHandRoles, closeViewHeldScale, cleaverCutMotion, CLEAVER_FOUR_SWEEP, sampleMeleeActionPose, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.js?v=r1050-2ea30cdbc905';
-import { ACTION_MOTION, sampleToolActionMotion, primaryVisualStage } from './action-motion.js?v=r1050-2ea30cdbc905';
-import { CLOSE_VIEW_SHADOW_FORMS } from './close-view-shadow-forms.js?v=r1050-2ea30cdbc905';
-import { HERO_GREAT_SWEEP, MIRAGE_BLADE_MODELS, writeMirageBladeModel } from './close-view-sweep-gear.js?v=r1050-2ea30cdbc905'; // the Great Sweep's broken greatsword and the Mirage of Blades' three blades (2026-11-14)
-import { CREATURE_MOTION, creatureMotion, motionCarry } from './creature-motion.js?v=r1050-2ea30cdbc905'; // the shared creature motion layers (2026-11-15)
-export { MESH_FLOATS } from './close-view-mesh.js?v=r1050-2ea30cdbc905';
+import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r1059-3629aeded9d0';
+import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.js?v=r1059-3629aeded9d0';
+import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.js?v=r1059-3629aeded9d0';
+import { CLOSE_VIEW_PENTAGON_MODELS, STILLWORKS_WALKER_MODEL } from './close-view-pentagon-models.js?v=r1059-3629aeded9d0';
+import { CLOSE_VIEW_ADVENTURE_MODELS, ADVENTURE_JOINT_KINDS, adventureJointPose } from './close-view-adventure-models.js?v=r1059-3629aeded9d0'; // adventure creatures
+import { CLOSE_VIEW_PLAYER_FORM_MODELS, CLOSE_VIEW_SKIFF_MODEL, CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES, CLOSE_VIEW_WAYFARER_KIT, CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT, CLOSE_VIEW_SUIT_KIT_TRIANGLES } from './close-view-player-forms.js?v=r1059-3629aeded9d0';
+import { CLOSE_VIEW_COMPANION_MODELS, CLOSE_VIEW_EFFECT_MODELS } from './close-view-companion-models.js?v=r1059-3629aeded9d0';
+import { PLAYER_FORM_HANDS, CLOSE_VIEW_RIFLE_GRIP, closeViewHandRoles, closeViewHeldScale, cleaverCutMotion, CLEAVER_FOUR_SWEEP, sampleMeleeActionPose, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight } from './close-view-player-presentation.js?v=r1059-3629aeded9d0';
+import { ACTION_MOTION, sampleToolActionMotion, primaryVisualStage } from './action-motion.js?v=r1059-3629aeded9d0';
+import { CLOSE_VIEW_SHADOW_FORMS } from './close-view-shadow-forms.js?v=r1059-3629aeded9d0';
+import { HERO_GREAT_SWEEP, MIRAGE_BLADE_MODELS, writeMirageBladeModel } from './close-view-sweep-gear.js?v=r1059-3629aeded9d0'; // the Great Sweep's broken greatsword and the Mirage of Blades' three blades (2026-11-14)
+import { CREATURE_MOTION, creatureMotion, motionCarry } from './creature-motion.js?v=r1059-3629aeded9d0'; // the shared creature motion layers (2026-11-15)
+export { MESH_FLOATS } from './close-view-mesh.js?v=r1059-3629aeded9d0';
 export const MODEL_FLOATS = 10;
 const DRINK_POSE={weight:0,sip:0,arm:0,head:0};
 const cloth = 0x64786b, leather = 0x303934, bronze = 0xbf9a64, visor = 0xc7e6c6;

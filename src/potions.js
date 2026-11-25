@@ -32,8 +32,17 @@ export function craftPotion(save, id) {
   const P = POTIONS[id], c = (save.consumables ||= {});
   if (!P || !P.cost) return { ok: false, message: "That cannot be brewed." };
   if ((c.restorativeDraught || 0) < P.cost) return { ok: false, message: `${P.name} needs ${P.cost} Restorative Draughts (you have ${c.restorativeDraught || 0}).` };
-  c.restorativeDraught -= P.cost; c[id] = (c[id] || 0) + 1;
+  c.restorativeDraught -= P.cost; c[id] = (c[id] || 0) + 1; notePotion(save, id);
   return { ok: true, message: `Brewed a ${P.name} from ${P.cost} draughts.` };
+}
+// Fixes from a 20-hour playthrough (I15): the compendium counted a potion found only while one was carried, so a High or Max
+// Potion the Potion button brews and drinks at once (release 341) stayed unfound. A potion brewed or drunk is known for good
+// (worldFlags `potion-known:<id>`, at most one flag a tier), and the chosen tier the button can brew now counts too.
+export const POTION_KNOWN = "potion-known:";
+export function notePotion(save, id) { if (POTIONS[id] && save && typeof save === "object") (save.worldFlags ||= {})[POTION_KNOWN + id] = true; }
+export function potionKnown(save, id) {
+  const P = POTIONS[id], c = save?.consumables || {}; if (!P) return false;
+  return (Number(c[id]) || 0) > 0 || save?.worldFlags?.[POTION_KNOWN + id] === true || (!!P.cost && potionChoice(save) === id && (Number(c.restorativeDraught) || 0) >= P.cost);
 }
 // Health a potion restores for a Wayfarer with `maxHp`.
 export const potionHeal = (id, maxHp) => (POTIONS[id]?.heal === Infinity ? maxHp : POTIONS[id]?.heal || 0);

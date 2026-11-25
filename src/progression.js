@@ -25,28 +25,29 @@
 // What each one does is read from the game's own tables (doesText), so the how-to never drifts from the game.
 //
 // The compendium (compendium()) and the Pace line (pace()) read the save as it is; nothing new is saved.
-import { SPELLS, APERTURE_SKILLS, APERTURE_BANDS, apertureBand, skillRank, spellOpen, spellOpenClassic, explorationGateOpen, weaponKey, toolKey, WEAPON_SCALING, TOOL_SCALING, SCALING_LABELS, FOURFOLD_DAGGERS, QUANDRIX_STAFF } from "./items.js?v=r1050-2ea30cdbc905";
-import { ensureProgression, progressionMode, progressionKept, modeInfo, PROGRESSION_MODES, PROGRESSION_RECORD, START_FRAME, saveFrame, EXPLORATION, exploring } from "./journey-start.js?v=r1050-2ea30cdbc905";
-import { freshViewportState } from "./foundry.js?v=r1050-2ea30cdbc905";
-import { ensureSlots, PRESETS } from "./spell-slots.js?v=r1050-2ea30cdbc905";
-import { BRANCHES, ALT_PASSIVES, hasNode, altUnlocked } from "./constellation.js?v=r1050-2ea30cdbc905";
-import { FIELD_PASSIVES, TOOL_FORMS } from "./lattice-fields.js?v=r1050-2ea30cdbc905";
-import { latticeOpen, TRANSIT_LATTICE } from "./transit-lattice.js?v=r1050-2ea30cdbc905";
-import { AWAKENED_ARTS } from "./weapon-arts.js?v=r1050-2ea30cdbc905";
-import { HAMMER_CLAP } from "./brawler-spells.js?v=r1050-2ea30cdbc905";
-import { ECHOES, MINION_ECHOES } from "./echoes.js?v=r1050-2ea30cdbc905";
-import { MONSTER_PACK } from "./monster-pack.js?v=r1050-2ea30cdbc905";
-import { GLYPHS, RESONANCES, TRIADS } from "./glyphs.js?v=r1050-2ea30cdbc905";
-import { PAIRINGS } from "./spell-slots.js?v=r1050-2ea30cdbc905";
-import { TESSERACTS, tesseractClass } from "./tesseracts.js?v=r1050-2ea30cdbc905";
-import { MARGINALIA } from "./marginalia.js?v=r1050-2ea30cdbc905";
-import { POTIONS } from "./potions.js?v=r1050-2ea30cdbc905";
-import { INGREDIENTS } from "./meals.js?v=r1050-2ea30cdbc905";
-import { MOUNT_BEASTS } from "./beast-mounts.js?v=r1050-2ea30cdbc905";
-import { ARCANA_UNLOCKS, arcanaHas } from "./lore.js?v=r1050-2ea30cdbc905";
-import { SEEDS } from "./skylands.js?v=r1050-2ea30cdbc905";
-import { WORLD_ROUTE_OF, MILESTONES, MILESTONE_FOR, RELIQUARY, worldWithheld, earnedWorld, formFound, featCount, milestoneLine, milestonesUnderWay } from "./world-routes.js?v=r1050-2ea30cdbc905"; // Phase 6
-import { STORY_ROUTE_OF, STORY_SEEN, STORY_SINCE, QUESTS, QUEST_FOR, QUEST_IDS, questOpen, questStep, threadReward, carrierOf, storyWithheld, VISCERA_SHOP, boughtRumour } from "./quests.js?v=r1050-2ea30cdbc905"; // Phase 7; Phase 8
+import { SPELLS, APERTURE_SKILLS, APERTURE_BANDS, apertureBand, skillRank, spellOpen, spellOpenClassic, explorationGateOpen, weaponKey, toolKey, WEAPON_SCALING, TOOL_SCALING, SCALING_LABELS, FOURFOLD_DAGGERS, QUANDRIX_STAFF } from "./items.js?v=r1059-3629aeded9d0";
+import { ensureProgression, progressionMode, progressionKept, modeInfo, PROGRESSION_MODES, PROGRESSION_RECORD, START_FRAME, saveFrame, EXPLORATION, exploring } from "./journey-start.js?v=r1059-3629aeded9d0";
+import { freshViewportState } from "./foundry.js?v=r1059-3629aeded9d0";
+import { ensureSlots, PRESETS } from "./spell-slots.js?v=r1059-3629aeded9d0";
+import { BRANCHES, ALT_PASSIVES, hasNode, altUnlocked } from "./constellation.js?v=r1059-3629aeded9d0";
+import { FIELD_PASSIVES, TOOL_FORMS } from "./lattice-fields.js?v=r1059-3629aeded9d0";
+import { latticeOpen, TRANSIT_LATTICE } from "./transit-lattice.js?v=r1059-3629aeded9d0";
+import { AWAKENED_ARTS } from "./weapon-arts.js?v=r1059-3629aeded9d0";
+import { HAMMER_CLAP } from "./brawler-spells.js?v=r1059-3629aeded9d0";
+import { ECHOES, MINION_ECHOES } from "./echoes.js?v=r1059-3629aeded9d0";
+import { MONSTER_PACK } from "./monster-pack.js?v=r1059-3629aeded9d0";
+import { GLYPHS, RESONANCES, TRIADS } from "./glyphs.js?v=r1059-3629aeded9d0";
+import { PAIRINGS } from "./spell-slots.js?v=r1059-3629aeded9d0";
+import { TESSERACTS, tesseractClass } from "./tesseracts.js?v=r1059-3629aeded9d0";
+import { MARGINALIA } from "./marginalia.js?v=r1059-3629aeded9d0";
+import { POTIONS, potionKnown } from "./potions.js?v=r1059-3629aeded9d0";
+import { INGREDIENTS } from "./meals.js?v=r1059-3629aeded9d0";
+import { MOUNT_BEASTS } from "./beast-mounts.js?v=r1059-3629aeded9d0";
+import { ARCANA_UNLOCKS, arcanaHas } from "./lore.js?v=r1059-3629aeded9d0";
+import { SEEDS } from "./skylands.js?v=r1059-3629aeded9d0";
+import { tierCap } from "./stages.js?v=r1059-3629aeded9d0"; // the Listener named where its rewards are (Paths, part 1)
+import { WORLD_ROUTE_OF, MILESTONES, MILESTONE_FOR, RELIQUARY, worldWithheld, earnedWorld, formFound, featCount, milestoneLine, milestonesUnderWay } from "./world-routes.js?v=r1059-3629aeded9d0"; // Phase 6
+import { STORY_ROUTE_OF, STORY_SEEN, STORY_SINCE, QUESTS, QUEST_FOR, QUEST_IDS, questOpen, questStep, threadReward, carrierOf, storyWithheld, VISCERA_SHOP, boughtRumour } from "./quests.js?v=r1059-3629aeded9d0"; // Phase 7; Phase 8
 
 export const PROGRESSION_TABLE_VERSION = EXPLORATION.table; // 2 from Phase 3: Exploration's gates (journey-start.ts EXPLORATION)
 export const ROUTES = Object.freeze({
@@ -393,7 +394,7 @@ export function stateV0(save, row) {
     case "pairing": return s.magicSkills?.pairingsSeen?.[a] ? "owned" : "locked";
     case "tesseract": return (Array.isArray(s.tesseracts?.owned) ? s.tesseracts.owned : []).some((g) => g && (g.kind === a || tesseractClass(g) === TESSERACTS.classes[a])) ? "owned" : "locked";
     case "marginalia": return Array.isArray(s.marginalia?.found) && s.marginalia.found.includes(a) ? "owned" : "locked";
-    case "potion": return num(s.consumables?.[a]) > 0 ? "owned" : "open";
+    case "potion": return potionKnown(s, a) ? "owned" : "open"; // carried, brewed or drunk before, or brewable now (potions.ts potionKnown)
     case "meal": return s.meal && num(s.meal.remaining) > 0 && (s.meal.a === a || s.meal.b === a) ? "owned" : "open";
     case "consumable": return num(s.consumables?.[a]) > 0 ? "owned" : "locked";
     case "rounds": return num(s.rounds?.empowered) > 0 ? "owned" : "locked";
@@ -463,7 +464,7 @@ export function compendium(save) {
   for (const r of ROWS) {
     const gt = v1 ? gateV1(r) : r.v0.gate; if (!gt || states[r.id] !== "locked" || !(AHEAD_GROUPS.includes(r.group) || (v1 && AHEAD_V1.includes(r.id)))) continue;
     const label = gt.level != null ? (level < gt.level ? `Level ${gt.level}` : null) : gt.aperture != null ? (ap < gt.aperture ? `Aperture ${gt.aperture}` : null) : gt.tier != null && tier < gt.tier ? `${APERTURE_BANDS[gt.tier]?.name || `tier ${gt.tier}`}${gt.listeners ? " and a Listener felled" : ""}` : null;
-    if (!label) continue; const at = ahead.find((q) => q.label === label); if (at) at.names.push(r.name); else ahead.push({ label, names: [r.name] });
+    if (!label) continue; const at = ahead.find((q) => q.label === label); if (at) at.names.push(r.name); else ahead.push({ label, names: [r.name], ...(gt.tier != null && !gt.listeners && gt.tier > tierCap(save) ? { note: "once a Listener falls" } : {}) }); // Paths part 1: the Aperture holds below it until then
   }
   const p = pace(save, states, v1);
   return { title: COMPENDIUM.title, intro: COMPENDIUM.intro, before: COMPENDIUM.before, mode: modeInfo(progressionMode(save)), pace: p, paceText: paceText(p), ahead, groups };

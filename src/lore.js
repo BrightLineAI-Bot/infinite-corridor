@@ -4,9 +4,9 @@
 // fragments (about 20, differing by Reading) listed in the Reciter's Tome; a Reading whose fragments are all found is
 // mastered. Lines a player has heard are remembered (one bitset per voice), so nobody repeats a line until
 // that voice is exhausted. Pure data and rules: no DOM, no randomness beyond the seeded `pick` passed in.
-import { RECITATIONS } from "./recitations.js?v=r1050-2ea30cdbc905";
-import { hashSeed } from "./random.js?v=r1050-2ea30cdbc905";
-import { IDENTITY_FRAME, START_FRAME, activeFrame, frameFor, toFrame, turnBearing } from "./journey-start.js?v=r1050-2ea30cdbc905";
+import { RECITATIONS } from "./recitations.js?v=r1059-3629aeded9d0";
+import { hashSeed } from "./random.js?v=r1059-3629aeded9d0";
+import { IDENTITY_FRAME, START_FRAME, activeFrame, frameFor, toFrame, turnBearing } from "./journey-start.js?v=r1059-3629aeded9d0";
 
 export const LORE_VERSION = 1;
 // Distance bands, in sections from the origin (|rx| + |ry|).
@@ -189,6 +189,7 @@ export const ARCANA_REGIONS = {
     wellDigger: { toward: "n", from: 36, to: 80 },
     weaver: { toward: "w", from: 36, to: 80 },
     mirror: { toward: "e", from: 36, to: 80 },
+    washing: { toward: "se", from: 12, to: 30 }, // the Washing at Sallowby (story version 6, 2026-11-21): between the Fevered Stairs and the Clear Country
   },
 };
 // Whether section (rx, ry) lies in set `id`'s home (false for a set with none).

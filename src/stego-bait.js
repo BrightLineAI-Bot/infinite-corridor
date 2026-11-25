@@ -12,8 +12,8 @@
 //   { v: 1, drops: [{ id, area, x, y }] (severed tails lying where they fell, at most `drops`; `area` is the game's
 //     areaStateId), placed: null | { id, area, x, y, hp, maxHp, left } (the bait on the ground; `left` in seconds) }.
 // A placed bait keeps its remaining time on exact resume. It belongs to the area it was laid in: leaving the area ends it.
-import { unharmablePerson } from "./townsfolk.js?v=r1050-2ea30cdbc905"; // Tim (2026-11-20): no non-hostile person can be harmed
-import { STEGO_ART } from "./wild-stego-render.js?v=r1050-2ea30cdbc905";
+import { unharmablePerson } from "./townsfolk.js?v=r1059-3629aeded9d0"; // Tim (2026-11-20): no non-hostile person can be harmed
+import { STEGO_ART } from "./wild-stego-render.js?v=r1059-3629aeded9d0";
 
 export const STEGO_BAIT = Object.freeze({
   item: "stegoBait", name: "Stego Bait",

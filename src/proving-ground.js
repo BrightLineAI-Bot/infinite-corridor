@@ -1,17 +1,17 @@
-import { currentDungeonDoors } from './game.js?v=r1050-2ea30cdbc905';
-import { dungeonWayfinding, dungeonNavigationDoors, renderDungeonWayfindingPanel } from "./atlas-view.js?v=r1050-2ea30cdbc905";
-import { serializeSave, deserializeSave } from './save-codec.js?v=r1050-2ea30cdbc905';
-import { RECOVERY_CONTEXT, recoveryScope, createRecoveryEnvelope, readRecoveryCheckpoint, writeRecoveryCheckpoint, clearRecoveryCheckpoint } from './proving-ground-recovery.js?v=r1050-2ea30cdbc905';
-import { drawRangedEffects } from "./combat-visuals.js?v=r1050-2ea30cdbc905";
-import { drawOculusDais } from "./oculus.js?v=r1050-2ea30cdbc905"; // release 874
-import { UTILITY, PRESETS, presetUtility, setPresetUtility } from "./spell-slots.js?v=r1050-2ea30cdbc905"; // release 874: the lab's utility button
-import { createInput } from "./input.js?v=r1050-2ea30cdbc905";
-import { render, renderScaleForViewport, screenToWorld } from "./renderer.js?v=r1050-2ea30cdbc905";
-import { CLOSE_VIEW_HOOKS, closeViewDrawsProps, invalidateCloseViewDiagnostics, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewScreenToWorld, mountCloseViewControls } from "./close-view.js?v=r1050-2ea30cdbc905"; // the Close View lab
-import { LABORATORIES, DEFAULT_PROVING_SEED, scenariosForLab, createLabFixture, labReport, teleportTargets, refreshTeleportOptions, resolveTeleportTarget, selectLabBuildMaterial, describeLabInteraction, dispatchLabInteraction, createLabInteractionLifecycle, labInteractionClockReady, COMBAT_ENVIRONMENTS, TEST_TILE, stampTestTile, naturalLanternRecoveryReady, naturalLanternRecoveryWitness, restoreNaturalLanternRecoveryFixture } from "./proving-ground-labs.js?v=r1050-2ea30cdbc905";
-import { createSimClock, simClockStep, simClockDraw } from "./sim-clock.js?v=r1050-2ea30cdbc905"; // feel pass 1: fixed steps and interpolated drawing, as in the game
-import { takeHandoff, createJourneyFixture, exitTarget } from "./proving-ground-handoff.js?v=r1050-2ea30cdbc905"; // release 791: Enter Proving Ground from Options
-import { createYardFixture } from "./proving-ground-labs.js?v=r1050-2ea30cdbc905"; import { TRAINING_YARD } from "./training-yard.js?v=r1050-2ea30cdbc905"; // progression Phase 5: the Training Yard
+import { currentDungeonDoors } from './game.js?v=r1059-3629aeded9d0';
+import { dungeonWayfinding, dungeonNavigationDoors, renderDungeonWayfindingPanel } from "./atlas-view.js?v=r1059-3629aeded9d0";
+import { serializeSave, deserializeSave } from './save-codec.js?v=r1059-3629aeded9d0';
+import { RECOVERY_CONTEXT, recoveryScope, createRecoveryEnvelope, readRecoveryCheckpoint, writeRecoveryCheckpoint, clearRecoveryCheckpoint } from './proving-ground-recovery.js?v=r1059-3629aeded9d0';
+import { drawRangedEffects } from "./combat-visuals.js?v=r1059-3629aeded9d0";
+import { drawOculusDais } from "./oculus.js?v=r1059-3629aeded9d0"; // release 874
+import { UTILITY, PRESETS, presetUtility, setPresetUtility } from "./spell-slots.js?v=r1059-3629aeded9d0"; // release 874: the lab's utility button
+import { createInput } from "./input.js?v=r1059-3629aeded9d0";
+import { render, renderScaleForViewport, screenToWorld } from "./renderer.js?v=r1059-3629aeded9d0";
+import { CLOSE_VIEW_HOOKS, closeViewDrawsProps, invalidateCloseViewDiagnostics, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewScreenToWorld, mountCloseViewControls } from "./close-view.js?v=r1059-3629aeded9d0"; // the Close View lab
+import { LABORATORIES, DEFAULT_PROVING_SEED, scenariosForLab, createLabFixture, labReport, teleportTargets, refreshTeleportOptions, resolveTeleportTarget, selectLabBuildMaterial, describeLabInteraction, dispatchLabInteraction, createLabInteractionLifecycle, labInteractionClockReady, COMBAT_ENVIRONMENTS, TEST_TILE, stampTestTile, naturalLanternRecoveryReady, naturalLanternRecoveryWitness, restoreNaturalLanternRecoveryFixture } from "./proving-ground-labs.js?v=r1059-3629aeded9d0";
+import { createSimClock, simClockStep, simClockDraw } from "./sim-clock.js?v=r1059-3629aeded9d0"; // feel pass 1: fixed steps and interpolated drawing, as in the game
+import { takeHandoff, createJourneyFixture, exitTarget } from "./proving-ground-handoff.js?v=r1059-3629aeded9d0"; // release 791: Enter Proving Ground from Options
+import { createYardFixture } from "./proving-ground-labs.js?v=r1059-3629aeded9d0"; import { TRAINING_YARD } from "./training-yard.js?v=r1059-3629aeded9d0"; // progression Phase 5: the Training Yard
 const canvas=document.querySelector("#game"),app=document.querySelector("#app"),ctx=canvas.getContext("2d");
 document.body.classList.add("proving-ground");document.querySelectorAll("#hud, dialog, #eventBanner, .story-scene").forEach(element=>element.hidden=true);
 const query=new URLSearchParams(location.search),implemented=LABORATORIES.filter(q=>q.status==="implemented");let selectedLab=implemented.some(q=>q.id===query.get("lab"))?query.get("lab"):"shelters";

@@ -8,18 +8,18 @@
 //
 // Awakenings: a primary or tool at its upgrade cap whose sockets light a Resonance can be awakened at Sela's forge
 // for lumen dust. An awakened weapon keeps its Resonance name and gains a new attack shape.
-import { unharmablePerson } from "./townsfolk.js?v=r1050-2ea30cdbc905"; // Tim (2026-11-20): no non-hostile person can be harmed
-import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade, APERTURE_BANDS, apertureBand, isQuandrixStaff, weaponKey, rangedWeapon, explorationGateOpen } from "./items.js?v=r1050-2ea30cdbc905";
-import { HAMMER_CLAP } from "./brawler-spells.js?v=r1050-2ea30cdbc905"; // the awakened Hammerfall's clap (2026-11-14)
-import { resonancesOf, RESONANCES, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.js?v=r1050-2ea30cdbc905";
-import { pairingMods } from "./spell-slots.js?v=r1050-2ea30cdbc905";
-import { latticePassives, toggleLatticeSlot } from "./transit-lattice.js?v=r1050-2ea30cdbc905";
-import { fieldForm, FIELD_KEYS, TOOL_FORM_KEYS } from "./lattice-fields.js?v=r1050-2ea30cdbc905";
-import { AWAKENED_ARTS, AWAKENED_IDS } from "./weapon-arts.js?v=r1050-2ea30cdbc905"; // awakened arts: each primary's own move (2026-11-13)
-import { TESSERACTS } from "./tesseracts.js?v=r1050-2ea30cdbc905";
-import { PASSIVE_TEXT } from "./hit-cast-passives.js?v=r1050-2ea30cdbc905"; // the on-cast nodes (Tim, 2026-11-19)
-import { EXPLORATION, exploring } from "./journey-start.js?v=r1050-2ea30cdbc905"; // progression Phase 3: Exploration's Aerial Step and Long Quickening
-import { formFound, formWithheld, worldWithheld } from "./world-routes.js?v=r1050-2ea30cdbc905"; // progression Phase 6: milestones and reliquaries
+import { unharmablePerson } from "./townsfolk.js?v=r1059-3629aeded9d0"; // Tim (2026-11-20): no non-hostile person can be harmed
+import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade, APERTURE_BANDS, apertureBand, isQuandrixStaff, weaponKey, rangedWeapon, explorationGateOpen } from "./items.js?v=r1059-3629aeded9d0";
+import { HAMMER_CLAP } from "./brawler-spells.js?v=r1059-3629aeded9d0"; // the awakened Hammerfall's clap (2026-11-14)
+import { resonancesOf, RESONANCES, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.js?v=r1059-3629aeded9d0";
+import { pairingMods } from "./spell-slots.js?v=r1059-3629aeded9d0";
+import { latticePassives, toggleLatticeSlot } from "./transit-lattice.js?v=r1059-3629aeded9d0";
+import { fieldForm, FIELD_KEYS, TOOL_FORM_KEYS } from "./lattice-fields.js?v=r1059-3629aeded9d0";
+import { AWAKENED_ARTS, AWAKENED_IDS } from "./weapon-arts.js?v=r1059-3629aeded9d0"; // awakened arts: each primary's own move (2026-11-13)
+import { TESSERACTS } from "./tesseracts.js?v=r1059-3629aeded9d0";
+import { PASSIVE_TEXT } from "./hit-cast-passives.js?v=r1059-3629aeded9d0"; // the on-cast nodes (Tim, 2026-11-19)
+import { EXPLORATION, exploring } from "./journey-start.js?v=r1059-3629aeded9d0"; // progression Phase 3: Exploration's Aerial Step and Long Quickening
+import { formFound, formWithheld, worldWithheld } from "./world-routes.js?v=r1059-3629aeded9d0"; // progression Phase 6: milestones and reliquaries
 // Release 335: Rift Step recovers faster with the same reductions as every other skill (the pairing and armor Chain).
 const riftCooldown = (save, rank, gm) => (APERTURE_SKILLS["rift-step"].cooldown - rank) * gm.cooldown * (altOn(save, "fold") ? ALT_PASSIVES.fold.cooldown : 1) * (1 - pairingMods(save).cooldown) * (1 - armorGlyphBonus(save).spellCooldown);
 
@@ -111,7 +111,9 @@ export const ALT_PASSIVES = {
 export const altUnlocked = (save) => APERTURE_BANDS.indexOf(apertureBand(save?.perception?.aperture || 0)) >= ALT_UNLOCK_TIER;
 // Progression Phase 6 (world-routes.ts): a secondary form whose Exploration route is a milestone or a reliquary is shut until it is
 // found; a form found (earned or kept) opens its switch once its node is learned, before Infinite III too, in either mode.
-export const WORLD_WAIT = "Not found yet: it waits out in the world (Journal → Leads).";
+// Paths part 1: no pointer to the Journal's Leads, which never list a hidden reward or a thread's before it begins; the Arcanum
+// shows the precise reason (paths.ts pathsReason) where it can.
+export const WORLD_WAIT = "Not found yet: it waits out in the world.";
 export const altOpen = (save, id) => (altUnlocked(save) || formFound(save, id)) && !formWithheld(save, id);
 // Is the secondary form chosen (and open) for a learned node?
 export const altChosen = (save, id) => !!save?.constellation?.alt?.[id] && !!ALT_PASSIVES[id] && altOpen(save, id);

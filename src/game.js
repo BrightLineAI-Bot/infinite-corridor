@@ -1,14 +1,14 @@
-import { playerDroneVisualAnchor, projectileLaunchMetadata, actorPresentation, PLAYER_DRONE_VISUAL } from './actor-presentation.js?v=r1050-2ea30cdbc905';
-import { playerFormPresentation } from './close-view-player-presentation.js?v=r1050-2ea30cdbc905'; // Close View occlusion: the drawn height of the robot, the suit or the Ember Form
-import { canopyGateDestination } from './trees.js?v=r1050-2ea30cdbc905';
-import { ACTOR_CONTACT, actorContactContext, ordinaryContactEnemy, ordinaryContactPlayer } from "./actor-contact.js?v=r1050-2ea30cdbc905";
-import { PRIMARY_SWINGS, swingSpec, swingStep, swingTimes, sampleSwing, damageAngle, damageReach, swingBlades, circleTouchesSector, circleTouchesSegment, clampTempo, normalizePendingSwing } from "./melee-swing.js?v=r1050-2ea30cdbc905";
-import { simpleToolAppearanceKind, heldToolKind, stowHeldTool, ACTION_MOTION, CLOSE_VIEW_MELEE_TIMING, TOOL_ACTION_TIMING, TOOL_USE_STARTUP_MS, toolUseStartupMs, normalizeHammerfallStartup, normalizePendingMeleeContact, normalizePendingToolUse, sampleToolActionMotion, attackVisualDeadline, attackVisualRemaining, normalizeActionVisualMotion, normalizeAttackVisual, normalizeCastVisual, normalizeDodgeVisual, normalizePrimaryCombo, acceptCleaverChoreography, advancePrimaryCombo, recentHeroPresentation, stampAttackVisual, stampCastVisual, cancelCastVisual } from "./action-motion.js?v=r1050-2ea30cdbc905";
-import { DEEP_PLACEMENT, isDeepV2Id } from "./deep-dungeons.js?v=r1050-2ea30cdbc905";
-import { beginAstralWorldRetreat, tickAstralWorldRetreat, astralRetreatSpawn, astralRetreatSceneMatches } from "./astral-world-retreat.js?v=r1050-2ea30cdbc905";
-import { astralCompanionFor, reconcileAstralCompanions } from "./astral-encounters.js?v=r1050-2ea30cdbc905";
-import { mountAstralWalker, syncAstralMount, dismountAstralWalker, recordAstralRiderDamage, beginAstralBoarding, tickAstralBoarding, tickAstralRiderChoice, tickAstralFighterChoice } from "./astral-worm-mount.js?v=r1050-2ea30cdbc905";
-import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, APERTURE_BANDS, normalizeItemUpgrade } from "./items.js?v=r1050-2ea30cdbc905";
+import { playerDroneVisualAnchor, projectileLaunchMetadata, actorPresentation, PLAYER_DRONE_VISUAL } from './actor-presentation.js?v=r1059-3629aeded9d0';
+import { playerFormPresentation } from './close-view-player-presentation.js?v=r1059-3629aeded9d0'; // Close View occlusion: the drawn height of the robot, the suit or the Ember Form
+import { canopyGateDestination } from './trees.js?v=r1059-3629aeded9d0';
+import { ACTOR_CONTACT, actorContactContext, ordinaryContactEnemy, ordinaryContactPlayer } from "./actor-contact.js?v=r1059-3629aeded9d0";
+import { PRIMARY_SWINGS, swingSpec, swingStep, swingTimes, sampleSwing, damageAngle, damageReach, swingBlades, circleTouchesSector, circleTouchesSegment, clampTempo, normalizePendingSwing } from "./melee-swing.js?v=r1059-3629aeded9d0";
+import { simpleToolAppearanceKind, heldToolKind, stowHeldTool, ACTION_MOTION, CLOSE_VIEW_MELEE_TIMING, TOOL_ACTION_TIMING, TOOL_USE_STARTUP_MS, toolUseStartupMs, normalizeHammerfallStartup, normalizePendingMeleeContact, normalizePendingToolUse, sampleToolActionMotion, attackVisualDeadline, attackVisualRemaining, normalizeActionVisualMotion, normalizeAttackVisual, normalizeCastVisual, normalizeDodgeVisual, normalizePrimaryCombo, acceptCleaverChoreography, advancePrimaryCombo, recentHeroPresentation, stampAttackVisual, stampCastVisual, cancelCastVisual } from "./action-motion.js?v=r1059-3629aeded9d0";
+import { DEEP_PLACEMENT, isDeepV2Id } from "./deep-dungeons.js?v=r1059-3629aeded9d0";
+import { beginAstralWorldRetreat, tickAstralWorldRetreat, astralRetreatSpawn, astralRetreatSceneMatches } from "./astral-world-retreat.js?v=r1059-3629aeded9d0";
+import { astralCompanionFor, reconcileAstralCompanions } from "./astral-encounters.js?v=r1059-3629aeded9d0";
+import { mountAstralWalker, syncAstralMount, dismountAstralWalker, recordAstralRiderDamage, beginAstralBoarding, tickAstralBoarding, tickAstralRiderChoice, tickAstralFighterChoice } from "./astral-worm-mount.js?v=r1059-3629aeded9d0";
+import { rangedWeapon, primaryProfile, SPELLS, affixValue, itemScore, itemTier, ITEM_TIERS, upgradeEquipment, APERTURE_SKILLS, skillRank, apertureBand, APERTURE_BANDS, normalizeItemUpgrade } from "./items.js?v=r1059-3629aeded9d0";
 import {
   generateRegion,
   regionSettled,
@@ -36,7 +36,7 @@ import {
   heartlandShackSection,
   hideDormantBossCue,
   DORMANT_BOSS,
-} from "./world.js?v=r1050-2ea30cdbc905";
+} from "./world.js?v=r1059-3629aeded9d0";
 
 function applyFallenTreeCrossings(map) {
   for (const o of map?.objects || []) {
@@ -47,21 +47,21 @@ function applyFallenTreeCrossings(map) {
     }
   }
 }
-import { ensureSlots, slotted, pairingMods, slotReadiness, slotLabel, frameForm, slotTool, CASTABLES, availableCastables, SLOTS, SLOT_ACTIONS, toggleLantern } from "./spell-slots.js?v=r1050-2ea30cdbc905";
-import { pressOculusButton, tickOculus } from "./oculus.js?v=r1050-2ea30cdbc905"; // release 874: the Oculus; 2026-11-15: its own button
-import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.js?v=r1050-2ea30cdbc905";
-import { beastCatchUp } from "./stages.js?v=r1050-2ea30cdbc905";
-import { POTIONS, potionToDrink, potionHeal, potionsReady, craftPotion } from "./potions.js?v=r1050-2ea30cdbc905";
-import { CACHE_PICKUP_VISUAL_MS, CHEST_OPEN_VISUAL_MS, SHOVEL_DIG_VISUAL_MS, STONE_PLACE_VISUAL_MS, CONSUME_VISUAL_MS, cancelCachePickupVisual, cancelConsumeVisual, normalizePersistentCachePickupVisual, normalizeConsumeVisual, normalizeHurtVisual, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from "./consume-visual.js?v=r1050-2ea30cdbc905";
-import { DUNGEON_LADDER, ladderTier, ladderRoll, crossingLadder, ladderGuardian, entranceKind } from "./dungeon-ladder.js?v=r1050-2ea30cdbc905";
-import { diveGate, subGate, underwaterGate, mechGate, droneGate, MECH, MECH_POWER, MECH_LAVA, MECH_WATER, MECH_VOID, DRONE, DRONE_LIFT, DRONE_FIZZLE, INTERIOR_TRAVERSAL, interiorCeilingHeight, interiorArchAt, droneForbiddenAt, droneZoneOf, GLIDER_FORBIDDEN, gliderForbiddenAt, TREE_GLIDE, treeGlideWindowAt, ensureMech, mechAbsorb, voidTick, tickMech, setEmpowered, mechEmpowered, setMechMode } from "./vehicle-gates.js?v=r1050-2ea30cdbc905";
-import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.js?v=r1050-2ea30cdbc905";
-import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY, isSeaKind } from "./sea-creatures.js?v=r1050-2ea30cdbc905";
-import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP } from "./boats.js?v=r1050-2ea30cdbc905";
-import { submersible, fitSubmersible, aboard, sailable, BOAT, canBuildSkiff, mendSkiff, buyHullShield, deployHullShield, tickHullShield, buySkiff, repairSkiff, repairCost, board, disembark, skiffMooring, hullAbsorb, hullStrike, sailStep, steer, ensureBoatState, takeSpare } from "./boats.js?v=r1050-2ea30cdbc905";
-import { OPEN_SEA_VERSION, seaHazards, tickSeaHazards, bergAt, waveCrest, stormAt, novaFogCapable, novaFog, tickNovaFog } from "./open-sea.js?v=r1050-2ea30cdbc905";
-import { canSwim, swimsThrough, isSwimmableKind, tidemantleTrial, grantTidemantle, swimUpkeep, dungeonWaterToll, TIDEMANTLE, mireSpeed, rotTick, healthCeiling, clearRot, MIRE, ensureRot, rotCap } from "./water-traversal.js?v=r1050-2ea30cdbc905";
-import { createCombatant, dodge, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee, wayfarerDamage, WAYFARER_DAMAGE } from "./combat.js?v=r1050-2ea30cdbc905";
+import { ensureSlots, slotted, pairingMods, slotReadiness, slotLabel, frameForm, slotTool, CASTABLES, availableCastables, SLOTS, SLOT_ACTIONS, toggleLantern } from "./spell-slots.js?v=r1059-3629aeded9d0";
+import { pressOculusButton, tickOculus } from "./oculus.js?v=r1059-3629aeded9d0"; // release 874: the Oculus; 2026-11-15: its own button
+import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.js?v=r1059-3629aeded9d0";
+import { beastCatchUp } from "./stages.js?v=r1059-3629aeded9d0";
+import { POTIONS, potionToDrink, potionHeal, potionsReady, craftPotion, notePotion } from "./potions.js?v=r1059-3629aeded9d0";
+import { CACHE_PICKUP_VISUAL_MS, CHEST_OPEN_VISUAL_MS, SHOVEL_DIG_VISUAL_MS, STONE_PLACE_VISUAL_MS, CONSUME_VISUAL_MS, cancelCachePickupVisual, cancelConsumeVisual, normalizePersistentCachePickupVisual, normalizeConsumeVisual, normalizeHurtVisual, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from "./consume-visual.js?v=r1059-3629aeded9d0";
+import { DUNGEON_LADDER, ladderTier, ladderRoll, crossingLadder, ladderGuardian, entranceKind } from "./dungeon-ladder.js?v=r1059-3629aeded9d0";
+import { diveGate, subGate, underwaterGate, mechGate, droneGate, MECH, MECH_POWER, MECH_LAVA, MECH_WATER, MECH_VOID, DRONE, DRONE_LIFT, DRONE_FIZZLE, INTERIOR_TRAVERSAL, interiorCeilingHeight, interiorArchAt, droneForbiddenAt, droneZoneOf, GLIDER_FORBIDDEN, gliderForbiddenAt, TREE_GLIDE, treeGlideWindowAt, ensureMech, mechAbsorb, voidTick, tickMech, setEmpowered, mechEmpowered, setMechMode } from "./vehicle-gates.js?v=r1059-3629aeded9d0";
+import { DIVE, diveSite, diveId, canDive, diveSiteHint, grantLens, buyRig, breathe, generateDiveSite } from "./diving.js?v=r1059-3629aeded9d0";
+import { seaSpawns, seaCombatantFields, updateSeaCreature, SEA_CREATURES, SEA_HABITATS, leviathanTrophy, LEVIATHAN_TROPHY, isSeaKind } from "./sea-creatures.js?v=r1059-3629aeded9d0";
+import { WOOD, woodFor, addWood, buildSkiff, SAILABLE_DEEP } from "./boats.js?v=r1059-3629aeded9d0";
+import { submersible, fitSubmersible, aboard, sailable, BOAT, canBuildSkiff, mendSkiff, buyHullShield, deployHullShield, tickHullShield, buySkiff, repairSkiff, repairCost, board, disembark, skiffMooring, hullAbsorb, hullStrike, sailStep, steer, ensureBoatState, takeSpare } from "./boats.js?v=r1059-3629aeded9d0";
+import { OPEN_SEA_VERSION, seaHazards, tickSeaHazards, bergAt, waveCrest, stormAt, novaFogCapable, novaFog, tickNovaFog } from "./open-sea.js?v=r1059-3629aeded9d0";
+import { canSwim, swimsThrough, isSwimmableKind, tidemantleTrial, grantTidemantle, swimUpkeep, dungeonWaterToll, TIDEMANTLE, mireSpeed, rotTick, healthCeiling, clearRot, MIRE, ensureRot, rotCap } from "./water-traversal.js?v=r1059-3629aeded9d0";
+import { createCombatant, dodge, enemyBodyRadius, MELEE_PATTERNS, enemyMeleeGeometry, pointInEnemyMelee, wayfarerDamage, WAYFARER_DAMAGE } from "./combat.js?v=r1059-3629aeded9d0";
 import {
   applyInteraction,
   validActions,
@@ -72,136 +72,138 @@ import {
   APERTURE_TIER_DUE,
   progressLead,
   actionDone,
-} from "./interactions.js?v=r1050-2ea30cdbc905";
-import { SEED_HUNT_PICK } from "./atlas-view.js?v=r1050-2ea30cdbc905"; // the compass pick of a seed hunt (2026-11-19)
-import { ensurePerceptionInPlace, ensureDungeonDoorNavigation, validCheckpoint, REFUGE_CHECKPOINT, deadFoeRecord, compactArea, isTombstone, tombstoneBlanks, setCompassChoice } from "./types.js?v=r1050-2ea30cdbc905";
-import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.js?v=r1050-2ea30cdbc905";
-import { QUANDRIX, quandrixPress, tickQuandrix, savedQuandrixHold, restoreQuandrixHold } from "./quandrix-staff.js?v=r1050-2ea30cdbc905"; // the Quandrix Staff (2026-11-13)
-import { noteArtPress, artFistIntercept, artMeleeHit, artAnchored, tickWeaponArts, transposeBonus, transposeMagic, weaponArtArmed, AWAKENED_ARTS, awakenedFor, WEAPON_ARTS, awakenedUp, landLavaSlash, refundArtCharge } from "./weapon-arts.js?v=r1050-2ea30cdbc905"; // weapon arts (2026-11-13)
-import { awakenedSwing, awakenedArtRelease, runeStruck, awakenedSpellCast, tickAwakenedArts } from "./awakened-arts.js?v=r1050-2ea30cdbc905"; // awakened arts (2026-11-13): one move per weapon in place of the crescent
-import { TOOL_RANGE, RANGED_OCCLUSION, toolRange, shotClearance, shotPiercesTerrain, sightLineZ, sightBlocked, ARC_WAVE, arcWaveLife, sharedShotCount, retireArcWaves, isArcCrescent, arcWaveEcho, arcWaveTouches, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit, ROUNDS, usesRounds, spendRound, roundDamage, roundIronCost, roundsLabel, grantEmpoweredRounds, roundsFindRoll, roundsFindFlag, canFireRound, toolEchoes, ordinaryRounds, CARBINE, carbineBase, carbineShare, carbinePierce, carbineRounds, carbineAffordedHold, carbineCharged, carbineFill, CONTINUOUS_ASSAULT, assaultCharged, CLONE_CARBINE, cloneCarbineBoost, cloneCarbineRatio } from "./tool-forms.js?v=r1050-2ea30cdbc905"; // and the Aether Orrery (a magic tool)
-import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank, rankXp, FRACTURE_WARDEN, fractureKey, fractureRecord, fractureSealed, fractureNeed, fractureKill, wardenBody, wardenAttacks, RESPAWN, respawnPlace, respawnFloorOk, respawnDue, respawnPack, respawnDropRate } from "./fractured.js?v=r1050-2ea30cdbc905";
-import { tickAffixes, rollAffixes, phaseShielded, PHASE_SHIELD } from "./affixes.js?v=r1050-2ea30cdbc905";
-import { stalkerCaught, stalkerTrapAttempt, cancelStalkerAct, STALKER, ensureStalker, stalkerUnlocked, stalkerTrack, stalkerWarning, stalkerNewSection, stalkerEngaged, stalkerLost, stalkerWaitAtDoor, stalkerDoorHere, stalkerPlayerFell, stalkerSlain, stalkerVitals, stalkerLair, stalkerEscaped, ambushSpots, updateStalker } from "./stalker.js?v=r1050-2ea30cdbc905"; // release 678: the Stalker
-import { applyBossKit, tickBossKit } from "./boss-kit.js?v=r1050-2ea30cdbc905";
-import { wonderRumour, wonderAt } from "./wonders.js?v=r1050-2ea30cdbc905";
-import { firstJourneyLine, rumourTurn, noteWonderLead, RUMOUR_SPEAKERS } from "./leads.js?v=r1050-2ea30cdbc905"; // progression Phase 4: first-journey lines, rumours and the lead floor
-import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.js?v=r1050-2ea30cdbc905";
-import { sectionAtlasColor } from "./atlas-colors.js?v=r1050-2ea30cdbc905";
-import { SEED_REALMS, realmSeedKinds, realmOfSeed, seedRealmId, isSeedRealmId, generateSeedRealm, seedRealmFallback, realmDestination, dropSeedRealms, realmCacheFind, realmViscera } from "./seed-realms.js?v=r1050-2ea30cdbc905"; // seed realms
-import { roofDeckAt, roofDeckById, roofDeckIndex, roofDeckLevelOfTile, roofDeckNear, roofDeckUnderBox, validRoofDeck, normalizeRoofDeck, roofDecksApply, markHeartlandDecks } from "./roof-decks.js?v=r1050-2ea30cdbc905"; // roof decks (Tim, 2026-11-12)
-import { ensureSkylands, SEEDS, SEED_FINDS, SEED_TRAVEL, seedCount, grantSeed, consumeSeed, seedFindRoll, seedFindFlag, seedHopTarget, validOpalPassage, ensureSeeds } from "./skylands.js?v=r1050-2ea30cdbc905";
-import { SKYLANDS, SKY_BASE, validSkySummitRoute, skylandAdmission, skyVitals, skyRoleOf, SKY_PLACE, SKY_ANNEX, VISCERA, DAIS, visceraOf, isDivineRun, takePact, visceraEarned, visceraScale, pactWords, skyAnnexStair, skyAnnexFloor, skyAnnexNext, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.js?v=r1050-2ea30cdbc905";
-import { HITSTOP_ACTORS, hitStopActorMs, beginHitStop, tickHitStop, normalizeHitStop, holdFoe, foeHeld } from "./hitstop-actors.js?v=r1050-2ea30cdbc905"; // per-actor hit-stop (Tim, 2026-11-19)
-import { GREAT_SWEEP_SWING, GREAT_SWEEP_RECORD_VERSION, sweepTempo, sweepTimes, sweepDamageAngle, sweptArcTouches, normalizeToolSwing, SWEEP_FREEZE, sweepFreezeTouch, tickSweepFreeze, sweepFrozen } from "./great-sweep.js?v=r1050-2ea30cdbc905"; // the Great Sweep's 360° swing; its awakened freeze
-import { generateItem, spellOpen, explorationGateOpen, primaryCarryKind, ORRERY_LOOT, BRAWLER_LOOT, FOURFOLD_DAGGERS, isFourfoldDaggers, QUANDRIX_STAFF, isQuandrixStaff, SCALING_STATS, SCALING_STRENGTH, weaponScaling, toolScaling } from "./items.js?v=r1050-2ea30cdbc905";
-import { itemCap, upgradeLimit, upgradedItem, unlockRefinement, toolKey } from "./items.js?v=r1050-2ea30cdbc905"; import { socketCount } from "./glyphs.js?v=r1050-2ea30cdbc905"; // 2026-11-18: gearReadout
-import { SMITHY, paySalvage, salvagePaidText, reforgeRoll } from "./smithy.js?v=r1050-2ea30cdbc905"; // release 607: one salvage table; 2026-11-18: its yield (SALVAGE_YIELD)
-import { earthResolvePlant, earthResolveHit, tickEarthResolve } from "./echoes.js?v=r1050-2ea30cdbc905"; // Earth Resolve, the Earth Apatosaurus's Echo
-import { echoEvent, tickEchoes, echoDrop, noteRoomBeastKill, pounceBonus, ECHOES, hasEcho, WALL_CLING, plungeAfterimage } from "./echoes.js?v=r1050-2ea30cdbc905";
-import { skillMeleeBonus, skillReachBonus, riftStep, riftStepTo, riftStepReady, riftReachOf, RIFT_AIM, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, SANCTUARY, sanctuaryOn, altOn, ALT_PASSIVES, altChosen, aerialChargesNow, tickAerialCharges, aerialStepBlocked } from "./constellation.js?v=r1050-2ea30cdbc905";
-import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.js?v=r1050-2ea30cdbc905";
-import { RULES as MARGIN_RULES, MARGINALIA, EMBER_WAKE, RED_MARGIN, SECOND_WIND, SHADOW_STEP, HOURGLASS, INK_SHIELD, GILDED, marginBonus, marginRun, beginMarginRun, endMarginRun, runHas, wardenSpawns, wardenOffer, wardenPage, chooseMarginalia, pasteMarginalia, marginaliaOpen, marginCrossing, ensureMarginalia } from "./marginalia.js?v=r1050-2ea30cdbc905";
-import { chargeScale, giftResonances, giftTriads, hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, resonanceInfo, armorGlyphBonus as armorGlyphBase, skillGlyphMods, normalizeSockets } from "./glyphs.js?v=r1050-2ea30cdbc905";
-import { hashSeed, rng, byHash } from "./random.js?v=r1050-2ea30cdbc905";
-import { riderLiftOf, MOUNT_BEASTS, MOUNT_RIDE, mountIdFor, catchableActor, neverCaught, catchRefusal, catchRoll, stableMount, ridingMount, mountById, mountName, mountLifeText, startRide, stopRide, tickRide, noteRideSection, defaultMount, releaseMount, ensureMounts } from "./beast-mounts.js?v=r1050-2ea30cdbc905"; // release 748: penning catches, the stable and riding
-import { persistentMount, indoorMount, TRICERATOPS_INDOOR, TRICERATOPS_RIDE, TRICERATOPS_ATTACKS, TRICERATOPS_CONTROLS, TRICERATOPS_HORN_SHOT, normalizeTriceratopsDrill, damagePersistentMount, noteBeastRecoveryTransition, retrieveBeast, beastHotelId, isBeastHotelId } from "./beast-mounts.js?v=r1050-2ea30cdbc905";
-import { ensureBuild, activeBuildKind, setBuildKind, placeBuild, buildSpot, tickBuilds, buildBetween, strikeBuild, buildOn, tapTarget, tallBuildAt, enclosureAt, enclosuresStanding, playerEnclosure, enclosureShields, breakBuild, ENCLOSURE } from "./building.js?v=r1050-2ea30cdbc905";
-import { WATCHER, placeWatcherOverworld, placeWatcherDungeon, dungeonFoldTarget } from "./watcher.js?v=r1050-2ea30cdbc905";
-import { WAYMARK_GUIDES, guideHost, guideLairBeast } from "./waymark-guides.js?v=r1050-2ea30cdbc905";
-import { refugeLands, plantRefugeLands, regrowSection, noteDiscovery, talkLine } from "./refuge-lands.js?v=r1050-2ea30cdbc905";
-import { HORDE, rollHorde, ensureHorde, hordeKill, hordeSpawnPoints } from "./revenant-horde.js?v=r1050-2ea30cdbc905";
-import{ELITE_KINDS,eliteVariant,ensureEliteState,eliteStateInPlace,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison,applyPoison,applyStrongPoison}from'./elites.js?v=r1050-2ea30cdbc905';
-import{domainSectionAt,HUNT_FOUNDRY,huntTraceStage,admittedFoundrySpawn,refreshViewportBoard,generatedHuntSpawn,foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=r1050-2ea30cdbc905';
-import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=r1050-2ea30cdbc905';
-import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=r1050-2ea30cdbc905';
-import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt,DUNGEON_CHARTING,chartableGround,chartProgress,chartRecord,chartOwed}from'./dungeon-framework.js?v=r1050-2ea30cdbc905';
-import{ensureSceneState,queueScene}from'./scenes.js?v=r1050-2ea30cdbc905';
-import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.js?v=r1050-2ea30cdbc905";
-import { varyDungeonLayout } from "./dungeon-variation.js?v=r1050-2ea30cdbc905";
-import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5, THEME_POOL_VERSION, MIRE_CRYPT, rollMireCrypt, DREAM_HALL, dreamHallRoll } from "./underlands.js?v=r1050-2ea30cdbc905";
-import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r1050-2ea30cdbc905";
-import { ASCENDANCY, RITE_LOCKDOWN, riteExit, saplingHere, riteRecord, triesLeft, riteSkyway, riteKey, waveGap, riteRamp } from "./ascendancy.js?v=r1050-2ea30cdbc905";
-import { CANYON, canyonIdFor, isCanyonId, canyonHere, isClod, ensureCanyonHistory, generateCanyon, drillClod, settleClods, clodSecret } from "./canyon.js?v=r1050-2ea30cdbc905";
-import { KEEPS, keepHere, buildKeep, ARCOLOGY, arcologyHere, buildArcology, exitsOpen } from "./keeps.js?v=r1050-2ea30cdbc905";
-import { TALL_TOWERS, towerHere, placeTower, isTowerId, parseTowerId, generateTowerInterior, tierOf as towerTierOf, lookOut, towerCachePay, ensureSeedHunts, seedHuntCandidates, seedHuntKind, seedHuntWeights, seedHuntWhere, seedHuntPick, seedHuntAt, huntHeading, huntText } from "./tall-towers.js?v=r1050-2ea30cdbc905"; // tall towers (the Upwells)
-import { BUILDINGS, INTERIOR_TERRAIN, buildingHere, buildingHereV2, placeBuilding, placeBuildingV2, isBuildingId, generateBuildingFloor, buildingArrival, buildingScale, parseBuildingId, ROOF_EXIT, roofExitSpot, roofLanding, TOWER_SEAL, towerUnsealed, towerSealText } from "./great-buildings.js?v=r1050-2ea30cdbc905";
-import { closeViewOccludedOnEntry, closeViewShowing, closeViewApplies, overworldCloseViewApplies } from "./close-view.js?v=r1050-2ea30cdbc905"; // Close View places (2026-11-11): "The view is occluded." on entering a refused place
-import { outdoorLevelHeight } from "./close-view-outdoor.js?v=r1050-2ea30cdbc905"; // Close View terrain occlusion (tool-forms.ts RANGED_OCCLUSION): a level's drawn height outdoors
-import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance, roomPaddingFootprint, applyRoomPadding } from "./close-view-room-routing.js?v=r1050-2ea30cdbc905";
-import { COMPOUNDS, compoundHere, placeCompound, isCompoundId, generateCompoundFloor, parseCompoundId, compoundVersionOf } from "./compounds.js?v=r1050-2ea30cdbc905";
-import { LABYRINTHS, LAB_FOG, labyrinthHere, placeLabyrinth, isLabyrinthId, generateLabyrinthChamber, parseLabyrinthId, HOLE_DROPS, safeDropAt, LAB_BURROW, ROOM_MAZES, openRoomGate, roomGateSide, labFogOn, labFogOf, labFogLook, labFogTile, labFogStore, labDoorInSight, labFogState } from "./labyrinths.js?v=r1050-2ea30cdbc905";
-import { TURTLE_SHELL, placeTurtleShell, applyTurtleShell, liftTurtleShell, addShell, shellsAt, takeFaded, shellId, shellLabyrinthBase, shellVaultReward, ensureTurtleShells } from "./turtle-shell.js?v=r1050-2ea30cdbc905"; // the Mountain Turtle's shell and its labyrinth
-import { CASTLES, castleCorner, castleAt, placeCastleQuarter, isCastleId, generateCastleFloor, quarterSection, castleVersionOf, parseCastleId, castleTopology } from "./castles.js?v=r1050-2ea30cdbc905";
-import { PENTAGON_ARENA, pentagonArenaId, isPentagonArenaId, parsePentagonArenaId, pentagonArenaPick, pentagonArenaRow, pentagonArenaRoster, pentagonArenaVitals, generatePentagonArena, pentagonArenaVersion } from "./pentagon-arena.js?v=r1050-2ea30cdbc905"; // the Pentagon's finale arena, the Stillworks
-import { TESSERACTS, grantTesseract, ensureTesseracts, rerollTesseractLine, tesseractLine } from "./tesseracts.js?v=r1050-2ea30cdbc905";
-import { SPINO_ROOMS, SPINO_INTERLOPER, spinoRoomSpawn, interloperRoll, interloperCame, noteInterloper, interloperPrey, interloperSpot, SPINO_SCREEN } from "./spino-rex.js?v=r1050-2ea30cdbc905"; // the Spinosaurus: big rooms and the interloper
-import { DINO_DUEL, tickDinoDuels, duelText, dinoFleeEdge } from "./dino-duel.js?v=r1050-2ea30cdbc905"; // the dino duel (Tim, 2026-11-14): its verdict, the eaten loser and the escape
-import { applyBleed, clearBleed, tickBleed, BLEED } from "./bleed.js?v=r1050-2ea30cdbc905"; // the Spinosaurus's bleed (the Wayfarer's status)
-import { STEGO_ROOMS, stegoRoomSpawn } from "./wild-stego.js?v=r1050-2ea30cdbc905"; // the Wild Stegosaurus in the big rooms
-import { APATO, APATO_ROOMS, apatoRoomSpawn, tuneApatoClone, apatoLatchedClones, apatoMashNeed, apatoBreakFree, APATO_CLONE } from "./earth-apato.js?v=r1050-2ea30cdbc905"; // the Earth Apatosaurus (Tim, 2026-11-18)
-import { POISON, dosePoison, tickPoison, clearPoison } from "./apato-poison.js?v=r1050-2ea30cdbc905"; // its root venom (the Wayfarer's status)
-import { STEGO_BAIT, ensureStegoBait, recordStegoTail, stegoTailObject, takeStegoTail, placeStegoBait, stegoBaitIn, tickStegoBait, biteStegoBait, stegoBaitLures } from "./stego-bait.js?v=r1050-2ea30cdbc905"; // the Stego Bait: the severed tail, the item and its lure
-import { PENTAGON, pentagonCentre, pentagonAt, placePentagonSection, isPentagonId, generatePentagonChamber, pentagonPlan, pentagonSeamOpen, PENTAGON_LORE, addPentagonInscription, readPentagonInscription, parsePentagonId, pentagonLinkEnds, pentagonLinkKey, isPentagonFinaleId, parsePentagonFinaleId, generatePentagonFinale, pentagonFinaleSpot, pentagonFinaleWall, pentagonFrontDoor, pentagonRoofAt, pentagonRoofSpots, PENTAGON_COMPLETE, payPentagonCompletion, pentagonsDue, pentagonCompleted, pentagonFellEarly, PENTAGON_FINDING, pentagonCatchment, pentagonCandidate, pentagonSigilRoll, pentagonSigilText, ensurePentagonFinding, pentagonHuntsOpen, pentagonHuntProbes, pentagonHeading, pentagonFarWords } from "./pentagon.js?v=r1050-2ea30cdbc905";
-import { PENTAGON_HALLS, readPentagonMural, pentagonMuralsState } from "./pentagon-halls.js?v=r1050-2ea30cdbc905"; // release 795: the grand halls' murals
-import { ADVENTURE_PENTAGON, ADVENTURE_LINKS } from "./adventures.js?v=r1050-2ea30cdbc905"; // Pentagon version 11: the adventure (its Waystones, vistas and shortcut gates)
+} from "./interactions.js?v=r1059-3629aeded9d0";
+import { SEED_HUNT_PICK } from "./atlas-view.js?v=r1059-3629aeded9d0"; // the compass pick of a seed hunt (2026-11-19)
+import { ensurePerceptionInPlace, ensureDungeonDoorNavigation, validCheckpoint, REFUGE_CHECKPOINT, deadFoeRecord, compactArea, isTombstone, tombstoneBlanks, setCompassChoice, killPaid, payKill } from "./types.js?v=r1059-3629aeded9d0";
+import { FIELD, FIELD_PASSIVES, fieldOn } from "./lattice-fields.js?v=r1059-3629aeded9d0";
+import { QUANDRIX, quandrixPress, tickQuandrix, savedQuandrixHold, restoreQuandrixHold } from "./quandrix-staff.js?v=r1059-3629aeded9d0"; // the Quandrix Staff (2026-11-13)
+import { noteArtPress, artFistIntercept, artMeleeHit, artAnchored, tickWeaponArts, transposeBonus, transposeMagic, weaponArtArmed, AWAKENED_ARTS, awakenedFor, WEAPON_ARTS, awakenedUp, landLavaSlash, refundArtCharge } from "./weapon-arts.js?v=r1059-3629aeded9d0"; // weapon arts (2026-11-13)
+import { awakenedSwing, awakenedArtRelease, runeStruck, awakenedSpellCast, tickAwakenedArts } from "./awakened-arts.js?v=r1059-3629aeded9d0"; // awakened arts (2026-11-13): one move per weapon in place of the crescent
+import { TOOL_RANGE, RANGED_OCCLUSION, toolRange, shotClearance, shotPiercesTerrain, sightLineZ, sightBlocked, ARC_WAVE, arcWaveLife, sharedShotCount, retireArcWaves, isArcCrescent, arcWaveEcho, arcWaveTouches, MIRAGE, GOLEM, CLUSTER, FIRE_BURST, SUNBURST, ORRERY, orreryPress, tickOrrery, orreryOnHit, ROUNDS, usesRounds, spendRound, roundDamage, roundIronCost, roundsLabel, grantEmpoweredRounds, roundsFindRoll, roundsFindFlag, canFireRound, toolEchoes, ordinaryRounds, CARBINE, carbineBase, carbineShare, carbinePierce, carbineRounds, carbineAffordedHold, carbineCharged, carbineFill, CONTINUOUS_ASSAULT, assaultCharged, CLONE_CARBINE, cloneCarbineBoost, cloneCarbineRatio } from "./tool-forms.js?v=r1059-3629aeded9d0"; // and the Aether Orrery (a magic tool)
+import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank, rankXp, FRACTURE_WARDEN, fractureKey, fractureRecord, fractureSealed, fractureNeed, fractureKill, wardenBody, wardenAttacks, RESPAWN, respawnPlace, respawnFloorOk, respawnDue, respawnPack, respawnDropRate } from "./fractured.js?v=r1059-3629aeded9d0";
+import { tickAffixes, rollAffixes, phaseShielded, PHASE_SHIELD } from "./affixes.js?v=r1059-3629aeded9d0";
+import { stalkerCaught, stalkerTrapAttempt, cancelStalkerAct, STALKER, ensureStalker, stalkerUnlocked, stalkerTrack, stalkerWarning, stalkerNewSection, stalkerEngaged, stalkerLost, stalkerWaitAtDoor, stalkerDoorHere, stalkerPlayerFell, stalkerSlain, stalkerVitals, stalkerLair, stalkerEscaped, ambushSpots, updateStalker } from "./stalker.js?v=r1059-3629aeded9d0"; // release 678: the Stalker
+import { applyBossKit, tickBossKit } from "./boss-kit.js?v=r1059-3629aeded9d0";
+import { wonderRumour, wonderAt } from "./wonders.js?v=r1059-3629aeded9d0";
+import { firstJourneyLine, rumourTurn, noteWonderLead, RUMOUR_SPEAKERS } from "./leads.js?v=r1059-3629aeded9d0"; // progression Phase 4: first-journey lines, rumours and the lead floor
+import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.js?v=r1059-3629aeded9d0";
+import { sectionAtlasColor } from "./atlas-colors.js?v=r1059-3629aeded9d0";
+import { SEED_REALMS, realmSeedKinds, realmOfSeed, seedRealmId, isSeedRealmId, generateSeedRealm, seedRealmFallback, realmDestination, dropSeedRealms, realmCacheFind, realmViscera } from "./seed-realms.js?v=r1059-3629aeded9d0"; // seed realms
+import { roofDeckAt, roofDeckById, roofDeckIndex, roofDeckLevelOfTile, roofDeckNear, roofDeckUnderBox, validRoofDeck, normalizeRoofDeck, roofDecksApply, markHeartlandDecks } from "./roof-decks.js?v=r1059-3629aeded9d0"; // roof decks (Tim, 2026-11-12)
+import { ensureSkylands, SEEDS, SEED_FINDS, SEED_TRAVEL, seedCount, grantSeed, consumeSeed, seedFindRoll, seedFindFlag, seedHopTarget, validOpalPassage, ensureSeeds } from "./skylands.js?v=r1059-3629aeded9d0";
+import { SKYLANDS, SKY_BASE, validSkySummitRoute, skylandAdmission, skyVitals, skyRoleOf, SKY_PLACE, SKY_ANNEX, VISCERA, DAIS, visceraOf, isDivineRun, takePact, visceraEarned, visceraScale, pactWords, skyAnnexStair, skyAnnexFloor, skyAnnexNext, isSkyland, skylandSection, skylandTierOf, skylandScale, skylandWave, beginSkyland, completeSkyland, skylandPlan, skylandModeOf, skylandHops, skylandHop, SKY_MODES, buildSkyway, buildSkyDiscs, discAt } from "./skylands.js?v=r1059-3629aeded9d0";
+import { HITSTOP_ACTORS, hitStopActorMs, beginHitStop, tickHitStop, normalizeHitStop, holdFoe, foeHeld } from "./hitstop-actors.js?v=r1059-3629aeded9d0"; // per-actor hit-stop (Tim, 2026-11-19)
+import { GREAT_SWEEP_SWING, GREAT_SWEEP_RECORD_VERSION, sweepTempo, sweepTimes, sweepDamageAngle, sweptArcTouches, normalizeToolSwing, SWEEP_FREEZE, sweepFreezeTouch, tickSweepFreeze, sweepFrozen } from "./great-sweep.js?v=r1059-3629aeded9d0"; // the Great Sweep's 360° swing; its awakened freeze
+import { generateItem, spellOpen, explorationGateOpen, primaryCarryKind, ORRERY_LOOT, BRAWLER_LOOT, FOURFOLD_DAGGERS, isFourfoldDaggers, QUANDRIX_STAFF, isQuandrixStaff, SCALING_STATS, SCALING_STRENGTH, weaponScaling, toolScaling } from "./items.js?v=r1059-3629aeded9d0";
+import { itemCap, upgradeLimit, upgradedItem, unlockRefinement, toolKey } from "./items.js?v=r1059-3629aeded9d0"; import { socketCount } from "./glyphs.js?v=r1059-3629aeded9d0"; // 2026-11-18: gearReadout
+import { SMITHY, paySalvage, salvagePaidText, salvageYieldMode, reforgeRoll, SPARE_GEAR_STATE } from "./smithy.js?v=r1059-3629aeded9d0"; // release 607: one salvage table; 2026-11-18: its yield (SALVAGE_YIELD)
+import { earthResolvePlant, earthResolveHit, tickEarthResolve } from "./echoes.js?v=r1059-3629aeded9d0"; // Earth Resolve, the Earth Apatosaurus's Echo
+import { echoEvent, tickEchoes, echoDrop, noteRoomBeastKill, pounceBonus, ECHOES, hasEcho, WALL_CLING, plungeAfterimage } from "./echoes.js?v=r1059-3629aeded9d0";
+import { skillMeleeBonus, skillReachBonus, riftStep, riftStepTo, riftStepReady, riftReachOf, RIFT_AIM, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, SANCTUARY, sanctuaryOn, altOn, ALT_PASSIVES, altChosen, aerialChargesNow, tickAerialCharges, aerialStepBlocked } from "./constellation.js?v=r1059-3629aeded9d0";
+import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.js?v=r1059-3629aeded9d0";
+import { RULES as MARGIN_RULES, MARGINALIA, EMBER_WAKE, RED_MARGIN, SECOND_WIND, SHADOW_STEP, HOURGLASS, INK_SHIELD, GILDED, marginBonus, marginRun, beginMarginRun, endMarginRun, runHas, wardenSpawns, wardenOffer, wardenPage, chooseMarginalia, pasteMarginalia, marginaliaOpen, marginCrossing, ensureMarginalia } from "./marginalia.js?v=r1059-3629aeded9d0";
+import { chargeScale, giftResonances, giftTriads, hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, resonanceInfo, armorGlyphBonus as armorGlyphBase, skillGlyphMods, normalizeSockets } from "./glyphs.js?v=r1059-3629aeded9d0";
+import { hashSeed, rng, byHash } from "./random.js?v=r1059-3629aeded9d0";
+import { riderLiftOf, MOUNT_BEASTS, MOUNT_RIDE, mountIdFor, catchableActor, neverCaught, catchRefusal, catchRoll, stableMount, ridingMount, mountById, mountName, mountLifeText, startRide, stopRide, tickRide, noteRideSection, defaultMount, releaseMount, ensureMounts } from "./beast-mounts.js?v=r1059-3629aeded9d0"; // release 748: penning catches, the stable and riding
+import { persistentMount, indoorMount, TRICERATOPS_INDOOR, TRICERATOPS_RIDE, TRICERATOPS_ATTACKS, TRICERATOPS_CONTROLS, TRICERATOPS_HORN_SHOT, normalizeTriceratopsDrill, damagePersistentMount, noteBeastRecoveryTransition, retrieveBeast, beastHotelId, isBeastHotelId } from "./beast-mounts.js?v=r1059-3629aeded9d0";
+import { ensureBuild, activeBuildKind, setBuildKind, placeBuild, buildSpot, tickBuilds, buildBetween, strikeBuild, buildOn, tapTarget, tallBuildAt, enclosureAt, enclosuresStanding, playerEnclosure, enclosureShields, breakBuild, ENCLOSURE } from "./building.js?v=r1059-3629aeded9d0";
+import { WATCHER, placeWatcherOverworld, placeWatcherDungeon, dungeonFoldTarget } from "./watcher.js?v=r1059-3629aeded9d0";
+import { WAYMARK_GUIDES, guideHost, guideLairBeast } from "./waymark-guides.js?v=r1059-3629aeded9d0";
+import { refugeLands, plantRefugeLands, regrowSection, noteDiscovery, talkLine } from "./refuge-lands.js?v=r1059-3629aeded9d0";
+import { HORDE, rollHorde, ensureHorde, hordeKill, hordeSpawnPoints } from "./revenant-horde.js?v=r1059-3629aeded9d0";
+import{ELITE_KINDS,eliteVariant,ensureEliteState,eliteStateInPlace,recordPortalPrey,completeElite,gravityPull,addEliteHazard,tickEliteHazards,tickEliteStatus,cleansePoison,applyPoison,applyStrongPoison}from'./elites.js?v=r1059-3629aeded9d0';
+import{domainSectionAt,HUNT_FOUNDRY,huntTraceStage,admittedFoundrySpawn,refreshViewportBoard,generatedHuntSpawn,foundryCandidate,foundryEncounter,validateFoundryCandidate,activeViewportHunt,completeViewportHunt,recordViewportArrival,domainEncounterPlan,completeDomainBoss,manifestationMechanics,ensureHuntInstance,beginHuntInstance,abandonHuntInstance,completeHuntInstance,cleanupHuntInstance,recordPeoplePlace,resolveHuntDestination}from'./foundry.js?v=r1059-3629aeded9d0';
+import{ensureCorridorSystems,storySiteFor,recordSectionVisit,recordCreatureEncounter,recordCreatureDefeat,recordRevelationLead}from'./story.js?v=r1059-3629aeded9d0';
+import{generateVariedDungeon,generateUnifiedDungeon,generateBespokeArena,populateDungeonEncounters,DUNGEON_ACTIVE_CAP}from'./arenas.js?v=r1059-3629aeded9d0';
+import{applyDungeonDiscovery,discoveryForLevel,dungeonChunkId,revealDungeonAt,DUNGEON_CHARTING,chartableGround,chartProgress,chartRecord,chartOwed}from'./dungeon-framework.js?v=r1059-3629aeded9d0';
+import{ensureSceneState,queueScene}from'./scenes.js?v=r1059-3629aeded9d0';
+import { buildEnemyProjectilePattern, advanceEnemyProjectileBehaviors, enemyPatternWindup, tuneDungeonThreat } from "./enemy-patterns.js?v=r1059-3629aeded9d0";
+import { varyDungeonLayout } from "./dungeon-variation.js?v=r1059-3629aeded9d0";
+import { generateExpeditionDungeon, DUNGEON_GENERATOR_V5, THEME_POOL_VERSION, MIRE_CRYPT, rollMireCrypt, DREAM_HALL, dreamHallRoll } from "./underlands.js?v=r1059-3629aeded9d0";
+import { relayNodeDecision, placeRelayNode, ensureRelayNetwork } from "./relay-network.js?v=r1059-3629aeded9d0";
+import { ASCENDANCY, RITE_LOCKDOWN, riteExit, saplingHere, riteRecord, triesLeft, riteSkyway, riteKey, waveGap, riteRamp } from "./ascendancy.js?v=r1059-3629aeded9d0";
+import { CANYON, canyonIdFor, isCanyonId, canyonHere, isClod, ensureCanyonHistory, generateCanyon, drillClod, settleClods, clodSecret } from "./canyon.js?v=r1059-3629aeded9d0";
+import { KEEPS, keepHere, buildKeep, ARCOLOGY, arcologyHere, buildArcology, exitsOpen } from "./keeps.js?v=r1059-3629aeded9d0";
+import { TALL_TOWERS, towerHere, placeTower, isTowerId, parseTowerId, generateTowerInterior, tierOf as towerTierOf, lookOut, towerCachePay, ensureSeedHunts, seedHuntCandidates, seedHuntKind, seedHuntWeights, seedHuntWhere, seedHuntPick, seedHuntAt, huntHeading, huntText } from "./tall-towers.js?v=r1059-3629aeded9d0"; // tall towers (the Upwells)
+import { BUILDINGS, INTERIOR_TERRAIN, buildingHere, buildingHereV2, placeBuilding, placeBuildingV2, isBuildingId, generateBuildingFloor, buildingArrival, buildingScale, parseBuildingId, ROOF_EXIT, roofExitSpot, roofLanding, TOWER_SEAL, towerUnsealed, towerSealText } from "./great-buildings.js?v=r1059-3629aeded9d0";
+import { closeViewOccludedOnEntry, closeViewShowing, closeViewApplies, overworldCloseViewApplies } from "./close-view.js?v=r1059-3629aeded9d0"; // Close View places (2026-11-11): "The view is occluded." on entering a refused place
+import { outdoorLevelHeight } from "./close-view-outdoor.js?v=r1059-3629aeded9d0"; // Close View terrain occlusion (tool-forms.ts RANGED_OCCLUSION): a level's drawn height outdoors
+import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance, roomPaddingFootprint, applyRoomPadding } from "./close-view-room-routing.js?v=r1059-3629aeded9d0";
+import { COMPOUNDS, compoundHere, placeCompound, isCompoundId, generateCompoundFloor, parseCompoundId, compoundVersionOf } from "./compounds.js?v=r1059-3629aeded9d0";
+import { LABYRINTHS, LAB_FOG, labyrinthHere, placeLabyrinth, isLabyrinthId, generateLabyrinthChamber, parseLabyrinthId, HOLE_DROPS, safeDropAt, LAB_BURROW, ROOM_MAZES, openRoomGate, roomGateSide, labFogOn, labFogOf, labFogLook, labFogTile, labFogStore, labDoorInSight, labFogState } from "./labyrinths.js?v=r1059-3629aeded9d0";
+import { TURTLE_SHELL, placeTurtleShell, applyTurtleShell, liftTurtleShell, addShell, shellsAt, takeFaded, shellId, shellLabyrinthBase, shellVaultReward, ensureTurtleShells } from "./turtle-shell.js?v=r1059-3629aeded9d0"; // the Mountain Turtle's shell and its labyrinth
+import { CASTLES, castleCorner, castleAt, placeCastleQuarter, isCastleId, generateCastleFloor, quarterSection, castleVersionOf, parseCastleId, castleTopology } from "./castles.js?v=r1059-3629aeded9d0";
+import { PENTAGON_ARENA, pentagonArenaId, isPentagonArenaId, parsePentagonArenaId, pentagonArenaPick, pentagonArenaRow, pentagonArenaRoster, pentagonArenaVitals, generatePentagonArena, pentagonArenaVersion } from "./pentagon-arena.js?v=r1059-3629aeded9d0"; // the Pentagon's finale arena, the Stillworks
+import { TESSERACTS, grantTesseract, ensureTesseracts, rerollTesseractLine, tesseractLine } from "./tesseracts.js?v=r1059-3629aeded9d0";
+import { SPINO_ROOMS, SPINO_INTERLOPER, spinoRoomSpawn, interloperRoll, interloperCame, noteInterloper, interloperPrey, interloperSpot, SPINO_SCREEN } from "./spino-rex.js?v=r1059-3629aeded9d0"; // the Spinosaurus: big rooms and the interloper
+import { DINO_DUEL, tickDinoDuels, duelText, dinoFleeEdge } from "./dino-duel.js?v=r1059-3629aeded9d0"; // the dino duel (Tim, 2026-11-14): its verdict, the eaten loser and the escape
+import { applyBleed, clearBleed, tickBleed, BLEED } from "./bleed.js?v=r1059-3629aeded9d0"; // the Spinosaurus's bleed (the Wayfarer's status)
+import { STEGO_ROOMS, stegoRoomSpawn } from "./wild-stego.js?v=r1059-3629aeded9d0"; // the Wild Stegosaurus in the big rooms
+import { APATO, APATO_ROOMS, apatoRoomSpawn, tuneApatoClone, apatoLatchedClones, apatoMashNeed, apatoBreakFree, APATO_CLONE } from "./earth-apato.js?v=r1059-3629aeded9d0"; // the Earth Apatosaurus (Tim, 2026-11-18)
+import { POISON, dosePoison, tickPoison, clearPoison } from "./apato-poison.js?v=r1059-3629aeded9d0"; // its root venom (the Wayfarer's status)
+import { STEGO_BAIT, ensureStegoBait, recordStegoTail, stegoTailObject, takeStegoTail, placeStegoBait, stegoBaitIn, tickStegoBait, biteStegoBait, stegoBaitLures } from "./stego-bait.js?v=r1059-3629aeded9d0"; // the Stego Bait: the severed tail, the item and its lure
+import { PENTAGON, pentagonCentre, pentagonAt, placePentagonSection, isPentagonId, generatePentagonChamber, pentagonPlan, pentagonSeamOpen, PENTAGON_LORE, addPentagonInscription, readPentagonInscription, parsePentagonId, pentagonLinkEnds, pentagonLinkKey, isPentagonFinaleId, parsePentagonFinaleId, generatePentagonFinale, pentagonFinaleSpot, pentagonFinaleWall, pentagonFrontDoor, pentagonRoofAt, pentagonRoofSpots, PENTAGON_COMPLETE, payPentagonCompletion, pentagonsDue, pentagonCompleted, pentagonFellEarly, PENTAGON_FINDING, pentagonCatchment, pentagonCandidate, pentagonSigilRoll, pentagonSigilText, ensurePentagonFinding, pentagonHuntsOpen, pentagonHuntProbes, pentagonHeading, pentagonFarWords } from "./pentagon.js?v=r1059-3629aeded9d0";
+import { PENTAGON_HALLS, readPentagonMural, pentagonMuralsState } from "./pentagon-halls.js?v=r1059-3629aeded9d0"; // release 795: the grand halls' murals
+import { ADVENTURE_PENTAGON, ADVENTURE_LINKS } from "./adventures.js?v=r1059-3629aeded9d0"; // Pentagon version 11: the adventure (its Waystones, vistas and shortcut gates)
 useRoof({ roofAt: pentagonRoofAt, roofSpots: pentagonRoofSpots }); // release 752: the roof dwellers live on the v7 Pentagon roof
-import { THE_DEEP, DEEP_FLOOR_GEN, deepFloorGen, ensureTheDeep, deepIdFor, isDeepId, deepShaft, shaftHere, startFloors, floorPlan, floorScale, floorAffixShare, guardianAffixes, lootBonus, floorSpecial, deepSpecialRow, lairScale, DEEP_SPECIALS } from "./the-deep.js?v=r1050-2ea30cdbc905";
-import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExit } from "./deep-annex.js?v=r1050-2ea30cdbc905";
-import { trackSeason, noteSeasonDiscovery } from "./seasons.js?v=r1050-2ea30cdbc905";
-import { growRiteTree, riteTreeFits, COHERENCE, bridgeLanes, cohereSection, joinToLand, joinsCore, coherenceCore, creatureSpot, creatureRegions, settleSpawns } from "./landscape.js?v=r1050-2ea30cdbc905";
-import { GREAT_MUSHROOMS } from "./great-mushrooms.js?v=r1050-2ea30cdbc905";
-import { interiorTerrain, interiorSurfaceLevel, interiorSurfaceHeight, LIFT_PER_LEVEL, applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt, tileLiftScale, mendCanopy, HOT_SPRINGS, springMend, reachableFromPlaza, reachableFrom } from "./landscape.js?v=r1050-2ea30cdbc905";
-import { markArrival, createSquad, squadFrame, squadRequest, behaviourProfile, behaviourState, behaviourGate, behaviourReact, ringVector, shapeBlow, startFeint, afterBlow, BEHAVIOUR } from "./enemy-behaviour.js?v=r1050-2ea30cdbc905"; // ordinary creature behaviour (Tim, 2026-11-14)
-import { tacticsMove, tacticsWindup, tacticsHurtWindow } from "./squad-tactics.js?v=r1050-2ea30cdbc905"; // squad tactics (Tim, 2026-11-15)
-import { TRICERATOPS_HERDS, triceratopsHerdSpawns, SPINO, spinoTuned, DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, staggerClass, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, cancelPackAttack, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, STEGO, isClubTree, populateOverworldPack, isDungeonRoamer, isDungeonHunter, gloomDarkEnd, isPackKind } from "./monster-pack.js?v=r1050-2ea30cdbc905";
-import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet, oldTownAt, fixedPlaceSection } from "./settlements.js?v=r1050-2ea30cdbc905";
-import { useJourneyFrame, saveStart, saveFrame, exploring } from "./journey-start.js?v=r1050-2ea30cdbc905";
-import { adoptExploration, ROW_BY_ID, stateV0 } from "./progression.js?v=r1050-2ea30cdbc905"; // progression Phase 3: an Exploration journey from before its table keeps what it had
-import { QUESTS, QUEST_IDS, questDue, questOpen, questState } from "./quests.js?v=r1050-2ea30cdbc905"; import { openQuest, questTalk, questMeal, questClear, questEvent, questSpeak, questToken, questHome, questLay, questArrive, QUEST_WORDS } from "./quest-places.js?v=r1050-2ea30cdbc905"; // progression Phase 7: quests (b) and thread rewards (d); Phase 8: far, sea, sky, under and strange
-import { farCivAt } from "./far-realms.js?v=r1050-2ea30cdbc905"; import { rosterGuardianKind, GUARDIAN_ROSTER } from "./monster-pack.js?v=r1050-2ea30cdbc905"; // progression Phase 8: the Storm Halls' ground; the guardian roster
-import { countFeat, reliquaryEnd, layReliquaries, openReliquary, pityTick, grantWorld } from "./world-finds.js?v=r1050-2ea30cdbc905"; // progression Phase 6: milestones, the Reliquary and pity
-import { ashenMeridianSection } from "./foundry.js?v=r1050-2ea30cdbc905";
-import { addStrange, touchStrange, BIZARRO, bizarroHere, abyssalFindHere, bizarroSpawns } from "./strange.js?v=r1050-2ea30cdbc905"; // and the bizarro pockets
-import { creditFind } from "./digging.js?v=r1050-2ea30cdbc905"; // seed realms: a cache's find
-import { DIG, isInteriorArea, markWalked, planDig, validateDigPlan, ensureShovel, ensureIronShovel, dig, applyTunnels, overworldDigKey, OVERWORLD_DIG, saveTier, wallGlints, wallTreasure, addDigSpot, digSpot, addStone } from "./digging.js?v=r1050-2ea30cdbc905";
-import { linkedExit, mouthsIn, placeMouth } from "./linked-dungeons.js?v=r1050-2ea30cdbc905";
-import { TYRANT_HUNT, tyrantVisit, tickTyrantHunt, tyrantRisePoint, countTyrantRise } from "./tyrant-hunt.js?v=r1050-2ea30cdbc905";
-import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonReciter, addElder, addDungeonElder, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.js?v=r1050-2ea30cdbc905";
-import { dragonRecord, dragonCast, castTiles, applyDragonLava } from "./crimson-dragon.js?v=r1050-2ea30cdbc905";
-import { FAR_REALMS, FAR_CIVS, FAR_FOLK, FAR_DOMAINS, isFolk, farRealmAt, giantify, farPocketAt, populatePocket, populateInk, openFarQuest, farDomainAt, farDomainCentre, farQuestInfo } from "./far-realms.js?v=r1050-2ea30cdbc905";
-import { buildDomain, domainWait, domainArrival } from "./far-domains.js?v=r1050-2ea30cdbc905";
-import { ROOF_DWELLERS, roofSpawns, roofTick, tuneDweller, useRoof } from "./roof-dwellers.js?v=r1050-2ea30cdbc905"; // the Pentagon roofs' dwellers
-import { HAUNT, hauntPlan, hauntSpawns, hauntKnot, splitDelay, curseDef, rollCurses, layCurse, curseBlocking, expireCurses, cursesOut, cursesIn, GLOOM_FINALE, gloomFinaleSpawn, gloomVitals, gloomOrbSpots, gloomDarkLevel } from "./haunts.js?v=r1050-2ea30cdbc905";
-import { beastUnlocked as beastOpenFor, beastRoamsAt, ensureWorldBeasts as ensureBeastsFor, WORLD_BEAST_IDS, beastProfileVitals, liveBeastReference, BEAST_PLAY, WORLD_BEASTS, BEAST_HOMES, BEAST_FOREST, CHRYSALIS, mothChrysalisFor, encounterMet, RETREAT, PURSUIT, retreatsUnderWay, replanRetreat, noteSectionVisit, BLOB_SPLIT, canPursue, pursued, pursuitSpawn, worldBeastFor, passingBeastFor, passingSeen, worldBeastHoldNote, BEAST_ENGAGEMENT, tuneWorldBeast, worldBeastSlain, worldBeastCaught, worldBeastEaten, worldBeastPlayerFell, worldBeastPatience, beastEngaged, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.js?v=r1050-2ea30cdbc905";
-import { questingBeastFor, questingBeastHoldNote, questingBeastWindow, questingBeastLeaves, questingBeastLost, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell, ensureQuestingBeast } from "./questing-beast.js?v=r1050-2ea30cdbc905";
-import { ensureLattice, grantCoordinates, latticeOpen } from "./transit-lattice.js?v=r1050-2ea30cdbc905";
-import { ensureHometowns, grantTowns, townAt, homeKey, homeCenter, homeName } from "./hometowns.js?v=r1050-2ea30cdbc905";
-import { HATCHLING, hatchlingBonus, feedHatchling, tickBuffs, clearBuffs, grantBuff, nextBuffKind, chooseRescueSite, guardKind, guardId, pickMove, moveTime, formUnlocked, hatchTough, hatchFocus } from "./hatchling.js?v=r1050-2ea30cdbc905"; // the Triceratops hatchling
+import { THE_DEEP, DEEP_FLOOR_GEN, deepFloorGen, ensureTheDeep, deepIdFor, isDeepId, deepShaft, shaftHere, startFloors, floorPlan, floorScale, floorAffixShare, guardianAffixes, lootBonus, floorSpecial, deepSpecialRow, lairScale, DEEP_SPECIALS } from "./the-deep.js?v=r1059-3629aeded9d0";
+import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExit } from "./deep-annex.js?v=r1059-3629aeded9d0";
+import { trackSeason, noteSeasonDiscovery } from "./seasons.js?v=r1059-3629aeded9d0";
+import { growRiteTree, riteTreeFits, COHERENCE, bridgeLanes, cohereSection, joinToLand, joinsCore, coherenceCore, creatureSpot, creatureRegions, settleSpawns } from "./landscape.js?v=r1059-3629aeded9d0";
+import { GREAT_MUSHROOMS } from "./great-mushrooms.js?v=r1059-3629aeded9d0";
+import { interiorTerrain, interiorSurfaceLevel, interiorSurfaceHeight, LIFT_PER_LEVEL, applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt, tileLiftScale, mendCanopy, HOT_SPRINGS, springMend, reachableFromPlaza, reachableFrom, crownBarred } from "./landscape.js?v=r1059-3629aeded9d0";
+import { markArrival, createSquad, squadFrame, squadRequest, behaviourProfile, behaviourState, behaviourGate, behaviourReact, ringVector, shapeBlow, startFeint, afterBlow, BEHAVIOUR } from "./enemy-behaviour.js?v=r1059-3629aeded9d0"; // ordinary creature behaviour (Tim, 2026-11-14)
+import { tacticsMove, tacticsWindup, tacticsHurtWindow } from "./squad-tactics.js?v=r1059-3629aeded9d0"; // squad tactics (Tim, 2026-11-15)
+import { TRICERATOPS_HERDS, triceratopsHerdSpawns, SPINO, spinoTuned, DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, staggerClass, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, cancelPackAttack, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, STEGO, isClubTree, populateOverworldPack, isDungeonRoamer, isDungeonHunter, gloomDarkEnd, isPackKind } from "./monster-pack.js?v=r1059-3629aeded9d0";
+import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet, oldTownAt, fixedPlaceSection } from "./settlements.js?v=r1059-3629aeded9d0";
+import { useJourneyFrame, saveStart, saveFrame, exploring } from "./journey-start.js?v=r1059-3629aeded9d0";
+import { adoptExploration, ROW_BY_ID, stateV0 } from "./progression.js?v=r1059-3629aeded9d0"; // progression Phase 3: an Exploration journey from before its table keeps what it had
+import { QUESTS, QUEST_IDS, questDue, questOpen, questState } from "./quests.js?v=r1059-3629aeded9d0"; import { openQuest, questTalk, questMeal, questClear, questEvent, questSpeak, questToken, questHome, questLay, questArrive, QUEST_WORDS } from "./quest-places.js?v=r1059-3629aeded9d0"; // progression Phase 7: quests (b) and thread rewards (d); Phase 8: far, sea, sky, under and strange
+import { farCivAt } from "./far-realms.js?v=r1059-3629aeded9d0"; import { rosterGuardianKind, GUARDIAN_ROSTER } from "./monster-pack.js?v=r1059-3629aeded9d0"; // progression Phase 8: the Storm Halls' ground; the guardian roster
+import { countFeat, reliquaryEnd, layReliquaries, openReliquary, pityTick, grantWorld } from "./world-finds.js?v=r1059-3629aeded9d0"; // progression Phase 6: milestones, the Reliquary and pity
+import { setWorldLeadProbe } from "./world-leads.js?v=r1059-3629aeded9d0"; // candidate-only physical verification
+import { ashenMeridianSection } from "./foundry.js?v=r1059-3629aeded9d0";
+import { addStrange, touchStrange, BIZARRO, bizarroHere, abyssalFindHere, bizarroSpawns } from "./strange.js?v=r1059-3629aeded9d0"; // and the bizarro pockets
+import { creditFind } from "./digging.js?v=r1059-3629aeded9d0"; // seed realms: a cache's find
+import { DIG, isInteriorArea, markWalked, planDig, validateDigPlan, ensureShovel, ensureIronShovel, dig, applyTunnels, overworldDigKey, OVERWORLD_DIG, saveTier, wallGlints, wallTreasure, addDigSpot, digSpot, addStone } from "./digging.js?v=r1059-3629aeded9d0";
+import { linkedExit, mouthsIn, placeMouth } from "./linked-dungeons.js?v=r1059-3629aeded9d0";
+import { TYRANT_HUNT, tyrantVisit, tickTyrantHunt, tyrantRisePoint, countTyrantRise } from "./tyrant-hunt.js?v=r1059-3629aeded9d0";
+import { TRAVEL_VERSION, applyTrails, addTravelers, addReciter, addDungeonReciter, addElder, addDungeonElder, addWanderer, tickTravelers, wandererArrive, wandererKill } from "./travelers.js?v=r1059-3629aeded9d0";
+import { dragonRecord, dragonCast, castTiles, applyDragonLava } from "./crimson-dragon.js?v=r1059-3629aeded9d0";
+import { FAR_REALMS, FAR_CIVS, FAR_FOLK, FAR_DOMAINS, isFolk, farRealmAt, giantify, farPocketAt, populatePocket, populateInk, openFarQuest, farDomainAt, farDomainCentre, farQuestInfo } from "./far-realms.js?v=r1059-3629aeded9d0";
+import { buildDomain, domainWait, domainArrival } from "./far-domains.js?v=r1059-3629aeded9d0";
+import { ROOF_DWELLERS, roofSpawns, roofTick, tuneDweller, useRoof } from "./roof-dwellers.js?v=r1059-3629aeded9d0"; // the Pentagon roofs' dwellers
+import { HAUNT, hauntPlan, hauntSpawns, hauntKnot, splitDelay, curseDef, rollCurses, layCurse, curseBlocking, expireCurses, cursesOut, cursesIn, GLOOM_FINALE, gloomFinaleSpawn, gloomVitals, gloomOrbSpots, gloomDarkLevel } from "./haunts.js?v=r1059-3629aeded9d0";
+import { beastUnlocked as beastOpenFor, beastRoamsAt, ensureWorldBeasts as ensureBeastsFor, WORLD_BEAST_IDS, beastProfileVitals, liveBeastReference, BEAST_PLAY, WORLD_BEASTS, BEAST_HOMES, BEAST_FOREST, CHRYSALIS, mothChrysalisFor, encounterMet, RETREAT, PURSUIT, retreatsUnderWay, replanRetreat, noteSectionVisit, BLOB_SPLIT, canPursue, pursued, pursuitSpawn, worldBeastFor, passingBeastFor, passingSeen, worldBeastHoldNote, BEAST_ENGAGEMENT, tuneWorldBeast, worldBeastSlain, worldBeastCaught, worldBeastEaten, worldBeastPlayerFell, worldBeastPatience, beastEngaged, beginRetreat, beginDungeonRetreat, worldBeastForDungeon, retreatTarget, retreatPath, retreatCrossed, retreatEnded, worldBeastsLost, walkerReachableTiles, walkerRetreatDoors, applyVoidScars, consumeVoidTerrain, isMarineTile, marineTileOpen } from "./world-beasts.js?v=r1059-3629aeded9d0";
+import { questingBeastFor, questingBeastHoldNote, questingBeastWindow, questingBeastLeaves, questingBeastLost, tuneQuestingBeast, questingBeastSlain, questingBeastPlayerFell, ensureQuestingBeast } from "./questing-beast.js?v=r1059-3629aeded9d0";
+import { ensureLattice, grantCoordinates, latticeOpen } from "./transit-lattice.js?v=r1059-3629aeded9d0";
+import { ensureHometowns, grantTowns, townAt, homeKey, homeCenter, homeName } from "./hometowns.js?v=r1059-3629aeded9d0";
+import { HATCHLING, hatchlingBonus, feedHatchling, tickBuffs, clearBuffs, grantBuff, nextBuffKind, chooseRescueSite, guardKind, guardId, pickMove, moveTime, formUnlocked, hatchTough, hatchFocus } from "./hatchling.js?v=r1059-3629aeded9d0"; // the Triceratops hatchling
 const HATCH_SPOTS = Object.freeze([[-1, 0], [-1, .6], [-1, -.6], [0, 1], [0, -1], [1, 0], [-1.6, 0], [0, 1.6]]); // where the hatchling comes out beside the Wayfarer (tiles; mirrored to her facing)
-import { generateListenerArena, isArenaRun, daisDue } from "./listener-arena.js?v=r1050-2ea30cdbc905";
-import { MIRROR_FORM, isMirror, tickMirrorListener, tickReflection } from "./listener-mirror.js?v=r1050-2ea30cdbc905";
-import { MORPH_FORM, isMorph, tickMorphListener, tickWorm } from "./listener-morph.js?v=r1050-2ea30cdbc905";
-import { swapPreset, stashForOtherPreset } from "./build-presets.js?v=r1050-2ea30cdbc905";
-import { SHADOW_CLONE, cloneOffset, clampPlacement, clonePosition, chargeDistance, tickSpellFields } from "./late-spells.js?v=r1050-2ea30cdbc905";
-import { BRAWLER, IRON_FISTS, BRAWLER_ECHO, fistCharge, fistPerfect, fistHeld, fistBeatWindow, fistOnBeat, fistCalloutLevel, IMBUE, imbueAmount, imbueSpark, ESSENCE_WALK, essenceSpellCost, essenceExempt, essenceLockout } from "./brawler-spells.js?v=r1050-2ea30cdbc905"; // release 483; 489: Iron Fists; Imbue Weapon; Essence Walk
-import { PLUNGE, PLUNGE_DIVE, plungeProfile, plungeKind, HAMMER_CLAP, hammerClapCatches, hammerClapSpan, hammerClapStrikeAt, clipHammerClap, hammerClapPose, hammerClapEnd } from "./brawler-spells.js?v=r1050-2ea30cdbc905"; // jump attacks (2026-11-12); the awakened Hammerfall's clap (2026-11-14)
-import { SHADOW_DASH, shadowDashMs, shadowDashTravel, normalizeShadowDash, markShadowTrail, shadowTrailTick, LAVA_RUSH, normalizeArtRush, CYCLONE_HEEL, normalizeCycloneHeel, cycloneTravel } from "./brawler-spells.js?v=r1050-2ea30cdbc905"; // Shadow Boxing's charge (2026-11-14); shadow trails (presentation only)
-import { ORBIT, orbitLaunch, orbitCharge, orbitPerfect } from "./orbit-volley.js?v=r1050-2ea30cdbc905"; // release 487
-import { passiveHit, passiveCast, edgeArm, isMeleeSource, settleCastWind, echoingRecast, recastBurst, chargedRelease, tickHitCastPassives, vulnScale, weakenScale, edgeMoveBonus, RAPID_RELOAD, POWER_AEGIS, powerAegisOn, pullBuild, riftStepMine, foeDealtScale, encumberedAny } from "./hit-cast-passives.js?v=r1050-2ea30cdbc905"; // Tim's on-hit / on-cast / charge passives (2026-11-19)
-import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, beginListenerArena, piecesNeeded, killsToClimb, piecesToUnlock, boonTotals, tuneArrayBoss, silentMouthAt, relaysUntilReturn, LISTENER_CYCLE } from "./far-array.js?v=r1050-2ea30cdbc905";
-import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.js?v=r1050-2ea30cdbc905";
-import { unharmablePerson, keepPersonWhole } from "./townsfolk.js?v=r1050-2ea30cdbc905"; // Tim (2026-11-20): no non-hostile person can be harmed
-import { addIlse, meetIlse } from "./ilse.js?v=r1050-2ea30cdbc905";
-import { addBell, ringBell, BELL_GLIMPSES } from "./bells.js?v=r1050-2ea30cdbc905";
-import { addTornPage, readTornPage, PAGES_FINAL } from "./torn-pages.js?v=r1050-2ea30cdbc905"; // release 595
-import { addThreadRelic, readThreadRelic, storyVersionFor, settleArcanaRewards, settleArcanaUnlocks } from "./threads.js?v=r1050-2ea30cdbc905"; // release 627; the story budget (2026-11-05); arcana rewards (2026-11-11)
-import { addMargin, readMargin } from "./margins.js?v=r1050-2ea30cdbc905";
-import { DUELISTS, duelistPlan, duelistSpawns } from "./duelists.js?v=r1050-2ea30cdbc905"; // the Gaunt, hooded duelists (Tim, 2026-11-12)
-import { addSurveyorLink, takeSurveyorLink, SURVEYOR, addSurveyorStatue, visitSurveyorStatue, surveyorStatueSection, addCairnKeeper, speakCairnKeeper, resettleSurveyorLink } from "./surveyor.js?v=r1050-2ea30cdbc905"; // release 505; 551: part two
-import { SECOND_WAYFARER, SECOND_ENDING, SECOND_SIGHTINGS, addSecondFootprints, readSecondFootprints, addSecondTrace, readSecondTrace, secondDone } from "./second-wayfarer.js?v=r1050-2ea30cdbc905"; // the Second Wayfarer (narrative bible, section 4)
-import { READINGS, readingKnown, bookProgress, regionVersionFor, ARCANA_PASSIVES, arcanaHas, arcanaHint, lightRadius, WAYFARER_DREAD, dreadLive, hushedSpeech, dreadGlimpseOffered } from "./lore.js?v=r1050-2ea30cdbc905";
-import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.js?v=r1050-2ea30cdbc905";
+import { generateListenerArena, isArenaRun, daisDue } from "./listener-arena.js?v=r1059-3629aeded9d0";
+import { MIRROR_FORM, isMirror, tickMirrorListener, tickReflection } from "./listener-mirror.js?v=r1059-3629aeded9d0";
+import { MORPH_FORM, isMorph, tickMorphListener, tickWorm } from "./listener-morph.js?v=r1059-3629aeded9d0";
+import { swapPreset, stashForOtherPreset } from "./build-presets.js?v=r1059-3629aeded9d0";
+import { SHADOW_CLONE, cloneOffset, clampPlacement, clonePosition, chargeDistance, tickSpellFields } from "./late-spells.js?v=r1059-3629aeded9d0";
+import { BRAWLER, IRON_FISTS, BRAWLER_ECHO, fistCharge, fistPerfect, fistHeld, fistBeatWindow, fistOnBeat, fistCalloutLevel, IMBUE, imbueAmount, imbueSpark, ESSENCE_WALK, essenceSpellCost, essenceExempt, essenceLockout } from "./brawler-spells.js?v=r1059-3629aeded9d0"; // release 483; 489: Iron Fists; Imbue Weapon; Essence Walk
+import { PLUNGE, PLUNGE_DIVE, plungeProfile, plungeKind, HAMMER_CLAP, hammerClapCatches, hammerClapSpan, hammerClapStrikeAt, clipHammerClap, hammerClapPose, hammerClapEnd } from "./brawler-spells.js?v=r1059-3629aeded9d0"; // jump attacks (2026-11-12); the awakened Hammerfall's clap (2026-11-14)
+import { SHADOW_DASH, shadowDashMs, shadowDashTravel, normalizeShadowDash, markShadowTrail, shadowTrailTick, LAVA_RUSH, normalizeArtRush, CYCLONE_HEEL, normalizeCycloneHeel, cycloneTravel } from "./brawler-spells.js?v=r1059-3629aeded9d0"; // Shadow Boxing's charge (2026-11-14); shadow trails (presentation only)
+import { ORBIT, orbitLaunch, orbitCharge, orbitPerfect } from "./orbit-volley.js?v=r1059-3629aeded9d0"; // release 487
+import { passiveHit, passiveCast, edgeArm, isMeleeSource, settleCastWind, echoingRecast, recastBurst, chargedRelease, tickHitCastPassives, vulnScale, weakenScale, edgeMoveBonus, RAPID_RELOAD, POWER_AEGIS, powerAegisOn, pullBuild, riftStepMine, foeDealtScale, encumberedAny } from "./hit-cast-passives.js?v=r1059-3629aeded9d0"; // Tim's on-hit / on-cast / charge passives (2026-11-19)
+import { arrayPylons, runName, FAR, LISTENER_FORMS, ensureFarArray, arrayMouthAt, beginArrayRun, isArrayRun, runBossSpawn, summonSpawn, scaleForGate, summonThresholds, listenerHides, guardianFelled, listenerFelled, beginListenerArena, piecesNeeded, killsToClimb, piecesToUnlock, boonTotals, tuneArrayBoss, silentMouthAt, relaysUntilReturn, LISTENER_CYCLE } from "./far-array.js?v=r1059-3629aeded9d0";
+import { addSkirmish, skirmishFields, updateSkirmisher } from "./skirmishes.js?v=r1059-3629aeded9d0";
+import { unharmablePerson, keepPersonWhole } from "./townsfolk.js?v=r1059-3629aeded9d0"; // Tim (2026-11-20): no non-hostile person can be harmed
+import { addIlse, meetIlse } from "./ilse.js?v=r1059-3629aeded9d0";
+import { addBell, ringBell, BELL_GLIMPSES } from "./bells.js?v=r1059-3629aeded9d0";
+import { addTornPage, readTornPage, PAGES_FINAL } from "./torn-pages.js?v=r1059-3629aeded9d0"; // release 595
+import { addThreadRelic, readThreadRelic, storyVersionFor, settleArcanaRewards, settleArcanaUnlocks, settleThreadGifts, THREAD_TRAILS } from "./threads.js?v=r1059-3629aeded9d0"; // release 627; the story budget (2026-11-05); arcana rewards (2026-11-11); thread gifts (2026-11-21)
+import { trailFollowId, trailPlace } from "./thread-trails.js?v=r1059-3629aeded9d0"; // 2026-11-21: a thread the compass can follow once begun
+import { addMargin, readMargin } from "./margins.js?v=r1059-3629aeded9d0";
+import { DUELISTS, duelistPlan, duelistSpawns } from "./duelists.js?v=r1059-3629aeded9d0"; // the Gaunt, hooded duelists (Tim, 2026-11-12)
+import { addSurveyorLink, takeSurveyorLink, SURVEYOR, addSurveyorStatue, visitSurveyorStatue, surveyorStatueSection, addCairnKeeper, speakCairnKeeper, resettleSurveyorLink } from "./surveyor.js?v=r1059-3629aeded9d0"; // release 505; 551: part two
+import { SECOND_WAYFARER, SECOND_ENDING, SECOND_SIGHTINGS, addSecondFootprints, readSecondFootprints, addSecondTrace, readSecondTrace, secondDone } from "./second-wayfarer.js?v=r1059-3629aeded9d0"; // the Second Wayfarer (narrative bible, section 4)
+import { READINGS, readingKnown, bookProgress, regionVersionFor, ARCANA_PASSIVES, arcanaHas, arcanaHint, lightRadius, WAYFARER_DREAD, dreadLive, hushedSpeech, dreadGlimpseOffered } from "./lore.js?v=r1059-3629aeded9d0";
+import { requiredBossId, registerDungeonBosses, recordDungeonBossDefeat, claimDungeonPayoff, installCompletionExit } from "./dungeon-completion.js?v=r1059-3629aeded9d0";
 const remaining = (v, n) => Math.max(0, Number(v || 0) - n);
 // Power Aegis (game.ts parryBlow): how a blow reached the Wayfarer. A creature's own blow (the parry may stagger it), and a pack
 // creature's blow (that, and it may be one of its moving bolts, sent back as a shot).
@@ -291,6 +293,15 @@ export const GLIDE = { minDrop: 4, sink: 1.5, speed: 4.6, steer: 3.2, skim: .35,
 // transition could land on (perches hang two or three levels under the branch above; four levels kill), and with the glider it
 // becomes the closed freefall as before (treeFreefall), at its height and speed. A closed freefall saved before this resumes as it was.
 export const TREE_FALL = { on: true, openAbove: 1, clear: 3 };
+// The great tree's crown as its own level (Tim, 2026-11-22: "the top of the tree is not accessible... until you've passed through a series of
+// steps... the top must be kept separate from the bottom"). `levels`: the landscape record a rite's tree on flat ground is given
+// (riteTreeLevels) and `wood` the ground its tiles are drawn as (every other great tree's is the jungle's). The gate and the hold are
+// landscape.ts CROWN_GATE: the crown is entered only from the tree's last step (`below` levels under it) or from the crown itself, by
+// the level of the last ground stood on (`player.footLevel`), however the Wayfarer moves (walk, jump, dodge, a blow, a pull, Aerial
+// Step, a wall hold, the drone, Rift Step: blinkFooting). After waking on a crown (a crown wake, the Crown Rest, a reload there) the
+// crown hold (`crownHold`) keeps walking, a dodge or a blow from carrying the Wayfarer off its rim except onto that last step, until
+// they jump (the deliberate way down: the glider opens from it) or step down.
+export const GREAT_CROWN = Object.freeze({ levels: Object.freeze({ version: 1, biome: null, name: null, riteLevels: true }), wood: "jungle", freefallReach: 2 });
 // TREE_GLIDE.home: where a death after a glide from the crown wakes you: the crown tile nearest its middle that is neither the door nor the
 // Crown Rest (so waking there does not open the door; the rest point is taken by wakeOnCrown itself), as a player position. Null without a crown.
 export function crownSpot(map) {
@@ -300,7 +311,8 @@ export function crownSpot(map) {
   const crown = tiles.filter((t) => t.kind === "canopyTrunk" && t.elev === top && own(t)); if (!crown.length) return null;
   const mx = crown.reduce((a, t) => a + t.x, 0) / crown.length, my = crown.reduce((a, t) => a + t.y, 0) / crown.length;
   const free = crown.filter((t) => !(gate && t.x === gate.x && t.y === gate.y) && !(rest && Math.hypot(t.x - rest.x, t.y - .2 - rest.y) <= .9)), pool = free.length ? free : crown; // .9: touchCrownRest's reach
-  const t = pool.sort((a, b) => (Math.hypot(a.x - mx, a.y - my) - Math.hypot(b.x - mx, b.y - my)) || (a.y - b.y) || (a.x - b.x))[0];
+  const w = map.width || 32, drops = (t) => { let n = 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const q = tiles[(t.y + dy) * w + t.x + dx]; if (!q || (!q.blocked && ((q.elev || 0) < top - 1 || LETHAL_KINDS.has(q.kind)))) n++; } return n; }; // GREAT_CROWN: the fewest sides over a drop first (the crown's middle, else beside the last step)
+  const t = pool.map((q) => [drops(q), q]).sort(([da, a], [db, b]) => (da - db) || (Math.hypot(a.x - mx, a.y - my) - Math.hypot(b.x - mx, b.y - my)) || (a.y - b.y) || (a.x - b.x))[0][1];
   return { x: t.x, y: t.y - .2 };
 }
 export const PASS_CLEAR = .25; // release 643: how far past a body a projectile must be before its next pass counts as a new hit
@@ -1113,8 +1125,100 @@ export function packVictim(save, spareBrawler = false) {
   return i < 0 ? 0 : i;
 }
 // `keep` (release 545): the piece is kept whatever it is (a purchase), and the pack's least-kept, oldest piece makes room.
+// Spare gear (2026-11-22): a drop that is a spare of a piece you keep (SPARE_GEAR) is salvaged on arrival, by hand's own
+// salvage (`spare` lists it). A drop kept into a full pack makes room with the oldest copy of its kind it makes spare, when
+// there is one, before the full pack's own rule. Only the drop is judged otherwise: older copies are left as they are.
 export function storeInventoryItem(save, item, keep = false) {
   save.inventory ||= [];
+  if (keep || !spareSalvageOn(save) || !item || typeof item !== "object") return storeInPack(save, item, keep);
+  const n = save.inventory.length, plan = spareGearPlan(save, spareKind(item), item);
+  if (plan.includes(n)) { save.inventory.push(item); const r = salvageInventoryItem(save, n); return { stored: false, salvaged: item, iron: r.iron, lumenDust: r.lumenDust, spare: [r] }; }
+  if (plan.length && n >= EQUIPMENT_CAPACITY) { const r = salvageInventoryItem(save, plan[0]); save.inventory.push(item); return { stored: true, salvaged: r.item, iron: r.iron, lumenDust: r.lumenDust, spare: [r] }; }
+  return storeInPack(save, item, false);
+}
+// Spare gear (Tim, 2026-11-22: "We should just automatically salvage duplicates. There's no need to keep them."). A spare is a
+// piece in the pack of the same kind (slot, name and property: "Quiet Compass") as a piece you keep, which that kept piece
+// matches or beats on every axis (`covers`): tier, power, upgrade rank, masterwork, added sockets, socket count, each socketed
+// glyph and each affix (by id, at least the value). Kept pieces: everything equipped, held by a preset (presetGear) or in the
+// sling; in the pack, a piece whose tag a preset's build names, and any piece carrying a field this rule does not weigh
+// (an awakening, a refinement, anything newer): those are never salvaged here. Of the rest, each kind is read best first
+// (`order`: power, then upgrade rank, then tier; at a tie the newest first, so the older copy goes, as the full pack's rule)
+// and a piece is kept unless a kept piece covers it; then a kept pack piece that another kept piece covers and outdoes goes too.
+// So one best copy of each kind always stays, and a piece better on any axis stays beside it. Salvage is `salvageInventoryItem`
+// (the hand's salvage: its tier's iron in the chosen yield, glyph dust, socketed glyphs back to the pouch). On pickup, the drop
+// (storeInventoryItem), and once on load, the whole pack (`flag`, Game constructor); `save.keepDuplicateGear` turns both off.
+export const SPARE_GEAR = Object.freeze({
+  ...SPARE_GEAR_STATE, // flag, keep, version (smithy.ts; normalised in freshSave/migrateSave)
+  order: Object.freeze(["power", "rank", "tier"]),
+  named: 4, // kinds named in one message line
+  weighed: Object.freeze(["id", "name", "slot", "property", "power", "basePower", "upgradeRank", "tier", "affixes", "masterwork", "extraSockets", "glyphs", "reforged", "tag"]),
+});
+const SPARE_WEIGHED = new Set(SPARE_GEAR.weighed);
+const spareNum = (v) => Math.max(0, Number(v) || 0);
+const SPARE_KEYS = { power: (q) => spareNum(q?.power), rank: (q) => spareNum(q?.upgradeRank), tier: (q) => ITEM_TIERS.indexOf(itemTier(q)) };
+export const spareSalvageOn = (save) => save?.[SPARE_GEAR.keep] !== true;
+export const spareKind = (q) => `${q?.slot}|${q?.name}|${q?.property ?? ""}`;
+function spareCompare(a, b) { for (const k of SPARE_GEAR.order) { const d = SPARE_KEYS[k](a) - SPARE_KEYS[k](b); if (d) return d; } return 0; }
+// True when `k` is at least as good as `q` on every axis the rule weighs.
+export function spareCovers(k, q) {
+  if (!k || !q || spareKind(k) !== spareKind(q)) return false;
+  if (SPARE_KEYS.tier(k) < SPARE_KEYS.tier(q) || spareNum(k.power) < spareNum(q.power) || spareNum(k.upgradeRank) < spareNum(q.upgradeRank) || spareNum(k.extraSockets) < spareNum(q.extraSockets)) return false;
+  if (q.masterwork === true && k.masterwork !== true) return false;
+  const kg = Array.isArray(k.glyphs) ? k.glyphs : [], qg = Array.isArray(q.glyphs) ? q.glyphs : [];
+  if (kg.length < qg.length) return false;
+  const have = new Map(); for (const g of kg) if (g) have.set(g, (have.get(g) || 0) + 1);
+  for (const g of qg) if (g) { const c = have.get(g) || 0; if (!c) return false; have.set(g, c - 1); }
+  const best = new Map(); for (const a of Array.isArray(k.affixes) ? k.affixes : []) if (a?.id) best.set(a.id, Math.max(best.get(a.id) ?? -Infinity, Number(a.value) || 0));
+  for (const a of Array.isArray(q.affixes) ? q.affixes : []) if (a?.id && !(best.get(a.id) >= (Number(a.value) || 0))) return false;
+  return true;
+}
+const presetGearTags = (save) => { const tags = new Set(); for (const p of save.magicSkills?.presets || []) for (const t of Object.values(p?.build?.gear || {})) if (typeof t === "string" && t) tags.add(t); return tags; };
+// A pack piece the rule never salvages: a preset's tagged piece, or one carrying anything the rule does not weigh.
+function spareExempt(q, tags) {
+  if (!q || typeof q !== "object" || typeof q.name !== "string" || typeof q.slot !== "string") return true;
+  if (typeof q.tag === "string" && tags.has(q.tag)) return true;
+  for (const k in q) if (!SPARE_WEIGHED.has(k)) return true;
+  return false;
+}
+// The pack indices that are spares (ascending), for one kind (`only`) or all. `extra` is a drop weighed as the newest piece,
+// at index inventory.length. Pure.
+export function spareGearPlan(save, only = null, extra = null) {
+  const inv = Array.isArray(save.inventory) ? save.inventory : [], n = inv.length + (extra ? 1 : 0), at = (i) => (i < inv.length ? inv[i] : extra);
+  const tags = presetGearTags(save), kept = new Map(), mine = (q) => q && typeof q === "object" && (!only || spareKind(q) === only);
+  const keep = (q, i) => { const k = spareKind(q); if (!kept.has(k)) kept.set(k, []); kept.get(k).push({ q, i }); };
+  for (const q of Object.values(save.equipment || {})) if (mine(q)) keep(q, -1);
+  for (const set of Array.isArray(save.presetGear) ? save.presetGear : []) for (const q of Object.values(set || {})) if (mine(q)) keep(q, -1);
+  for (const q of Array.isArray(save.sling) ? save.sling : []) if (mine(q)) keep(q, -1);
+  const open = [];
+  for (let i = 0; i < n; i++) { const q = at(i); if (!mine(q)) continue; if (spareExempt(q, tags)) keep(q, -1); else open.push(i); }
+  open.sort((a, b) => spareCompare(at(b), at(a)) || b - a); // best first; at a tie the newest first
+  const spare = new Set();
+  for (const i of open) { const q = at(i); if ((kept.get(spareKind(q)) || []).some((k) => spareCovers(k.q, q))) spare.add(i); else keep(q, i); }
+  for (const list of kept.values()) for (const c of list) if (c.i >= 0 && list.some((k) => k !== c && !spare.has(k.i) && spareCovers(k.q, c.q) && !spareCovers(c.q, k.q))) spare.add(c.i);
+  return [...spare].sort((a, b) => a - b);
+}
+// Salvages the pack's spares (one kind, or all) by hand's salvage. Returns { count, iron, lumenDust, items, names }.
+export function salvageSpareGear(save, only = null) {
+  const plan = spareGearPlan(save, only), out = { count: 0, iron: 0, lumenDust: 0, items: [], names: {} };
+  for (let j = plan.length - 1; j >= 0; j--) { const r = salvageInventoryItem(save, plan[j]); if (!r) continue; out.count++; out.iron += r.iron; out.lumenDust += r.lumenDust; out.items.unshift(r.item); }
+  for (const q of out.items) out.names[q.name] = (out.names[q.name] || 0) + 1;
+  return out;
+}
+// The one-time sweep of a journey's pack on load: once (`flag`), and not while duplicates are kept.
+export function sweepSpareGearOnce(save) {
+  if (!save || !spareSalvageOn(save) || Number(save[SPARE_GEAR.flag]) >= SPARE_GEAR.version) return null;
+  const r = salvageSpareGear(save); save[SPARE_GEAR.flag] = SPARE_GEAR.version; return r;
+}
+// "Salvaged a spare Quiet Compass: +2 cinder iron" / "Salvaged 3 spares (Quiet Compass ×2, Kiln Mantle): +6 cinder iron".
+// The most salvaged kinds first, at most `SPARE_GEAR.named` of them, then "N more".
+export function spareSalvageText(save, tally) {
+  const names = Object.entries(tally.names || {}).sort((a, b) => b[1] - a[1]), count = names.reduce((t, [, c]) => t + c, 0), shown = names.slice(0, SPARE_GEAR.named), rest = names.length - shown.length;
+  const paid = tally.lumenDust > 0 ? `+${tally.lumenDust} lumen dust` : salvageYieldMode(save) === "lumenDust" ? salvagePaidText(save, tally) : `+${tally.iron || 0} cinder iron`;
+  const what = count === 1 ? `a spare ${names[0][0]}` : `${count} spares (${shown.map(([n, c]) => (c > 1 ? `${n} ×${c}` : n)).join(", ")}${rest > 0 ? `, ${rest} more kind${rest === 1 ? "" : "s"}` : ""})`;
+  return `Salvaged ${what}: ${paid}`;
+}
+// The pack as stored before spare gear: room is made by the full pack's rule.
+function storeInPack(save, item, keep = false) {
   if (save.inventory.length < EQUIPMENT_CAPACITY) {
     save.inventory.push(item);
     return { stored: true, salvaged: null };
@@ -1764,6 +1868,11 @@ export const SECTION_TERRAIN = Object.freeze({ keep: 12 }); // the section, its 
 // crossing, the edge just crossed does not take the Wayfarer back until they have been `depth` tiles inside it or `ms` have
 // passed; for that moment it holds like the rest of the section's border. Arrival points and map generation are unchanged.
 export const EDGE_HOLD = Object.freeze({ depth: .75, ms: 450 });
+// Fixes from a 20-hour playthrough (I14): said when Return home or Wayglass travel finds a displaced Wayfarer with no way on
+// (Game.routeOut); `near`, the tiles beside a physical Wayglass that count as reaching it.
+export const DISPLACEMENT_STRAND = Object.freeze({ message: "Nothing here leads on. The Wayglass line finds you after all.", near: Object.freeze([[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) });
+// Open seas (release 152): what a walker hears at a lane that opens on open sea (Game.seaBeyondLane, transitionSection).
+export const SEA_REFUSAL = "Open sea lies beyond. You need a boat to cross it.";
 // Perf spikes (Tim's r937 probe: a 68 ms `update` on the frame he crossed into a new section, about half of it generating the
 // new section's terrain): within `edge` tiles of a section edge, idle time lays the section beyond it into the sectionTerrain
 // cache (Game.warmCrossingTerrain, main.ts), so the crossing copies kept terrain instead of generating it in its own frame.
@@ -1781,6 +1890,19 @@ export function clearSectionTerrainCache() { terrainCache.clear(); terrainCache.
 export function sectionTerrain(seed, rx, ry, generation, steps) {
   const key = JSON.stringify([seed, rx, ry, generation, steps]), kept = terrainCache.get(key);
   if (kept) { terrainCache.delete(key); terrainCache.set(key, kept); terrainCache.hits = (terrainCache.hits || 0) + 1; return structuredClone(kept); }
+  const map = buildSectionTerrain(seed, rx, ry, generation, steps);
+  terrainCache.set(key, structuredClone(map)); terrainCache.misses = (terrainCache.misses || 0) + 1;
+  while (terrainCache.size > SECTION_TERRAIN.keep) terrainCache.delete(terrainCache.keys().next().value);
+  return map;
+}
+// Read-only: the kept terrain itself (no copy, no hit counted), generated and kept on a miss as sectionTerrain does. The caller
+// never edits it (Game.seaBeyondLane reads one tile).
+export function keptSectionTerrain(seed, rx, ry, generation, steps) {
+  const kept = terrainCache.get(JSON.stringify([seed, rx, ry, generation, steps]));
+  return kept || sectionTerrain(seed, rx, ry, generation, steps);
+}
+// The same terrain passes without touching the arrival cache; lead probes own only their scratch map.
+function buildSectionTerrain(seed, rx, ry, generation, steps) {
   const map = generateRegion(seed, rx, ry, generation, steps.heartlandShack ? { heartlandShack: steps.heartlandShack } : null); // heartland shacks (world.ts HEARTLAND_SHACK): new ground beside the Refuge only
   applyLandscape(map, seed, rx, ry, steps.landscape);
   if (steps.dream) applyDream(map, seed, rx, ry, steps.dream);
@@ -1788,10 +1910,57 @@ export function sectionTerrain(seed, rx, ry, generation, steps) {
   if (steps.hamlet) applyHamlet(map, seed, rx, ry, ...steps.hamlet);
   if (steps.trails) applyTrails(map, seed, rx, ry);
   if (steps.bridgeLanes) bridgeLanes(map); // world coherence (WG-01): the lanes' bridges
-  terrainCache.set(key, structuredClone(map)); terrainCache.misses = (terrainCache.misses || 0) + 1;
-  while (terrainCache.size > SECTION_TERRAIN.keep) terrainCache.delete(terrainCache.keys().next().value);
   return map;
 }
+// Shared with placeDeepShaft: the historical placement order and footprint rules remain identical.
+export function deepShaftSpot(map) {
+  const w = mapWidth(map, "overworld"); let at = null;
+  for (let r = 3; r <= 10 && !at; r++) for (let k = 0; k < 16 && !at; k++) { const a = k / 16 * Math.PI * 2, x = Math.round(16 + Math.cos(a) * r), y = Math.round(16 + Math.sin(a) * r), t = map.tiles[y * w + x];
+    if (t && !t.blocked && !t.structure && !t.environment && !t.buildingId && !t.landscape?.startsWith?.("sea") && footprintOpen(map, w, x, y) && !map.objects.some((o) => Math.hypot(o.x - x, o.y - y) < 2)) at = { x, y }; }
+  return at;
+}
+// Only shortlisted hash candidates reach this probe. Scratch state cannot grant or open anything in the journey.
+export function worldLeadPhysical(save, rx, ry, kind, dungeon) {
+  const scratch = structuredClone(save), seen = scratch.atlas?.[`${rx},${ry}`], generation = scratch.worldGeneration ?? 1;
+  const ctx = Object.assign(Object.create(Game.prototype), { save: scratch, rx, ry, area: "overworld" }), steps = ctx.sectionTerrainSteps(rx, ry);
+  // Later arrival overlays can remove a crossing/shaft or bury its footing. A lead deliberately skips the whole potential
+  // architectural section, even when its eventual footprint might spare the site. Canonical predicates and atlas pins keep
+  // this conservative filter in step with arrival without constructing buildings or rewriting any generated layout.
+  const enabled = (pin, current) => seen ? seen[pin] : current;
+  const pc = pentagonCentre(rx, ry), cc = castleCorner(rx, ry);
+  if (enabled("pentVersion", PENTAGON.version) && pc && ctx.pentagonHere(pc.cx, pc.cy)) return false;
+  if (enabled("castleVersion", CASTLES.version) && cc && ctx.castleHere(cc.X, cc.Y)) return false;
+  const lv = seen ? seen.landscapeVersion || 0 : LANDSCAPE_VERSION, region = lv >= 5 ? sectionRegion(scratch.seed, rx, ry, lv) : null;
+  if (enabled("arcVersion", 0) && lv >= 5 && arcologyHere(scratch.seed, rx, ry, region)) return false;
+  if (enabled("keepVersion", 0) && keepHere(scratch.seed, rx, ry)) return false;
+  if (enabled("labVersion", LABYRINTHS.version) && labyrinthHere(scratch.seed, rx, ry, region)) return false;
+  if (enabled("compoundVersion", COMPOUNDS.version) && compoundHere(scratch.seed, rx, ry, region)) return false;
+  const bv = enabled("buildingVersion", BUILDINGS.version);
+  if (bv && (bv >= 2 ? buildingHereV2 : buildingHere)(scratch.seed, rx, ry, region)) return false;
+  if (enabled("towerVersion", TALL_TOWERS.version) && towerHere(scratch.seed, rx, ry)) return false;
+  // A completed Rite may replace its section with a grown tree on arrival. Skip possible sapling sites as well.
+  if (enabled("ascendVersion", ASCENDANCY.version) && saplingHere(scratch.seed, rx, ry)) return false;
+  const map = buildSectionTerrain(scratch.seed, rx, ry, generation, steps); ctx.map = map;
+  if (map.settlement || map.hamlet || farDomainAt(scratch, rx, ry, !!seen)) return false;
+  // Mutable hunt sites have additional arrival overlays: do not promise a new physical site through them.
+  if (Object.values(scratch.viewport?.contracts || {}).some((q) => q.target?.rx === rx && q.target?.ry === ry && !["archived", "completed"].includes(q.status)) || domainSectionAt(scratch, rx, ry)) return false;
+  if (kind === "horde") return map.objects.some((o) => o.kind === "dungeon" && (o.dungeonId || dungeonId(scratch.seed, generation, rx, ry, o.id)) === dungeon);
+  if (seen || scratch.explored?.[`${rx},${ry}`] || scratch.session?.areas?.[`overworld:${rx}:${ry}:g${generation}`]) return false;
+  Game.prototype.placeMooredSkiff.call(ctx); Game.prototype.placeSpareSkiff.call(ctx);
+  const dive = diveSite(map, scratch.seed, rx, ry); if (dive) map.objects.push(dive);
+  placeWatcherOverworld(map, mapWidth(map, "overworld"), scratch.seed, rx, ry, guideHost(scratch.seed, "shrine", rx, ry));
+  addCairnKeeper(map, rx, ry);
+  plantRefugeLands(map, rx, ry, Game.prototype.refugeLandsWhere.call(ctx));
+  const site = storySiteFor(scratch, rx, ry); if (site && !map.objects.some((o) => o.id === site.id)) { const t = map.tiles[site.y * 32 + site.x]; if (!t?.blocked && !t?.structure) map.objects.push(site); }
+  const remembered = scratch.checkpoints?.[`${rx},${ry}`];
+  if (remembered && !remembered.crown && !map.objects.some((o) => o.kind === "checkpoint")) {
+    const x = Math.max(1, Math.min(30, Number.isFinite(remembered.x) ? remembered.x : 16)), y = Math.max(1, Math.min(30, Number.isFinite(remembered.y) ? remembered.y : 16));
+    map.tiles[y * 32 + x] = { ...map.tiles[y * 32 + x], x, y, kind: map.dominant, blocked: false }; map.objects.push({ kind: "checkpoint", x, y });
+  }
+  placeDungeonIndoors(map, scratch.seed, rx, ry);
+  return !!deepShaftSpot(map);
+}
+setWorldLeadProbe(worldLeadPhysical);
 export const terrainCached = (seed, rx, ry, generation, steps) => terrainCache.has(JSON.stringify([seed, rx, ry, generation, steps]));
 // The terrain steps a Walker preview (walkerCrossingMap) runs for a section.
 export function walkerTerrainSteps(save, rx, ry) {
@@ -2656,7 +2825,7 @@ export function hasLineOfSight(enemy, player, map, width, projectile=false, allo
 }
 // Objects that do not keep Act from building a skiff at the water's edge (release 263).
 export const SHORE_PASSIVE = ["tree", "rock"];
-export const REGION_BANNER = { again: 300, kinds: { wild: "Wild country", sea: "Open sea", mountains: "Mountains", desert: "Desert", alien: "Strange growth", swamp: "Fenland", lakes: "Lake country", isles: "Islands", dream: "The Far Sleep", ashfields: "Ashfields", glasslands: "Glasslands", emberlands: "Emberlands", forest: "Forest", frost: "Frostlands", lunar: "Moonlands", volcanic: "Firelands", pillars: "Pillar lands", fog: "Fog moors", jungle: "Jungle", biomech: "Carapace wastes", salt: "Salt marsh", crystal: "Crystal fields", fungal: "Sporewood", petrified: "Petrified wood", savanna: "Savanna", reef: "Reef flats", amber: "Amberwood", obsidian: "Obsidian fields", terraces: "Terrace springs", reckoning: "Reckoning fields", glacier: "Rimeglacier", regolith: "Lunar waste", marrow: "Marrowworks", magma: "Magma rivers", oasis: "Oasis ergs" } }; // release 573; 579; 583
+export const REGION_BANNER = { again: 300, kinds: { wild: "Wild country", sea: "Open sea", mountains: "Mountains", desert: "Desert", alien: "Strange growth", swamp: "Fenland", lakes: "Lake country", isles: "Islands", dream: "The Far Sleep", ashfields: "Ashfields", glasslands: "Glasslands", emberlands: "Emberlands", forest: "Forest", frost: "Frostlands", lunar: "Moonlands", volcanic: "Firelands", pillars: "Pillar lands", fog: "Fog moors", jungle: "Jungle", biomech: "Carapace wastes", salt: "Salt marsh", crystal: "Crystal fields", fungal: "Sporewood", petrified: "Petrified wood", savanna: "Savanna", reef: "Reef flats", amber: "Amberwood", obsidian: "Obsidian fields", terraces: "Terrace springs", reckoning: "Reckoning fields", glacier: "Rimeglacier", regolith: "Lunar waste", marrow: "Marrowworks", magma: "Magma rivers", oasis: "Oasis ergs", fells: "Cloudfells" } }; // release 573; 579; 583
 // Release 557 (Tim: "a lot of these weight glasses are on small little... areas... it activates the boat... or if there's
 // someone nearby, it'll talk to them... prioritize the weight glass... a hard rule... there's like an area... around the
 // way glass where... you can't make a boat"): within `reach` tiles of a Wayglass (any checkpoint, the Lighthouse Buoy too)
@@ -3110,6 +3279,7 @@ export class Game {
 
     { const q = s.playerRuntime.glideHome; this.glideHome = q && s.area === "overworld" && [q.rx, q.ry].every(Number.isInteger) && [q.x, q.y].every(Number.isFinite) ? { rx: q.rx, ry: q.ry, x: q.x, y: q.y } : null; } // TREE_GLIDE.home
     { const q = s.playerRuntime.crownFoot; this.crownFoot = q && s.area === "overworld" && [q.rx, q.ry].every(Number.isInteger) ? { rx: q.rx, ry: q.ry } : null; } // TREE_GLIDE.home.reached
+    this.restoreCrown(s.playerRuntime, now); // GREAT_CROWN: the gate's level and the hold; a save standing on a crown's rim is set on safe crown ground
     this.restoreJumpAir(s.playerRuntime.jumpAir, now); // a jump resumes at the height it left from
     // Stegosaur's Grip: still on the wall, or down on the ground beneath it.
     this.restoreWallCling(s.playerRuntime.wallCling, s.playerRuntime.wallKick, now, s.playerRuntime.wallHolds);
@@ -3119,6 +3289,7 @@ export class Game {
     this.restoreTriceratopsDrill(s.playerRuntime.triceratopsDrill, now); // after area, ordinary leap and conflicting air states are restored
     for (const base of pentagonsDue(save)) this.payPentagonComplete(base); // a Pentagon completed before its completion paid a Tesseract: paid now, once
     if (this.map) this.stegoBaitArrive(); // the Stego Bait: the tails lying here (the first load does not pass the loadArea wrapper)
+    { const r = sweepSpareGearOnce(save); if (r?.count) this.message = `${spareSalvageText(save, r)}. Equipped, preset and best pieces are kept (Options → Challenge: Keep duplicate gear).`; } // SPARE_GEAR: the pack's spares, once
   }
   installSystems() {
     if (this._systemsInstalled) return;
@@ -3328,6 +3499,7 @@ export class Game {
           if (e.foundryValidated) continue;
           if (e.farArrayBoss || e.worldBeast === "voidWalker" && e.retreating) continue; // A crossing retreat carries its existing health; never rebirth/retune it on a fresh section.
           if (e.towerScaled) continue; // tall towers: a dweller took its region when it was made (createEnemyFromSpawn); a second pass made it ~30x (TALL_TOWERS.dwellerVitals)
+          if (e.hatchScaled) continue; // the hatchling's guards took theirs as they were placed (placeHatchRescue)
           regionalScale(e, q); // balance pack: beasts ramp in from ring 100; ordinary foes take ORDINARY_THREAT
         }
       };
@@ -3373,6 +3545,7 @@ export class Game {
           if (e.foundryValidated) continue;
           if (e.farArrayBoss || e.worldBeast === "voidWalker" && e.retreating) continue; // A crossing retreat carries its existing health; never rebirth/retune it on a fresh section.
           if (e.towerScaled) continue; // tall towers: a dweller took its region when it was made (createEnemyFromSpawn); a second pass made it ~30x (TALL_TOWERS.dwellerVitals)
+          if (e.hatchScaled) continue; // the hatchling's guards took theirs as they were placed (placeHatchRescue)
           regionalScale(e, q); // balance pack: beasts ramp in from ring 100; ordinary foes take ORDINARY_THREAT
         }
       }
@@ -3476,16 +3649,19 @@ export class Game {
       const first = !e.rewarded,
         r = defeat(e);
       if (first && e.kind !== "npc" && !e.ambient && !e.respawned) { // building respawns give no Aperture
-        const guardian = isCrossingGuardian(e);
-        gainAperture(
-          this.save,
-          guardian ? 4 : 1,
-          `${guardian ? "guardian" : "enemy"}:${this.areaId()}:${e.id}`,
-          guardian
-            ? "A guardian’s last perception joins yours."
-            : "The defeated shape leaves a new pattern in your Aperture.",
-          !e.fracReinforcement, // perf pack: a Fractured reinforcement is never stored or restored, so it needs no lasting award key
-        );
+        const guardian = isCrossingGuardian(e), area = this.areaId();
+        if (!killPaid(this.save, "a", area, e.id)) { // once per foe, read from the kill ledger (types.ts KILL_LEDGER)
+          gainAperture(
+            this.save,
+            guardian ? 4 : 1,
+            `${guardian ? "guardian" : "enemy"}:${area}:${e.id}`,
+            guardian
+              ? "A guardian’s last perception joins yours."
+              : "The defeated shape leaves a new pattern in your Aperture.",
+            false,
+          );
+          if (!e.fracReinforcement) payKill(this.save, "a", area, e.id); // perf pack: a Fractured reinforcement is never stored or restored, so it needs no lasting record
+        }
       }
       return r;
     };
@@ -3664,6 +3840,7 @@ export class Game {
     this.droneLift = null; // release 647: a booster lift never carries over a change of area or section
     this.shadowClone = null; this.cloneAim = false; // release 365: a shadow stays in the place it was cast
     this.builds = []; // release 265: builds belong to the map they stand on
+    if (this.area !== area && this.player) this.player.footLevel = null; // GREAT_CROWN: levels belong to the open world or the floor they were stood on
     this.area = area;
     this.mountArea(); // release 748
     const lostBeasts = worldBeastsLost(this.save, area, this.rx, this.ry, area === "dungeon" ? this.areaId() : null); // release 239: a retreating beast not followed is gone
@@ -3677,7 +3854,7 @@ export class Game {
     if(area==="overworld"&&!this.rx&&!this.ry)this.map.objects=hideDormantBossCue(this.map.objects,this.save); // 2026-11-19: the Refuge's world-boss cue only once something wakes it
     if(area==="overworld")this.tyrantVisit=null; // release 233: entering a section (from anywhere, or after a death) starts a fresh Tyrant visit
     if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addBell(this.map,this.save,this.areaId());/* release 431: the Seven Bells */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addTornPage(this.map,this.save,this.areaId());/* release 595: the Torn Pages */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addThreadRelic(this.map,this.save,this.areaId());/* release 627: the threads */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addMargin(this.map,this.save,this.areaId());/* release 455: margins */if(area==="dungeon")addPentagonInscription(this.map,this.save,this.areaId());/* the Pentagon's marks (PENTAGON_LORE) */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addSurveyorLink(this.map,this.save,this.areaId());/* release 505: the Surveyor's Chain */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addSecondFootprints(this.map,this.save,this.areaId());/* the Second Wayfarer's footprints */if(area==="dungeon"){applyTunnels(this.map,this.save,this.areaStateId());this.map.wallGlints=wallGlints(this.map,this.save.seed,this.areaStateId(),this.save);} // release 225: dug tunnels and glinting walls
-    if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];this._coherence=coherenceOf(seen);/* world coherence: new ground only (COHERENCE) *//* the landscape, Far Sleep, hamlet (release 371: a town where a Listener fell; 373: around its Mouth, explored or not) trails and lane-bridge (WG-01) passes ran in sectionTerrain */this.seaHazards=this.map.openSea?seaHazards(this.save.seed,this.rx,this.ry,this.map):null;this.novaFog=null;this.seaIce=null;this.skyAir=null;this.keelLine=null;this.skyLevel=0;this.discAir=null;this.roofDeck=null;this.deckHop=false;this.riftAim=null;this.riftAimMark=null;this.riftPress=null;/* roof decks; RIFT_AIM *//* 585; 587 */this.storm=null;this._stormCheck=0;ensureBoatState(this.save);this.placeMooredSkiff();this.placeSpareSkiff();const dive=diveSite(this.map,this.save.seed,this.rx,this.ry);if(dive)this.map.objects.push(dive);{const dom=farDomainAt(this.save,this.rx,this.ry,!!seen);if(dom)buildDomain(this.map,this.save.seed,this.rx,this.ry,dom);}/* release 723: a domain is built whole */}
+    if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];this._coherence=coherenceOf(seen);/* world coherence: new ground only (COHERENCE) *//* the landscape, Far Sleep, hamlet (release 371: a town where a Listener fell; 373: around its Mouth, explored or not) trails and lane-bridge (WG-01) passes ran in sectionTerrain */this.seaHazards=this.map.openSea?seaHazards(this.save.seed,this.rx,this.ry,this.map):null;this.novaFog=null;this.seaIce=null;this.skyAir=null;this.crownHold=false;this.player.crownHold=false;/* GREAT_CROWN: the hold is the crown's; the gate's level is kept over a section's edge */this.keelLine=null;this.skyLevel=0;this.discAir=null;this.roofDeck=null;this.deckHop=false;this.riftAim=null;this.riftAimMark=null;this.riftPress=null;/* roof decks; RIFT_AIM *//* 585; 587 */this.storm=null;this._stormCheck=0;ensureBoatState(this.save);this.placeMooredSkiff();this.placeSpareSkiff();const dive=diveSite(this.map,this.save.seed,this.rx,this.ry);if(dive)this.map.objects.push(dive);{const dom=farDomainAt(this.save,this.rx,this.ry,!!seen);if(dom)buildDomain(this.map,this.save.seed,this.rx,this.ry,dom);}/* release 723: a domain is built whole */}
     if(area==="overworld"&&!this.map.settlement)applyTunnels(this.map,this.save,overworldDigKey(this.rx,this.ry),true); // release 423: tunnels dug in the open world
     if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];if(!seen||seen.watcherVersion)placeWatcherOverworld(this.map,mapWidth(this.map,area),this.save.seed,this.rx,this.ry,(!seen||!!seen.guideVersion)&&guideHost(this.save.seed,"shrine",this.rx,this.ry));} // release 289: sections first seen from now on; waymark guides: a guided shrine host always holds its Watcher's Shrine
     if(area==="overworld"||area==="dungeon")for(const o of this.map.objects||[])if(o.kind==="watcherTomb"&&this.save.worldFlags[`watcher-tomb:${o.id}`])o.state="opened";
@@ -3883,6 +4060,7 @@ export class Game {
       const top = this.map.canopy.top, gate = this.map.objects.find((o) => o.kind === "canopyGate"), c = this.map.canopy, crown = this.map.tiles.filter((t) => t.kind === "canopyTrunk" && t.elev === top && !(gate && t.x === gate.x && t.y === gate.y) && (!(c.size > 0) || (t.x >= c.x0 && t.x < c.x0 + c.size && t.y >= c.y0 && t.y < c.y0 + c.size))); // the door tree's own crown (a canopy grove's other crowns may stand as high)
       const t = crown.sort((a, b) => (a.y - b.y) || (a.x - b.x))[0]; if (t) this.map.objects.push({ id: `crown-rest-${this.rx}-${this.ry}`, kind: "crownRest", name: "Crown Rest", x: t.x, y: t.y, state: "open", actions: [] });
     }
+    if (area === "overworld") this.riteTreeLevels(); // GREAT_CROWN.levels: a rite's tree on flat ground keeps its heights (after every generation step)
     if (area === 'dungeon' && this.map.skyland) for (const e of this.enemies) this.scaleSkyFoe(e); // release 571
     if (area === 'overworld') dropSeedRealms(this.save); // seed realms: a realm left is gone (all but the one the session still holds)
     if (area === 'overworld') { const areas = this.save.session?.areas || {}, hist = this.save.consequences?.dungeons || {}; for (const k of Object.keys(areas)) if (isSkyland(k)) delete areas[k]; for (const k of Object.keys(hist)) if (isSkyland(k)) delete hist[k]; } // release 571: a finished or abandoned Skyland run leaves nothing behind
@@ -4249,6 +4427,7 @@ export class Game {
         fall: this.fall && this.fallApplies() ? /* tall towers: a fall in an Upwell is saved too */ { z: this.fall.z, vz: this.fall.vz, from: this.fall.from, scale: this.fall.scale || 1, t: Number(this.fall.t) || 0, ...(Number.isFinite(this.fall.rollT) ? { rollT: this.fall.rollT } : {}), ...(Number.isFinite(this.fall.hold) ? { hold: this.fall.hold } : {}), ...(this.fall.tree === true ? { tree: true } : {}) } : null, // FALL: a fall resumes in the air (TREE_FALL: `tree`, additive) (AERIAL: with its held height) // release 635: a glide resumes in the air
         glideHome: this.glideHome && this.area === "overworld" ? { ...this.glideHome } : null, // TREE_GLIDE.home: the great tree a glide from its crown wakes you on
         crownFoot: this.crownFoot && this.area === "overworld" ? { rx: this.crownFoot.rx, ry: this.crownFoot.ry } : null, // TREE_GLIDE.home.reached: the great crown last stood on
+        crownHold: this.crownHold === true && this.area === "overworld", footLevel: Number.isFinite(this.player.footLevel) ? this.player.footLevel : null, // GREAT_CROWN: the hold on the crown's rim, and the level of the last ground stood on (the gate)
         roofDeck: this.standingDeck() && this.area === "overworld" ? { id: this.roofDeck.id, level: this.roofDeck.level } : null, // roof decks (roof-decks.ts): the roof stood on (additive, schema 14)
         hp: this.player.hp,
         stamina: this.player.stamina,
@@ -4343,11 +4522,16 @@ export class Game {
   // the Wayfarer cannot stand on (a blocked lava or abyss tile: walls stop them first) is tried out on a copy, and the
   // hazard is read where that copy stopped; ground the Wayfarer can enter (open lava, deep water, canyon) is unchanged.
   hazardWhereMoved(p, dx, dy, nx, ny, width, now) {
-    const h = footprintHazard(this.map, width, nx, ny); if (!h || footprintOpen(this.map, width, nx, ny, true)) return h;
+    const h = footprintHazard(this.map, width, nx, ny); if (h && this.onWoodAbove(nx, ny, width)) return null; // GREAT_CROWN: feet on a great tree's wood, high over water at its rim
+    if (!h || footprintOpen(this.map, width, nx, ny, true)) return h;
     const probe = { ...p, isPlayer: true, jumping: now < (this.jumpUntil || 0), voidSuit: this.mechUp() && this.area !== "dungeon" };
     moveAxis(probe, dx, dy, this.map, width, true);
     return footprintHazard(this.map, width, probe.x, probe.y);
   }
+  // GREAT_CROWN: the feet (tileUnder) stand on a great tree's wood more than FALL.minDrop over the hazard the box's front edge reaches
+  // (footprintHazard reads .03 of a tile nearer the rim than the feet): the Wayfarer is up on the wood, not in the water or lava below.
+  // Stepping off is a fall, judged where it lands.
+  onWoodAbove(x, y, width) { const u = tileUnder(this.map, width, x, y), h = this.map.tiles[Math.floor(y + .72) * width + Math.floor(x + .5)]; return !!u?.canopy && !u.blocked && u !== h && (u.elev || 0) - (h?.elev || 0) > FALL.minDrop; }
   actorContactPlatformSupport(body, x, y, ground, phase = null, carrier = null) {
     if (!body?.isPlayer) return null;
     if (body.jumping && Number.isFinite(this.discAir))
@@ -4414,6 +4598,7 @@ export class Game {
     if (!jumping && this.standingDeck() && this.decksApply()) probe.airElev = this.roofDeck.level; // roof decks: walking on a roof, the ground round the house is a drop
     { const air = this.aerialFloor(); if (air != null) probe.airElev = Math.max(probe.airElev ?? -Infinity, air); } // AERIAL: held air steps as ground at its level
     probe.deckReach = p.deckReach ?? null; probe.propLevel = p.propLevel; // solid props (926 bug 5)
+    probe.footLevel = p.footLevel; probe.crownHold = this.crownHold === true && !jumping; // GREAT_CROWN (landscape.ts canStep)
     contacts.supportSubject = probe;
     contacts.carrier = carrier;
     contacts.record = true;
@@ -4444,6 +4629,7 @@ export class Game {
     // Stegosaur's Grip: the wall held, a kick in the air and the holds taken since the feet last touched ground.
     this.wallCling = null; this.wallKick = null; this.wallHolds = 0;
     this.aerialCasts = 0; this.aerialAloft = false; { const a = this.save.magicSkills?.active; if (a && a.id === "aerial-step") delete a.hold; } // AERIAL: a new airtime; the held height belonged to where it was cast
+    this.crownHold = false; p.crownHold = false; p.footLevel = null; // GREAT_CROWN
     this.glide = null; this.glideHome = null; this.crownFoot = null; this.droneLift = null; this.fall = null; this.fallLanded = null; this.swimming = false; this.skyAir = null; this.roofDeck = null; this.deckHop = false; this.riftAim = null; this.riftAimMark = null; this.riftPress = null; this.jumpHold = false; this.keelLine = null; this.ledgeHint = null; this.poisonSoak = 0;
     this.clearCurses(); // release 737: the haunt curses (FRAIL gives its health back)
     this.orrery = null; // the Aether Orrery's circling orbs and charge (its overload clock stays)
@@ -4498,11 +4684,12 @@ export class Game {
     return fallback;
   }
   travelToCheckpoint(key = null) {
+    let strandedHome = false;
     const chosen = key ? this.save.checkpoints?.[key] : this.save.activeCheckpoint;
     if (!chosen || (key && !validCheckpoint(chosen))) return false;
     const c = this.safeCheckpoint(chosen); // release 734
     if (this.rite) { this.message = ASCENDANCY.messages.sealed; return false; } // the Rite of Ascendancy seals Wayglass travel (and returnHome); a Crossing Sigil breaks the rite before it travels
-    if(this.save.session.displacementJourney){this.message="Wayglass travel cannot find you after the displacement. Reach a physical Wayglass—or die—to restore the line, or use a Crossing Sigil.";return false}
+    if(this.save.session.displacementJourney){if(this.area!=="overworld"||this.routeOut()){this.message="Wayglass travel cannot find you after the displacement. Reach a physical Wayglass—or die—to restore the line, or use a Crossing Sigil.";return false}this.save.session.displacementJourney=null;strandedHome=true} // fixes from a 20-hour playthrough (I14): ground with no way on (routeOut) lets the line find you, sigil or none
     if (this.area === "dungeon") {
       this.message =
         "Wayglass travel is sealed inside a dungeon. Reach an exit, die and restart at the entrance, or use a Crossing Sigil.";
@@ -4518,9 +4705,21 @@ export class Game {
     this.effects = [];
     this.traversal = null;
     this.clearCarriedStates(); // release 736 (review F8): you arrive on your feet, not gliding, swimming or held
-    this.message = `Returned to ${c.name || "the active checkpoint"}. Nothing carried was lost.`;
+    this.message = `${strandedHome ? DISPLACEMENT_STRAND.message + " " : ""}Returned to ${c.name || "the active checkpoint"}. Nothing carried was lost.`;
     this.sync();
     return true;
+  }
+  // Fixes from a 20-hour playthrough (I14): after a Watcher's-tomb fold (session.displacementJourney) Wayglass travel and Return
+  // home wait for a physical Wayglass, a death or a Crossing Sigil. Ground the Wayfarer cannot walk out of, with no sigil and
+  // nothing to die to, held a player there for good. Whether they can walk on from where they stand, by the real movement rules
+  // (reachableFrom, thin walls included): to a lane into a section they can enter (not one onto sea they cannot cross), or to a
+  // physical Wayglass here. Overworld only; aboard a skiff, in the robot, gliding or lifted, or on ground without heights, always.
+  routeOut() {
+    const M = this.map, p = this.player; if (this.area !== "overworld" || !M?.landscape || !M.exits || M.pentagon || aboard(this.save) || this.mechUp() || this.glide || this.droneLift || this.wading()) return true;
+    const go = reachableFrom(M, 32, 32, { x: Math.max(0, Math.min(31, Math.floor(p.x + .5))), y: Math.max(0, Math.min(31, Math.floor(p.y + .72))) }, true), at = (x, y) => x >= 0 && y >= 0 && x < 32 && y < 32 && !!go[y * 32 + x];
+    for (const o of M.objects || []) if (o.kind === "checkpoint") for (const [dx, dy] of DISPLACEMENT_STRAND.near) if (at(Math.round(o.x) + dx, Math.round(o.y) + dy)) return true;
+    const E = M.exits; for (const [dx, dy, x, y] of [[-1, 0, 0, E.west], [1, 0, 31, E.east], [0, -1, E.north, 0], [0, 1, E.south, 31]]) for (let k = -1; k <= 1; k++) if (at(dy ? x + k : x, dx ? y + k : y) && !this.seaBeyondLane(dx, dy)) return true;
+    return false;
   }
   returnToCheckpoint() {
     return this.travelToCheckpoint();
@@ -4880,6 +5079,7 @@ export class Game {
     const edge = this.deckEdgeHold(x, y, top); if (edge) return { level: edge.level, deck: edge }; // pre-publish review of 916: a step whose feet leave a roof but whose box still stands over its walls lands on that roof's edge, never wedged in the wall
     if (!footprintOpen(this.map, w, x, y, false, false, false, false, null) || footprintHazard(this.map, w, x, y)) return null;
     const ground = this.elevationHere(x, y); if (propBlocked(this.map, w, x, y, ground)) return null; // solid props (926 bug 5): never inside the Watcher's tomb
+    if (this.map?.canopy && crownBarred(this.player, tileUnder(this.map, w, this.player.x, this.player.y), tileUnder(this.map, w, x, y))) return null; // GREAT_CROWN: no step onto the crown but from its last step
     return ground <= top ? { level: ground, deck: null } : null;
   }
   // Solid props (926 bug 5): does the collision box at (x, y) stand in a solid prop's footprint at all (any height)? A blink passes through one, never ends in it.
@@ -5079,6 +5279,7 @@ export class Game {
       this.loadArea("overworld");
       p.x = c.x;
       p.y = c.y;
+      this.wakeAtCrownRest(c); // GREAT_CROWN: woken on a Crown Rest, held from the crown's rim
       }
       p.invulnerableUntil = now + 2000;
       this.message = `Felled — ${crown ? TREE_GLIDE.home.wake : `recovered at ${c.name || "checkpoint"}`}. No items, marks, equipment, or XP were lost. You are protected briefly.${crown && TREE_GLIDE.home.setsRest ? TREE_GLIDE.home.rest : ""}${before < 2 ? " Restorative draughts replenished to 2." : ""}`;
@@ -5109,8 +5310,10 @@ export class Game {
     // given early, or a consolation when already yours); the Second Wayfarer's trail counts once it is whole.
     const paid = settleArcanaRewards(this.save, (id, reward) => { if (reward.kind === "ability") { const n = grantWorld(this.save, reward.id, "d", id); if (n) this.worldNotices([n]); return; } (this.questNotices ||= []).push({ title: "ARCANA", detail: reward.label || id, kind: "quest" }); }, secondDone(this.save) ? ["second"] : []);
     // 2026-11-11: the passives the sets earn (lore.ts ARCANA_UNLOCKS), once each, announced and journalled.
+    // 2026-11-21: what a thread with no ability leaves at its end (threads.ts THREAD_GIFTS), once, announced and journalled.
+    const gifts = settleThreadGifts(this.save, (id, g) => { (this.questNotices ||= []).push({ title: "ARCANA", detail: g.label, kind: "quest" }); journalOnce(this.save, `thread-gift:${id}`, `${g.label[0].toUpperCase()}${g.label.slice(1)}.`, "Arcana"); });
     const opened = settleArcanaUnlocks(this.save, (id, u) => { (this.questNotices ||= []).push({ title: "ARCANA", detail: `${u.name} opens`, kind: "quest" }); journalOnce(this.save, `arcana:${id}`, `${u.name} opens to you.${u.text ? ` ${u.text}` : ""}`, "Arcana"); });
-    return [...paid, ...opened];
+    return [...paid, ...gifts, ...opened];
   }
   // Bell Toll (lore.ts ARCANA_PASSIVES, earned with the Seven Bells): a heavy blow stuns every foe near the one struck.
   bellToll(e, dealt, now) {
@@ -5255,6 +5458,10 @@ export class Game {
   transitionSection(dx, dy) {
     if (this.rite && this.area === "overworld") return this.riteHoldEdge(); // the rite's fire bars every edge
     const from = { rx: this.rx, ry: this.ry, x: this.player.x, y: this.player.y }, wade = this.wading(), fromPent = !!this.map?.pentagon, fromCoherent = !!this._coherence;
+    // Open seas, refused before the crossing (20-hour playthrough I3/I11): a walker held into a lane that lands on open sea is
+    // turned back from the kept terrain alone. Nothing loads (the old way loaded both sections on every frame the stick was
+    // held) and the refused section is not explored. The same refusal stays below for any landing this preview cannot place.
+    if (!wade && !fromPent && !aboard(this.save) && this.seaBeyondLane(dx, dy)) { Object.assign(this.player, { x: from.x, y: from.y, sailVx: 0, sailVy: 0 }); this.message = SEA_REFUSAL; this.sync(); return false; }
     const pursuers=this.enemies.filter(e=>e.gatePredator&&e.aggro&&!e.dead).map(e=>({...e,ai:{...ensureAI(e)}}));
     // Release 259: a fighting world beast may follow the Wayfarer over the edge (world-beasts.ts PURSUIT).
     const fromArea = this.areaStateId(), hunters = this.enemies.filter(e => e.worldBeast && e.aggro && !e.dead && !e.retreating && !e.astralCompanionOf && canPursue(this.save, e.worldBeast, this.rx, this.ry, dx, dy)).map(e => ({ id: e.worldBeast, actorId: e.id, hp: e.hp, maxHp: e.maxHp, damage: e.damage }));
@@ -5296,12 +5503,26 @@ export class Game {
     }
     // Open seas (release 152): a skiff crosses wherever the water runs on; a walker cannot step out into open sea.
     if (aboard(this.save)) { if (!this.sailAcross(dx, dy, from)) return false; }
-    else if (DEEP_WATER.includes(footprintHazard(this.map, 32, this.player.x, this.player.y)) && !canSwim(this.save) && !this.mechUp() && !this.glide /* release 635: a glider is in the air */) { this.returnFrom(from, "Open sea lies beyond. You need a boat to cross it."); return false; }
+    else if (DEEP_WATER.includes(footprintHazard(this.map, 32, this.player.x, this.player.y)) && !canSwim(this.save) && !this.mechUp() && !this.glide /* release 635: a glider is in the air */) { this.returnFrom(from, SEA_REFUSAL); return false; }
     this.worldBeastsFollow(hunters, fromArea, dx, dy);
     for(const pursuer of pursuers){const e={...pursuer,id:`${pursuer.id}-pursuit-${this.rx}-${this.ry}`,dead:false,aggro:true,x:this.player.x-dx*1.4,y:this.player.y-dy*1.4,ai:{...pursuer.ai,homeX:this.player.x,homeY:this.player.y}};placeGatePursuer(e,this.player,this.map,mapWidth(this.map,this.area));resetGateAttack(e, true);this.enemies.push(e)}
     if(pursuers.length)this.message="The Gate Revenant tears through the crossing behind you.";
     this.edgeHold = { dx: -dx, dy: -dy, at: this.lastUpdateNow || 0 }; // perf pack (P6)
     this.sync();
+  }
+  // Whether a walker crossing toward (dx, dy) would land on open sea it cannot enter: no Tidemantle, robot or glide, and the
+  // lane's landing tile in the next section's kept terrain (the same pure terrain and key loadArea uses, with its void scars) is
+  // deep water. Decided once per section and side; reads nothing into the save. A Pentagon beyond is left to the full crossing.
+  seaBeyondLane(dx, dy) {
+    if (this.area !== "overworld" || canSwim(this.save) || this.mechUp() || this.glide) return false;
+    const memo = this._seaLane; if (memo && memo.map === this.map && memo.dx === dx && memo.dy === dy) return memo.sea;
+    const rx = this.rx + dx, ry = this.ry + dy, save = this.save, key = `overworld:${rx}:${ry}:g${save.worldGeneration}`, row = save.voidScars?.areas?.[key];
+    if (farDomainAt(save, rx, ry, !!save.atlas?.[`${rx},${ry}`])) { this._seaLane = { map: this.map, dx, dy, sea: false }; return false; } // a far domain is built whole on arrival (loadArea), whatever its base terrain: the full crossing decides
+    let map = keptSectionTerrain(save.seed, rx, ry, save.worldGeneration, this.sectionTerrainSteps(rx, ry));
+    if (row) { map = structuredClone(map); applyVoidScars({ voidScars: { ...save.voidScars, areas: { [key]: structuredClone(row) } } }, map, key); }
+    const exits = sectionExits(save.seed, rx, ry), x = dx < 0 ? 30.75 : dx > 0 ? .25 : dy < 0 ? exits.south : exits.north, y = dx < 0 ? exits.east : dx > 0 ? exits.west : dy < 0 ? 30.75 : .25;
+    const sea = !map.pentagon && DEEP_WATER.includes(footprintHazard(map, 32, x, y));
+    this._seaLane = { map: this.map, dx, dy, sea }; return sea;
   }
   // Perf pack (P6): whether a crossing toward (dx, dy) is the held edge just crossed (see EDGE_HOLD). Clears the hold once the
   // Wayfarer is `depth` inside that edge or the time has passed.
@@ -5770,7 +5991,7 @@ export class Game {
     if (o.kind === "surveyorStatue") { const r = visitSurveyorStatue(this.save, o); this.message = r.message; if (r.first) journalOnce(this.save, "surveyor:statue", r.message, "The Surveyor's Chain"); this.sync(); return r; } // release 551
     if (o.kind === "marginNote") { const r = readMargin(this.save, o); this.message = r.message; if (r.ok) { const reading = READINGS[o.readingId], known = readingKnown(this.save, o.readingId), prog = bookProgress(this.save, o.readingId); if (r.first) { journalOnce(this.save, `margin:${o.readingId}:${o.margin}`, r.message, known ? `Margins · ${reading.name}` : "Margins"); this.message += known ? ` (A margin of ${reading.name}: ${prog.found} of ${prog.total} fragments.)` : " (A fragment of a book you have not heard yet.)"; } } this.sync(); return r; } // release 455
     if (o.kind === "tornPage") { const r = readTornPage(this.save, o); this.message = r.message; if (r.first) { journalOnce(this.save, `torn-page:${o.reading}`, `A torn page: "${r.text}…"`, "The Torn Pages"); if (r.done) { journalOnce(this.save, "torn-page:book", PAGES_FINAL, "The Torn Pages"); this.settleArcana(); } } this.sync(); return r; } // release 595
-    if (o.kind === "threadRelic") { const r = readThreadRelic(this.save, o); this.message = r.message; if (r.first) { journalOnce(this.save, `thread:${o.thread}:${o.index}`, r.text, r.title); if (r.done) { journalOnce(this.save, `thread:${o.thread}:end`, r.ending, r.title); (this.questNotices ||= []).push({ title: "QUEST COMPLETE", detail: `${r.title} · the thread is whole`, kind: "quest" }); this.settleArcana(); } } this.sync(); return r; } // release 627
+    if (o.kind === "threadRelic") { const r = readThreadRelic(this.save, o); this.message = r.message; if (r.first) { journalOnce(this.save, `thread:${o.thread}:${o.index}`, r.text, r.title); if (r.first && o.index === 0 && !r.done && THREAD_TRAILS[o.thread]) { setCompassChoice(this.save, { follow: { kind: "quest", id: trailFollowId(o.thread) } }); /* taking up a followed thread is choosing it (thread-trails.ts) */ const at = trailPlace(this.save, o.thread); (this.questNotices ||= []).push({ title: THREAD_TRAILS[o.thread].notice, detail: `${r.title}${at ? ` · section ${at.rx}, ${at.ry}` : ""}`, kind: "quest" }); } if (r.done) { journalOnce(this.save, `thread:${o.thread}:end`, r.ending, r.title); (this.questNotices ||= []).push({ title: "QUEST COMPLETE", detail: `${r.title} · the thread is whole`, kind: "quest" }); this.settleArcana(); } } this.sync(); return r; } // release 627
     if (o.kind === "visceraAltar" && action === "begin") return this.beginSkyChallenge(); // release 686
     if (o.kind === "crackedBell") { if (o.state === "rung") { this.message = `A rung bell. It hangs quiet, and a little warm.`; return { ok: true, message: this.message }; } const r = ringBell(this.save, o); this.message = r.message; if (r.first) { journalOnce(this.save, `bell:${o.bell}`, `A cracked bell rang for ${BELL_GLIMPSES[o.bell].who}. ${BELL_GLIMPSES[o.bell].lines.join(" ")}`, "The Seven Bells"); if (r.done) { journalOnce(this.save, "bell:door", r.message.slice(r.message.indexOf("Seven figures")), "The Seven Bells"); this.settleArcana(); } } this.sync(); return r; } // release 431
     if (o.kind === "ilse") { const r = meetIlse(this.save, o); this.message = r.message; if (r.first) journalOnce(this.save, `ilse:${o.stage}`, `${o.name}: ${r.message}`, "Ilse, the Lamplighter"); return r; } // release 415
@@ -6026,10 +6247,22 @@ export class Game {
     // Release 641 (Tim: "if you glide out over open sea... if you don't have the Tidemantle, you're just going to die"): it comes down
     // on water, lava or ground alike (the ordinary hazards then apply); only a wall or anything blocked holds it up.
     const hazard = footprintHazard(this.map, width, p.x, p.y), sea = !!here && DEEP_WATER.includes(here.kind), fit = (sea || !here?.blocked) && (footprintOpen(this.map, width, p.x, p.y, false, false, false, false, onDeck ? onDeck.level : null) || !!hazard && !onDeck || sea && !onDeck); // release 672: blocked deep water too (it held the glide over it for ever)
-    if (!fit) { g.z = Math.max(g.z, Math.min(z0, ground + G.skim)); g.pinned = true; if (!g.told) { g.told = true; this.message = G.skimming; } return "flying"; } // held above, never lifted (Tim, 2026-11-05)
-    const fell = g.open === false ? Math.max(0, (g.fallFrom ?? g.z) - ground) : 0; this.glide = null; this.skyAir = null; this.setRoofDeck(onDeck);
+    let landAt = ground;
+    if (!fit) { const q = g.open === false ? this.freefallFooting(p.x, p.y, z0, width) : null; // GREAT_CROWN: a closed freefall is no glide: it comes down on the nearest footing (a section's walled rim under it held it in the air for ever)
+      if (!q) { g.z = Math.max(g.z, Math.min(z0, ground + G.skim)); g.pinned = true; if (!g.told) { g.told = true; this.message = G.skimming; } return "flying"; } // held above, never lifted (Tim, 2026-11-05)
+      p.x = q.x; p.y = q.y; landAt = q.level; }
+    const fell = g.open === false ? Math.max(0, (g.fallFrom ?? g.z) - landAt) : 0; this.glide = null; this.skyAir = null; this.setRoofDeck(onDeck);
     if (fell > 1) { const hurt = fallDamage(Math.round(fell), this.save.maxHp); if (hurt === Infinity) { p.hp = 0; this._fatalFallPending = true; this.message = `The Wayfarer falls ${Math.round(fell)} levels.`; } else if (hurt > 0) { p.hp = Math.max(1, p.hp - hurt); this.message = `A hard landing: ${Math.round(fell)} levels down.`; } }
     else this.message = G.land; return "landed";
+  }
+  // GREAT_CROWN: where a closed freefall that cannot come down under it (a blocked tile, the section's rim) comes down instead: the
+  // nearest spot within GREAT_CROWN.freefallReach tiles, in quarter tiles, whose box is open and whose ground is no higher than the
+  // fall. { x, y, level } or null. Run once, on the landing.
+  freefallFooting(x, y, z, width) {
+    const ok = (px, py) => px >= -.2 && py >= -.2 && px <= SECTION_SIZE - .8 && py <= SECTION_SIZE - .9 && footprintOpen(this.map, width, px, py, true) && elevationAt(this.map, width, px, py) <= z + 1e-6;
+    const R = GREAT_CROWN.freefallReach; let best = null, bd = Infinity;
+    for (let dy = -R; dy <= R + 1e-9; dy += .25) for (let dx = -R; dx <= R + 1e-9; dx += .25) { const d = dx * dx + dy * dy; if (d >= bd || d > R * R + 1e-9 || !ok(x + dx, y + dy)) continue; bd = d; best = { x: x + dx, y: y + dy }; }
+    return best ? { ...best, level: elevationAt(this.map, width, best.x, best.y) } : null;
   }
   // Tim (2026-11-05): a glide over a Pentagon ends in death, as a fall does: the Wayfarer comes down where the glide had carried
   // them (inside this section), the message and a journal line (once) say why, and the ordinary death and recovery follow.
@@ -6072,9 +6305,36 @@ export class Game {
     this.rx = home.rx; this.ry = home.ry; this.loadArea("overworld", false);
     const c = this.map?.canopy, w = mapWidth(this.map, this.area), t = c?.top ? this.map.tiles[Math.floor(home.y + .75) * w + Math.floor(home.x + .5)] : null;
     const s = t && t.kind === "canopyTrunk" && t.elev === c.top ? { x: home.x, y: home.y } : crownSpot(this.map); if (!s) return false;
-    this.player.x = s.x; this.player.y = s.y; this.lastCrownAt = now; this.crownFoot = { rx: this.rx, ry: this.ry };
+    this.player.x = s.x; this.player.y = s.y; this.lastCrownAt = now; this.crownFoot = { rx: this.rx, ry: this.ry }; this.holdCrown();
     if (TREE_GLIDE.home.setsRest) { const o = this.map.objects.find((q) => q.kind === "crownRest" && !q.keepRest); if (o) this.takeCrownRest(o); } // Decision 14: the crown's Crown Rest, as if touched
     return true;
+  }
+  // GREAT_CROWN: the hold on the crown's rim (landscape.ts canStep `crownHold`), from a wake there until a jump or a step down.
+  holdCrown() { this.crownHold = true; this.player.crownHold = true; const lv = this.playerLevel(); if (Number.isFinite(lv)) this.player.footLevel = lv; }
+  // Is the Wayfarer standing on a great tree's crown wood (a `canopyTrunk` tile) with the whole box on it? { on, whole }.
+  onCrownWood(x = this.player.x, y = this.player.y) {
+    const w = mapWidth(this.map, this.area), u = this.area === "overworld" && this.map?.canopy ? tileUnder(this.map, w, x, y) : null; if (u?.kind !== "canopyTrunk") return { on: false, whole: false };
+    const x0 = Math.floor(x + .24), x1 = Math.floor(x + .76 - 1e-6), y0 = Math.floor(y + .5), y1 = Math.floor(y + .88 - 1e-6); let whole = true;
+    for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) { const q = this.map.tiles[ty * w + tx]; if (q?.kind !== "canopyTrunk" || (q.elev || 0) !== (u.elev || 0)) whole = false; }
+    return { on: true, whole };
+  }
+  // A death that returns the Wayfarer to a Crown Rest: they wake on its tile (wholly on the crown), held from the crown's rim, so no
+  // move they make there carries them off it; a jump is the way down. Any other rest point is as it was.
+  wakeAtCrownRest(c) {
+    if (!c?.crown || c.name !== "Crown Rest" || this.area !== "overworld" || !this.map?.canopy?.top || !this.onCrownWood().whole) return false;
+    this.crownFoot = { rx: this.rx, ry: this.ry }; this.holdCrown(); return true;
+  }
+  // Exact resume on a crown: the gate's level and the hold as saved. A save from before them (Tim's r1050 save stood on the crown of a
+  // rite's tree on flat ground, where the heights did not hold) standing on crown wood is repaired once: set on the crown's safest
+  // ground, held from its rim. In the air (a jump, fall, glide, drone or hold) nothing is moved.
+  restoreCrown(r, now) {
+    const p = this.player, lv = Number(r?.footLevel); p.footLevel = r?.footLevel != null && Number.isFinite(lv) ? lv : null; this.crownHold = false;
+    const air = now < (this.jumpUntil || 0) || !!this.fall || !!this.glide || !!this.droneLift || !!this.wallCling, c = this.onCrownWood();
+    if (air || !c.on) return;
+    if (r && typeof r.crownHold === "boolean") this.crownHold = r.crownHold; // saved since the hold: exactly as it was
+    else { const s = crownSpot(this.map); if (s) { p.x = s.x; p.y = s.y; } this.holdCrown(); }
+    if (!Number.isFinite(p.footLevel)) { const l = this.playerLevel(); if (Number.isFinite(l)) p.footLevel = l; }
+    this.crownFoot = this.map.canopy?.top && this.onCrownWood().on && tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.elev === this.map.canopy.top ? { rx: this.rx, ry: this.ry } : this.crownFoot;
   }
   // Release 647: one frame of the drone's booster (DRONE_LIFT). `droneLift` is { base, z, vz } in levels. While it lasts the jump
   // lasts, and `skyAir` is its height, so the move rules carry the Wayfarer over lower ground and onto ground no more than a level
@@ -6396,6 +6656,7 @@ export class Game {
     this.loadArea("overworld", false);
     p.x = c.x;
     p.y = c.y;
+    this.wakeAtCrownRest(c); // GREAT_CROWN: woken on a Crown Rest, held from the crown's rim
     }
     p.invulnerableUntil = now + 2000;
     this.message = `${lostTo || "Felled"} — ${crown ? TREE_GLIDE.home.wake : `recovered at ${c.name || "checkpoint"}`}. No items, marks, equipment, or XP were lost${woodLost ? `, but the ${woodLost} wood you carried is gone` : ""}. You are protected briefly.${crown && TREE_GLIDE.home.setsRest ? TREE_GLIDE.home.rest : ""}${before < 2 ? " Restorative draughts replenished to 2." : ""}`;
@@ -8095,7 +8356,7 @@ export class Game {
     if (!hatchMamaHere(this.save)) return { ok: false, message: (this.message = "The straw is empty.") }; // progression Phase 3: not before Infinite II in Exploration
     if (q.state === "active") return { ok: true, message: (this.message = `${M.already} (${q.rx},${q.ry} on your Atlas.)`) };
     const from = homeKey(this.save), site = chooseRescueSite(this.save.seed, from, (rx, ry) => !!seedHuntGround(walkerCrossingMap(this.save, rx, ry)));
-    Object.assign(q, { state: "active", v: Q.version, from, rx: site.rx, ry: site.ry, guards: Array.from({ length: Q.guards }, (_, i) => guardId(i)), cleared: [] });
+    Object.assign(q, { state: "active", v: Q.version, scaled: Q.scaled, from, rx: site.rx, ry: site.ry, guards: Array.from({ length: Q.guards }, (_, i) => guardId(i)), cleared: [] });
     journalOnce(this.save, "hatchling:quest", `${M.offer} (${site.rx},${site.ry})`, "Beast Hotel");
     setCompassChoice(this.save, { follow: { kind: "rescue" } }); // 2026-11-19 (Tim): taking the quest points the compass at it
     (this.questNotices ||= []).push({ title: Q.names.quest.toUpperCase(), detail: `${site.rx},${site.ry} · marked on the Atlas`, kind: "discovery" });
@@ -8120,6 +8381,7 @@ export class Game {
       const id = guardId(i); if (q.cleared.includes(id) || this.enemies.some((e) => e.id === id)) continue;
       let at = null; for (let k = 0; k < 8 && !at; k++) { const a = (i / Q.guards + k / 8) * Math.PI * 2, x = Math.round(q.x + Math.cos(a) * Q.ring), y = Math.round(q.y + Math.sin(a) * Q.ring); if (stands(x, y)) at = { x, y }; }
       const e = this.createEnemyFromSpawn({ id, kind: guardKind(seed, i, q.v || Q.version), ...(at || { x: q.x, y: q.y }) }, "overworld"); this.enemies.push(e);
+      if (Number(q.scaled) >= 1) { this.scaleToRegion(e); e.hatchScaled = true; } // HATCHLING.quest.scaled: the guards take their region here, on every visit (the fresh-section pass skips them)
     }
     pen.state = this.hatchGuardsLeft() ? "guarded" : "open";
     const k = `hatch:${this.rx},${this.ry}`; if (this._hatchTold !== k) { this._hatchTold = k; (this.questNotices ||= []).push({ title: Q.names.quest.toUpperCase(), detail: Q.messages.arrive, kind: "discovery" }); }
@@ -8329,7 +8591,7 @@ export class Game {
       // Release 696: the Enclosure trap.
       penBreak: (id) => { const b = (game.builds || []).find((q) => q.id === id); if (b) breakBuild(game, b); },
       penOut: (e) => game.stalkerBreaksOut(e), // release 699: it tears free and leaves, still on the Wayfarer's trail
-      fogged: (e, time) => { // release 692: the sea's fog (Tim: "just use the fog from the sea fog"), banks round the Wayfarer, drawn by renderer.js?v=r1050-2ea30cdbc905's sea-fog code
+      fogged: (e, time) => { // release 692: the sea's fog (Tim: "just use the fog from the sea fog"), banks round the Wayfarer, drawn by renderer.js?v=r1059-3629aeded9d0's sea-fog code
         game.stalkFog = { until: now + time * 1000, level: game.stalkFog?.level || 0, fog: [0, 1, 2, 3, 4].map((i) => ({ x: p.x + Math.cos(i * 1.257) * (i ? 4.5 : 0), y: p.y + Math.sin(i * 1.257) * (i ? 3.5 : 0), radius: i ? 5 : 6, swirl: i * 1.1 })) };
         game.message = "A fog rolls in, and the Stalker is gone into it."; },
       // The mist's rot: a share of maximum health gone until the Wayfarer rests (a dodge passes through; rot past it all kills).
@@ -9170,9 +9432,9 @@ export class Game {
     if (!levels) this.message = `Recovered ${marks} mark${marks === 1 ? "" : "s"} from the fallen creature.`;
     if (fracture) { if (fracture.title) this.defeatNotice = { title: fracture.title, detail: fracture.detail, kind: "discovery" }; this.message = fracture.message; } // release 666
     if(this.save.narrative.facts['leads.active']){this.save.worldFlags['lead.hunt.count']=(this.save.worldFlags['lead.hunt.count']||0)+1;if(this.save.worldFlags['lead.hunt.count']>=5)progressLead(this.save,'hunt');if(isCrossingGuardian(e))progressLead(this.save,'guardian')}
-    const key = `drop:v1:${this.areaId()}:${e.id}`;
-    if (!e.fracReinforcement && !this.save.worldFlags[key]) { // release 651: reinforcements leave no lasting flag
-      this.save.worldFlags[key] = true;
+    const key = `drop:v1:${this.areaId()}:${e.id}`; // the draught roll's name (the kill ledger keeps that it was rolled)
+    if (!e.fracReinforcement && !killPaid(this.save, "d", this.areaId(), e.id)) { // release 651: reinforcements leave no lasting record
+      payKill(this.save, "d", this.areaId(), e.id);
       const roll = hashSeed(`${this.save.seed}:${key}`) % 100 < 40;
       if (e.boss || roll || (this.save.worldFlags.flaskPity || 0) >= 2) {
         const n = e.boss ? 2 : 1;
@@ -11453,11 +11715,11 @@ export class Game {
     const rec = riteRecord(this.save, this.rx, this.ry); if (!rec.done || rec.risen) return { ok: false, message: (this.message = ASCENDANCY.messages.ashes) };
     rec.risen = true; this.map.objects = this.map.objects.filter((q) => q !== o);
     const tree = this.raiseRiteTree({ x: o.x, y: o.y }), now = this.lastUpdateNow || 0, w = mapWidth(this.map, "overworld"), p = this.player;
-    if (tree) {
-      const tiles = []; this.map.tiles.forEach((t, i) => { if (t.canopy) { tiles.push([i, t.elev || 0]); t.elev = 0; } });
+    if (tree) { this.riteTreeLevels();
+      const tiles = []; this.map.tiles.forEach((t, i) => { if (t.canopy) { tiles.push([i, t.elev || 0]); t.elev = 0; t.rising = true; } }); // GREAT_CROWN: nobody rides the wood up (landscape.ts canStep)
       const trees = [this.map.canopy, ...(this.map.canopy.trees || [])].filter(Boolean), tops = trees.map((c) => c.top); for (const c of trees) c.top = 0;
-      this.treeRise = { start: now, end: now + ASCENDANCY.rise * 1000, tiles, trees, tops, nextRubble: now };
-      if (this.map.tiles[Math.floor(p.y + .6) * w + Math.floor(p.x + .4)]?.canopy) { let best = null; for (const t of this.map.tiles) { if (t.canopy || t.blocked || !footprintOpen(this.map, w, t.x, t.y)) continue; const d = Math.hypot(t.x - p.x, t.y - p.y); if (!best || d < best.d) best = { x: t.x, y: t.y, d }; } if (best) { p.x = best.x; p.y = best.y; } } // set clear of the rising wood
+      this.treeRise = { start: now, end: now + ASCENDANCY.rise * 1000, tiles, trees, tops, nextRubble: now, map: this.map }; // map: the section it rises in (its tiles are indexes into it)
+      if (this.map.tiles[Math.floor(p.y + .6) * w + Math.floor(p.x + .4)]?.canopy || this.overRisingWood(p.x, p.y)) { let best = null; for (const t of this.map.tiles) { if (t.canopy || t.blocked || !footprintOpen(this.map, w, t.x, t.y)) continue; const d = Math.hypot(t.x - p.x, t.y - p.y); if (!best || d < best.d) best = { x: t.x, y: t.y, d }; } if (best) { p.x = best.x; p.y = best.y; } } // set clear of the rising wood
     }
     (this.effects ||= []).push({ id: `rite-flash-${now}`, kind: "riteFlash", x: p.x, y: p.y, life: 1.1, maxLife: 1.1, damage: 0, radius: 0, pulse: 99, untilPulse: 99 });
     this.cameraShake = Math.max(this.cameraShake || 0, .8);
@@ -11465,10 +11727,27 @@ export class Game {
     journalOnce(this.save, `rite-risen:${riteKey(this.rx, this.ry)}`, ASCENDANCY.messages.rise, "The Rite of Ascendancy");
     this.message = ASCENDANCY.messages.rise; this.sync(); return { ok: true, message: this.message };
   }
+  // GREAT_CROWN.levels (Tim, 2026-11-22, r1050: walked onto the crown, then every jump there killed): a rite's tree can stand on flat
+  // ground that never had a landscape layer, and without one the height rules were off (canStep let any step through, elevationAt
+  // read 0, so a jump that left a platform landed 'from' its height onto level 0 and the fall model never ran). The section gains
+  // the minimal layer the skyways use, set after every generation step so nothing laid there changes; its tiles are not touched.
+  // Its wood had no ground of its own either (growTrees keeps a tile's `landscape`, and a rite's tree stands on plain ground), so the
+  // standard view drew no tile of it raised, nor its rims: the crown the Wayfarer stood on was painted flat on the ground far below.
+  // It is the jungle's wood, as every other great tree's is.
+  riteTreeLevels() {
+    const m = this.map; if (this.area !== "overworld" || !m?.canopy || !this.save.ascendancy?.[riteKey(this.rx, this.ry)]?.risen) return false;
+    if (!m.landscape) m.landscape = { ...GREAT_CROWN.levels };
+    for (const t of m.tiles) if (t.canopy && !t.landscape) t.landscape = GREAT_CROWN.wood;
+    return true;
+  }
+  // Does the Wayfarer's box at (x, y) stand over any of the rising wood (GREAT_CROWN)? Then they are set clear of it.
+  overRisingWood(x, y) { const w = mapWidth(this.map, "overworld"), x0 = Math.floor(x + .24), x1 = Math.floor(x + .76 - 1e-6), y0 = Math.floor(y + .5), y1 = Math.floor(y + .88 - 1e-6);
+    for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) if (this.map.tiles[ty * w + tx]?.canopy) return true; return false; }
   // One frame of the rising tree: every platform at its share of its height, rubble falling round the trunk.
   tickTreeRise(now) {
-    const T = this.treeRise, k = Math.max(0, Math.min(1, (now - T.start) / (T.end - T.start))), ease = 1 - (1 - k) ** 3;
-    for (const [i, e] of T.tiles) { const t = this.map.tiles[i]; if (t) t.elev = k >= 1 ? e : Math.round(e * ease); }
+    const T = this.treeRise; if (T.map && T.map !== this.map) { this.treeRise = null; return; } // GREAT_CROWN: left mid-rise, the tree is whole when next loaded; never another section's tiles
+    const k = Math.max(0, Math.min(1, (now - T.start) / (T.end - T.start))), ease = 1 - (1 - k) ** 3;
+    for (const [i, e] of T.tiles) { const t = this.map.tiles[i]; if (t) { t.elev = k >= 1 ? e : Math.round(e * ease); if (k >= 1) delete t.rising; } }
     T.trees.forEach((c, j) => { c.top = k >= 1 ? T.tops[j] : Math.round(T.tops[j] * ease); });
     if (k < 1 && now >= T.nextRubble) { T.nextRubble = now + 70; const c = T.trees[0], h = hashSeed(`rite-rubble:${Math.round(now)}`); (this.effects ||= []).push({ id: `rite-rubble-${now}`, kind: "riteRubble", x: c.x0 + (h % 1000) / 1000 * (c.size + 4) - 2, y: c.y0 + ((h >>> 10) % 1000) / 1000 * (c.size + 4) - 2, h: 1.5 + ((h >>> 20) % 100) / 30, life: .7, maxLife: .7, damage: 0, radius: 0, pulse: 99, untilPulse: 99 }); this.cameraShake = Math.max(this.cameraShake || 0, .25); }
     if (k >= 1) this.treeRise = null;
@@ -11483,9 +11762,7 @@ export class Game {
   // Release 677 (the-deep.ts): a Deep Shaft in a section first seen from now on; it offers floor 1 and each checkpoint reached.
   placeDeepShaft() {
     if (this.map.objects.some((o) => o.kind === "deepShaft")) return null;
-    const w = mapWidth(this.map, "overworld"), rec = deepShaft(this.save, deepIdFor(this.save.seed, this.rx, this.ry)); let at = null;
-    for (let r = 3; r <= 10 && !at; r++) for (let k = 0; k < 16 && !at; k++) { const a = k / 16 * Math.PI * 2, x = Math.round(16 + Math.cos(a) * r), y = Math.round(16 + Math.sin(a) * r), t = this.map.tiles[y * w + x];
-      if (t && !t.blocked && !t.structure && !t.environment && !t.buildingId && !t.landscape?.startsWith?.("sea") && footprintOpen(this.map, w, x, y) && !this.map.objects.some((o) => Math.hypot(o.x - x, o.y - y) < 2)) at = { x, y }; }
+    const rec = deepShaft(this.save, deepIdFor(this.save.seed, this.rx, this.ry)), at = deepShaftSpot(this.map);
     if (!at) return null;
     const o = { id: `deep-shaft-${this.rx}-${this.ry}`, kind: "deepShaft", name: THE_DEEP.name, x: at.x, y: at.y, state: "open", actions: startFloors(rec).map((f) => `descend:${f}`), lore: THE_DEEP.messages.shaft, landmark: true };
     this.map.objects.push(o); if (!this.message) this.message = THE_DEEP.messages.shaft; return o;
@@ -12137,12 +12414,23 @@ export class Game {
     this.message = "Aim fixed for the next Tool or Spell.";
     return true;
   }
+  // Spare gear salvaged on pickup: one line, its tally merged with the line before while that line is still the one shown (or
+  // waiting); a louder notice already waiting keeps its place.
+  noteSpare(list) {
+    const prev = this.spareTally, live = prev && (this.message === prev.text || this.glyphNotice === prev.text);
+    const t = live ? prev : { names: {}, iron: 0, lumenDust: 0, text: "" };
+    for (const r of list) { const n = r.item?.name || "piece"; t.names[n] = (t.names[n] || 0) + 1; t.iron += r.iron || 0; t.lumenDust += r.lumenDust || 0; }
+    t.text = spareSalvageText(this.save, t); this.spareTally = t;
+    if (!this.glyphNotice || (prev && this.glyphNotice === prev.text)) this.glyphNotice = t.text;
+    return t.text;
+  }
   obtainDrop(src, ordinaryMonster = false) {
     const n = this.save.dropCounter++;
     const deep = this.area === "dungeon" && this.map?.deepFloor ? lootBonus(this.map.deepFloor, deepShaft(this.save, this.areaId()).best) : 0; // release 677: deeper loot, only near your deepest floor
     const orrery = APERTURE_BANDS.indexOf(apertureBand(this.save.perception?.aperture || 0)) >= ORRERY_LOOT.band ? ORRERY_LOOT.version : 0; // items.ts ORRERY_LOOT: the Aether Orrery drops once its gift's band is reached
     const item = generateItem(`${this.save.seed}:${src}:${n}`, this.save.level + deep, ordinaryMonster || orrery ? { ...(ordinaryMonster ? { ordinaryMonster: true } : {}), ...(orrery ? { orreryLoot: orrery } : {}) } : null);
     const r = storeInventoryItem(this.save, item);
+    if (r.spare?.length) this.noteSpare(r.spare); // SPARE_GEAR: one quiet line, merged while nothing else is said
     if (r.stored && (item.property === "brawler" || item.property === "orrery")) this.glyphNotice ||= `${item.name} found: it is in your Pack.`; // release 513: say so
     this.save.materials.cinderIron++;
   }
@@ -12199,7 +12487,8 @@ export class Game {
   drinkPotion(now = 0) {
     const id = potionToDrink(this.save), c = this.save.consumables || {};
     if (POTIONS[id]?.cost && !(c[id] > 0) && this.player.hp < this.save.maxHp) { const r = craftPotion(this.save, id); if (!r.ok) { this.message = r.message; return false; } }
-    return this.useConsumable(id, now);
+    const drunk = this.useConsumable(id, now); if (drunk && POTIONS[id]?.cost) notePotion(this.save, id); // a found one drunk is known (potions.ts POTION_KNOWN)
+    return drunk;
   }
   consumeLogicalNow(now = this.lastUpdateNow || 0) { return Math.max(0, Math.min(1e12, (this.paused ? this.pauseStarted : now) - (this.presentationPausedMs || 0))); }
   cancelConsumeVisual(reason) {
@@ -12610,7 +12899,7 @@ export class Game {
     if(fellIntoHazard){p.hp=0;this.message=terrainHazard==="lava"?"The caldera swallows the Wayfarer.":terrainHazard==="abyss"?"The Wayfarer falls into the sunless chasm.":DEEP_WATER.includes(terrainHazard)?"The deep water drags the Wayfarer under.":terrainHazard==="canyon"?(tileUnder(this.map,width,nx,ny)?.chasm?(this.fellStars=true,"The Wayfarer steps off the edge and falls away into the stars."):"The ledge gives way beneath the Wayfarer."):"The water closes over the Wayfarer."}
     else if (sailing) this.sail(p, dx, dy, width, now);
     else {
-      p.isPlayer = true; p.jumping = now < (this.jumpUntil || 0); p.voidSuit = this.mechUp() && this.area !== "dungeon"; /* 511: never through dungeon walls */ // release 509: only the robot steps into a star-void
+      p.isPlayer = true; p.jumping = now < (this.jumpUntil || 0); p.voidSuit = this.mechUp() && this.area !== "dungeon"; /* 511: never through dungeon walls */ if (p.jumping || this.glide || this.droneLift) this.crownHold = false; p.crownHold = this.crownHold === true; /* GREAT_CROWN: a jump is the way down */ // release 509: only the robot steps into a star-void
       const before = elevationAt(this.map, width, p.x, p.y), fromX = p.x, fromY = p.y;
       // Release 585 (the skyway climb): a jump from a sky platform keeps its height over the gap below until it ends, so the
       // next platform (one level up at most) can be reached; a jump that ends over the gap falls from that height.
@@ -12690,7 +12979,8 @@ export class Game {
       // Read once the frame's fall is settled, on the ground only: a jump or lift in the air, or a freefall begun this frame, keeps
       // the footing it left from. Allocated only when it changes.
       if (!p.jumping && !this.glide && !this.droneLift) { const u = tileUnder(this.map, width, p.x, p.y), top = this.area === "overworld" && u?.kind === "canopyTrunk" && this.map.canopy?.top && u.elev === this.map.canopy.top, f = this.crownFoot;
-        if (!top) this.crownFoot = null; else if (!f || f.rx !== this.rx || f.ry !== this.ry) this.crownFoot = { rx: this.rx, ry: this.ry }; }
+        if (!top) this.crownFoot = null; else if (!f || f.rx !== this.rx || f.ry !== this.ry) this.crownFoot = { rx: this.rx, ry: this.ry };
+        if (!this.fall && !this.wallCling) { const lv = this.playerLevel(); if (Number.isFinite(lv)) p.footLevel = lv; if (this.crownHold && u?.kind !== "canopyTrunk") this.crownHold = false; } } // GREAT_CROWN: the last ground stood on (the gate); stepped down, the hold is done
       if (!p.jumping) { this.skyAir = null; this.liftDrop = false; this.deckHop = false; } p.airElev = undefined;
       // Stegosaur's Grip: the feet on ground give the holds back (WALL_CLING.maxHolds).
       if (!p.jumping && !this.fall && !this.glide && !this.droneLift && !this.wallCling) this.wallHolds = 0;

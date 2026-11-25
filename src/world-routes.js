@@ -22,9 +22,9 @@
 //
 // Pity (G3): a lead, never an ability. After PITY.sections new sections explored with nothing gained, the next rumour is a strong
 // one (world-finds.ts pityLead): a directed lead to the nearest place that holds a world ability within PITY.radius sections.
-import { hashSeed, rng } from "./random.js?v=r1050-2ea30cdbc905";
-import { exploring, progressionKept, ensureFeats, FEAT_RECORD } from "./journey-start.js?v=r1050-2ea30cdbc905";
-import { storyWithheld } from "./quests.js?v=r1050-2ea30cdbc905"; // Phase 7: the quest (b) and thread (d) abilities built then
+import { hashSeed, rng } from "./random.js?v=r1059-3629aeded9d0";
+import { exploring, progressionKept, ensureFeats, FEAT_RECORD } from "./journey-start.js?v=r1059-3629aeded9d0";
+import { storyWithheld } from "./quests.js?v=r1059-3629aeded9d0"; // Phase 7: the quest (b) and thread (d) abilities built then
 
 // ---------------------------------------------------------------- milestones (route c): design section 3
 //   key      the counter (save.feats.counts), or `derived` (read from the save)

@@ -7,7 +7,7 @@
 // timing, damage, reach or targeting.
 import {
   defineSkeleton, createPose, resetPose, setEuler, resolveBone, writeSkin, meshBuilder, clamp01, smooth, span, kick, wobble,
-} from "./close-view-beast-rig.js?v=r1050-2ea30cdbc905";
+} from "./close-view-beast-rig.js?v=r1059-3629aeded9d0";
 
 export const MOTH_RIG = Object.freeze({
   closeViewScale: 1.25, // the beasts share the Giant's Close View size (Tim, 2026-11-11)

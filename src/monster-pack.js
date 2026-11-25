@@ -1,4 +1,4 @@
-import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.js?v=r1050-2ea30cdbc905";
+import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.js?v=r1059-3629aeded9d0";
 // Dungeon Monster Pack v1: ten composable creatures built from shared attribute tables.
 //
 // A pack monster is a composition of five reusable parts, each defined once below:
@@ -8,18 +8,18 @@ import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.js?v=r1050-
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { stageOneBeastReference } from "./stages.js?v=r1050-2ea30cdbc905";
-import { hashSeed, byHash } from "./random.js?v=r1050-2ea30cdbc905";
-import { updateAstralActor } from "./astral-worm.js?v=r1050-2ea30cdbc905";
-import { WORLD_BOSS_PACE } from "./boss-kit.js?v=r1050-2ea30cdbc905"; // world-boss pacing (Tim, 2026-11-18)
-import { ADV, levelAt, heightReach, dropBonus, findPerch, findRetreat, kiteLoop, lampLoop } from "./adventure-creatures.js?v=r1050-2ea30cdbc905"; // adventure creatures (Tim, 2026-11-11)
-import { onStegoTailSevered } from "./stego-bait.js?v=r1050-2ea30cdbc905";
-import { DINO_DUEL, duelBlow as dinoDuelBlow, noteRivalHurt, duelOf, duelWinner, duelPair, DUEL_KINDS } from "./dino-duel.js?v=r1050-2ea30cdbc905";
-import { APATO, APATO_ATTACKS, APATO_START, APATO_RUN, installApatoKit, apatoFx, apatoTick, apatoCan, apatoAfflicted, apatoCloneTick, apatoIdle, apatoLetGo, resetApatoRuntime, apatoRivalNear } from "./earth-apato.js?v=r1050-2ea30cdbc905"; // the Earth Apatosaurus (Tim, 2026-11-18) // the dino duel's blows, floors and verdict (Tim, 2026-11-14)
-import { BLEED, tickCreatureBleed } from "./bleed.js?v=r1050-2ea30cdbc905"; // the Spinosaurus's bleed (its numbers and the Wayfarer's record) // the Wild Stegosaurus: its cut tail becomes the Stego Bait (the bait module owns what happens)
-import { DUELISTS, duelistStats, duelSeparation, findHop, hopArc, duelStepTooClose } from "./duelists.js?v=r1050-2ea30cdbc905"; // the Gaunt, hooded duelists (Tim, 2026-11-12)
-import { behaviourProfile, behaviourState, behaviourGate, behaviourReact, resetBehaviour, ringVector, pressVector, squadRequest, shapeBlow, startFeint, afterBlow } from "./enemy-behaviour.js?v=r1050-2ea30cdbc905"; // ordinary creature behaviour (Tim, 2026-11-14)
-import { tacticsMove, tacticsWindup } from "./squad-tactics.js?v=r1050-2ea30cdbc905"; // squad tactics (Tim, 2026-11-15)
+import { stageOneBeastReference } from "./stages.js?v=r1059-3629aeded9d0";
+import { hashSeed, byHash } from "./random.js?v=r1059-3629aeded9d0";
+import { updateAstralActor } from "./astral-worm.js?v=r1059-3629aeded9d0";
+import { WORLD_BOSS_PACE } from "./boss-kit.js?v=r1059-3629aeded9d0"; // world-boss pacing (Tim, 2026-11-18)
+import { ADV, levelAt, heightReach, dropBonus, findPerch, findRetreat, kiteLoop, lampLoop } from "./adventure-creatures.js?v=r1059-3629aeded9d0"; // adventure creatures (Tim, 2026-11-11)
+import { onStegoTailSevered } from "./stego-bait.js?v=r1059-3629aeded9d0";
+import { DINO_DUEL, duelBlow as dinoDuelBlow, noteRivalHurt, duelOf, duelWinner, duelPair, DUEL_KINDS } from "./dino-duel.js?v=r1059-3629aeded9d0";
+import { APATO, APATO_ATTACKS, APATO_START, APATO_RUN, installApatoKit, apatoFx, apatoTick, apatoCan, apatoAfflicted, apatoCloneTick, apatoIdle, apatoLetGo, resetApatoRuntime, apatoRivalNear } from "./earth-apato.js?v=r1059-3629aeded9d0"; // the Earth Apatosaurus (Tim, 2026-11-18) // the dino duel's blows, floors and verdict (Tim, 2026-11-14)
+import { BLEED, tickCreatureBleed } from "./bleed.js?v=r1059-3629aeded9d0"; // the Spinosaurus's bleed (its numbers and the Wayfarer's record) // the Wild Stegosaurus: its cut tail becomes the Stego Bait (the bait module owns what happens)
+import { DUELISTS, duelistStats, duelSeparation, findHop, hopArc, duelStepTooClose } from "./duelists.js?v=r1059-3629aeded9d0"; // the Gaunt, hooded duelists (Tim, 2026-11-12)
+import { behaviourProfile, behaviourState, behaviourGate, behaviourReact, resetBehaviour, ringVector, pressVector, squadRequest, shapeBlow, startFeint, afterBlow } from "./enemy-behaviour.js?v=r1059-3629aeded9d0"; // ordinary creature behaviour (Tim, 2026-11-14)
+import { tacticsMove, tacticsWindup } from "./squad-tactics.js?v=r1059-3629aeded9d0"; // squad tactics (Tim, 2026-11-15)
 
 export const MONSTER_PACK_VERSION = 1;
 // A separate content pin: generic pack selectors still exclude this species.
@@ -1065,11 +1065,28 @@ export function applyPackBossForm(enemy) {
 
 export function freshPackState() { return { v: MONSTER_PACK_VERSION, state: "move", attack: null, phase: null, t: 0, cd: {}, seq: 0, tele: null, gap: .8, stillT: 0, anchor: null, orbitDir: 0 }; }
 
-// Called when an enemy is restored from a save: transient attack state never resumes mid-swing.
+// Exact resume (fixes from a 20-hour playthrough, I10): what of a foe's pack state a restore keeps besides its cooldowns. Its
+// circling side, its idle wander, its attack count and last attack (the hashes that pick and shape the next attack read
+// them), how long the Wayfarer has stood still near it, and the breath before its next attack (only when it was not
+// mid-attack: an attack never resumes, and one cut short leaves the fresh pause). Each is checked and bounded here.
+export const PACK_RESUME = Object.freeze({ gapMax: 30, stillMax: 60, lastMax: 48, seqMax: 1e9 });
+function resumedPack(old) {
+  if (!old || typeof old !== "object") return {};
+  const out = {}, R = PACK_RESUME, num = (v) => typeof v === "number" && Number.isFinite(v);
+  if (old.orbitDir === 1 || old.orbitDir === -1) out.orbitDir = old.orbitDir;
+  if (num(old.wander)) out.wander = old.wander >= 0 && old.wander < TAU ? old.wander : ((old.wander % TAU) + TAU) % TAU;
+  if (Number.isInteger(old.seq) && old.seq >= 0) out.seq = Math.min(R.seqMax, old.seq);
+  if (typeof old.last === "string" && old.last.length <= R.lastMax) out.last = old.last;
+  if (num(old.stillT) && old.stillT >= 0 && num(old.anchor?.x) && num(old.anchor?.y)) { out.stillT = Math.min(R.stillMax, old.stillT); out.anchor = { x: old.anchor.x, y: old.anchor.y }; }
+  if (!old.attack && old.state !== "attack" && num(old.gap) && old.gap >= 0) out.gap = Math.min(R.gapMax, old.gap);
+  return out;
+}
+
+// Called when an enemy is restored from a save: transient attack state never resumes mid-swing (PACK_RESUME: what is kept).
 export function resetPackRuntime(enemy) {
   if (!enemy?.packKind) return enemy;
   const cd = enemy.pack?.cd || {};
-  enemy.pack = { ...freshPackState(), cd: { ...cd } };
+  enemy.pack = { ...freshPackState(), ...resumedPack(enemy.pack), cd: { ...cd } };
   // A reset Lantern returns to material hover; its discarded leap cannot retain lift.
   if (enemy.kind === "graveLantern") enemy.hopLift = 0;
   if (MONSTER_PACK[enemy.kind]?.duelistKin) { enemy.hopLift = 0; enemy.aloft = false; enemy.duelPose = null; } // the Gaunt: a hop or a cut never resumes mid-air

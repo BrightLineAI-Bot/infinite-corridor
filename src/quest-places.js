@@ -13,23 +13,23 @@
 // least that far from the Ember Refuge. A place found empty when the Wayfarer gets there (questArrive: no wreck, no crater, no
 // stair, no Revenant) is marked `miss`, and the next is resolved after it, so no step is ever stranded. And the events the
 // steps move on (questEvent: a kill, a salvage, a word with the giver, a token collected, a place cleared, a beast come home).
-import { rng, hashSeed } from "./random.js?v=r1050-2ea30cdbc905";
-import { dungeonId, regionSettled, CROSSING_ROLLS } from "./world.js?v=r1050-2ea30cdbc905";
-import { WONDERS } from "./wonders.js?v=r1050-2ea30cdbc905";
-import { openSeaQuick, farSleepSection, SEA_FEATURES } from "./landscape.js?v=r1050-2ea30cdbc905";
-import { canyonHere, canyonIdFor } from "./canyon.js?v=r1050-2ea30cdbc905";
-import { skylandSection, SKY_PLACE } from "./skylands.js?v=r1050-2ea30cdbc905";
-import { pentagonAt, PENTAGON } from "./pentagon.js?v=r1050-2ea30cdbc905";
-import { hamletSection } from "./settlements.js?v=r1050-2ea30cdbc905";
-import { HORDE } from "./revenant-horde.js?v=r1050-2ea30cdbc905";
-import { GATE_REVENANT } from "./monster-pack.js?v=r1050-2ea30cdbc905";
-import { ladderRoll } from "./dungeon-ladder.js?v=r1050-2ea30cdbc905";
-import { farCivCentre, farCivAt, farDomainCentre } from "./far-realms.js?v=r1050-2ea30cdbc905";
-import { APERTURE_BANDS, apertureBand } from "./items.js?v=r1050-2ea30cdbc905";
-import { rollMireCrypt, dreamHallRoll } from "./underlands.js?v=r1050-2ea30cdbc905";
-import { annexRecord } from "./deep-annex.js?v=r1050-2ea30cdbc905";
-import { ensureQuests, QUEST_RECORD } from "./journey-start.js?v=r1050-2ea30cdbc905";
-import { QUESTS, QUEST_IDS, questState, questOpen, questStep, stepDone, stepPlace, stepCount, mealFrom, questFollowId } from "./quests.js?v=r1050-2ea30cdbc905";
+import { rng, hashSeed } from "./random.js?v=r1059-3629aeded9d0";
+import { dungeonId, regionSettled, CROSSING_ROLLS } from "./world.js?v=r1059-3629aeded9d0";
+import { WONDERS } from "./wonders.js?v=r1059-3629aeded9d0";
+import { openSeaQuick, farSleepSection, SEA_FEATURES } from "./landscape.js?v=r1059-3629aeded9d0";
+import { canyonHere, canyonIdFor } from "./canyon.js?v=r1059-3629aeded9d0";
+import { skylandSection, SKY_PLACE } from "./skylands.js?v=r1059-3629aeded9d0";
+import { pentagonAt, PENTAGON } from "./pentagon.js?v=r1059-3629aeded9d0";
+import { hamletSection } from "./settlements.js?v=r1059-3629aeded9d0";
+import { HORDE } from "./revenant-horde.js?v=r1059-3629aeded9d0";
+import { GATE_REVENANT } from "./monster-pack.js?v=r1059-3629aeded9d0";
+import { ladderRoll } from "./dungeon-ladder.js?v=r1059-3629aeded9d0";
+import { farCivCentre, farCivAt, farDomainCentre } from "./far-realms.js?v=r1059-3629aeded9d0";
+import { APERTURE_BANDS, apertureBand } from "./items.js?v=r1059-3629aeded9d0";
+import { rollMireCrypt, dreamHallRoll } from "./underlands.js?v=r1059-3629aeded9d0";
+import { annexRecord } from "./deep-annex.js?v=r1059-3629aeded9d0";
+import { ensureQuests, QUEST_RECORD } from "./journey-start.js?v=r1059-3629aeded9d0";
+import { QUESTS, QUEST_IDS, questState, questOpen, questStep, stepDone, stepPlace, stepCount, mealFrom, questFollowId } from "./quests.js?v=r1059-3629aeded9d0";
 
 export const QUEST_PLACES = Object.freeze({
   radius: 24, // sections searched round a quest's `from` (Chebyshev rings), a few thousand hashes at most, once
@@ -45,7 +45,7 @@ export const QUEST_WORDS = Object.freeze({
   any: (what) => `${what}: any one will do (none lies close enough to point the compass at).`,
   starfield: "a crossing that opens on stars",
   canyon: "a canyon crater", wreck: "a shipwreck out at sea (you will want a boat)", skyway: "a Sky Stair at least 50 sections out",
-  revenant: "a crossing where a Gate Revenant stalks, at least 50 sections out", pentagon: "a Pentagon", caldera: "the Thornglass Caldera",
+  revenant: "a crossing where a Gate Revenant stalks, at least 50 sections out", pentagon: "a Pentagon (its five-sided sigils, cut in the ground, point the way)", caldera: "the Thornglass Caldera",
   storm: "the Storm Halls", husk: "the Hollow Husk (a Pumice Seed, planted at a Watcher's shrine)",
   giver: (name) => `${name}'s table`,
   speak: (name) => name,
@@ -77,7 +77,8 @@ const seen = (save, x, y) => !!save?.atlas?.[`${x},${y}`] || !!save?.explored?.[
 // it, so every far place is): its crossings that may be Sleeper's Halls are passed over (revenantAt).
 const solid = (save, x, y) => !(x === 0 && y === 0) && !regionSettled(x, y, save?.seed) && !hamletSection(save?.seed, x, y);
 // An ordinary landmark crossing at (x, y) (world.ts addDungeonLandmark's own draws), its id, or null; never a possible Poison Crypt.
-function crossingAt(save, x, y) {
+// Exported for thread-trails.ts (2026-11-21: the crossing that holds a followed thread's next piece).
+export function crossingAt(save, x, y) {
   const seed = save?.seed, gen = Number(save?.worldGeneration) || 1;
   const r = rng(`${seed}:${CROSSING_ROLLS[0].key}:g${gen}:${x}:${y}`); if (r() >= CROSSING_ROLLS[0].chance) return null; r();
   const id = dungeonId(seed, gen, x, y, `dungeon-g${gen}-${x}-${y}-${Math.floor(r() * 1e6)}`);
@@ -192,16 +193,19 @@ function tally(save, id, step, at = nowOf(save)) {
   return q.counts[step.key] >= step.need ? mark(save, id, step.key) : false;
 }
 // The giver's words for the quests open with them (`giverId`, an object id), or null: the offer until the first step moves, then
-// the waiting line (the meal: Phase 7's own lines).
+// the waiting line (the meal: Phase 7's own lines). A giver with two quests open says both (fixes from a 20-hour playthrough:
+// Vela spoke only of the metronome, so Arc Wave's boat and Blunderbuss were never heard; Oren likewise hid Power Aegis).
 export function questTalk(save, giverId) {
+  const lines = [];
   for (const id of QUEST_IDS) {
     const Q = QUESTS[id]; if (Q.giver !== giverId || !questOpen(save, id)) continue;
     const step = questStep(save, id); if (!step) continue;
-    if (step.key === "meal") return Number.isFinite(Number(questState(save, id).steps?.meal)) ? Q.again : Q.offer;
-    const q = questState(save, id), moved = Object.keys(q.steps || {}).length || Object.keys(q.counts || {}).length || (q.tokens || []).length;
-    return (moved ? Q.waiting : Q.offer) || null;
+    let line;
+    if (step.key === "meal") line = Number.isFinite(Number(questState(save, id).steps?.meal)) ? Q.again : Q.offer;
+    else { const q = questState(save, id), moved = Object.keys(q.steps || {}).length || Object.keys(q.counts || {}).length || (q.tokens || []).length; line = moved ? Q.waiting : Q.offer; }
+    if (line) lines.push(line);
   }
-  return null;
+  return lines.length ? lines.join(" ") : null;
 }
 // A word with `giverId`: a step that asks for a delivery to them (`on: "speak"`), with the steps it needs done, is done.
 // Returns { line, done }: what is said (the delivery, else the giver's own words, else null) and the quests now complete.
@@ -261,6 +265,7 @@ function meets(save, id, step, ev) {
 // (at most as many as are still needed); any other step is done. Returns { done, lay }: the quests now complete, and the tokens to
 // lay in the area now ({ id, kind: "questToken", ... } objects).
 export function questEvent(save, ev = {}) {
+  recoverLostQuestTokens(save);
   const done = [], lay = [];
   for (const id of QUEST_IDS) {
     if (!questOpen(save, id)) continue;
@@ -298,6 +303,7 @@ export function questToken(save, tokenId, at = null) {
 // What a quest lays in an area as it loads (`areaId`): the tokens left there, and the metronome on a Skyland climbed from its
 // step's place (`skyland`: the stair's section). (`x`, `y`): where to lay a new one (game.ts finds open floor near the Wayfarer.)
 export function questLay(save, { areaId = "", skyland = null, x = 0, y = 0 } = {}) {
+  recoverLostQuestTokens(save);
   const out = [];
   for (const id of QUEST_IDS) {
     if (!questOpen(save, id)) continue; const q = questState(save, id), step = questStep(save, id);
@@ -306,6 +312,26 @@ export function questLay(save, { areaId = "", skyland = null, x = 0, y = 0 } = {
     if (step?.lay === "skyland" && skyland && Number.isInteger(skyland.rx) && Math.hypot(skyland.rx, skyland.ry) >= (Number(step.far) || 0)) out.push({ ...tokenObject(id, step, { id: `${id}:${step.key}`, x, y }), at: { rx: skyland.rx, ry: skyland.ry } });
   }
   return out;
+}
+
+// Forget only tokens whose floor is gone for good. Seed realms cease to exist when their session ends, and a sealed canyon
+// cannot be entered again; every other dungeon history remains revisitable and keeps its tokens. Counts already collected are
+// deliberately untouched, so recovery can only make room for replacement drops and can never grant quest progress itself.
+export function recoverLostQuestTokens(save) {
+  let removed = 0;
+  const activeRealm = save?.session?.seedRealm?.id;
+  for (const id of QUEST_IDS) {
+    if (!questOpen(save, id)) continue;
+    const q = questState(save, id), step = questStep(save, id); if (!step || !Array.isArray(q.tokens)) continue;
+    q.tokens = q.tokens.filter((t) => {
+      if (t?.step !== step.key) return true;
+      const area = String(t.area || ""), realmGone = area.startsWith("seedrealm:") && area !== activeRealm;
+      const canyonGone = !!save?.consequences?.dungeons?.[area]?.canyon?.sealed;
+      if (!realmGone && !canyonGone) return true;
+      removed++; return false;
+    });
+  }
+  return removed;
 }
 
 // ---------------------------------------------------------------- the Journal and the compass
@@ -340,4 +366,4 @@ export function questLeads(save) {
   }
   return out;
 }
-export { openQuestCount } from "./quests.js?v=r1050-2ea30cdbc905";
+export { openQuestCount } from "./quests.js?v=r1059-3629aeded9d0";

@@ -12,21 +12,23 @@
 // CAIRN_LINES.plain) and, taken, the compass follows it to the nearest crossing (nearestCrossing). Classic keeps today's lines and
 // the errand's waymarks; leads and rumours run in both modes, as extras (section 6), and a Classic rumour never points at an
 // ability its own rules already open (awakening, the hatchling).
-import { hashSeed } from "./random.js?v=r1050-2ea30cdbc905";
-import { crossingRolled } from "./world.js?v=r1050-2ea30cdbc905";
-import { nearestWonders, WONDERS, compassWords } from "./wonders.js?v=r1050-2ea30cdbc905";
-import { arcanaHint, arcanaToward, arcanaHas, ARCANA_REGIONS, ARCANA_UNLOCKS } from "./lore.js?v=r1050-2ea30cdbc905";
-import { ensureLeads, exploring, saveFrame, EXPLORATION, LEAD_RECORD } from "./journey-start.js?v=r1050-2ea30cdbc905";
-import { APERTURE_BANDS, apertureBand } from "./items.js?v=r1050-2ea30cdbc905";
-import { HORDE_RUMOUR, RELIQUARY, worldWithheld } from "./world-routes.js?v=r1050-2ea30cdbc905"; // Phase 6: the horde rumour (2.7)
-import { nearestHorde, pityLead, pityLive } from "./world-leads.js?v=r1050-2ea30cdbc905"; // Phase 6: the strong lead (G3)
-import { QUEST_IDS, questOpen, boughtRumour, storyWithheld } from "./quests.js?v=r1050-2ea30cdbc905"; // Phase 7: quests count as leads; Phase 8: a bought rumour
+import { hashSeed } from "./random.js?v=r1059-3629aeded9d0";
+import { crossingRolled } from "./world.js?v=r1059-3629aeded9d0";
+import { nearestWonders, WONDERS, compassWords } from "./wonders.js?v=r1059-3629aeded9d0";
+import { arcanaHint, arcanaToward, arcanaHas, ARCANA_REGIONS, ARCANA_UNLOCKS } from "./lore.js?v=r1059-3629aeded9d0";
+import { ensureLeads, exploring, saveFrame, EXPLORATION, LEAD_RECORD } from "./journey-start.js?v=r1059-3629aeded9d0";
+import { APERTURE_BANDS, apertureBand } from "./items.js?v=r1059-3629aeded9d0";
+import { HORDE_RUMOUR, RELIQUARY, worldWithheld } from "./world-routes.js?v=r1059-3629aeded9d0"; // Phase 6: the horde rumour (2.7)
+import { nearestHorde, hordeLeadLive, pityLead, pityLive } from "./world-leads.js?v=r1059-3629aeded9d0"; // Phase 6: the strong lead (G3)
+import { QUEST_IDS, questOpen, boughtRumour, paidRumourView, storyWithheld } from "./quests.js?v=r1059-3629aeded9d0"; // Phase 7: quests count as leads; Phase 8: a bought rumour
+import { threadFound } from "./threads.js?v=r1059-3629aeded9d0"; import { TRAIL_IDS, trailBegun } from "./thread-trails.js?v=r1059-3629aeded9d0"; // 2026-11-21: the Washing at Sallowby (a rumour, then a quest the compass can follow)
 
 export const LEADS = Object.freeze({
   floor: 2, // G2: at least this many leads the player can act on now
   maxQuests: 3, // G2: at most this many directed quests open at once (Phase 7's quests read it)
   crossingRadius: 16, // sections searched round the Wayfarer for the errand's nearest crossing (Manhattan rings)
   idleSections: 15, // 4.3: no needle and no lead followed for this many new sections: the Journal button shows a dot
+  wonderMax: 5, // fixes from a 20-hour playthrough (I9): at most this many travellers' wonders stand as leads; a new one replaces the oldest (no other rumour is touched)
 });
 
 // ---------------------------------------------------------------- the first hour (4.1)
@@ -97,6 +99,10 @@ export const RUMOURS = Object.freeze({
     line: (where) => `There's a lamplighter's round ${where}. Walk it to its end and the dark gives a little, they say.` }),
   bells: Object.freeze({ modes: [0, 1], set: "bells", passive: "passive:bell-toll", title: "The cracked bells",
     line: (where) => `Cracked bells hang in the crossings ${where}. Ring them all and something waits at the end.` }),
+  // 2026-11-21 (story version 6): the Washing at Sallowby, told by name and home until its first bundle is found (then it is a quest).
+  washing: Object.freeze({ modes: [0, 1], set: "washing", title: "Washing in the crossings",
+    open: (save) => !threadFound(save, "washing").length,
+    line: (where) => `Washing turns up in the crossings ${where}, they say: bundles tied in clean sheets, still damp, with a slip pinned on. Somebody's whole village, by the sound of it.` }),
   // Phase 6 (2.7): from Infinite II, the nearest Revenant horde crossing not yet entered, while the first horde's certain reliquary
   // waits and the pool still holds something to find. Found by the horde's own hash (world-finds.ts nearestHorde).
   horde: Object.freeze({ modes: [1], tier: HORDE_RUMOUR.tier, title: "A Revenant horde",
@@ -109,7 +115,7 @@ export const RUMOURS = Object.freeze({
   wonder: Object.freeze({ modes: [0, 1], title: "A wonder",
     line: (w, rx, ry) => `People speak of ${WONDERS.kinds[w.kind].name} ${compassWords(w.rx - rx, w.ry - ry)}, about ${w.d} section${w.d === 1 ? "" : "s"} off.` }),
 });
-export const RUMOUR_ORDER = Object.freeze(["hatchling", "awakening", "horde", "lamplighter", "bells", "wonder"]);
+export const RUMOUR_ORDER = Object.freeze(["hatchling", "awakening", "horde", "lamplighter", "bells", "washing", "wonder"]);
 // The people whose idle words may become a rumour (by object id; the hamlets' folk and the Listener towns' cooks by kind, in
 // game.ts). Hollis is not one: his talk points the way to the Refuge's farm and quarry (refuge-lands.ts), which a rumour must not hide.
 export const RUMOUR_SPEAKERS = Object.freeze(["vendor-vela", "warden-oren", "keeper-sela", "cairn-keeper", "vendor-iona", "resident-tarn", "vendor-mora", "resident-esh"]);
@@ -119,13 +125,19 @@ export function rumourLive(save, r) {
   if (!r || typeof r.kind !== "string") return false;
   if (r.kind === "wonder") return Number.isInteger(r.rx) && Number.isInteger(r.ry) && !save?.atlas?.[`${r.rx},${r.ry}`];
   if (r.kind === "pity") return exploring(save) && pityLive(save, r);
-  if (r.kind === "horde") return RUMOURS.horde.open(save) && !((Number(save?.consequences?.dungeons?.[r.dungeon]?.visits) || 0) > 0);
+  if (r.kind === "horde") return RUMOURS.horde.open(save) && hordeLeadLive(save, r);
   if (r.kind === "viscera") return typeof r.ability === "string" && !!boughtRumour(save, r.ability) && (!exploring(save) || storyWithheld(save, r.ability) || worldWithheld(save, r.ability)); // Phase 8: a rumour bought with Divine Viscera, until it is found
   const K = RUMOURS[r.kind]; if (!K) return false;
   if (K.passive) return !arcanaHas(save, K.passive);
   return K.open(save);
 }
-export const liveRumours = (save) => (Array.isArray(save?.leads?.rumours) ? save.leads.rumours : []).filter((r) => rumourLive(save, r));
+// Travellers' wonders beyond LEADS.wonderMax, the oldest first: every traveller names one, so from about ten hours thirty of them
+// stood as leads against a floor of two. Only wonder rumours are ever cut; quests, threads and every other rumour stand.
+function wonderOverflow(save, list) {
+  const wonders = list.filter((r) => r?.kind === "wonder" && rumourLive(save, r));
+  return new Set(wonders.slice(0, Math.max(0, wonders.length - LEADS.wonderMax)));
+}
+export const liveRumours = (save) => { const all = Array.isArray(save?.leads?.rumours) ? save.leads.rumours : [], over = wonderOverflow(save, all); return all.filter((r) => !over.has(r) && rumourLive(save, r)).map(paidRumourView); };
 // Quests in progress the player can act on now (the Journal's Leads lists them first, main.ts activeQuests).
 export function questLeadCount(save) {
   let n = 0;
@@ -137,6 +149,7 @@ export function questLeadCount(save) {
   if (save?.narrative?.facts?.["leads.active"] && !save.narrative.facts["leads.complete"]) n++;
   if (save?.relayNetwork?.coordinate) n++;
   { const s = save?.lore?.second; if (s && Array.isArray(s.trail) && (s.found || 0) < s.trail.length) n++; }
+  for (const id of TRAIL_IDS) if (trailBegun(save, id)) n++; // 2026-11-21: a followed thread begun and not finished
   for (const id of QUEST_IDS) if (questOpen(save, id)) n++; // Phase 7
   return n;
 }
@@ -162,7 +175,7 @@ export function nextRumour(save, rx = 0, ry = 0) {
     }
     if (live.some((r) => r.kind === kind)) continue;
     if (kind === "horde") { if (!K.open(save)) continue; const h = nearestHorde(save, rx, ry); if (!h) continue; return { id: `horde:${h.rx},${h.ry}`, kind, text: K.line(h), rx: h.rx, ry: h.ry, dungeon: h.dungeon, name: K.title }; }
-    if (K.set) { if (arcanaHas(save, K.passive)) continue; const e = homeEdge(save, K.set); return { id: `arcana:${K.set}`, kind, text: K.line(arcanaHint(K.set, saveFrame(save))), rx: e.rx, ry: e.ry, name: K.title }; }
+    if (K.set) { if (K.passive ? arcanaHas(save, K.passive) : !K.open(save)) continue; const e = homeEdge(save, K.set); return { id: `arcana:${K.set}`, kind, text: K.line(arcanaHint(K.set, saveFrame(save))), rx: e.rx, ry: e.ry, name: K.title }; }
     if (K.open(save)) return { id: kind, kind, text: K.line(), name: K.title };
   }
   return null;
@@ -170,7 +183,9 @@ export function nextRumour(save, rx = 0, ry = 0) {
 // Records a rumour heard (once by id; a rumour heard again replaces the old record). Returns { rumour, first }.
 export function recordRumour(save, rumour, by = "", at = Number(save?.playSeconds) || 0) {
   const L = ensureLeads(save), first = !L.rumours.length, r = { ...rumour, by, at: Math.floor(at) };
-  L.rumours = [...L.rumours.filter((q) => !sameRumour(q, r)), r].slice(-LEAD_RECORD.rumourMax);
+  let list = [...L.rumours.filter((q) => !sameRumour(q, r)), r];
+  if (r.kind === "wonder") { const over = wonderOverflow(save, list); list = list.filter((q) => !over.has(q) && !(q.kind === "wonder" && !rumourLive(save, q))); } // LEADS.wonderMax: the oldest wonder goes (and wonders already reached)
+  L.rumours = list.slice(-LEAD_RECORD.rumourMax);
   return { rumour: r, first };
 }
 // The lead floor (G2): a person's idle line becomes a rumour while fewer than LEADS.floor leads stand. Returns

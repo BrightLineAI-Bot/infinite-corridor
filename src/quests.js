@@ -36,9 +36,10 @@
 // moved to places that stand (Tim, 2026-11-20): Tempo's metronome to a Skyland at least 50 sections out (a skyway-only find),
 // Blade Stream's lamps to the Heart of any Pentagon (always Tomb-built: "Lamps for the Heart: forty"). Four abilities exist only
 // past 1,000 sections: Ember Mend and Wellspring (quests that open once the Wayfarer has stood 1,000 sections out), Mage's Hand
-// and Continuous Assault (far threads, Phase 7). At most QUEST_LIMIT.open directed quests are open at once (G2); the rest wait.
-import { hashSeed } from "./random.js?v=r1050-2ea30cdbc905";
-import { exploring, progressionKept } from "./journey-start.js?v=r1050-2ea30cdbc905";
+// and Continuous Assault (far threads, Phase 7). Eligible directed quests open independently; an unfinished early quest never
+// prevents a later quest from being offered. The player still chooses one quest at a time for the compass to follow.
+import { hashSeed } from "./random.js?v=r1059-3629aeded9d0";
+import { exploring, progressionKept } from "./journey-start.js?v=r1059-3629aeded9d0";
 
 export const STORY = Object.freeze({
   table: 5, // the progression table that withholds every b, d and V ability (journey-start.ts EXPLORATION.table); Phase 7's was 4
@@ -102,9 +103,9 @@ export const QUESTS = Object.freeze({
     id: "blade-stream", ability: "field:blade-stream", name: "Blade Stream", title: "Forty Lamps for the Heart", visibility: "D",
     gate: Object.freeze({ tier: 6 }), giver: "warden-oren", giverName: "Oren", tier: "Strange", from: Object.freeze({ rx: 0, ry: 0 }),
     steps: Object.freeze([
-      Object.freeze({ key: "lamps", verb: "defeat", on: "kill", kind: "graveLantern", where: "pentagon", need: 3, within: 120, text: "In a Pentagon, defeat three Grave Lanterns before the first relights its lamp (two minutes from the first).", place: "pentagon" }),
+      Object.freeze({ key: "lamps", verb: "defeat", on: "kill", kind: "graveLantern", where: "pentagon", need: 3, within: 120, text: "Find a Pentagon (the five-sided sigils cut in the ground point the way to one), and there defeat three Grave Lanterns before the first relights its lamp (two minutes from the first).", place: "pentagon" }),
     ]),
-    offer: "The Pentagon's ledger asked for forty lamps for the Heart. Somebody carries them still. Put out three before the first one lights again, and come back with your blades singing.",
+    offer: "The Pentagon's ledger asked for forty lamps for the Heart. Somebody carries them still. Put out three before the first one lights again, and come back with your blades singing. You'll find the place by its sigils: five sides, cut in the ground, one point drawn out long. Follow the long point.",
     waiting: "Three lamps, and quick. The first one's patient. It'll wait two minutes, no more.",
     done: "The lamps go out one after another, too quick to relight, and their light stays in your blades as a storm.",
   }),
@@ -112,10 +113,10 @@ export const QUESTS = Object.freeze({
     id: "glyph-mine", ability: "glyph-mine", name: "Glyph Mine", title: "Sigils from the Hollow Husk", visibility: "D",
     gate: Object.freeze({ tier: 8 }), giver: "keeper-sela", giverName: "Sela", tier: "Strange", from: Object.freeze({ rx: 0, ry: 0 }),
     steps: Object.freeze([
-      Object.freeze({ key: "wraiths", verb: "defeat", on: "kill", kind: "veinWraith", where: "husk", need: 5, token: "a vein sigil", text: "Plant a Pumice Seed at a Watcher's shrine; in the Hollow Husk defeat five Vein Wraiths and Act: collect their sigils." }),
+      Object.freeze({ key: "wraiths", verb: "defeat", on: "kill", kind: "veinWraith", where: "husk", need: 5, token: "a vein sigil", text: "Plant a Pumice Seed (they turn up in chests and caches, and on open ground) at a Watcher's shrine; in the Hollow Husk defeat five Vein Wraiths and Act: collect their sigils." }),
       Object.freeze({ key: "sela", verb: "act", on: "speak", at: "keeper-sela", text: "Bring the five sigils to Sela in the Refuge.", needs: "wraiths" }),
     ]),
-    offer: "The ore in the Hollow Husk walked away and took its sigils with it. Five, please. A Pumice Seed at a Watcher's shrine will take you there.",
+    offer: "The ore in the Hollow Husk walked away and took its sigils with it. Five, please. A Pumice Seed at a Watcher's shrine will take you there. The seeds turn up in chests and caches, and on open ground, if you keep your eyes down.",
     waiting: "Five sigils. They hum when you hold them; that's how you know they're the ones.",
     deliver: "Sela turns the five sigils over, chooses one, and sets it under your feet. It stays there.",
     done: "Sela sets one sigil under your feet and it stays: your spells leave sigils that burst, and your Rift Steps leave mines.",
@@ -124,9 +125,9 @@ export const QUESTS = Object.freeze({
     id: "arc-wave", ability: "field:arc-wave", name: "Arc Wave", title: "Three Wrecks and a Blunderbuss", visibility: "D",
     gate: Object.freeze({ tier: 8 }), giver: "vendor-vela", giverName: "Vela", tier: "Sea", from: Object.freeze({ rx: 0, ry: 0 }),
     steps: Object.freeze([
-      Object.freeze({ key: "wrecks", verb: "act", on: "salvage", with: "blunderbuss", need: 3, text: "Sail out and Act: salvage three shipwrecks with the Blunderbuss equipped.", place: "wreck" }),
+      Object.freeze({ key: "wrecks", verb: "act", on: "salvage", with: "blunderbuss", need: 3, text: "With a boat (the shipwrights at the coast's docks build skiffs), sail out and Act: salvage three shipwrecks with the Blunderbuss equipped (a Needle Caster strengthened to +6 becomes one).", place: "wreck" }),
     ]),
-    offer: "Wreck salvage sells. Wreck salvage taken with a Blunderbuss on your hip sells better; don't ask me why. Three wrecks. You'll want a boat.",
+    offer: "Wreck salvage sells. Wreck salvage taken with a Blunderbuss on your hip sells better; don't ask me why. Three wrecks. You'll want a boat; the shipwrights at the coast's docks build them. No Blunderbuss? A Needle Caster worked hard enough at the forge turns into one.",
     waiting: "A Blunderbuss on you when you salvage, mind. The sea notices.",
     done: "Three wrecks salvaged with the Blunderbuss on your hip, and the sea's crescent swell goes into it: it fires waves now.",
   }),
@@ -223,11 +224,22 @@ export const STORY_SEEN = Object.freeze(Object.fromEntries([...QUEST_IDS.map((id
 export const PHASE7_STORY = Object.freeze(["spell:essence-walk", ...Object.values(THREAD_REWARDS).map((r) => r.ability), ...SEEDED_IDS]);
 export const STORY_SINCE = Object.freeze(Object.fromEntries(STORY_WITHHELD.map((id) => [id, PHASE7_STORY.includes(id) ? STORY.phase7Table : STORY.table])));
 
+// A bought generic Reliquary rumour names a reward, not a guaranteed item at a particular site. Older purchases have no
+// source field: their generated `where` uses this fixed prefix. Keep the paid record intact and project truthful words only;
+// no terrain lookup, currency change, reward, or compass change belongs in a UI read. Quest/thread/milestone rumours retain
+// their own sources. New purchases record source explicitly so future wording changes do not affect identification.
+export function paidRumourView(r) {
+  if (r?.kind !== "viscera" || !(r.source === "reliquary" || (typeof r.where === "string" && /^at the bottom of something(?:$|:)/.test(r.where)))) return r;
+  const { rx: _rx, ry: _ry, ...view } = r;
+  const where = "among reliquary rewards; it may take more than one reliquary to find it";
+  return { ...view, where, text: `For the Viscera, a rumour: ${r.title || r.name || "an undiscovered ability"}, ${where}.` };
+}
 // Phase 8: a rumour bought with Divine Viscera (world-finds.ts buyVisceraRumour) about `id`, still unfound, or null: { where }.
 export function boughtRumour(save, id) {
   if (earned(save, id) || progressionKept(save, id)) return null;
   const r = (Array.isArray(save?.leads?.rumours) ? save.leads.rumours : []).find((q) => q?.kind === "viscera" && q.ability === id);
-  return r ? { where: typeof r.where === "string" && r.where ? r.where : "somewhere out there" } : null;
+  const view = paidRumourView(r);
+  return view ? { where: typeof view.where === "string" && view.where ? view.where : "somewhere out there" } : null;
 }
 const earned = (save, id) => !!save?.feats?.earned && Object.prototype.hasOwnProperty.call(save.feats.earned, id);
 // Shut on this journey: Exploration (table 5 on), a b, d or V ability, neither kept nor earned.
@@ -275,7 +287,6 @@ export function carrierOf(save, abilityId) {
 //   counts { [step key]: how many } (Phase 8: a step with `need`); window { step, at, n } (a step with `within`: since the first)
 //   tokens [{ id, step, area, x, y }]: things a kill left to collect (Act), laid again whenever their area loads
 //   giverAt { rx, ry }: where the giver stands (game.ts: the quarry keeper moves with the Wayfarer's home)
-export const QUEST_LIMIT = Object.freeze({ open: 3 }); // G2: at most this many directed quests open at once; the rest wait
 export const questState = (save, id) => save?.quests?.open?.[id] || null;
 export const questOpen = (save, id) => questState(save, id)?.state === "open";
 // The step waiting now (the first not done), or null when every step is done.
@@ -306,12 +317,11 @@ export function farthest(save) {
   farMemo = { save, n: keys.length, d }; return d;
 }
 // Whether quest `id` may open on this journey now: its gate met (the Aperture band; for the far ones, 1,000 sections stood), not
-// opened before, fewer than QUEST_LIMIT.open open, and its ability still to be found under the journey's rules (`classicHas`
-// tells whether Classic's rules already give it; Exploration: withheld).
+// opened before, and its ability still to be found under the journey's rules (`classicHas` tells whether Classic's rules already
+// give it; Exploration: withheld). Other open quests do not affect admission.
 export function questDue(save, id, tier, classicHas = false) {
   const Q = QUESTS[id]; if (!Q || questState(save, id)) return false;
   if (Number(tier) < Q.gate.tier) return false;
   if (Q.gate.far && farthest(save) < Q.gate.far) return false;
-  if (openQuestCount(save) >= QUEST_LIMIT.open) return false;
   return exploring(save) ? storyWithheld(save, Q.ability) : !classicHas && !earned(save, Q.ability) && !progressionKept(save, Q.ability);
 }

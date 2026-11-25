@@ -3,11 +3,11 @@
 // (through world-leads.ts) tells the horde rumours and the strong (pity) lead. Nothing here changes a generator: a reliquary is an object laid over a place
 // as it loads, from save.feats.reliquary (like the Second Wayfarer's traces and the seed hunts), so every floor generated before
 // is byte for byte what it was.
-import { exploring, ensureFeats, ensureProgression, progressionKept, PROGRESSION_RECORD, FEAT_RECORD, ensureLeads, LEAD_RECORD } from "./journey-start.js?v=r1050-2ea30cdbc905";
-import { MILESTONE_FOR, RELIQUARY, earnedWorld, worldWithheld, addCount, reliquaryOrder, reliquaryDue, WORLD_WITHHELD, MILESTONES } from "./world-routes.js?v=r1050-2ea30cdbc905";
-import { ROW_BY_ID, stateV0, ownership, progressionState } from "./progression.js?v=r1050-2ea30cdbc905";
-import { QUESTS, QUEST_FOR, threadReward, carrierOf, storyWithheld, STORY_WITHHELD, STORY_ROUTE_OF, VISCERA_SHOP, boughtRumour } from "./quests.js?v=r1050-2ea30cdbc905"; // Phase 7: quests (b) and thread endings (d) grant here too; Phase 8: Viscera (V)
-import { nearestHorde, nearestShaft } from "./world-leads.js?v=r1050-2ea30cdbc905";
+import { exploring, ensureFeats, ensureProgression, progressionKept, PROGRESSION_RECORD, FEAT_RECORD, ensureLeads, LEAD_RECORD } from "./journey-start.js?v=r1059-3629aeded9d0";
+import { MILESTONE_FOR, RELIQUARY, earnedWorld, worldWithheld, addCount, reliquaryOrder, reliquaryDue, WORLD_WITHHELD, MILESTONES } from "./world-routes.js?v=r1059-3629aeded9d0";
+import { ROW_BY_ID, stateV0, ownership, progressionState } from "./progression.js?v=r1059-3629aeded9d0";
+import { QUESTS, QUEST_FOR, threadReward, carrierOf, storyWithheld, STORY_WITHHELD, STORY_ROUTE_OF, VISCERA_SHOP, boughtRumour, paidRumourView } from "./quests.js?v=r1059-3629aeded9d0"; // Phase 7: quests (b) and thread endings (d) grant here too; Phase 8: Viscera (V)
+import { nearestHorde, nearestShaft } from "./world-leads.js?v=r1059-3629aeded9d0";
 
 const feats = (save) => (save?.feats?.counts && save.feats.reliquary?.sites && save.feats.earned && save.feats.pity ? save.feats : ensureFeats(save));
 const exploredCount = (save) => Object.keys(save?.explored && typeof save.explored === "object" ? save.explored : {}).length;
@@ -132,7 +132,7 @@ export const VISCERA_WORDS = Object.freeze({
   closed: "Divine Viscera buys nothing here yet: refinement opens it, a thousand sections out.",
   short: (n, have) => `That takes ${n} Divine Viscera; you hold ${have}.`,
   owned: (name) => `${name} is already yours.`,
-  none: "There is nothing left unknown to hear of.",
+  none: "There is no new lead to buy just now.",
   rumour: (row, where) => `For the Viscera, a rumour: ${row.name}, ${where}.`,
 });
 const visceraHeld = (save) => Math.max(0, Math.floor(Number(save?.skylands?.viscera) || 0));
@@ -160,10 +160,11 @@ export function buyVisceraForm(save, id, where = "smith") {
 }
 // The abilities still unknown that a rumour may name: withheld (Exploration) or not given by Classic's rules, neither earned nor
 // kept, unknown in the compendium (locked), no rumour already bought; the Viscera forms themselves are on the shelf, not rumours.
+// Only the next reliquary reward may be named: a generic source cannot promise a later member of its seeded pool.
 function unknownAbilities(save) {
   const out = [], v1 = exploring(save);
   for (const id of [...WORLD_WITHHELD, ...STORY_WITHHELD]) {
-    if (VISCERA_SHOP.forms[id] || earnedWorld(save, id) || progressionKept(save, id) || boughtRumour(save, id)) continue;
+    if ((RELIQUARY.pool.includes(id) && id !== nextFromPool(save)) || VISCERA_SHOP.forms[id] || earnedWorld(save, id) || progressionKept(save, id) || boughtRumour(save, id)) continue;
     const row = ROW_BY_ID[id]; if (!row) continue;
     if (v1 ? progressionState(save, row) !== "locked" : stateV0(save, row) !== "locked") continue;
     out.push(row);
@@ -176,7 +177,7 @@ function rumourWhere(save, row, rx, ry) {
   if (Q) return { where: `${Q.giver ? `${Q.giverName} at the Refuge` : "the far road"} will have work for you once you reach ${Q.gate.far ? `${Q.gate.far.toLocaleString("en-US")} sections out` : "a deeper band of the Aperture"}`, ...(Q.giver ? { rx: Q.from.rx, ry: Q.from.ry } : {}) };
   const m = MILESTONES.find((q) => q.ability === id); if (m) return { where: `a milestone: ${m.name.charAt(0).toLowerCase()}${m.name.slice(1)}, ${m.need.toLocaleString("en-US")}` };
   if (STORY_ROUTE_OF[id] === "d") { const set = carrierOf(save, id), t = set && threadReward(save, set); return { where: t ? `at the end of ${t.title}` : "at a thread's end" }; }
-  const h = nearestHorde(save, rx, ry), sh = h ? null : nearestShaft(save, rx, ry);
+  const h = !save?.feats?.reliquary?.firsts?.horde ? nearestHorde(save, rx, ry) : null, sh = h ? null : nearestShaft(save, rx, ry);
   return h ? { where: `at the bottom of something: a horde crossing ${Math.round(Math.hypot(h.rx - rx, h.ry - ry))} sections off`, rx: h.rx, ry: h.ry } : sh ? { where: `at the bottom of something: floor ${sh.floor} of a Deep Shaft`, rx: sh.rx, ry: sh.ry } : { where: "at the bottom of something" };
 }
 // Buys a rumour: the nearest ability still unknown (by its section, else in table order) becomes a hinted lead. Returns { ok,
@@ -187,7 +188,8 @@ export function buyVisceraRumour(save, rx = 0, ry = 0) {
   const list = unknownAbilities(save).map((row, i) => { const w = rumourWhere(save, row, rx, ry); return { row, w, i, d: Number.isInteger(w.rx) ? Math.hypot(w.rx - rx, w.ry - ry) : Infinity }; }).sort((a, b) => a.d - b.d || a.i - b.i);
   const pick = list[0]; if (!pick) return { ok: false, message: VISCERA_WORDS.none };
   pay(save, price); const L = ensureLeads(save), text = VISCERA_WORDS.rumour(pick.row, pick.w.where);
-  const r = { id: `viscera:${pick.row.id}`, kind: "viscera", ability: pick.row.id, title: pick.row.name, text, where: pick.w.where, by: "viscera", at: Math.floor(Math.max(0, Number(save.playSeconds) || 0)), ...(Number.isInteger(pick.w.rx) ? { rx: pick.w.rx, ry: pick.w.ry, name: pick.row.name } : {}) };
+  const r = { id: `viscera:${pick.row.id}`, kind: "viscera", ability: pick.row.id, title: pick.row.name, text, where: pick.w.where, by: "viscera", at: Math.floor(Math.max(0, Number(save.playSeconds) || 0)), ...(RELIQUARY.pool.includes(pick.row.id) ? { source: "reliquary" } : {}), ...(Number.isInteger(pick.w.rx) ? { rx: pick.w.rx, ry: pick.w.ry, name: pick.row.name } : {}) };
   L.rumours = [...L.rumours.filter((q) => q.id !== r.id), r].slice(-LEAD_RECORD.rumourMax);
-  return { ok: true, message: text, rumour: r };
+  const view = paidRumourView(r);
+  return { ok: true, message: view.text, rumour: view };
 }

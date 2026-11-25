@@ -9,11 +9,11 @@
 // hold lifts the head with the jaws open on the prey (the game draws the prey), spinoDig buries the snout, and the fossil's rib
 // spears grow out of the ribcage to the sides and thrust together ahead of it. Nothing here changes timing, damage, reach or
 // targeting.
-import { SPINO_ART, SPINO_POSE_KEYS, spinoPoseVector, spinoStrike, spinoFossilShare } from "./spino-render.js?v=r1050-2ea30cdbc905";
+import { SPINO_ART, SPINO_POSE_KEYS, spinoPoseVector, spinoStrike, spinoFossilShare } from "./spino-render.js?v=r1059-3629aeded9d0";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, aimWorld, boneLocalToWorld, writeSkin, solveTwoBone, poseAnimalLeg,
   createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, span, kick, wobble, TIER_DETAIL,
-} from "./close-view-beast-rig.js?v=r1050-2ea30cdbc905";
+} from "./close-view-beast-rig.js?v=r1059-3629aeded9d0";
 
 export const SPINO_RIG = Object.freeze({
   // the beasts share the Giant's Close View size (Tim, 2026-11-11)

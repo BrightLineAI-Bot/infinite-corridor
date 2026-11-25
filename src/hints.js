@@ -6,9 +6,9 @@
 // Hints come from three places: a scan (hintScan) of what the journey now holds against what it has been shown (a new ability,
 // a gate opening on Exploration, the first constellation point); an event main.ts notices (a foe Encumbered); and a lead heard
 // for the first time (game.ts leadNotice). The first scan of a journey notes what it already holds as seen, without a word.
-import { ensureHints, HINT_RECORD } from "./journey-start.js?v=r1050-2ea30cdbc905";
-import { hintSubjectsHeld, hintFor } from "./progression.js?v=r1050-2ea30cdbc905";
-import { pointsFree, pointsSpent } from "./constellation.js?v=r1050-2ea30cdbc905";
+import { ensureHints, HINT_RECORD } from "./journey-start.js?v=r1059-3629aeded9d0";
+import { hintSubjectsHeld, hintFor } from "./progression.js?v=r1059-3629aeded9d0";
+import { pointsFree, pointsSpent } from "./constellation.js?v=r1059-3629aeded9d0";
 
 export const HINT_BUDGET = Object.freeze({
   onScreen: 1, // one card at once
