@@ -22,7 +22,7 @@ function base(g) { return () => { const player = { x: g.player.x, y: g.player.y,
 function frame(g, n = 1) { for (let i = 0; i < n; i++) { now += 16; assert.equal(CV.closeViewFrame(ctx, g, 475, 661, now, base(g)), true); CV.closeViewLookGuard(g); } }
 function fixture(scenario = 'heart') {
   const g = createLabFixture({ lab: 'close-view', scenario, now: 1000 }).game;
-  g.enemies = []; g.save.closeViewAutoFollow = false; extras = [];
+  g.enemies = []; g.save.closeViewAutoFollow = false; g.save.closeViewPreset = 'standard'; extras = []; // 2026-11-25: the standard preset (the default before overShoulder)
   let best = { x: g.player.x, y: g.player.y, r: -1 };
   for (const t of g.map.tiles) if (!t.blocked) {
     let r = 0;

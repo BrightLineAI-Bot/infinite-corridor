@@ -400,9 +400,20 @@ export const CLOSE_VIEW = Object.freeze({
     // `outdoorDistance` / `outdoorHeight`; the old collision rig (orbit off) keeps `distance` / `height`.
     standard: Object.freeze({ label: "Standard", height: 2.05, outdoorHeight: 3, distance: 3.5, outdoorDistance: 4.5, orbitDistance: 2.3, orbitHeight: 1.7, lookAhead: 2.9, lookHeight: .35, shoulder: .42, fov: 72, fogPush: .8 }), // the blend: Remnant's offset and distance, ESO's field of view, Bloodborne's closeness
     close: Object.freeze({ label: "Close (tight, low)", height: 1.8, outdoorHeight: 2.6, distance: 2.6, outdoorDistance: 3.6, orbitDistance: 1.8, orbitHeight: 1.55, lookAhead: 2.2, lookHeight: .5, shoulder: .32, fov: 66, fogPush: .6 }), // Bloodborne
+    // version 7 (Tim, 2026-11-25, with a screenshot of the dungeon framing he likes: "behind the Wayfarer, slightly over the
+    // shoulder, looking forward along the corridor, with the character in the lower middle of the screen"): `overShoulder`, the
+    // default. The eye stands higher and a little farther back (about 45 degrees over the Wayfarer, 3.6 tiles from the body's
+    // middle), looks down the way ahead at about 36 degrees, and sits a little to the right; on a portrait phone the feet land
+    // about two thirds of the way down, the head just under the middle and the corridor's far end in the top quarter. The same
+    // framing indoors and in the open world (its outdoor and orbit numbers are its own). The other presets are unchanged.
+    overShoulder: Object.freeze({ label: "Over the shoulder (default)", height: 3.45, outdoorHeight: 3.45, distance: 2.5, outdoorDistance: 2.5, orbitDistance: 2.5, orbitHeight: 3.45, lookAhead: 2, lookHeight: .2, shoulder: .3, fov: 72, fogPush: 1 }),
     wide: Object.freeze({ label: "Wide (further back)", height: 2.2, outdoorHeight: 3.4, distance: 5, outdoorDistance: 6, orbitDistance: 3.2, orbitHeight: 1.95, lookAhead: 3.4, lookHeight: .25, shoulder: .5, fov: 80, fogPush: 1.6 }), // Remnant / ESO
   }),
-  defaultPreset: "standard",
+  defaultPreset: "overShoulder",
+  // save.closeViewDefaults: which default the save's camera was set from. Saves from before version 1 hold the old default
+  // ("standard"), written for every player; one still on it with the Wayfarer's own distance (closeViewZoom 0) never chose a
+  // camera, so it moves to the new default once. Any other preset or a pinched distance is the player's choice and is kept.
+  defaults: Object.freeze({ version: 1, legacyPreset: "standard" }),
   fov: Object.freeze({ verticalMax: 100 }), // the horizontal fov (by preset) or this vertical one, whichever is narrower, sets the focal length
   near: .2, // nothing nearer than this (camera depth) is drawn
   // Tim, 2026-11-06 ("the camera should function essentially similar to the camera in Elden Ring: for the most part you're
@@ -822,7 +833,9 @@ export const CLOSE_VIEW_HOOKS = { makeCanvas: null, groundLayers: [], art: Objec
 // save.closeViewZoom (2026-11-18, Tim's review): the Wayfarer's normal Close View distance, set by Look mode's pinch on her, in
 // Look's zoom units ([CLOSE_VIEW.camera.look.minZoom, 1]; 0, the preset's own, unless chosen; CLOSE_VIEW.camera.orbit.zoom).
 export const closeViewZoomOf = (v) => { const k = Number(v), L = CLOSE_VIEW.camera.look; return Number.isFinite(k) ? Math.max(L.minZoom, Math.min(1, k)) : 0; };
-export function ensureCloseView(s) { if (s && typeof s === "object") { s.closeView = s.closeView === true; s.overworldCloseView = s.overworldCloseView === true; if (!Object.hasOwn(CLOSE_VIEW.presets, s.closeViewPreset)) s.closeViewPreset = CLOSE_VIEW.defaultPreset; s.closeViewAutoFollow = s.closeViewAutoFollow !== false;
+export function ensureCloseView(s) { if (s && typeof s === "object") { s.closeView = s.closeView === true; s.overworldCloseView = s.overworldCloseView === true;
+  { const D = CLOSE_VIEW.defaults; if (!(Number(s.closeViewDefaults) >= D.version)) { if (s.closeViewPreset === D.legacyPreset && closeViewZoomOf(s.closeViewZoom) === 0) s.closeViewPreset = CLOSE_VIEW.defaultPreset; s.closeViewDefaults = D.version; } } // a camera never chosen takes the new default; a chosen one is kept
+  if (!Object.hasOwn(CLOSE_VIEW.presets, s.closeViewPreset)) s.closeViewPreset = CLOSE_VIEW.defaultPreset; s.closeViewAutoFollow = s.closeViewAutoFollow !== false;
   if (!CLOSE_VIEW.controls.includes(s.closeViewCamera)) s.closeViewCamera = CLOSE_VIEW.defaultControl;
   const k = Number(s.closeViewSensitivity), [lo, hi] = CLOSE_VIEW.drag.sensitivity; s.closeViewSensitivity = Number.isFinite(k) ? Math.max(lo, Math.min(hi, k)) : 1; s.closeViewZoom = closeViewZoomOf(s.closeViewZoom); } return s; }
 export const closeViewControl = (g) => g?.save?.closeViewCamera === "crescent" ? "crescent" : "drag";
@@ -1568,7 +1581,7 @@ function lockKeep(g, dt) {
   const L = CLOSE_VIEW.lock; let t = g.lockedTarget?.() || null;
   if (CAM.lockId && (!t || t.id !== CAM.lockId)) { const old = (g.enemies || []).find((e) => e.id === CAM.lockId);
     if (!t && old && old.dead && !CAM.targetMode) { const next = closeViewLockCandidate(g, { cone: 180, range: L.rehop, ox: old.x + .5, oy: old.y + .75, screen: false }); if (next) { g.lockTarget(next.id); t = next; } } }
-  if (t && !lockable(t)) { g.lockTarget(null); CAM.lockId = null; CAM.lostFor = 0; return null; }
+  if (t && !lockable(t)) { g.lockTarget(null, { keepSeen: !t.dead }); CAM.lockId = null; CAM.lostFor = 0; return null; } // a foe that hid: its last seen spot stays the shots' aim a moment (game.ts AIM_RESOLVE)
   CAM.lockId = t ? t.id : null; if (!t) { CAM.lostFor = 0; return null; }
   const p = g.player, px = footX(p), py = footY(p), ex = t.x + .5, ey = t.y + .75;
   if (Math.hypot(ex - px, ey - py) > L.range + L.slack) { g.lockTarget(null); CAM.lockId = null; return null; }
@@ -2440,6 +2453,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
       const auxiliarySeen=glSeen(g.map);
       shots.captureActor = (spec) => {
         if (!spec?.source || !Number.isFinite(spec.x) || !Number.isFinite(spec.y) || typeof spec.draw !== 'function' || typeof spec.sample !== 'function') return false;
+        if(Number.isFinite(spec.source?.seq)&&typeof spec.source?.mode==='string')closeViewShotSupport(g,spec.source,spec.x,spec.y,spec.source.seq); // a Quandrix hand: its skyway footing is noted as it is loosed (CLOSE_VIEW_SKY_SHOTS)
         if(auxiliarySeen&&!auxiliarySeen(spec.x,spec.y))return true;
         captured.push({ x:spec.x-.5,y:spec.y-.82,lift:spec.lift||0,nativeAux:spec,nativeHeight:spec.height||1.8,nativeEffects:!!spec.decorate,
           nativeDecorations:spec.decorate?()=>spec.decorate(gc,s):null,
@@ -3834,6 +3848,28 @@ export function selectProjectedShots(g, q, reduce = false) {
   PROJECTED_SHOTS.orbit = PROJECTED_ENTRIES.some(e=>e.kind==="orbit") ? orbit : null;
   return PROJECTED_SHOTS;
 }
+// Skyways (Tim, 2026-11-25: "the player's body is drawn a few tiles above where their shots come from"): up on a sky platform
+// or mid sky hop the body stands at the platform's drawn height, but shots and Quandrix hands were drawn over the ground under
+// them, which over a gap is far below. A shot or hand the Wayfarer looses there (first seen within `launchAge` s, `near` tiles)
+// keeps the footing it left from: it is drawn at the higher of that and the ground under it, so the body, the shot's origin and
+// where it strikes agree. Ordinary ground and an ordinary jump are unchanged. Presentation only: one entry per shot or pooled
+// hand ([seq, height]), set once, never per frame; the game's positions, aim and hits are untouched.
+export const CLOSE_VIEW_SKY_SHOTS = Object.freeze({ launchAge: .3, near: 4 });
+const SKY_SHOT = new WeakMap();
+// The footing a skyway shot leaves from: the platform under the feet, or the height a sky hop holds over the gap. NaN elsewhere.
+export function closeViewSkyFooting(g) {
+  const p = g?.player, map = g?.map; if (!p || !map) return NaN; const fx = footX(p), fy = footY(p), t = map.tiles?.[Math.floor(fy) * (map.width || 32) + Math.floor(fx)];
+  if (!(g.skyAir != null && !g.deckHop) && !t?.skyPlatform && !t?.interiorPlatform) return NaN;
+  const ground = surfaceZ(map, fx, fy); return LEAP.map === map && Number.isFinite(LEAP.base) ? Math.max(ground, LEAP.base) : ground;
+}
+// The height a player's shot or hand `src` is drawn over at (x, y): the ground there, or the skyway footing it was loosed from.
+export function closeViewShotSupport(g, src, x, y, seq = 0) {
+  const ground = surfaceZ(g.map, x, y); if (!src || typeof src !== "object" || src.hostile) return ground;
+  let r = SKY_SHOT.get(src);
+  if (!r || r[0] !== seq) { const S = CLOSE_VIEW_SKY_SHOTS, p = g.player, age = Number(src.age) || 0, fresh = age <= S.launchAge && Math.hypot(x - footX(p), y - footY(p)) <= S.near;
+    if (!r) { r = new Float64Array(2); SKY_SHOT.set(src, r); } r[0] = seq; r[1] = fresh ? closeViewSkyFooting(g) : NaN; }
+  return r[1] > ground ? r[1] : ground;
+}
 // A Close View shot from the player's held tool leaves the drawn muzzle: the offset from its
 // authoritative spawn point to this frame's posed muzzle is latched once, then eased out over
 // `settle` seconds. Presentation only: position, collision, aim and saves are never touched.
@@ -3860,7 +3896,7 @@ function shotMuzzleWeight(g, shot) {
     for (let i = 0; i < S.slots; i++) { const q = R.refs[i]; if (!q || q.dead || !(q.age < S.settle)) { R.refs[i] = null; if (slot < 0) slot = i; } }
     if (slot < 0) return 0;
     const back = shot.speed * age, d = Math.hypot(shot.dx, shot.dy) || 1;
-    if (!closeViewMuzzleOffset(MUZZLE_OFF, shot, MODEL_STATE.muzzle, surfaceZ(g.map, shot.x - shot.dx / d * back, shot.y - shot.dy / d * back))) return 0;
+    if (!closeViewMuzzleOffset(MUZZLE_OFF, shot, MODEL_STATE.muzzle, closeViewShotSupport(g, shot, shot.x - shot.dx / d * back, shot.y - shot.dy / d * back))) return 0;
     R.refs[slot] = shot; R.offset[slot * 3] = MUZZLE_OFF[0]; R.offset[slot * 3 + 1] = MUZZLE_OFF[1]; R.offset[slot * 3 + 2] = MUZZLE_OFF[2];
   }
   MUZZLE_OFF[0] = R.offset[slot * 3]; MUZZLE_OFF[1] = R.offset[slot * 3 + 1]; MUZZLE_OFF[2] = R.offset[slot * 3 + 2];
@@ -4670,9 +4706,10 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if(dist>.002&&dist<3){track.phase=(track.phase+dist*MODEL_TIMING.walkRadians)%(Math.PI*2);track.yaw=Math.atan2(dy,dx);}
     const pace=elapsed>0&&dist<3?Math.min(1,dist/elapsed/MODEL_TIMING.strideSpeed):0;
     if(a.kind==='playerShadow'&&Number.isFinite(source?.until)){a.alpha=shadowCloneAlpha(source.until,now,reduce);if(!reduce&&!Number.isFinite(a.phase))a.phase=track.phase+now/450;} // the wraith clone: stronger, its wisps drifting (close-view-shadow-forms.ts)
-    const actor={x,y,z:surfaceZ(g.map,a.supportX??x,a.supportY??y)+(a.lift||0),yaw:Number.isFinite(a.yaw)?a.yaw:track.yaw,
+    const handSeq=a.kind==='quandrixHand'||a.kind==='quandrixFist'||a.kind==='quandrixSlam'?Number(source?.seq)||0:-1,support=handSeq>=0?closeViewShotSupport(g,source,a.supportX??x,a.supportY??y,handSeq):surfaceZ(g.map,a.supportX??x,a.supportY??y); // a Quandrix hand loosed on a skyway keeps its footing (CLOSE_VIEW_SKY_SHOTS)
+    const actor={x,y,z:support+(a.lift||0),yaw:Number.isFinite(a.yaw)?a.yaw:track.yaw,
       phase:track.phase,pace,amount:0,reduceMotion:reduce,effectTime:now,...a,pace:Number.isFinite(a.pace)?a.pace:pace,pose:a.pose||(pace>.01?'walk':'idle'),yaw:Number.isFinite(a.yaw)?a.yaw:track.yaw,
-      z:surfaceZ(g.map,a.supportX??x,a.supportY??y)+(a.lift||0),alpha:Math.max(0,Math.min(1,(a.alpha??1)*boardB[it])),camYaw:CAM.yaw/* a model may face the camera (the Mirage blades' tilt) */};
+      z:support+(a.lift||0),alpha:Math.max(0,Math.min(1,(a.alpha??1)*boardB[it])),camYaw:CAM.yaw/* a model may face the camera (the Mirage blades' tilt) */};
     const a0=offset;if(!append(actor))return;markSil(a0,offset);Object.assign(track,{x,y,at:now,actor});state.tracks.set(source,track);state.admitted.add(it);
     closeViewGLStats.auxModels=(closeViewGLStats.auxModels||0)+1;closeViewGLStats.auxKinds[a.kind]=(closeViewGLStats.auxKinds[a.kind]||0)+1;
   };
@@ -5190,7 +5227,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   // Accepted release cue follows this frame's actual final socket. It never moves the shot.
   if(MODEL_STATE.toolEmissionReady&&MODEL_STATE.toolRelease){const release=MODEL_STATE.toolRelease,releaseNow=g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now,elapsed=Math.max(0,release.durationMs-Math.max(0,(g.player.actionVisualUntil||0)-releaseNow)),age=toolUseReleaseAge(release,elapsed);
     if(age!==null&&age<=58){const a=(1-age/58)*(reduce?.42:.82)*MODEL_STATE.toolAlpha,r=.045;room(6);card(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,MODEL_STATE.toolEmission[2]+r,r,11,a,0xffc56b,0,true);}
-    if(age!==null&&!reduce&&age<=120&&release.toolShotId){let shot=null;for(const q of shots||[])if(q.id===release.toolShotId&&!q.dead&&!q.returning&&!q.impact){shot=q;break;}if(shot&&!(shotMuzzleWeight(g,shot)>0)){const head=projectileVisualPoint(shot,surfaceZ(g.map,shot.x,shot.y));if(closeViewToolConnectorWithin(MODEL_STATE.toolEmission,head,release.aim)&&toolCueSegmentOpen(g.map,MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],head.x,head.y)){const r=.014,a=.45*(1-age/120)*MODEL_STATE.toolAlpha;room(6);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,-1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z-r,1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z+r,1,1,11,a,0xffd38a,1,true);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,-1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z+r,1,1,11,a,0xffd38a,1,true);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]+r,-1,1,11,a,0xffd38a,1,true);}}}
+    if(age!==null&&!reduce&&age<=120&&release.toolShotId){let shot=null;for(const q of shots||[])if(q.id===release.toolShotId&&!q.dead&&!q.returning&&!q.impact){shot=q;break;}if(shot&&!(shotMuzzleWeight(g,shot)>0)){const head=projectileVisualPoint(shot,closeViewShotSupport(g,shot,shot.x,shot.y));if(closeViewToolConnectorWithin(MODEL_STATE.toolEmission,head,release.aim)&&toolCueSegmentOpen(g.map,MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],head.x,head.y)){const r=.014,a=.45*(1-age/120)*MODEL_STATE.toolAlpha;room(6);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,-1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z-r,1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z+r,1,1,11,a,0xffd38a,1,true);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,-1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z+r,1,1,11,a,0xffd38a,1,true);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]+r,-1,1,11,a,0xffd38a,1,true);}}}
   }
   { const c = g.carbine?.charge; if (c && MODEL_STATE.muzzleReady && carbineCharged(c.held)) { const k = carbineFill(c.held), m = MODEL_STATE.muzzle, pulse = reduce ? 1 : 1 + .12 * Math.sin(now / 55), r = (.045 + .07 * k) * pulse;
     card(m[0], m[1], m[2] - r * 1.9, m[2] + r * 1.9, r * 1.9, 11, .3 + .3 * k, CARBINE.colors.glow, 0, true); card(m[0], m[1], m[2] - r * .7, m[2] + r * .7, r * .7, 11, .95, 0xeafcff, 0, true); } } // the Carbine's charge
@@ -5224,7 +5261,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
       const X=entry.geom.x,Y=entry.geom.y,z=entry.geom.z,size=shot.radius>1.1?.32:.22,color=shot.perfect?0xffd86a:0xb48cff;
       room(6);card(X,Y,z-size,z+size,size,11,SHOT_DRAW.headAlpha,color,0,true);continue;
     }
-    const fire=entry.kind==="fire",head=fire?entry.geom:projectileVisualPoint(shot,surfaceZ(g.map,shot.x,shot.y)),mw=fire?0:shotMuzzleWeight(g,shot),X=head.x+MUZZLE_OFF[0]*mw,Y=head.y+MUZZLE_OFF[1]*mw,z=head.z+MUZZLE_OFF[2]*mw,magic = shot.damageType === "magic";
+    const fire=entry.kind==="fire",head=fire?entry.geom:projectileVisualPoint(shot,closeViewShotSupport(g,shot,shot.x,shot.y)),mw=fire?0:shotMuzzleWeight(g,shot),X=head.x+MUZZLE_OFF[0]*mw,Y=head.y+MUZZLE_OFF[1]*mw,z=head.z+MUZZLE_OFF[2]*mw,magic = shot.damageType === "magic";
     const size = fire?.2:(magic ? SHOT_DRAW.magicSize : SHOT_DRAW.minSize) * Math.max(.55, Math.min(2, shot.scale || 1)) * (.25 + .75 * shotFade(shot)); // tool-forms.ts TOOL_RANGE: a Spindle dissipating shrinks away
     const hue = fire?"#ff7a2a":standardProjectileColor(shot);
     if (!SHOT_COLORS.has(hue)) SHOT_COLORS.set(hue, parseInt(hue.slice(1), 16));
@@ -5247,7 +5284,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
         const beam = !fire && shot.carbine === true && finite(shot.bx) && finite(shot.by); // the Carbine: a beam from where it left the muzzle
         const trailTime = beam ? Math.max(0, shot.age || 0) : Math.min(SHOT_DRAW.trailSeconds, Math.max(0, shot.age || 0));
         const length = beam ? Math.min(SHOT_DRAW.beamTrail, Math.hypot(shot.x - shot.bx, shot.y - shot.by)) : Math.min(SHOT_DRAW.maxTrail, Math.max(0, shot.speed || 0) * trailTime);
-        const px=shot.x-shot.dx*length/d,py=shot.y-shot.dy*length/d;if(!fire||entry.geom.tail){const tail=fire?entry.geom.tail:projectileVisualPoint(shot,surfaceZ(g.map,px,py),px,py,Math.max(0,(shot.age||0)-trailTime)),tw=mw>0?closeViewMuzzleWeight((shot.age||0)-trailTime):0,tx=tail.x+MUZZLE_OFF[0]*tw,ty=tail.y+MUZZLE_OFF[1]*tw,tz=tail.z+MUZZLE_OFF[2]*tw,r = size * .75;
+        const px=shot.x-shot.dx*length/d,py=shot.y-shot.dy*length/d;if(!fire||entry.geom.tail){const tail=fire?entry.geom.tail:projectileVisualPoint(shot,closeViewShotSupport(g,shot,px,py),px,py,Math.max(0,(shot.age||0)-trailTime)),tw=mw>0?closeViewMuzzleWeight((shot.age||0)-trailTime):0,tx=tail.x+MUZZLE_OFF[0]*tw,ty=tail.y+MUZZLE_OFF[1]*tw,tz=tail.z+MUZZLE_OFF[2]*tw,r = size * .75;
         room(6);
         DV(tx, ty, tz - r, -1, -1, 11, SHOT_DRAW.trailAlpha, color, 1, true);
         DV(X, Y, z - r, 1, -1, 11, SHOT_DRAW.trailAlpha, color, 1, true);

@@ -25,7 +25,7 @@ let now = 1000;
 
 function fixture(family: string, mode = 'pilot') {
   const f = createLabFixture({ lab: 'close-view', scenario: `padding-${family}-${mode}`, seed: 'CINDER-VERGE-47', now });
-  f.game.enemies = []; f.game.save.closeViewAutoFollow = false; f.game.presentation = { effectiveQuality: 'full', reduceMotion: true };
+  f.game.enemies = []; f.game.save.closeViewAutoFollow = false; f.game.save.closeViewPreset = 'standard'; f.game.presentation = { effectiveQuality: 'full', reduceMotion: true }; // 2026-11-25: the standard preset (the default before overShoulder)
   return f;
 }
 function frame(g: any, count = 1, width = 390, height = 844) {
@@ -75,7 +75,7 @@ test('Keep 5 and Pentagon 10 tight-corner orbits gain bounded focal room without
 // tight-corner focal relief), which stays in the code for orbit.on false: it runs with CLOSE_VIEW_HOOKS.orbit = false (legacyRig).
 test('ordinary Pentagon camera keeps its established preset while routed-corner relief recovers smoothly', () => legacyRig(() => {
   const ordinary = createLabFixture({ lab: 'close-view', scenario: 'outer', seed: 'CINDER-VERGE-47', now }).game;
-  ordinary.enemies = []; ordinary.save.closeViewAutoFollow = false; ordinary.presentation = { effectiveQuality: 'full', reduceMotion: true };
+  ordinary.enemies = []; ordinary.save.closeViewAutoFollow = false; ordinary.save.closeViewPreset = 'standard'; // 2026-11-25: the standard preset (the default before overShoulder) ordinary.presentation = { effectiveQuality: 'full', reduceMotion: true };
   const baseline = at(ordinary, { x: ordinary.player.x, y: ordinary.player.y }, Math.PI);
   assert.ok(Math.abs(baseline.distance - 1.1) < .01 && Math.abs(baseline.pitch - .7395576356131514) < .01,
     `ordinary environment retains its established camera preset; ${JSON.stringify(baseline)}`);

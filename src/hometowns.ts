@@ -55,11 +55,14 @@ export function grantTowns(save) {
   // or once its Gate is unlocked and the Listener has left it for good (`quiet` with `moves`; before v2, quiet with no piece held).
   const f = save.farArray || {}, toNext = Math.max(0, Math.floor(Number(f.toNext) || 0)), spent = !!f.quiet && (typeof f.moves === "boolean" ? f.moves : toNext === 0);
   const atMouth = f.atMouth != null && Number.isFinite(Number(f.atMouth)) ? Number(f.atMouth) : killsAtMouthFromJournal(save, Math.max(0, Math.floor(Number(f.mouth) || 0)));
-  const current = net.coordinate && (spent || (HOMETOWNS.townWhen === "kill" && atMouth > 0)) ? [net.coordinate] : [];
+  // LISTENER_CYCLE v3 (Tim, 2026-11-25: "move every five, with a new town each time"): a Mouth a v3 move gave (numbered above
+  // `v3At.mouth`) has its town from the moment it forms (`formed` "move"); the first Mouth and a v2 Mouth keep the rule above.
+  const moved = Number(f.cycle) >= 3 && f.v3At && typeof f.v3At === "object" && Math.floor(Number(f.mouth) || 0) > Math.floor(Number(f.v3At.mouth) || 0);
+  const current = net.coordinate && (spent || (HOMETOWNS.townWhen === "kill" && atMouth > 0) || moved) ? [net.coordinate] : [];
   for (const m of [...past, ...current]) {
     if (!Number.isInteger(m?.rx) || !Number.isInteger(m?.ry)) continue;
     const there = h.towns.find((q) => q.rx === m.rx && q.ry === m.ry); if (there) { there.mouth = true; continue; }
-    const t = { rx: m.rx, ry: m.ry, name: hamletIdentity(save.seed, m.rx, m.ry).name, listener: h.towns.filter((q) => q.mouth).length + 1, mouth: true }; h.towns.push(t); added.push(t);
+    const t = { rx: m.rx, ry: m.ry, name: hamletIdentity(save.seed, m.rx, m.ry).name, listener: h.towns.filter((q) => q.mouth).length + 1, mouth: true, ...(moved && m === net.coordinate && atMouth === 0 ? { formed: "move" } : {}) }; h.towns.push(t); added.push(t);
   }
   return added;
 }

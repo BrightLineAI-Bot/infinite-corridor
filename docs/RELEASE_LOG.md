@@ -15,12 +15,18 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1062 (this merge, #734); production serves `r1059-3629aeded9d0` (Publish run 195, 45646565675, succeeded 2026-11-25; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1068 (this merge, #740); production serves `r1059-3629aeded9d0` (Publish run 195, 45646565675, succeeded 2026-11-25; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 1068 | Claude | claude/compass-ribbon / #740 | The compass, rebuilt: Ribbon, edge arrow, hint arcs, nearby places, one target everywhere | Merged (#740); preview follows. |
+| 1067 | Claude | claude/less-loot / #739 | Less loot from ordinary monsters, every weapon and tool from the start | Merged (#739); preview follows. |
+| 1066 | Claude | claude/starfield-edges / #738 | Rarer Starfields on new ground, safe rims on all raised ground | Merged (#738); preview follows. |
+| 1065 | Claude | claude/aim-camera-fixes / #737 | Aim follows the lock, skyway shot height, over-the-shoulder default camera, Journal crossings fold | Merged (#737); preview follows. |
+| 1064 | Claude | claude/mouth-moves / #736 | The Listener's Mouth moves every five relays (cycle v3), with a new town each time | Merged (#736); preview follows. |
+| 1063 | Claude | claude/apato-sockets-focus / #735 | Earth Resolve 15%/8%, the Apatosaurus from Infinite IV, awakening adds a socket, Quandrix hands hit harder | Merged (#735); preview follows. |
 | 1062 | Claude | claude/charge-holds / #734 | Reliable charged attacks on touch: no long-press menu, holds survive, Quandrix tap-tap-hold slam, Carbine and Iron Fists held presses, Gathered Breath beads | Merged (#734); preview follows. |
 | 1061 | Claude | claude/stag-fight-stutter / #733 | Briar Stag fight stutter: Stalker pool/mist prowl crash, dodges through crowding bodies, coalesced autosave in fights | Merged (#733); preview follows. |
 | 1060 | Claude | claude/completable-goals / #732 | Every offered goal can be completed: thread carriers guaranteed (story v7), burn and magma milestones count every source, horde lead told, Blade Stream lanterns, Sela's Pumice Seed | Merged (#732); preview follows. |

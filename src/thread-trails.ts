@@ -97,6 +97,7 @@ function homeAt(save, id, where) {
 export function trailTarget(save, id, here = null) {
   const p = trailPlace(save, id); if (!p) return null;
   const out = { area: "overworld", rx: p.rx, ry: p.ry, kind: "guidance", name: THREADS[id].title };
+  if (p.home) { const m = homeAt(save, id, "middle"), h = ARCANA_REGIONS.sets[id]; if (m && h) out.zone = { rx: m.rx, ry: m.ry, r: Math.max(1, (h.to - h.from) / 2), site: false }; } // 2026-11-25: only its home is known: a hint zone (the compass's uncertainty arc), not a needle at its edge
   if (p.dungeon && here && here.rx === p.rx && here.ry === p.ry && Array.isArray(here.objects)) {
     const gen = Number(save?.worldGeneration) || 1, door = here.objects.find((o) => o?.kind === "dungeon" && dungeonId(save?.seed, gen, p.rx, p.ry, o.id) === p.dungeon);
     if (door && Number.isFinite(door.x) && Number.isFinite(door.y)) { out.x = door.x; out.y = door.y; }
