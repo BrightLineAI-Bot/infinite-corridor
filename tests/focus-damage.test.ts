@@ -38,9 +38,10 @@ test('the Quandrix Staff\'s hands: .4 of the staff\'s power each (was .32), a da
 
 test('at the same weapon bonus the Quandrix Staff now deals close to the Verge Cleaver\'s damage to a world beast at ring 200', () => {
   for (const beast of ['spinoRex', 'crimsonTyrant']) {
-    const cleaver = dps(weapon('Verge Cleaver', 'impact'), beast), staff = dps(weapon('Quandrix Staff', 'arcane'), beast), ratio = staff / cleaver, before = ratio * .32 / QUANDRIX.hand.share;
+    const cleaver = dps(weapon('Verge Cleaver', 'impact'), beast), staff = dps(weapon('Quandrix Staff', 'arcane'), beast), ratio = staff / cleaver;
     assert.ok(cleaver > 0 && staff > 0, `${beast}: both land (${cleaver}, ${staff})`);
-    assert.ok(before < .86, `${beast}: before, the staff trailed the Cleaver (${before.toFixed(2)})`);
-    assert.ok(ratio >= .8 && ratio <= 1.1, `${beast}: now near parity (${ratio.toFixed(2)})`);
+    // release 1062 keeps held and owed Quandrix presses through the hand cadence, so a fast tapper now loses fewer hands; the
+    // pre-change ratio is no longer measurable on this build, so only near-parity with the Cleaver is pinned.
+    assert.ok(ratio >= .8 && ratio <= 1.2, `${beast}: near parity (${ratio.toFixed(2)})`);
   }
 });
