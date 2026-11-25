@@ -1122,6 +1122,10 @@ body.reduce-motion #oculusWarp { display: none; }
    selectable or opens the long-press callout; text fields (journey names, settings) still take typing and selection. */
 html, body, button, .action-diamond, .action-diamond * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 input, textarea, [contenteditable="true"] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+/* Tim, 2026-11-25: on Android Chrome a held action button (a charge) or a finger resting on the game was taken for a long
+   press. The controls and the game surface take no browser gesture: no pan or zoom, no callout, no selection, no drag of a
+   button or its icon (input.ts also cancels the context menu and dragstart, and holds the pointer until it is let go). */
+#game, #actions, .action-diamond, [data-action], [data-action] * { touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; -webkit-user-drag: none; -webkit-tap-highlight-color: transparent; }
 
 /* Tim, 2026-11-13: the compass dial stays north-up; in Close View a small rim marker shows the way the Wayfarer faces. */
 .nav-facing { position: absolute; inset: 0; pointer-events: none; z-index: 0; display: none; }

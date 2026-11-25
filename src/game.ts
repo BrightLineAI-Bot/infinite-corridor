@@ -1,7 +1,7 @@
 import { playerDroneVisualAnchor, projectileLaunchMetadata, actorPresentation, PLAYER_DRONE_VISUAL } from './actor-presentation.ts';
 import { playerFormPresentation } from './close-view-player-presentation.ts'; // Close View occlusion: the drawn height of the robot, the suit or the Ember Form
 import { canopyGateDestination } from './trees.ts';
-import { ACTOR_CONTACT, actorContactContext, ordinaryContactEnemy, ordinaryContactPlayer } from "./actor-contact.ts";
+import { ACTOR_CONTACT, DODGE_CONTACT, actorContactContext, ordinaryContactEnemy, ordinaryContactPlayer, touchingBodies, boxedIn } from "./actor-contact.ts";
 import { PRIMARY_SWINGS, swingSpec, swingStep, swingTimes, sampleSwing, damageAngle, damageReach, swingBlades, circleTouchesSector, circleTouchesSegment, clampTempo, normalizePendingSwing } from "./melee-swing.ts";
 import { simpleToolAppearanceKind, heldToolKind, stowHeldTool, ACTION_MOTION, CLOSE_VIEW_MELEE_TIMING, TOOL_ACTION_TIMING, TOOL_USE_STARTUP_MS, toolUseStartupMs, normalizeHammerfallStartup, normalizePendingMeleeContact, normalizePendingToolUse, sampleToolActionMotion, attackVisualDeadline, attackVisualRemaining, normalizeActionVisualMotion, normalizeAttackVisual, normalizeCastVisual, normalizeDodgeVisual, normalizePrimaryCombo, acceptCleaverChoreography, advancePrimaryCombo, recentHeroPresentation, stampAttackVisual, stampCastVisual, cancelCastVisual } from "./action-motion.ts";
 import { DEEP_PLACEMENT, isDeepV2Id } from "./deep-dungeons.ts";
@@ -96,13 +96,13 @@ import { HITSTOP_ACTORS, hitStopActorMs, beginHitStop, tickHitStop, normalizeHit
 import { GREAT_SWEEP_SWING, GREAT_SWEEP_RECORD_VERSION, sweepTempo, sweepTimes, sweepDamageAngle, sweptArcTouches, normalizeToolSwing, SWEEP_FREEZE, sweepFreezeTouch, tickSweepFreeze, sweepFrozen } from "./great-sweep.ts"; // the Great Sweep's 360° swing; its awakened freeze
 import { generateItem, spellOpen, explorationGateOpen, primaryCarryKind, ORRERY_LOOT, BRAWLER_LOOT, FOURFOLD_DAGGERS, isFourfoldDaggers, QUANDRIX_STAFF, isQuandrixStaff, SCALING_STATS, SCALING_STRENGTH, weaponScaling, toolScaling } from "./items.ts";
 import { itemCap, upgradeLimit, upgradedItem, unlockRefinement, toolKey } from "./items.ts"; import { socketCount } from "./glyphs.ts"; // 2026-11-18: gearReadout
-import { SMITHY, paySalvage, salvagePaidText, reforgeRoll } from "./smithy.ts"; // release 607: one salvage table; 2026-11-18: its yield (SALVAGE_YIELD)
+import { SMITHY, paySalvage, salvagePaidText, salvageYieldMode, reforgeRoll, SPARE_GEAR_STATE } from "./smithy.ts"; // release 607: one salvage table; 2026-11-18: its yield (SALVAGE_YIELD)
 import { earthResolvePlant, earthResolveHit, tickEarthResolve } from "./echoes.ts"; // Earth Resolve, the Earth Apatosaurus's Echo
 import { echoEvent, tickEchoes, echoDrop, noteRoomBeastKill, pounceBonus, ECHOES, hasEcho, WALL_CLING, plungeAfterimage } from "./echoes.ts";
 import { skillMeleeBonus, skillReachBonus, riftStep, riftStepTo, riftStepReady, riftReachOf, RIFT_AIM, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, SANCTUARY, sanctuaryOn, altOn, ALT_PASSIVES, altChosen, aerialChargesNow, tickAerialCharges, aerialStepBlocked } from "./constellation.ts";
 import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.ts";
 import { RULES as MARGIN_RULES, MARGINALIA, EMBER_WAKE, RED_MARGIN, SECOND_WIND, SHADOW_STEP, HOURGLASS, INK_SHIELD, GILDED, marginBonus, marginRun, beginMarginRun, endMarginRun, runHas, wardenSpawns, wardenOffer, wardenPage, chooseMarginalia, pasteMarginalia, marginaliaOpen, marginCrossing, ensureMarginalia } from "./marginalia.ts";
-import { chargeScale, giftResonances, giftTriads, hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, resonanceInfo, armorGlyphBonus as armorGlyphBase, skillGlyphMods, normalizeSockets } from "./glyphs.ts";
+import { chargeScale, chargeGlyphCount, giftResonances, giftTriads, hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, resonanceInfo, armorGlyphBonus as armorGlyphBase, skillGlyphMods, normalizeSockets } from "./glyphs.ts";
 import { hashSeed, rng, byHash } from "./random.ts";
 import { riderLiftOf, MOUNT_BEASTS, MOUNT_RIDE, mountIdFor, catchableActor, neverCaught, catchRefusal, catchRoll, stableMount, ridingMount, mountById, mountName, mountLifeText, startRide, stopRide, tickRide, noteRideSection, defaultMount, releaseMount, ensureMounts } from "./beast-mounts.ts"; // release 748: penning catches, the stable and riding
 import { persistentMount, indoorMount, TRICERATOPS_INDOOR, TRICERATOPS_RIDE, TRICERATOPS_ATTACKS, TRICERATOPS_CONTROLS, TRICERATOPS_HORN_SHOT, normalizeTriceratopsDrill, damagePersistentMount, noteBeastRecoveryTransition, retrieveBeast, beastHotelId, isBeastHotelId } from "./beast-mounts.ts";
@@ -139,7 +139,7 @@ import { SPINO_ROOMS, SPINO_INTERLOPER, spinoRoomSpawn, interloperRoll, interlop
 import { DINO_DUEL, tickDinoDuels, duelText, dinoFleeEdge } from "./dino-duel.ts"; // the dino duel (Tim, 2026-11-14): its verdict, the eaten loser and the escape
 import { applyBleed, clearBleed, tickBleed, BLEED } from "./bleed.ts"; // the Spinosaurus's bleed (the Wayfarer's status)
 import { STEGO_ROOMS, stegoRoomSpawn } from "./wild-stego.ts"; // the Wild Stegosaurus in the big rooms
-import { APATO, APATO_ROOMS, apatoRoomSpawn, tuneApatoClone, apatoLatchedClones, apatoMashNeed, apatoBreakFree, APATO_CLONE } from "./earth-apato.ts"; // the Earth Apatosaurus (Tim, 2026-11-18)
+import { APATO, APATO_ROOMS, apatoRoomsPin, apatoRoomSpawn, tuneApatoClone, apatoLatchedClones, apatoMashNeed, apatoBreakFree, APATO_CLONE } from "./earth-apato.ts"; // the Earth Apatosaurus (Tim, 2026-11-18)
 import { POISON, dosePoison, tickPoison, clearPoison } from "./apato-poison.ts"; // its root venom (the Wayfarer's status)
 import { STEGO_BAIT, ensureStegoBait, recordStegoTail, stegoTailObject, takeStegoTail, placeStegoBait, stegoBaitIn, tickStegoBait, biteStegoBait, stegoBaitLures } from "./stego-bait.ts"; // the Stego Bait: the severed tail, the item and its lure
 import { PENTAGON, pentagonCentre, pentagonAt, placePentagonSection, isPentagonId, generatePentagonChamber, pentagonPlan, pentagonSeamOpen, PENTAGON_LORE, addPentagonInscription, readPentagonInscription, parsePentagonId, pentagonLinkEnds, pentagonLinkKey, isPentagonFinaleId, parsePentagonFinaleId, generatePentagonFinale, pentagonFinaleSpot, pentagonFinaleWall, pentagonFrontDoor, pentagonRoofAt, pentagonRoofSpots, PENTAGON_COMPLETE, payPentagonCompletion, pentagonsDue, pentagonCompleted, pentagonFellEarly, PENTAGON_FINDING, pentagonCatchment, pentagonCandidate, pentagonSigilRoll, pentagonSigilText, ensurePentagonFinding, pentagonHuntsOpen, pentagonHuntProbes, pentagonHeading, pentagonFarWords } from "./pentagon.ts";
@@ -158,7 +158,7 @@ import { TRICERATOPS_HERDS, triceratopsHerdSpawns, SPINO, spinoTuned, DRAGON, FR
 import { HAMLET_VERSION, applyHamlet, hamletSection, legacyMouthHamlet, oldTownAt, fixedPlaceSection } from "./settlements.ts";
 import { useJourneyFrame, saveStart, saveFrame, exploring } from "./journey-start.ts";
 import { adoptExploration, ROW_BY_ID, stateV0 } from "./progression.ts"; // progression Phase 3: an Exploration journey from before its table keeps what it had
-import { QUESTS, QUEST_IDS, questDue, questOpen, questState } from "./quests.ts"; import { openQuest, questTalk, questMeal, questClear, questEvent, questSpeak, questToken, questHome, questLay, questArrive, QUEST_WORDS } from "./quest-places.ts"; // progression Phase 7: quests (b) and thread rewards (d); Phase 8: far, sea, sky, under and strange
+import { QUESTS, QUEST_IDS, questDue, questOpen, questState } from "./quests.ts"; import { openQuest, questTalk, questMeal, questClear, questEvent, questSpeak, questToken, questHome, questLay, questArrive, questGift, questCalled, QUEST_WORDS } from "./quest-places.ts"; // progression Phase 7: quests (b) and thread rewards (d); Phase 8: far, sea, sky, under and strange
 import { farCivAt } from "./far-realms.ts"; import { rosterGuardianKind, GUARDIAN_ROSTER } from "./monster-pack.ts"; // progression Phase 8: the Storm Halls' ground; the guardian roster
 import { countFeat, reliquaryEnd, layReliquaries, openReliquary, pityTick, grantWorld } from "./world-finds.ts"; // progression Phase 6: milestones, the Reliquary and pity
 import { setWorldLeadProbe } from "./world-leads.ts"; // candidate-only physical verification
@@ -197,7 +197,8 @@ import { addIlse, meetIlse } from "./ilse.ts";
 import { addBell, ringBell, BELL_GLIMPSES } from "./bells.ts";
 import { addTornPage, readTornPage, PAGES_FINAL } from "./torn-pages.ts"; // release 595
 import { addThreadRelic, readThreadRelic, storyVersionFor, settleArcanaRewards, settleArcanaUnlocks, settleThreadGifts, THREAD_TRAILS } from "./threads.ts"; // release 627; the story budget (2026-11-05); arcana rewards (2026-11-11); thread gifts (2026-11-21)
-import { trailFollowId, trailPlace } from "./thread-trails.ts"; // 2026-11-21: a thread the compass can follow once begun
+import { trailFollowId, trailPlace, settleCrossingThread } from "./thread-trails.ts";
+import { BURNS, burnSource, moltenTile, MOLTEN } from "./world-routes.ts"; // every offered goal can be completed: what the fire milestones count // 2026-11-21: a thread the compass can follow once begun
 import { addMargin, readMargin } from "./margins.ts";
 import { DUELISTS, duelistPlan, duelistSpawns } from "./duelists.ts"; // the Gaunt, hooded duelists (Tim, 2026-11-12)
 import { addSurveyorLink, takeSurveyorLink, SURVEYOR, addSurveyorStatue, visitSurveyorStatue, surveyorStatueSection, addCairnKeeper, speakCairnKeeper, resettleSurveyorLink } from "./surveyor.ts"; // release 505; 551: part two
@@ -745,7 +746,7 @@ export function generatePinnedDungeon(save, id, options = {}) {
   if (stegoKind && history.spinoRooms && map) { const q = spinoRoomSpawn(save.seed, id, map, stegoKind, history.spinoRooms, (map.enemySpawns || []).some((e) => e.stegoRoom)); if (q && !(map.enemySpawns ||= []).some((e) => e.id === q.id)) map.enemySpawns.push(q); }
   // The Earth Apatosaurus (earth-apato.ts APATO_ROOMS): the same floors, first generated from this version on (`apatoRooms`, pinned the
   // same way), and never a floor whose big room already holds the Wild Stegosaurus or the Spinosaurus.
-  if (fresh && stegoKind && history.apatoRooms === undefined) history.apatoRooms = APATO_ROOMS.version;
+  if (fresh && stegoKind && history.apatoRooms === undefined) history.apatoRooms = apatoRoomsPin(apertureTier(save.perception?.aperture || 0)); // version 2: only from Infinite IV (0 below it: never one)
   if (stegoKind && history.apatoRooms && map) { const q = apatoRoomSpawn(save.seed, id, map, stegoKind, history.apatoRooms, (map.enemySpawns || []).some((e) => e.stegoRoom || e.spinoRoom)); if (q && !(map.enemySpawns ||= []).some((e) => e.id === q.id)) map.enemySpawns.push(q); }
   return map;
 }
@@ -848,8 +849,10 @@ function addRoofExit(save, id, map, history) {
 // Release 371: a fallen Listener raises a town near its Mouth.
 function townNote(save) { const had = save.hometowns?.towns?.length ?? 0; if (save.hometowns) grantTowns(save); else ensureHometowns(save); const t = save.hometowns.towns.slice(had).find((q) => q.mouth) || null; if (!t) return ""; /* 2026-11-05: ensureHometowns grants first, so the old grantTowns(save)[0] after it never named the town */ journalOnce(save, `listener-town:${t.listener}`, `Where the Listener fell, people have come to live: ${t.name}, at ${t.rx}, ${t.ry}. Light its Wayglass and it can be home (Atlas).`, "The Far Gate"); return ` A town springs up near the Mouth: ${t.name} (${t.rx}, ${t.ry}).`; }
 function latticeNote(save) { const before = save.lattice ? save.lattice.coordinates : 0; if (save.lattice) grantCoordinates(save); else ensureLattice(save); const n = save.lattice.coordinates - before; return n ? ` ${n} Transit Coordinates resolve in you (${save.lattice.coordinates} held${latticeOpen(save) ? "; spend them in the Arcanum's Transit Lattice" : ""}).` : ""; }
+// LISTENER_CYCLE v3 (Tim, 2026-11-25): the relay that moves the Mouth names the town gathering there (and any older Mouth's town).
+export function mouthTownNote(save) { const had = save.hometowns?.towns?.length ?? 0; if (save.hometowns) grantTowns(save); else ensureHometowns(save); const fresh = save.hometowns.towns.slice(had).filter((q) => q.mouth); if (!fresh.length) return ""; for (const t of fresh) journalOnce(save, `listener-town:${t.listener}`, t.formed === "move" ? `People have come to the Listener's new Mouth and made a town of it: ${t.name}, at ${t.rx}, ${t.ry}. Light its Wayglass and it can be home (Atlas).` : `People have come to live at the Listener's old Mouth: ${t.name}, at ${t.rx}, ${t.ry}. Light its Wayglass and it can be home (Atlas).`, "The Far Gate"); return ` ${fresh.map((t) => `${t.name} gathers at ${t.formed === "move" ? "the new Mouth" : "the old Mouth"} (${t.rx}, ${t.ry})`).join("; ")}.`; }
 // Release 357: what the quiet Mouth tells the Wayfarer.
-export function quietMouthNote(save) { const n = relaysUntilReturn(save), moves = ensureFarArray(save).moves, relays = `${n} more relay${n === 1 ? "" : "s"}`; return moves ? (n > 0 ? `Its Gate is unlocked. Answer ${relays} (restore or sever) and the line will give the next Mouth.` : "The line has already given the next Mouth: see the Journal's Far Gate.") : (n > 0 ? `The Mouth stays: answer ${relays} (restore or sever) and a Listener returns to it.` : "A Listener has entered the corridor: it waits at this Mouth."); } // LISTENER_CYCLE v2
+export function quietMouthNote(save) { const n = relaysUntilReturn(save), far = ensureFarArray(save), moves = far.moves; if (far.cycle >= 3 && moves) return n > 0 ? `Answer ${n} more relay${n === 1 ? "" : "s"} (restore or sever) and the Mouth moves; a Listener will wait at the new one.` : "The Mouth has moved: see the Journal's Far Gate."; /* LISTENER_CYCLE v3 */ const relays = `${n} more relay${n === 1 ? "" : "s"}`; return moves ? (n > 0 ? `Its Gate is unlocked. Answer ${relays} (restore or sever) and the line will give the next Mouth.` : "The line has already given the next Mouth: see the Journal's Far Gate.") : (n > 0 ? `The Mouth stays: answer ${relays} (restore or sever) and a Listener returns to it.` : "A Listener has entered the corridor: it waits at this Mouth."); } // LISTENER_CYCLE v2
 export const DEATH_PAUSE = { seconds: 4, millSpeed: 1.1, millRadius: 3 }; // release 329: the pause after a world beast fells you
 // Viewport Closed (Tim, 2026-11-04: "you should see them just kind of over your corpse as the world fades out"): with a great
 // beast present, the beat of the fall lasts until black (Game.deathBeastBeat) and the beasts close in over the corpse,
@@ -1130,8 +1133,100 @@ export function packVictim(save, spareBrawler = false) {
   return i < 0 ? 0 : i;
 }
 // `keep` (release 545): the piece is kept whatever it is (a purchase), and the pack's least-kept, oldest piece makes room.
+// Spare gear (2026-11-22): a drop that is a spare of a piece you keep (SPARE_GEAR) is salvaged on arrival, by hand's own
+// salvage (`spare` lists it). A drop kept into a full pack makes room with the oldest copy of its kind it makes spare, when
+// there is one, before the full pack's own rule. Only the drop is judged otherwise: older copies are left as they are.
 export function storeInventoryItem(save, item, keep = false) {
   save.inventory ||= [];
+  if (keep || !spareSalvageOn(save) || !item || typeof item !== "object") return storeInPack(save, item, keep);
+  const n = save.inventory.length, plan = spareGearPlan(save, spareKind(item), item);
+  if (plan.includes(n)) { save.inventory.push(item); const r = salvageInventoryItem(save, n); return { stored: false, salvaged: item, iron: r.iron, lumenDust: r.lumenDust, spare: [r] }; }
+  if (plan.length && n >= EQUIPMENT_CAPACITY) { const r = salvageInventoryItem(save, plan[0]); save.inventory.push(item); return { stored: true, salvaged: r.item, iron: r.iron, lumenDust: r.lumenDust, spare: [r] }; }
+  return storeInPack(save, item, false);
+}
+// Spare gear (Tim, 2026-11-22: "We should just automatically salvage duplicates. There's no need to keep them."). A spare is a
+// piece in the pack of the same kind (slot, name and property: "Quiet Compass") as a piece you keep, which that kept piece
+// matches or beats on every axis (`covers`): tier, power, upgrade rank, masterwork, added sockets, socket count, each socketed
+// glyph and each affix (by id, at least the value). Kept pieces: everything equipped, held by a preset (presetGear) or in the
+// sling; in the pack, a piece whose tag a preset's build names, and any piece carrying a field this rule does not weigh
+// (an awakening, a refinement, anything newer): those are never salvaged here. Of the rest, each kind is read best first
+// (`order`: power, then upgrade rank, then tier; at a tie the newest first, so the older copy goes, as the full pack's rule)
+// and a piece is kept unless a kept piece covers it; then a kept pack piece that another kept piece covers and outdoes goes too.
+// So one best copy of each kind always stays, and a piece better on any axis stays beside it. Salvage is `salvageInventoryItem`
+// (the hand's salvage: its tier's iron in the chosen yield, glyph dust, socketed glyphs back to the pouch). On pickup, the drop
+// (storeInventoryItem), and once on load, the whole pack (`flag`, Game constructor); `save.keepDuplicateGear` turns both off.
+export const SPARE_GEAR = Object.freeze({
+  ...SPARE_GEAR_STATE, // flag, keep, version (smithy.ts; normalised in freshSave/migrateSave)
+  order: Object.freeze(["power", "rank", "tier"]),
+  named: 4, // kinds named in one message line
+  weighed: Object.freeze(["id", "name", "slot", "property", "power", "basePower", "upgradeRank", "tier", "affixes", "masterwork", "extraSockets", "glyphs", "reforged", "tag"]),
+});
+const SPARE_WEIGHED = new Set(SPARE_GEAR.weighed);
+const spareNum = (v) => Math.max(0, Number(v) || 0);
+const SPARE_KEYS = { power: (q) => spareNum(q?.power), rank: (q) => spareNum(q?.upgradeRank), tier: (q) => ITEM_TIERS.indexOf(itemTier(q)) };
+export const spareSalvageOn = (save) => save?.[SPARE_GEAR.keep] !== true;
+export const spareKind = (q) => `${q?.slot}|${q?.name}|${q?.property ?? ""}`;
+function spareCompare(a, b) { for (const k of SPARE_GEAR.order) { const d = SPARE_KEYS[k](a) - SPARE_KEYS[k](b); if (d) return d; } return 0; }
+// True when `k` is at least as good as `q` on every axis the rule weighs.
+export function spareCovers(k, q) {
+  if (!k || !q || spareKind(k) !== spareKind(q)) return false;
+  if (SPARE_KEYS.tier(k) < SPARE_KEYS.tier(q) || spareNum(k.power) < spareNum(q.power) || spareNum(k.upgradeRank) < spareNum(q.upgradeRank) || spareNum(k.extraSockets) < spareNum(q.extraSockets)) return false;
+  if (q.masterwork === true && k.masterwork !== true) return false;
+  const kg = Array.isArray(k.glyphs) ? k.glyphs : [], qg = Array.isArray(q.glyphs) ? q.glyphs : [];
+  if (kg.length < qg.length) return false;
+  const have = new Map(); for (const g of kg) if (g) have.set(g, (have.get(g) || 0) + 1);
+  for (const g of qg) if (g) { const c = have.get(g) || 0; if (!c) return false; have.set(g, c - 1); }
+  const best = new Map(); for (const a of Array.isArray(k.affixes) ? k.affixes : []) if (a?.id) best.set(a.id, Math.max(best.get(a.id) ?? -Infinity, Number(a.value) || 0));
+  for (const a of Array.isArray(q.affixes) ? q.affixes : []) if (a?.id && !(best.get(a.id) >= (Number(a.value) || 0))) return false;
+  return true;
+}
+const presetGearTags = (save) => { const tags = new Set(); for (const p of save.magicSkills?.presets || []) for (const t of Object.values(p?.build?.gear || {})) if (typeof t === "string" && t) tags.add(t); return tags; };
+// A pack piece the rule never salvages: a preset's tagged piece, or one carrying anything the rule does not weigh.
+function spareExempt(q, tags) {
+  if (!q || typeof q !== "object" || typeof q.name !== "string" || typeof q.slot !== "string") return true;
+  if (typeof q.tag === "string" && tags.has(q.tag)) return true;
+  for (const k in q) if (!SPARE_WEIGHED.has(k)) return true;
+  return false;
+}
+// The pack indices that are spares (ascending), for one kind (`only`) or all. `extra` is a drop weighed as the newest piece,
+// at index inventory.length. Pure.
+export function spareGearPlan(save, only = null, extra = null) {
+  const inv = Array.isArray(save.inventory) ? save.inventory : [], n = inv.length + (extra ? 1 : 0), at = (i) => (i < inv.length ? inv[i] : extra);
+  const tags = presetGearTags(save), kept = new Map(), mine = (q) => q && typeof q === "object" && (!only || spareKind(q) === only);
+  const keep = (q, i) => { const k = spareKind(q); if (!kept.has(k)) kept.set(k, []); kept.get(k).push({ q, i }); };
+  for (const q of Object.values(save.equipment || {})) if (mine(q)) keep(q, -1);
+  for (const set of Array.isArray(save.presetGear) ? save.presetGear : []) for (const q of Object.values(set || {})) if (mine(q)) keep(q, -1);
+  for (const q of Array.isArray(save.sling) ? save.sling : []) if (mine(q)) keep(q, -1);
+  const open = [];
+  for (let i = 0; i < n; i++) { const q = at(i); if (!mine(q)) continue; if (spareExempt(q, tags)) keep(q, -1); else open.push(i); }
+  open.sort((a, b) => spareCompare(at(b), at(a)) || b - a); // best first; at a tie the newest first
+  const spare = new Set();
+  for (const i of open) { const q = at(i); if ((kept.get(spareKind(q)) || []).some((k) => spareCovers(k.q, q))) spare.add(i); else keep(q, i); }
+  for (const list of kept.values()) for (const c of list) if (c.i >= 0 && list.some((k) => k !== c && !spare.has(k.i) && spareCovers(k.q, c.q) && !spareCovers(c.q, k.q))) spare.add(c.i);
+  return [...spare].sort((a, b) => a - b);
+}
+// Salvages the pack's spares (one kind, or all) by hand's salvage. Returns { count, iron, lumenDust, items, names }.
+export function salvageSpareGear(save, only = null) {
+  const plan = spareGearPlan(save, only), out = { count: 0, iron: 0, lumenDust: 0, items: [], names: {} };
+  for (let j = plan.length - 1; j >= 0; j--) { const r = salvageInventoryItem(save, plan[j]); if (!r) continue; out.count++; out.iron += r.iron; out.lumenDust += r.lumenDust; out.items.unshift(r.item); }
+  for (const q of out.items) out.names[q.name] = (out.names[q.name] || 0) + 1;
+  return out;
+}
+// The one-time sweep of a journey's pack on load: once (`flag`), and not while duplicates are kept.
+export function sweepSpareGearOnce(save) {
+  if (!save || !spareSalvageOn(save) || Number(save[SPARE_GEAR.flag]) >= SPARE_GEAR.version) return null;
+  const r = salvageSpareGear(save); save[SPARE_GEAR.flag] = SPARE_GEAR.version; return r;
+}
+// "Salvaged a spare Quiet Compass: +2 cinder iron" / "Salvaged 3 spares (Quiet Compass ×2, Kiln Mantle): +6 cinder iron".
+// The most salvaged kinds first, at most `SPARE_GEAR.named` of them, then "N more".
+export function spareSalvageText(save, tally) {
+  const names = Object.entries(tally.names || {}).sort((a, b) => b[1] - a[1]), count = names.reduce((t, [, c]) => t + c, 0), shown = names.slice(0, SPARE_GEAR.named), rest = names.length - shown.length;
+  const paid = tally.lumenDust > 0 ? `+${tally.lumenDust} lumen dust` : salvageYieldMode(save) === "lumenDust" ? salvagePaidText(save, tally) : `+${tally.iron || 0} cinder iron`;
+  const what = count === 1 ? `a spare ${names[0][0]}` : `${count} spares (${shown.map(([n, c]) => (c > 1 ? `${n} ×${c}` : n)).join(", ")}${rest > 0 ? `, ${rest} more kind${rest === 1 ? "" : "s"}` : ""})`;
+  return `Salvaged ${what}: ${paid}`;
+}
+// The pack as stored before spare gear: room is made by the full pack's rule.
+function storeInPack(save, item, keep = false) {
   if (save.inventory.length < EQUIPMENT_CAPACITY) {
     save.inventory.push(item);
     return { stored: true, salvaged: null };
@@ -3202,6 +3297,7 @@ export class Game {
     this.restoreTriceratopsDrill(s.playerRuntime.triceratopsDrill, now); // after area, ordinary leap and conflicting air states are restored
     for (const base of pentagonsDue(save)) this.payPentagonComplete(base); // a Pentagon completed before its completion paid a Tesseract: paid now, once
     if (this.map) this.stegoBaitArrive(); // the Stego Bait: the tails lying here (the first load does not pass the loadArea wrapper)
+    { const r = sweepSpareGearOnce(save); if (r?.count) this.message = `${spareSalvageText(save, r)}. Equipped, preset and best pieces are kept (Options → Challenge: Keep duplicate gear).`; } // SPARE_GEAR: the pack's spares, once
   }
   installSystems() {
     if (this._systemsInstalled) return;
@@ -3212,7 +3308,7 @@ export class Game {
     this.primaryStrike = attack; // the swing itself, without aim selection (Echo repeats call it)
     this.primaryAttack = (now, explicitDirection = null, committed = null) => {
       this.releasePendingToolUse(now);this.reconcileHammerfallStartup();if(this.toolUseBlocksPrimary())return[];
-      if (!committed && now < (this.player.attackReadyAt || 0)) return [];
+      if (!committed && now < (this.player.attackReadyAt || 0) && !(this.attackAction && this.quandrixEquipped())) return []; // 2026-11-25: a held Quandrix press waits out the staff's cadence (quandrix-staff.ts quandrixPress)
       const baseProfile = primaryProfile(this.save.equipment.primary),
         profile = { ...baseProfile, range: baseProfile.range * (1 + characterStats(this.save).attackReach) * this.glyphLoadout("melee").mods.range },
         width = mapWidth(this.map, this.area),
@@ -3766,7 +3862,7 @@ export class Game {
         : sectionTerrain(this.save.seed, this.rx, this.ry, this.save.worldGeneration, this.sectionTerrainSteps()); // perf pack: kept terrain (see sectionTerrain)
     if(area==="overworld"&&!this.rx&&!this.ry)this.map.objects=hideDormantBossCue(this.map.objects,this.save); // 2026-11-19: the Refuge's world-boss cue only once something wakes it
     if(area==="overworld")this.tyrantVisit=null; // release 233: entering a section (from anywhere, or after a death) starts a fresh Tyrant visit
-    if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addBell(this.map,this.save,this.areaId());/* release 431: the Seven Bells */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addTornPage(this.map,this.save,this.areaId());/* release 595: the Torn Pages */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addThreadRelic(this.map,this.save,this.areaId());/* release 627: the threads */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addMargin(this.map,this.save,this.areaId());/* release 455: margins */if(area==="dungeon")addPentagonInscription(this.map,this.save,this.areaId());/* the Pentagon's marks (PENTAGON_LORE) */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addSurveyorLink(this.map,this.save,this.areaId());/* release 505: the Surveyor's Chain */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addSecondFootprints(this.map,this.save,this.areaId());/* the Second Wayfarer's footprints */if(area==="dungeon"){applyTunnels(this.map,this.save,this.areaStateId());this.map.wallGlints=wallGlints(this.map,this.save.seed,this.areaStateId(),this.save);} // release 225: dug tunnels and glinting walls
+    if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addBell(this.map,this.save,this.areaId());/* release 431: the Seven Bells */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addTornPage(this.map,this.save,this.areaId());/* release 595: the Torn Pages */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower){settleCrossingThread(this.map,this.save,this.areaId());addThreadRelic(this.map,this.save,this.areaId());}/* release 627: the threads; story version 7: a begun thread's piece made certain (thread-trails.ts) */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addMargin(this.map,this.save,this.areaId());/* release 455: margins */if(area==="dungeon")addPentagonInscription(this.map,this.save,this.areaId());/* the Pentagon's marks (PENTAGON_LORE) */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addSurveyorLink(this.map,this.save,this.areaId());/* release 505: the Surveyor's Chain */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addSecondFootprints(this.map,this.save,this.areaId());/* the Second Wayfarer's footprints */if(area==="dungeon"){applyTunnels(this.map,this.save,this.areaStateId());this.map.wallGlints=wallGlints(this.map,this.save.seed,this.areaStateId(),this.save);} // release 225: dug tunnels and glinting walls
     if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];this._coherence=coherenceOf(seen);/* world coherence: new ground only (COHERENCE) *//* the landscape, Far Sleep, hamlet (release 371: a town where a Listener fell; 373: around its Mouth, explored or not) trails and lane-bridge (WG-01) passes ran in sectionTerrain */this.seaHazards=this.map.openSea?seaHazards(this.save.seed,this.rx,this.ry,this.map):null;this.novaFog=null;this.seaIce=null;this.skyAir=null;this.crownHold=false;this.player.crownHold=false;/* GREAT_CROWN: the hold is the crown's; the gate's level is kept over a section's edge */this.keelLine=null;this.skyLevel=0;this.discAir=null;this.roofDeck=null;this.deckHop=false;this.riftAim=null;this.riftAimMark=null;this.riftPress=null;/* roof decks; RIFT_AIM *//* 585; 587 */this.storm=null;this._stormCheck=0;ensureBoatState(this.save);this.placeMooredSkiff();this.placeSpareSkiff();const dive=diveSite(this.map,this.save.seed,this.rx,this.ry);if(dive)this.map.objects.push(dive);{const dom=farDomainAt(this.save,this.rx,this.ry,!!seen);if(dom)buildDomain(this.map,this.save.seed,this.rx,this.ry,dom);}/* release 723: a domain is built whole */}
     if(area==="overworld"&&!this.map.settlement)applyTunnels(this.map,this.save,overworldDigKey(this.rx,this.ry),true); // release 423: tunnels dug in the open world
     if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];if(!seen||seen.watcherVersion)placeWatcherOverworld(this.map,mapWidth(this.map,area),this.save.seed,this.rx,this.ry,(!seen||!!seen.guideVersion)&&guideHost(this.save.seed,"shrine",this.rx,this.ry));} // release 289: sections first seen from now on; waymark guides: a guided shrine host always holds its Watcher's Shrine
@@ -3943,7 +4039,7 @@ export class Game {
     if(area==="overworld"&&this._coherence&&!this.map.farDomain)settleSpawns(this.map,coherenceKeeps); // WG-08: a creature on a pad it cannot leave moves to ground it can (new ground only)
     if(area==="overworld"&&(this.farRealm?.type==="monsterFolk"||this.farRealm?.type==="giantFolk"))this.map.farFolk=this.farRealm.type==="monsterFolk"?"monster":"giant"; // release 720: the folk realms
     if(area==="overworld"){const war=addSkirmish(this.map,this.save.seed,this.rx,this.ry,this.save);if(war)this.message=war.text;else if(this.map.settlement?.procedural)this.message=`${this.map.settlement.name} — a ${this.map.settlement.label.toLowerCase()} holds this ground.`}
-    if(area==="overworld"&&arrayMouthAt(this.save,this.rx,this.ry)&&!this.map.objects.some(o=>o.kind==="arrayMouth")){const spots=this.map.tiles.filter(t=>!t.blocked&&!t.structure&&!t.environment&&t.x>10&&t.x<22&&t.y>10&&t.y<22).sort((a,b)=>Math.hypot(a.x-16,a.y-16)-Math.hypot(b.x-16,b.y-16));const at=spots[0]||{x:16,y:16};const far=ensureFarArray(this.save),quiet=far.quiet,away=quiet&&!far.moves;this.map.objects.push({id:"array-mouth",kind:"arrayMouth",name:quiet&&!away?"The Quiet Mouth":"The Array Mouth",lore:away?"The Listener has left it for now. The line still opens onto somewhere new each time, and it will call a Listener back here.":quiet?"Nothing listens below it now, but the line still opens onto somewhere new each time.":"A ruined relay terminal, half sunk into ground no map has charted. Its line hums under your feet.",x:at.x,y:at.y,state:quiet?"quiet":"ready",actions:["enter"],landmark:true});this.message=away?`The Array Mouth: its runs go on, but the Listener is away. ${quietMouthNote(this.save)}`:quiet?`The Array Mouth is quiet: its runs go on, but the Listener is gone. ${quietMouthNote(this.save)}`:"The Array Mouth: the far end of the relay line."}
+    if(area==="overworld"&&arrayMouthAt(this.save,this.rx,this.ry)&&!this.map.objects.some(o=>o.kind==="arrayMouth")){const spots=this.map.tiles.filter(t=>!t.blocked&&!t.structure&&!t.environment&&t.x>10&&t.x<22&&t.y>10&&t.y<22).sort((a,b)=>Math.hypot(a.x-16,a.y-16)-Math.hypot(b.x-16,b.y-16));const at=spots[0]||{x:16,y:16};const far=ensureFarArray(this.save),quiet=far.quiet,away=quiet&&(!far.moves||far.cycle>=3);/* v3: a Listener always comes again, at the next Mouth */this.map.objects.push({id:"array-mouth",kind:"arrayMouth",name:quiet&&!away?"The Quiet Mouth":"The Array Mouth",lore:away&&far.cycle>=3&&far.moves?"The Listener has left it. The line still opens onto somewhere new each time; when the Mouth moves on, a Listener will wait where it goes.":away?"The Listener has left it for now. The line still opens onto somewhere new each time, and it will call a Listener back here.":quiet?"Nothing listens below it now, but the line still opens onto somewhere new each time.":"A ruined relay terminal, half sunk into ground no map has charted. Its line hums under your feet.",x:at.x,y:at.y,state:quiet?"quiet":"ready",actions:["enter"],landmark:true});this.message=away?`The Array Mouth: its runs go on, but the Listener is away. ${quietMouthNote(this.save)}`:quiet?`The Array Mouth is quiet: its runs go on, but the Listener is gone. ${quietMouthNote(this.save)}`:"The Array Mouth: the far end of the relay line."}
     if(area==="overworld"&&arrayMouthAt(this.save,this.rx,this.ry)&&daisDue(ensureFarArray(this.save))&&!this.map.objects.some(o=>o.kind==="listenerDais")){const m=this.map.objects.find(o=>o.kind==="arrayMouth"),w=mapWidth(this.map,area),free=(x,y)=>{const t=this.map.tiles[y*w+x];return t&&!t.blocked&&!t.structure&&!t.environment&&!this.map.objects.some(o=>Math.round(o.x)===x&&Math.round(o.y)===y)};let at=null;for(let r=2;r<6&&!at;r++)for(const[dx,dy]of[[0,r],[r,0],[-r,0],[0,-r],[r,r],[-r,r]])if(!at&&m&&free(Math.round(m.x)+dx,Math.round(m.y)+dy))at={x:Math.round(m.x)+dx,y:Math.round(m.y)+dy};if(at){this.map.objects.push({id:"listener-dais",kind:"listenerDais",name:"The Listener's Dais",lore:"The Gate is whole. The dais hums with the Listener's line: step on, and it carries you to the hall where it waits.",...at,state:"humming",actions:["enter"],landmark:true});this.message="The Gate is whole: a dais has risen beside the Mouth. It leads to the Listener."}} // release 375
     if(area==="overworld"&&silentMouthAt(this.save,this.rx,this.ry)&&!this.map.objects.some(o=>o.kind==="silentMouth")){const spots=this.map.tiles.filter(t=>!t.blocked&&!t.structure&&!t.environment&&t.x>10&&t.x<22&&t.y>10&&t.y<22).sort((a,b)=>Math.hypot(a.x-16,a.y-16)-Math.hypot(b.x-16,b.y-16));const at=spots[0]||{x:16,y:16};this.map.objects.push({id:"silent-mouth",kind:"silentMouth",name:"A Quiet Mouth",lore:"The Listener's old Mouth. Whatever waited here went deeper, but the line still opens onto somewhere new each time.",x:at.x,y:at.y,state:"quiet",actions:["enter"],landmark:true})} // release 357: an old Mouth stays; 361: still a door to a new run
     if(area==="overworld"&&townAt(this.save,this.rx,this.ry)?.mouth)this.raiseMouthTown(); // release 373 (after every Mouth, old ones too)
@@ -4500,8 +4596,8 @@ export class Game {
     const speed = (dodging ? 4.8 : 2.4) * (1 + (characterStats(this.save).moveSpeed || 0)), most = Math.abs(off) / Math.max(1e-6, speed * Math.max(dt, 1e-3));
     return Math.sign(off) * Math.min(Math.abs(off) * TREE_KEEL.pull, TREE_KEEL.max, most) * major;
   }
-  planGroundedPlayerMove(dx, dy, width, now, carrier = null) {
-    const contacts = actorContactContext(this, this.player, dx, dy); if (!contacts) return null;
+  planGroundedPlayerMove(dx, dy, width, now, carrier = null, pass = null) {
+    const contacts = actorContactContext(this, this.player, dx, dy, pass); if (!contacts) return null;
     const probe = contacts.probe, p = this.player, from = tileUnder(this.map, width, p.x, p.y), jumping = now < (this.jumpUntil || 0);
     // Simulation flags match the commit path, without mutating the player, lift or action clocks.
     probe.x = p.x; probe.y = p.y; probe.isPlayer = true; probe.jumping = jumping; probe.voidSuit = this.mechUp() && this.area !== "dungeon";
@@ -4529,6 +4625,20 @@ export class Game {
     moveAxis(probe, dx, dy, this.map, width, true, null, false, contacts);
     contacts.record = false; contacts.canExit = null; contacts.carrier = null; contacts.endX = probe.x; contacts.endY = probe.y;
     return contacts;
+  }
+  // DODGE_CONTACT (the Briar Stag fight stutter): a dodge step that bodies cut to less than `eaten` of its length is planned
+  // again past the bodies that touched the Wayfarer when the dodge began (`dodgeThrough`), and taken when it goes further.
+  // Only the shared context is reused (no allocation); the ordinary plan is made again when the second is no better, so the
+  // trace committed is always the plan's own.
+  planGroundedPlayer(dx, dy, width, now, carrier = null, dodging = false) {
+    const plan = this.planGroundedPlayerMove(dx, dy, width, now, carrier), p = this.player, want = Math.hypot(dx, dy), pass = this.dodgeThrough;
+    if (!plan || !dodging || !pass?.length || !(want > ACTOR_CONTACT.epsilon)) return plan;
+    const got = Math.hypot(plan.endX - p.x, plan.endY - p.y);
+    if (got >= want * DODGE_CONTACT.eaten) return plan;
+    const through = this.planGroundedPlayerMove(dx, dy, width, now, carrier, pass);
+    if (!through) return null; // no other body near: the ordinary terrain move
+    if (Math.hypot(through.endX - p.x, through.endY - p.y) > got + ACTOR_CONTACT.epsilon) return through;
+    return this.planGroundedPlayerMove(dx, dy, width, now, carrier);
   }
   // Release 736 (review F4/F8): the states that belong to where the Wayfarer was, cleared by a death and by Wayglass travel.
   clearCarriedStates() {
@@ -5430,6 +5540,7 @@ export class Game {
     if (this.area !== "overworld" || canSwim(this.save) || this.mechUp() || this.glide) return false;
     const memo = this._seaLane; if (memo && memo.map === this.map && memo.dx === dx && memo.dy === dy) return memo.sea;
     const rx = this.rx + dx, ry = this.ry + dy, save = this.save, key = `overworld:${rx}:${ry}:g${save.worldGeneration}`, row = save.voidScars?.areas?.[key];
+    if (farDomainAt(save, rx, ry, !!save.atlas?.[`${rx},${ry}`])) { this._seaLane = { map: this.map, dx, dy, sea: false }; return false; } // a far domain is built whole on arrival (loadArea), whatever its base terrain: the full crossing decides
     let map = keptSectionTerrain(save.seed, rx, ry, save.worldGeneration, this.sectionTerrainSteps(rx, ry));
     if (row) { map = structuredClone(map); applyVoidScars({ voidScars: { ...save.voidScars, areas: { [key]: structuredClone(row) } } }, map, key); }
     const exits = sectionExits(save.seed, rx, ry), x = dx < 0 ? 30.75 : dx > 0 ? .25 : dy < 0 ? exits.south : exits.north, y = dx < 0 ? exits.east : dx > 0 ? exits.west : dy < 0 ? 30.75 : .25;
@@ -5933,6 +6044,7 @@ export class Game {
     // Release 193: moments that may open a Glimpse (main.ts reads the cue on the next frame).
     if ((o.kind === "ruinMarker" || o.kind === "shrine") && chosen === "inspect") this.glimpseCue = "touch";
     if (r.transition === "dungeon") this.glimpseCue = !this.save.lore?.glimpses?.[WAYFARER_DREAD.glimpse.id] && dreadGlimpseOffered(this.save.seed, o.dungeonId || o.id, this.save.worldFlags?.deaths, this.wayfarerDreadHere()) ? "returning" : "crossing"; // the Wayfarer's dread: now and then, the Glimpse of the one who keeps returning (seen once; glimpses.ts)
+    if (r.transition === "relayNode" && (r.listenerMoved || r.networkAnswered)) { const note = mouthTownNote(this.save); if (note) { this.message += note; r.message = this.message; } } // LISTENER_CYCLE v3: a moved Mouth's town
     if (r.transition === "retrain") { syncCharacterStats(this.save); this.player.maxStamina = this.save.maxStamina; this.player.hp = Math.min(this.player.hp, this.save.maxHp); this.player.stamina = Math.min(this.player.stamina, this.save.maxStamina); this.sync(); } // release 347
     if (o.talkKey && chosen === "speak") { const n = (Number(this.save.worldFlags[o.talkKey]) || 0) + 1; this.save.worldFlags[o.talkKey] = n; o.line = talkLine(o, this.refugeLandsWhere(), n); } // release 265: the farmer and the quarry keeper have more to say each time
     if (r.ok && chosen === "speak") { const said = this.questSpeakTo(o); if (said) { this.message = `${o.name || "They"}: “${said}”`; r.message = this.message; } } // progression Phase 8: a quest's giver (a delivery, or their words)
@@ -7302,6 +7414,7 @@ export class Game {
         options.source === "leapSlam" || options.source === "orb") this.noteHurtVisualImpact();
     p.invulnerableUntil = now + tacticsHurtWindow(source, now, options.beam ? 320 : 700, p); // squad-tactics.ts: an activated pack's blows may land together (other sources: as before)
     if (source?.kind === "doomChaser") this.frenzyHit(now); // release 710
+    if (burnSource(options.source, ATTACK_MODULES[options.source]?.tags)) this.burnNote(now); // world-routes.ts BURNS: any fire that lands is a burn
     return true;
   }
   // Explicit prototype fixture entry only. Natural pairing stays disabled until reviewed integration.
@@ -7733,7 +7846,7 @@ export class Game {
     const w = mapWidth(this.map, "overworld"), taken = (x, y) => this.map.objects.some((o) => Math.round(o.x) === x && Math.round(o.y) === y), open = (x, y) => { const q = this.map.tiles[y * w + x]; return q && !q.blocked && !q.structure && !q.environment && !taken(x, y); };
     const near = (dx, dy) => { for (let r = 0; r < 4; r++) for (const [ax, ay] of [[dx, dy], [dx + r, dy], [dx - r, dy], [dx, dy + r], [dx, dy - r]]) { const x = Math.round(mouth.x) + ax, y = Math.round(mouth.y) + ay; if (open(x, y)) return { x, y }; } return null; };
     const stone = !this.map.objects.some((o) => o.kind === "listeningStone") && near(-2, 0);
-    if (stone) this.map.objects.push({ id: `listening-stone-${this.rx}-${this.ry}`, kind: "listeningStone", name: "The Listening Stone", lore: `Raised by the people of ${t.name} where the Listener fell. They say the line still hums in it, and that it listens back for whoever goes down into the Mouth.`, ...stone, state: "humming", actions: ["inspect"], landmark: true });
+    if (stone) this.map.objects.push({ id: `listening-stone-${this.rx}-${this.ry}`, kind: "listeningStone", name: "The Listening Stone", lore: `Raised by the people of ${t.name} ${t.formed === "move" ? "beside the Listener's Mouth" : "where the Listener fell"}. They say the line still hums in it, and that it listens back for whoever goes down into the Mouth.`, ...stone, state: "humming", actions: ["inspect"], landmark: true });
     const delver = !this.map.objects.some((o) => o.id === `mouth-delver-${this.rx}-${this.ry}`) && near(2, 0);
     if (delver) this.map.objects.push({ id: `mouth-delver-${this.rx}-${this.ry}`, kind: "shelterMerchant", name: "The Delvers' Exchange", role: `${t.name} delvers`, ...delver, state: "calm", actions: ["speak", "trade"], settlement: `hamlet-${this.rx}-${this.ry}` });
     // Tim (2026-11-01, the Deep's plan): "the Listener's Mouth, once you've beaten that Mouth's Listener: its runs become the Array's own
@@ -9080,6 +9193,8 @@ export class Game {
       (this.questNotices ||= []).push({ title: QUEST_WORDS.open, detail: `${Q.title} · ${Q.giver ? `${Q.giverName} asks for you` : "far out, something calls"} · Journal → Leads`, kind: "quest" });
       journalOnce(this.save, `quest:${id}:open`, `${Q.title}. ${Q.giver ? `${Q.giverName} ${Q.giver === "quarry-keeper" ? "at the Refuge quarry" : "at the Refuge"} has work for you.` : Q.opened || ""} ${Q.steps.map((q) => q.text).join(" ")}`, "Quests");
     }
+    for (const id of QUEST_IDS) { const g = questGift(this.save, id); if (!g) continue; // a quest's gift, handed once as it opens (or, opened before gifts, now)
+      (this.questNotices ||= []).push({ title: QUEST_WORDS.gift, detail: `${QUESTS[id].title} · ${QUESTS[id].giverName} gives you ${g.label}`, kind: "quest" }); journalOnce(this.save, `quest:${id}:gift`, g.line, "Quests"); }
     return out;
   }
   // Where a quest's giver stands, when it is not the Refuge itself: Shale at the quarry (refuge-lands.ts), which belongs to home.
@@ -9150,7 +9265,23 @@ export class Game {
   featKill(e) {
     const now = this.lastUpdateNow || 0;
     if (Number.isFinite(e._beatAt) && now - e._beatAt <= 400) this.worldFeat("beatKills"); // only the Iron Fists' punches carry onBeat (fistPunch)
-    if (this.area === "overworld" && this.map?.tiles) { const t = tileUnder(this.map, mapWidth(this.map, this.area), e.x, e.y) || tileUnder(this.map, mapWidth(this.map, this.area), this.player.x, this.player.y); if (t?.landscape === "magma") this.worldFeat("magmaKills"); }
+    if (this.map?.tiles && (this.moltenNear(e.x, e.y) || this.moltenNear(this.player.x, this.player.y))) this.worldFeat("magmaKills"); // world-routes.ts MOLTEN: any molten ground, any area
+  }
+  // Whether (x, y) stands on molten ground or within MOLTEN.near tiles of it (world-routes.ts MOLTEN).
+  moltenNear(x, y) {
+    const map = this.map, w = mapWidth(map, this.area), t = tileUnder(map, w, x, y); if (!t) return false; if (moltenTile(t)) return true;
+    const h = Math.round(map.tiles.length / w), N = MOLTEN.near;
+    for (let dy = -N; dy <= N; dy++) for (let dx = -N; dx <= N; dx++) { const tx = t.x + dx, ty = t.y + dy; if ((dx || dy) && tx >= 0 && ty >= 0 && tx < w && ty < h && moltenTile(map.tiles[ty * w + tx])) return true; }
+    return false;
+  }
+  // A burn (world-routes.ts BURNS): fire landed at `now`. It counts once, when no fire has landed for BURNS.quiet s and the Wayfarer
+  // still stands (burnTick); death ends it uncounted.
+  burnNote(now) { if (this.player?.hp > 0) this._burnAt = now; }
+  burnTick(now) {
+    if (this._burnAt == null) return;
+    if (!(this.player?.hp > 0)) { this._burnAt = null; return; }
+    if (this.playerFire || now - this._burnAt < BURNS.quiet * 1000) return;
+    this._burnAt = null; this.worldFeat("burnsSurvived");
   }
   landHit(e, actual, now = this.lastUpdateNow || 0, src = null) { if (!(actual > 0) || !e || unharmablePerson(e)) return;
     if (src && typeof src === "object") { if (src.rr > 0) this.featRelease(src.rr); if (src.onBeat === true) e._beatAt = now; } // Phase 6: charged releases landed; a blow on the beat (Ki Blast's milestone)
@@ -9636,11 +9767,12 @@ export class Game {
     if(q.payload.kind==='fist'){const src=q.payload.effect,out=src.kind==='fist-kick'?0:.7/* the kick spins round her */,at={x:this.player.x+.5+q.aim.x*out,y:this.player.y+.45+q.aim.y*out},fx={...src,x:at.x,y:at.y,hits:{},pulseIndex:0,untilPulse:0,toolUseNewborn:true},landed=this.enemies.some(e=>!e.dead&&!e.untargetable&&!e.hidden&&Math.hypot(e.x+.5-at.x,e.y+.45-at.y)<=fx.radius+Math.max(0,enemyBodyRadius(e)-.38));this.effects.push(fx);if(this.fistCombo?.step===q.payload.step&&Array.isArray(this.fistCombo.landed))this.fistCombo.landed[this.fistCombo.landed.length-1]=landed;if(q.payload.cloneEligible)this.cloneSwing({...BRAWLER_ECHO.cloneArc,damage:Number(q.payload.cloneDamage)||1},q.aim,now);return{released:true,cancelled:false};}
     return{released:false,cancelled:true};
   }
-  clearAttackBuffer() { this.attackBufferUntil = 0; this.attackBufferToolUse=false; }
+  clearAttackBuffer() { this.attackBufferUntil = 0; this.attackBufferToolUse=false; this.attackBufferHoldOnly=false; }
   tickAttackBuffer(now = 0, input = null) {
     if (!(this.attackBufferUntil > 0)) return false;
     const eligible=this.attackBufferToolUse?((this.closeViewActionEligible()||this.fistsEquipped())&&this.save.activeWeaponSlot!=='secondary'&&!this.cursed('attack',now)&&!this.penned(now)):this.closeViewAttackBufferEligible(now);
     if (now > this.attackBufferUntil || !eligible) { this.clearAttackBuffer(); return false; }
+    if(this.attackBufferHoldOnly&&!input?.held?.('attack')){this.clearAttackBuffer();return false;} // IRON_FISTS.holdWait: an early press let go before its step could begin
     if(this.toolUseBlocksPrimary())return false;
     if (now < (this.player.attackReadyAt || 0)) return false;
     if(this.fistsEquipped()&&(this.fistCharge||now<(this.fistRecoverUntil||0)))return false;
@@ -10082,7 +10214,7 @@ export class Game {
   // Runtime only, never saved: { charge: { held, action, dir } | null, traces: fixed slots of the afterglow (a trace also holds
   // a charged beam's pending Continuous Assault volley), lances: Continuous Assault's fixed pool of strike effects }.
   carbineState() {
-    return (this.carbine ||= { charge: null, traces: Array.from({ length: CARBINE.trace.max }, () => ({ shot: null, x0: 0, y0: 0, x1: 0, y1: 0, k: 0, life: 0, where: "", assault: 0 })),
+    return (this.carbine ||= { charge: null, pending: { on: false, action: "", aim: false, x: 0, y: 0 }, traces: Array.from({ length: CARBINE.trace.max }, () => ({ shot: null, x0: 0, y0: 0, x1: 0, y1: 0, k: 0, life: 0, where: "", assault: 0 })),
       lances: Array.from({ length: CONTINUOUS_ASSAULT.maxLive }, () => ({ id: "", kind: "assault-lance", x: 0, y: 0, life: 0, radius: 0, pulse: 99, untilPulse: 0, damage: 0, pulseIndex: 0, hits: {}, delay: 0, glyphHost: null, damageType: "physical", track: "" })) });
   }
   // The Carbine raised (the simple-tool emitter visual with the carbine appearance), held `poseMs` so a charge restamps rarely.
@@ -10093,9 +10225,15 @@ export class Game {
   carbineAim(direction) { return this.shotAim(direction); } // AIM_RESOLVE: the lock, a fresh tap, then the given way
   // A press: with a held button (`action`), the charge starts and the beam fires on release (tickCarbine); without one (auto
   // attack), a tap beam fires at once. Refused while the last beam recovers, with no room for a shot, or with no round to fire.
+  // Reliable holds (Tim, 2026-11-25: "I can't just hit the button and hold it, then hit it and hold it"): a held press (with a
+  // button) that lands while the last beam recovers (`cadence`) is no longer dropped. It waits (`pending`, one fixed record) and
+  // its charge starts the moment the Carbine is ready if the button is still held; let go before then, it fires nothing (as a
+  // tap in the recovery always has). tickCarbine turns it into the charge through this same press, with every check.
   carbinePress(now, direction, action = null) {
     const K = this.carbineState(); if (K.charge) return false;
-    if (!(this.player.hp > 0) || now < (this.player.attackReadyAt || 0)) return false;
+    if (!(this.player.hp > 0)) return false;
+    if (now < (this.player.attackReadyAt || 0)) { if (!action || !K.pending) return false; const q = K.pending, m = direction ? Math.hypot(direction.x, direction.y) : 0; q.on = true; q.action = action; q.aim = m > 1e-6; q.x = q.aim ? direction.x / m : 0; q.y = q.aim ? direction.y / m : 0; return false; }
+    if (K.pending) K.pending.on = false;
     if (sharedShotCount(this.projectiles) >= (this.area === "dungeon" ? 32 : 64)) return false;
     const echoes = this.glyphLoadout("tool").count("echo"); if (!canFireRound(this.save, echoes)) { this.message = `${ROUNDS.messages.empty} (${roundIronCost(echoes)} a round).`; return false; }
     const d = this.carbineAim(direction); this.save.lastAim = d; this.player.meleeUntil = 0; this.player.meleeStrike = null;
@@ -10203,6 +10341,10 @@ export class Game {
       let foe = null; for (const e of this.enemies) if (e.id === L.track) { foe = e; break; }
       if (!foe || foe.dead || !(foe.hp > 0)) { foe = this.assaultFoe(L.x, L.y); L.track = foe ? foe.id : ""; if (!foe) continue; }
       const dx = foe.x + .5 - L.x, dy = foe.y + .45 - L.y, m = Math.hypot(dx, dy), step = A.track * dt; if (m <= step) { L.x = foe.x + .5; L.y = foe.y + .45; } else if (m > 0) { L.x += dx / m * step; L.y += dy / m * step; } } }
+    const q = K.pending; if (q?.on) { // a held press waiting out the recovery (carbinePress)
+      if (!held || !this.carbineOn() || !(this.player.hp > 0) || now < (this.player.stunnedUntil || 0)) q.on = false;
+      else if (now >= (this.player.attackReadyAt || 0)) { q.on = false; const d = q.aim ? { x: q.x, y: q.y } : null; if (this.carbinePress(now, d, q.action)) this.cancelConsumeVisual('tool'); }
+    }
     const c = K.charge; if (!c) return;
     if (!this.carbineOn() || !(this.player.hp > 0) || now < (this.player.stunnedUntil || 0)) { K.charge = null; return; } // put away, fallen or knocked down: the charge is lost
     { const aim = this.lockedDirection() || this.save.lastAim, m = aim ? Math.hypot(aim.x, aim.y) : 0; if (m > 1e-3) { c.dir.x = aim.x / m; c.dir.y = aim.y / m; } } // the muzzle follows the lock, else the aim
@@ -11895,6 +12037,7 @@ export class Game {
   }
   // The floor's own ordinary sort (its guards), or its building's guard table.
   respawnKinds(place) {
+    if (place === "pentagon") { const called = questCalled(this.save, this.questWhere()); if (called) return [called]; } // quests.ts `calls`: Blade Stream's window calls the lanterns back
     const own = [...new Set((this.map.enemySpawns || []).filter((q) => q.buildingGuard && !q.buildingGuardian && !q.pentBoss && !q.keyKeeper && !q.boss && q.kind !== "npc").map((q) => q.kind))];
     return own.length ? own : place === "pentagon" ? PENTAGON.guards : (BUILDINGS.styles[this.map.building?.style] || BUILDINGS.styles.keep).guards;
   }
@@ -12057,6 +12200,7 @@ export class Game {
   // button to hold) throws it at once. `fistCombo` and `fistCharge` are runtime only.
   // Gathered Breath (glyphs.ts CHARGE_GLYPH): the multiplier on a charge whose key point is `span` s of holding (1 with none set).
   chargeQuicken(span = 1) { return chargeScale(this.save, span); }
+  chargeGlyphs() { return chargeGlyphCount(this.save); } // how many are set: the charge rings show one bead each (tool-forms.ts drawCarbine, quandrix-staff.ts drawSlamRing)
   fistsEquipped() { return !!primaryProfile(this.save.equipment.primary)?.fist; } // release 493: the Iron Fists are a weapon
   fistPower() { const item = this.save.equipment.primary, glyphs = hostLoadout(this.save, "melee"); return (this.spellbladeOn() ? 1 + FIELD_PASSIVES.spellblade.damage : 1) /* release 515: Spellblade */ * (IRON_FISTS.base + Math.max(1, Number(item?.power) || 1) * IRON_FISTS.perPower + this.weaponBonus()) * glyphs.mods.damage * (1 + armorGlyphBonus(this.save).attackDamage); }
   // The training combo (2026-11-13; brawler-spells.ts IRON_FISTS): right cross, left jab, right uppercut and, awakened, the
@@ -12080,6 +12224,7 @@ export class Game {
     const onBeat = !this._fistBuffered && fistOnBeat(this.fistBeat, now); // the rhythm (brawler-spells.ts): a fresh press while the ball is home; a press held over by the gate or the buffer never is
     if (now < (this.fistRecoverUntil || 0)) { // the gate: a press in its last `buffer` s is thrown as it opens
       if (this.fistRecoverUntil - now <= IRON_FISTS.buffer * 1000 + 1e-6) this.fistQueued = { action, direction: direction ? { x: direction.x, y: direction.y } : null, until: this.fistRecoverUntil + ACTION_MOTION.attackBufferMs };
+      else if (action && this.fistRecoverUntil - now <= IRON_FISTS.holdWait * 1000) this.fistQueued = { action, direction: direction ? { x: direction.x, y: direction.y } : null, until: this.fistRecoverUntil + ACTION_MOTION.attackBufferMs, holdOnly: true }; // IRON_FISTS.holdWait: an earlier press still held when the gate opens is thrown (and charges); let go before, nothing, so mashing is unchanged
       return false;
     }
     this.fistQueued = null;
@@ -12097,6 +12242,7 @@ export class Game {
     this.fistQueued = null;
     if (now > q.until || !this.fistsEquipped() || !(this.player.hp > 0) || this.fistCharge || this.cursed("attack", now) || this.penned(now) || this.toolUseBlocksPrimary() || this.pendingMeleeContact?.v === 1) return false;
     const action = q.action && input?.held?.(q.action) ? q.action : null;
+    if (q.holdOnly && !action) return false; // an early press let go before the gate: dropped, as before
     this._fistInputUpdate = true; this._fistBuffered = true; try { return this.fistPress(now, q.direction, action); } finally { this._fistInputUpdate = false; this._fistBuffered = false; }
   }
   fistPunch(step, charge = 0, now = this.lastUpdateNow || 0, direction = null, perfect = false, onBeat = false) {
@@ -12339,12 +12485,23 @@ export class Game {
     this.message = "Aim fixed for the next Tool or Spell.";
     return true;
   }
+  // Spare gear salvaged on pickup: one line, its tally merged with the line before while that line is still the one shown (or
+  // waiting); a louder notice already waiting keeps its place.
+  noteSpare(list) {
+    const prev = this.spareTally, live = prev && (this.message === prev.text || this.glyphNotice === prev.text);
+    const t = live ? prev : { names: {}, iron: 0, lumenDust: 0, text: "" };
+    for (const r of list) { const n = r.item?.name || "piece"; t.names[n] = (t.names[n] || 0) + 1; t.iron += r.iron || 0; t.lumenDust += r.lumenDust || 0; }
+    t.text = spareSalvageText(this.save, t); this.spareTally = t;
+    if (!this.glyphNotice || (prev && this.glyphNotice === prev.text)) this.glyphNotice = t.text;
+    return t.text;
+  }
   obtainDrop(src, ordinaryMonster = false) {
     const n = this.save.dropCounter++;
     const deep = this.area === "dungeon" && this.map?.deepFloor ? lootBonus(this.map.deepFloor, deepShaft(this.save, this.areaId()).best) : 0; // release 677: deeper loot, only near your deepest floor
     const orrery = APERTURE_BANDS.indexOf(apertureBand(this.save.perception?.aperture || 0)) >= ORRERY_LOOT.band ? ORRERY_LOOT.version : 0; // items.ts ORRERY_LOOT: the Aether Orrery drops once its gift's band is reached
     const item = generateItem(`${this.save.seed}:${src}:${n}`, this.save.level + deep, ordinaryMonster || orrery ? { ...(ordinaryMonster ? { ordinaryMonster: true } : {}), ...(orrery ? { orreryLoot: orrery } : {}) } : null);
     const r = storeInventoryItem(this.save, item);
+    if (r.spare?.length) this.noteSpare(r.spare); // SPARE_GEAR: one quiet line, merged while nothing else is said
     if (r.stored && (item.property === "brawler" || item.property === "orrery")) this.glyphNotice ||= `${item.name} found: it is in your Pack.`; // release 513: say so
     this.save.materials.cinderIron++;
   }
@@ -12593,7 +12750,7 @@ export class Game {
     if (this.orbit) this.tickOrbit(dt, now); // release 487: Orbit Volley
     this.tickMirage(dt); // release 649: Mirage of Blades
     tickOrrery(this, dt, now, !!input.held?.(this.orrery?.charge?.action || "tool")); // the Aether Orrery: its shots, halo and charge
-    if (this.carbine) this.tickCarbine(dt, now, !!input.held?.(this.carbine.charge?.action || "tool")); // the Carbine: its charge, afterglow and Continuous Assault's lasers
+    if (this.carbine) this.tickCarbine(dt, now, !!input.held?.(this.carbine.charge?.action || (this.carbine.pending?.on && this.carbine.pending.action) || "tool")); // the Carbine: its charge, afterglow and Continuous Assault's lasers
     if (this.quandrix) tickQuandrix(this, dt, now, !!input.held?.((this.quandrix.hold.on ? this.quandrix.hold.action : this.quandrix.press.action) || "attack")); // the Quandrix Staff: its hands, the Mage's Hand fist and the awakened slam
     if (this.weaponArts) tickWeaponArts(this, dt, now, !!input.held?.(this.weaponArts.fist.on ? this.weaponArts.fist.action : "attack")); // weapon-arts.ts: arming, the charge, and what each art leaves in play
     if (this.awakenedArts) tickAwakenedArts(this, dt, now); // awakened-arts.ts: fissures, blades, lances, runes, the axe kick and the seal's pulse
@@ -12618,8 +12775,9 @@ export class Game {
     this.gloomTick(now); // the Gloomvast: a fallen one's Dark ends, spent decoys go
     this.phaseShieldStep(); // a linked-invulnerable creature the Wayfarer walked into turns solid again: ease them apart
     if (this.affixHazards?.length || this.enemies.some((e) => !e.dead && (e.affixes || e.auraBy || e.wardBy))) { const p = this.player, es = eliteStateInPlace(this.save).status; // release 657: affixes, auras, shamans
-      tickAffixes(this, dt, now, (n) => { if (p.hp <= 0 || now < (p.invulnerableUntil || 0) || now < (p.dodgeUntil || 0)) return; p.hp -= Math.max(1, Math.ceil(n * (1 - Math.min(.75, characterStats(this.save).damageReduction)) * hurtScale(this.save))); p.invulnerableUntil = now + 350; }, (d, dps) => { if (now >= (p.dodgeUntil || 0)) applyPoison(es, d, dps); }); }
-    if (this.playerFire) { const f = this.playerFire, p = this.player; f.left -= dt; f.tick -= dt; if (f.tick <= 0 && f.left > -dt && p.hp > 0) { f.tick += 1; p.hp = Math.max(0, p.hp - Math.max(1, Math.ceil(f.dps * (1 - Math.min(.75, characterStats(this.save).damageReduction)) * hurtScale(this.save)))); } if (f.left <= 0 || this.swimming) { this.playerFire = null; if (p.hp > 0) this.worldFeat("burnsSurvived"); } } // release 708: burning (water puts it out)
+      tickAffixes(this, dt, now, (n, kind) => { if (p.hp <= 0 || now < (p.invulnerableUntil || 0) || now < (p.dodgeUntil || 0)) return; p.hp -= Math.max(1, Math.ceil(n * (1 - Math.min(.75, characterStats(this.save).damageReduction)) * hurtScale(this.save))); p.invulnerableUntil = now + 350; if (kind === BURNS.affix) this.burnNote(now); }, (d, dps) => { if (now >= (p.dodgeUntil || 0)) applyPoison(es, d, dps); }); }
+    if (this.playerFire) { const f = this.playerFire, p = this.player; f.left -= dt; f.tick -= dt; if (f.tick <= 0 && f.left > -dt && p.hp > 0) { f.tick += 1; p.hp = Math.max(0, p.hp - Math.max(1, Math.ceil(f.dps * (1 - Math.min(.75, characterStats(this.save).damageReduction)) * hurtScale(this.save)))); } if (f.left <= 0 || this.swimming) { this.playerFire = null; if (p.hp > 0) this.burnNote(now); } } // release 708: burning (water puts it out); the burn counts once it has passed (burnTick)
+    this.burnTick(now); // world-routes.ts BURNS: a burn lived through
     if (this.enemies.some((e) => e.kitRole && !e.dead) || this.enemies.some((e) => e.kitAddOf && !e.dead)) tickBossKit(this, dt, now, (e, n) => this.spawnKitAdds(e, n, now)); // release 668
     if (this.golem) this.tickGolem(now); // release 535: Corridor Golem
     if (this.save.mounts?.hatchling) this.tickHatchling(dt, now); // the Triceratops hatchling (hatchling.ts)
@@ -12642,7 +12800,8 @@ export class Game {
       if (r.ok && TREE_FOOTING.dodgeAxes === 4 && this.area === "overworld" && this.map?.canopy && !this.droneLift && (this.skyAir != null || tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.canopy)) { // great-tree footing: on a branch a dodge goes along an axis
         const ax = Math.abs(p.dodgeX) >= Math.abs(p.dodgeY); p.dodgeX = ax ? Math.sign(p.dodgeX) || 1 : 0; p.dodgeY = ax ? 0 : Math.sign(p.dodgeY) || 1; p.lastMoveVector = { x: p.dodgeX, y: p.dodgeY };
       }
-      if (r.ok) { const f = this.fall && this.fallApplies() && !this.aerialHeld() ? this.fall : null; if (f && f.rollT == null) f.rollT = Number(f.t) || 0; } // FALL.roll: the fall's first dodge is its landing-roll try, timed on the fall's own clock (saved with it)
+      if (r.ok) { const f = this.fall && this.fallApplies() && !this.aerialHeld() ? this.fall : null; if (f && f.rollT == null) f.rollT = Number(f.t) || 0; }
+      if (r.ok) { const w = mapWidth(this.map, this.area); touchingBodies(this, this.dodgeThrough ||= [], boxedIn(this, (bx, by) => footprintOpen(this.map, w, bx, by)) ? DODGE_CONTACT.boxTouch : DODGE_CONTACT.touch); } // DODGE_CONTACT: the bodies this dodge began pressed against (runtime only; a dodge resumed from a save keeps ordinary contact) // FALL.roll: the fall's first dodge is its landing-roll try, timed on the fall's own clock (saved with it)
       if (r.ok) { const logicalNow=now-(this.presentationPausedMs||0),prior=recentHeroPresentation(p,logicalNow,p.x,p.y),canonicalYaw=(yaw)=>Math.atan2(Math.sin(yaw),Math.cos(yaw));p.dodgeVisual = prior ? { facingYaw: canonicalYaw(prior.yaw), gaitPhase: prior.gaitPhase, moving: prior.speed > .01, speed: prior.speed, poseMs: prior.now } : { facingYaw: canonicalYaw(facingYaw), gaitPhase: (Number(p.walkPhase) || 0) * Math.PI, moving: Math.hypot(Number(x) || 0, Number(y) || 0) > .15, speed: Math.hypot(Number(x) || 0, Number(y) || 0) > .15 ? 2.4 : 0, poseMs: Math.max(0,logicalNow) }; }
       if (!r.ok && mired) { if (now >= (p.invulnerableUntil || 0)) { p.hp = Math.max(0, p.hp - Math.max(1, Math.ceil((this.save.maxHp || p.maxHp || 100) * STAG.mire.exhaustedShare))); p.invulnerableUntil = now + 200; } this.message = "The mire drags at you, and you have nothing left to pull free with."; } // release 708 (Tim: "if you dodge while you have zero stamina in the mire, then you take damage")
       else if (!r.ok) this.message = "Not enough stamina to dodge.";
@@ -12759,7 +12918,7 @@ export class Game {
     { const h = this.edgeHold; if (h && this.edgeHeld(h.dx, h.dy, now)) { if (h.dx < 0) nx = Math.max(nx, 0); else if (h.dx > 0) nx = Math.min(nx, SECTION_SIZE - .78 - 1e-3); else if (h.dy < 0) ny = Math.max(ny, 0); else ny = Math.min(ny, SECTION_SIZE - .9 - 1e-3); } } // perf pack (P6): the edge just crossed holds for a moment
     if (!sailing && !gliding) { this.holdDeckJump(now); p.deckReach = this.deckReach(now < (this.jumpUntil || 0)); } else p.deckReach = null; // roof decks
     p.propLevel = this.propLevel(now); // solid props (926 bug 5): the height the Wayfarer's feet are at, for the collision mover
-    const groundedMotion = !sailing && !gliding ? this.planGroundedPlayerMove(nx - p.x, ny - p.y, mapWidth(this.map, this.area), now, carrier) : null;
+    const groundedMotion = !sailing && !gliding ? this.planGroundedPlayer(nx - p.x, ny - p.y, mapWidth(this.map, this.area), now, carrier, dodging) : null;
     if (groundedMotion) { nx = groundedMotion.endX; ny = groundedMotion.endY; }
     if ((sailing || (this.area === "overworld" && this.wading())) && (nx < 0 || ny < 0 || nx + .76 >= SECTION_SIZE - .02 || ny + .88 >= SECTION_SIZE - .02)) { /* release 507: the robot wading crosses anywhere, like a skiff */
       this.transitionSection(nx < 0 ? -1 : nx + .76 >= SECTION_SIZE - .02 ? 1 : 0, nx < 0 || nx + .76 >= SECTION_SIZE - .02 ? 0 : ny < 0 ? -1 : 1);
@@ -12961,8 +13120,9 @@ export class Game {
       const plunged = this.airAttack(now, "attack"); // jump attacks (2026-11-12); "attack": the button a Cyclone Heel press is held on
       const ready = this.player.attackReadyAt || 0,guardWait=this.startupGuardWait(now),startupWait=Number.isFinite(guardWait)?Math.max(now+guardWait,ready,this.fistsEquipped()?this.fistRecoverUntil||0:0)-now:Infinity, canStartupBuffer=startupWait>=0&&startupWait<=ACTION_MOTION.attackBufferMs&&(this.closeViewActionEligible()||this.fistsEquipped()/* the fists' contact delay runs everywhere */)&&this.save.activeWeaponSlot!=='secondary'&&!this.cursed('attack',now)&&!this.penned(now),canBuffer = this.closeViewAttackBufferEligible(now);
       if(plunged){/* the press is the jump attack's */}
-      else if(canStartupBuffer){this.attackBufferUntil=now+ACTION_MOTION.attackBufferMs;this.attackBufferToolUse=true;}
-      else if (canBuffer && now < ready && ready - now <= ACTION_MOTION.attackBufferMs) this.attackBufferUntil = now + ACTION_MOTION.attackBufferMs;
+      else if(canStartupBuffer){this.attackBufferUntil=now+ACTION_MOTION.attackBufferMs;this.attackBufferToolUse=true;this.attackBufferHoldOnly=false;}
+      else if(this.fistsEquipped()&&startupWait>0&&startupWait<=IRON_FISTS.holdWait*1000&&this.save.activeWeaponSlot!=='secondary'&&!this.cursed('attack',now)&&!this.penned(now)){this.attackBufferUntil=now+startupWait+ACTION_MOTION.attackBufferMs;this.attackBufferToolUse=true;this.attackBufferHoldOnly=true;} // IRON_FISTS.holdWait: a held press before the step may begin waits for it
+      else if (canBuffer && now < ready && ready - now <= ACTION_MOTION.attackBufferMs) { this.attackBufferUntil = now + ACTION_MOTION.attackBufferMs; this.attackBufferHoldOnly = false; }
       else { this.clearAttackBuffer(); this.attackAction = "attack"; try { this.primaryAttack(now); } finally { this.attackAction = null; } } // release 493: the Iron Fists charge while Attack is held
     }
     // Hold Act for BOAT.leaveHold seconds while aboard to leave the skiff (release 158): step ashore if ground is beside
@@ -13246,12 +13406,12 @@ export class Game {
     this._hurtVisualWitness = null;
     const hpBeforeBypassHazards = p.hp;
     // Release 475: wading through lava in the robot cooks the Wayfarer inside it, past the plating, every guard and Ink Shield.
-    if (this.mechUp() && !this.mechBoosting && p.hp > 0 && footprintHazard(this.map, mapWidth(this.map, this.area), p.x, p.y) === "lava") { p.hp = Math.max(0, p.hp - this.save.maxHp * MECH_LAVA.heat * dt); if (p.hp <= 0) this.message = "The lava's heat cooks the Wayfarer inside the robot."; else if (now > (this.lavaWadeMessageAt || 0)) { this.lavaWadeMessageAt = now + 6000; this.message = "The robot wades through the lava. The heat inside is unbearable: get out of it."; } }
+    if (this.mechUp() && !this.mechBoosting && p.hp > 0 && footprintHazard(this.map, mapWidth(this.map, this.area), p.x, p.y) === "lava") { p.hp = Math.max(0, p.hp - this.save.maxHp * MECH_LAVA.heat * dt); this.burnNote(now); if (p.hp <= 0) this.message = "The lava's heat cooks the Wayfarer inside the robot."; else if (now > (this.lavaWadeMessageAt || 0)) { this.lavaWadeMessageAt = now + 6000; this.message = "The robot wades through the lava. The heat inside is unbearable: get out of it."; } }
     // Mounted lava (Tim, 2026-11-04: "The mounts shouldn't give you any extra defense... The only defense they give you: if you go
     // into lava, it's not an instant kill, it's like a two-second kill"): standing in lava on a mount burns MOUNT_RIDE.lavaSeconds'
     // worth of maximum health a second, past every guard, plating and Ink Shield, so a ride out is still possible; mid-leap over it
     // nothing burns. On foot lava is still instant death (above).
-    if (this.mountRide() && !this.mountLeap(now) && p.hp > 0 && footprintHazard(this.map, mapWidth(this.map, this.area), p.x, p.y) === "lava") { p.hp = Math.max(0, p.hp - this.save.maxHp / MOUNT_RIDE.lavaSeconds * dt); if (p.hp <= 0) this.message = MOUNT_RIDE.lavaDeath; else if (now > (this.lavaWadeMessageAt || 0)) { this.lavaWadeMessageAt = now + 6000; this.message = MOUNT_RIDE.lavaWade; } }
+    if (this.mountRide() && !this.mountLeap(now) && p.hp > 0 && footprintHazard(this.map, mapWidth(this.map, this.area), p.x, p.y) === "lava") { p.hp = Math.max(0, p.hp - this.save.maxHp / MOUNT_RIDE.lavaSeconds * dt); this.burnNote(now); if (p.hp <= 0) this.message = MOUNT_RIDE.lavaDeath; else if (now > (this.lavaWadeMessageAt || 0)) { this.lavaWadeMessageAt = now + 6000; this.message = MOUNT_RIDE.lavaWade; } }
     // Release 509: the Far Sleep's star-voids tear the robot apart (MECH_VOID); out of it, the night takes the Wayfarer.
     if (p.hp > 0 && footprintVoid(this.map, mapWidth(this.map, this.area), p.x, p.y)) { const r = this.mechUp() ? voidTick(this.save, dt) : { gone: true }; p.hp = Math.max(0, p.hp - this.save.maxHp * MECH_VOID.heat * dt);
       if (r.gone) { p.hp = 0; this.message = r.torn ? "The robot comes apart in the void, and the night beneath the dream takes the Wayfarer." : "The night beneath the dream takes the Wayfarer."; }

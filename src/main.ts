@@ -23,7 +23,7 @@ import { drawPentagonSigilIcon } from "./renderer.ts";
 import { closeViewSurfacePick } from "./close-view.ts"; // roof decks: the aimed Rift Step's tap
 import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, CLOSE_VIEW_PROPS, closeViewDrawsProps, closeViewPlaceAllowed, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewCompassRotation, closeViewBodyFacingYaw, compassFacingStep, closeViewScreenToWorld, mountCloseViewControls, closeViewLookActive, closeViewLookLabel, closeViewLookToggle, closeViewLookSet, closeViewLookActions, closeViewLookGuard, closeViewLookZoomBy, closeViewHomeZoomTake, createLookHold, closeViewPrewarmDue, prewarmCloseView, prewarmCloseViewGL } from "./close-view.ts"; // Close View (2026-11-06): interiors from behind the Wayfarer
 import { renderTimings } from "./renderer.ts";
-import { createProbe, PROBE } from "./diagnostic-probe.ts";
+import { createProbe, createDodgeWatch, PROBE } from "./diagnostic-probe.ts";
 import { vendorShop, buyFromVendor, walkerCrossingMap, shiftClocks, currentDungeonDoors, sectionTerrainCacheStats } from "./game.ts";
 import { IMBUE, imbueAmount, ESSENCE_WALK, essenceExempt, FIST_CALLOUT, fistStatusLevel } from "./brawler-spells.ts"; // Imbue Weapon: the Arcanum shows what it adds now; Essence Walk its costs
 import { sectionAtlasColor } from "./atlas-colors.ts";
@@ -62,7 +62,7 @@ import { startGlimpse, paintRule } from "./glimpse-render.ts";
 import { eldersHeard, elderProgress, ruleRows } from "./elders.ts";
 import { relayRuleAt, crossingSection, knownRelaySections } from "./relay-network.ts";
 import { questingBeastHoldNote } from "./questing-beast.ts";
-import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding, relaysUntilReturn, killsToClimb, piecesToUnlock, listenerCycle, LISTENER_CYCLE, LISTENER_RETURN } from "./far-array.ts";
+import { ensureFarArray, piecesNeeded, relayLean, listenerForm, BOONS, chooseBoon, chooseEnding, relaysUntilReturn, killsToClimb, piecesToUnlock, listenerCycle, LISTENER_CYCLE, LISTENER_RETURN, relaysUntilMove } from "./far-array.ts";
 import { ensureSceneState,scenePlaybackPlan,commitScene,replayableScenes,queueScene } from "./scenes.ts";
 function uiButton(label, click) {
   const b = document.createElement("button");
@@ -175,7 +175,7 @@ function openShop(vendorId = "vendor-vela") {
   if (!panel.open) panel.showModal();
 }
 
-import { loadSave, saveGame, setWriteTimingListener, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, journeyStats, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, saveBlocked, markSlotDamaged, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.ts";
+import { loadSave, saveGame, autosaveDue, fightUnderway, setWriteTimingListener, flushSaves, loadSettings, saveSettings, effectiveQuality, getActiveSlot, setActiveSlot, listJourneySlots, journeyStats, createJourney, renameJourney, duplicateJourney, deleteJourney, exportJourney, importJourney, recoverJourney, storageReport, saveBlocked, markSlotDamaged, createExclusiveOperation, commitNewJourneyTransition } from "./persistence.ts";
 import {
   Game,
   actionReadiness,
@@ -300,9 +300,9 @@ setTimeout(() => {
         e.detail.clientX - r.left,
         e.detail.clientY - r.top,
       );
-    if (game.riftAimArmed?.()) { const at = closeViewSurfacePick(game, r.width, r.height, e.detail.clientX - r.left, e.detail.clientY - r.top); game.placeRiftAim(at ? at.x : q.x, at ? at.y : q.y, undefined, at ? at.z : null); persist(); return; } // RIFT_AIM: the tap after arming Rift Step picks its point (the ground or a roof under the finger)
+    if (game.riftAimArmed?.()) { const at = closeViewSurfacePick(game, r.width, r.height, e.detail.clientX - r.left, e.detail.clientY - r.top); game.placeRiftAim(at ? at.x : q.x, at ? at.y : q.y, undefined, at ? at.z : null); persistSoon(); return; } // RIFT_AIM: the tap after arming Rift Step picks its point (the ground or a roof under the finger)
     const hit = save.aimMode !== "build" && save.aimMode !== "act" && game.enemyAt(q.x, q.y); // release 309: tap a creature to lock on
-    if (!hit && game.placeShadowClone?.(q.x, q.y)) { persist(); return; } // release 365: the tap after a Shadow Clone sets it; 387: a tap on a creature locks it instead
+    if (!hit && game.placeShadowClone?.(q.x, q.y)) { persistSoon(); return; } // release 365: the tap after a Shadow Clone sets it; 387: a tap on a creature locks it instead
     if (hit) { game.lockTarget(hit.id); return; }
     game.aimAt(q.x, q.y);
     const direction = {
@@ -315,7 +315,7 @@ setTimeout(() => {
       game.fireSecondary(performance.now(), direction);
     else if (save.aimMode === "act") game.interactAt(q.x, q.y);
     else if (save.aimMode === "build") game.buildAt(q.x, q.y); // release 267: build mode
-    persist();
+    persistSoon(); // the Briar Stag fight stutter: coalesced (AUTOSAVE), not a save a tap
   });
   setInterval(() => {
     if (game.interactionRequested) {
@@ -364,7 +364,7 @@ game.deathBeat = VIEWPORT_CLOSED.fall; // Viewport Closed (2026-11-04): every de
 game.deathBeastBeat = VIEWPORT_CLOSED.fall + VIEWPORT_CLOSED.close; // with a great beast there, the world stays live (it looms over the corpse) until black
 function applyPresentationSettings(){/* release 345 beastTries: retired 2026-11-18 (world-beasts.ts BEAST_ENGAGEMENT); the setting is still kept in saved settings */game.damageNumbers=settings.damageNumbers!==false;/* release 461 */document.documentElement.style.setProperty("--ui-scale",String(settings.uiScale));document.documentElement.style.fontSize=`${16*settings.textScale}px`;document.body.classList.toggle("high-contrast",settings.highContrast);document.body.classList.toggle("reduce-motion",settings.reduceMotion||settings.safeMode);game.presentation={...settings,effectiveQuality:currentQuality()};if(audioGain)audioGain.gain.value=masterLevel();backgroundMusic.setMasterLevel(masterLevel());backgroundMusic.setEnabled(settings.backgroundMusic);if(musicBus)musicBus.gain.value=AUDIO_MIX.music*settings.musicVolume;if(director)director.calmOnly=settings.soundtrack==="calm";if(soundtrack)soundtrack.setQuality(currentQuality());if(battleSfx){battleSfx.setVolume(settings.effectsVolume);battleSfx.setQuality(currentQuality())}resize()}
 // Diagnostic probe (release 165): a timed recording started from Options → System; see diagnostic-probe.ts.
-const probe = createProbe(), PROBE_REPORT_KEY = "corridor-probe-report";
+const probe = createProbe(), probeDodge = createDodgeWatch(), PROBE_REPORT_KEY = "corridor-probe-report";
 setWriteTimingListener((t)=>probe.save(t)); // release 555: each save write, with the database's main-thread copy time
 let probePhases = {}, probeGround = { builds: 0, patches: 0 }, probeInterval = 0, probePrevious = null;
 // Perf spikes: what the render phase draws after render() (the dungeon systems and ranged effects; Viewport Closed), and the
@@ -377,7 +377,7 @@ function probeSample(interval){
   const T=sectionTerrainCacheStats(),terrain={hits:T.hits-probeTerrain.hits,misses:T.misses-probeTerrain.misses,warms:crossWarms-probeTerrain.warms};probeTerrain={hits:T.hits,misses:T.misses,warms:crossWarms};
   const parts={ground:renderTimings.ground,world:renderTimings.world,overlay:renderTimings.overlay,view:renderTimings.view,groundImage:renderTimings.groundImage,effects:probeRenderExtra.effects,viewport:probeRenderExtra.viewport};
   parts.other=Math.max(0,(probePhases.render||0)-parts.ground-parts.world-parts.overlay-parts.view-parts.effects-parts.viewport); // simClockDraw's own work, or anything else render() did not time (groundImage is inside ground)
-  const current={phases:probePhases,render:parts,ground,terrain,context:{area:game.area,aboard:!!save.boat?.aboard,openSea:!!game.map?.openSea,section:game.area==="overworld"?`${game.rx},${game.ry}`:String(game.areaId?.()||"").split(":").slice(-2).join(":"),enemies:game.enemies.length,projectiles:game.projectiles.length,effects:game.effects.length,visibleTiles:r.visibleTiles,visibleObjects:r.visibleObjects}};
+  const current={phases:probePhases,render:parts,ground,terrain,context:{area:game.area,steps:simClock.steps/* the Briar Stag fight stutter: world steps this frame (0 on about half the frames of a 120 Hz screen, by design) */,aboard:!!save.boat?.aboard,openSea:!!game.map?.openSea,section:game.area==="overworld"?`${game.rx},${game.ry}`:String(game.areaId?.()||"").split(":").slice(-2).join(":"),enemies:game.enemies.length,projectiles:game.projectiles.length,effects:game.effects.length,visibleTiles:r.visibleTiles,visibleObjects:r.visibleObjects}};
   // Release 167: the interval ending at this frame's start covers the previous frame (its work and the browser painting
   // it), so it is paired with that frame's phases; release 165 paired it with this frame's and misplaced every hitch.
   if(probePrevious)probe.frame({interval,...probePrevious});
@@ -470,7 +470,8 @@ function watchQuests(now){
     if(sig.surveyor&&!questWatch.surveyor)questQueue.push({title:"QUEST COMPLETE",detail:"The Surveyor's Chain · all its links recovered",kind:"quest"});
     // Release 649 (Tim: "when you unlock the fifth relay... a special... heading on the screen... listener revealed"): the network
     // answers with the Listener's Mouth, and again whenever the Listener moves on to a new one.
-    if(sig.listener&&sig.listener!==questWatch.listener&&sig.listener!=="answered")questQueue.unshift({title:"LISTENER REVEALED",detail:`A Listener has entered the corridor · its Mouth stands at ${sig.listener}`,kind:"listener"});
+    if(sig.listener&&sig.listener!==questWatch.listener&&sig.listener!=="answered"&&questWatch.listener&&questWatch.listener!=="answered"&&save.farArray?.cycle>=3)questQueue.unshift({title:"THE MOUTH HAS MOVED",detail:`A Listener has entered the corridor · the Mouth stands now at ${sig.listener}`,kind:"listener"}); // LISTENER_CYCLE v3 (Tim, 2026-11-25): every five relays
+    else if(sig.listener&&sig.listener!==questWatch.listener&&sig.listener!=="answered")questQueue.unshift({title:"LISTENER REVEALED",detail:`A Listener has entered the corridor · its Mouth stands at ${sig.listener}`,kind:"listener"});
     else if(sig.listener&&sig.returns>questWatch.returns)questQueue.unshift({title:"A LISTENER HAS ENTERED THE CORRIDOR",detail:`Return to the Listener's Mouth at ${sig.listener}`,kind:"listener"}); // Tim, 2026-11-05: every five relays it returns to the same Mouth
   }
   Object.assign(questWatch,sig,{ready:true,save});}
@@ -835,7 +836,7 @@ function activeQuests(){
   { const r=rescueGuidance(save.mounts?.hatchling);if(r)add(HATCHLING.quest.names.quest,"His mother at the Beast Hotel asked you to save him.",r,{kind:"rescue"}); }
   const w=save.wanderer?.quest;if(w)add("Old Quillon's errand",w.done?"Done. Find Quillon on the road to collect your pay.":w.type==="hunt"?`Defeat creatures: ${w.progress}/${w.goal}.`:w.type==="cache"?"Find his buried satchel.":"Stand in any town square.",w.type==="cache"&&!w.done?w.target:null);
   const beast=save.questingBeast?.active;if(beast)add("The Questing Beast",`It roams this section. ${questingBeastHoldNote(save)}`,beast);
-  const far=save.relayNetwork?.coordinate;if(far){const f=ensureFarArray(save),n=relaysUntilReturn(save),pieces=`Gate ${f.gate}: ${f.toNext||0}/${piecesToUnlock(f.gate)} pieces`;/* 2026-11-05: the Listener's cycle (LISTENER_CYCLE v2) */if(!f.quiet)add("The Far Array",`${pieces}${LISTENER_CYCLE.sealsCall?` · seals ${f.pieces}/${piecesNeeded(f.gate)}`:""}. A Listener waits at its Mouth: ${far.rx}, ${far.ry}.`,far);else if(!f.moves)add("The Far Array",`${pieces}. The Listener is away; answer ${n} more relay${n===1?"":"s"} and one returns to its Mouth at ${far.rx}, ${far.ry}.`,far);else add("The Far Array",`Gate unlocked (tier ${f.gate}). No coordinate for the next Mouth yet: answer ${n} more relay${n===1?"":"s"}.`,null)}
+  const far=save.relayNetwork?.coordinate;if(far){const f=ensureFarArray(save),n=relaysUntilReturn(save),pieces=`Gate ${f.gate}: ${f.toNext||0}/${piecesToUnlock(f.gate)} pieces`;/* 2026-11-05: the Listener's cycle (LISTENER_CYCLE v2) */const mv=f.cycle>=3?relaysUntilMove(save):null,moveIn=mv==null?"":` The Mouth moves in ${mv} relay${mv===1?"":"s"}.`;/* v3 (2026-11-25) */if(f.cycle>=3&&f.quiet&&f.moves)add("The Far Array",`${pieces}. The Listener has left its Mouth at ${far.rx}, ${far.ry}; answer ${n} more relay${n===1?"":"s"} and the Mouth moves, with a Listener waiting at the new one.`,far);else if(!f.quiet)add("The Far Array",`${pieces}${LISTENER_CYCLE.sealsCall?` · seals ${f.pieces}/${piecesNeeded(f.gate)}`:""}. A Listener waits at its Mouth: ${far.rx}, ${far.ry}.${moveIn}`,far);else if(!f.moves)add("The Far Array",`${pieces}. The Listener is away; answer ${n} more relay${n===1?"":"s"} and one returns to its Mouth at ${far.rx}, ${far.ry}.`,far);else add("The Far Array",`Gate unlocked (tier ${f.gate}). No coordinate for the next Mouth yet: answer ${n} more relay${n===1?"":"s"}.`,null)}
   // Pentagon finding (Tim, 2026-11-05: "it's completely on you to find it"): neither a hunt nor a followed sigil is a quest entry,
   // a compass target or an Atlas pin; the Journal's own lines say, in words, which way and how far.
   { const at=secondNext(save);if(at)add(SECOND_WAYFARER.title,`Someone dressed as you, a section ahead. Go where they marked: ${secondFound(save)} of ${SECOND_WAYFARER.sightings} found.`,at,{kind:"quest",id:"second"}); } // the Second Wayfarer's trail: the compass follows it once taken up
@@ -1483,7 +1484,11 @@ resize();
 applyPresentationSettings();
 let leavingForProvingGround = false; // release 791: the journey was flushed for the Proving Ground and the page is leaving
 // Save hide fix (941 review): the save made as the page hides is written at once, not after a timer a hidden page throttles.
-const persist = (urgent = false) => leavingForProvingGround ? Promise.resolve() : measured("persist", () => saveGame(game.exportSnapshot(performance.now()), { urgent }));
+let saveWanted = false; // the Briar Stag fight stutter: a save asked for (persistSoon), made by the autosave below
+const persist = (urgent = false) => { clock = 0; saveWanted = false; return leavingForProvingGround ? Promise.resolve() : measured("persist", () => saveGame(game.exportSnapshot(performance.now()), { urgent })); };
+// The Briar Stag fight stutter (persistence.ts AUTOSAVE): a tap on the world or a resume asks for a save, and the autosave
+// makes it at the next calm moment (in a fight, with the fight's own cadence) instead of one long frame a tap.
+const persistSoon = () => { saveWanted = true; }, fightNow = () => fightUnderway(game); // fightNow: made once, asked only when a save is due
 function pause(show = true, urgent = false) {
   if (show) { overlayPause = false; closeViewLookSet(game, false, true); } // the pause menu ends Look mode; a talk, a shop or another panel over the world keeps it
   if (show) closeCompassMenu(false); // 2026-11-19: the pause menu closes the compass's quick menu (it stays paused under the menu)
@@ -1504,7 +1509,7 @@ function resume() {
   game.setPaused(false, performance.now());
   input.reset();
   last = performance.now();
-  persist();
+  persistSoon(); // the Briar Stag fight stutter: pause() saved as the game stopped; nothing has run since but the menus, which save their own changes
 }
 pausePanel.addEventListener("cancel",(event)=>event.preventDefault());
 // Release 125: Android's back gesture can close the pause menu even though its cancel is prevented (Chrome skips the
@@ -1588,9 +1593,11 @@ function renderFarGate(out){
   if(!save.relayNetwork?.coordinate){p.textContent=`No Mouth coordinate yet: the relay line has not answered. Answer five relays (restore or sever them) and the network will give you the Listener's Mouth. Gate pieces: ${f.toNext||0}/${piecesToUnlock(f.gate)}.`;return}
   const c=save.relayNetwork.coordinate,lean=relayLean(save),form=listenerForm(save);
   const cyc=listenerCycle(save),n=cyc.relaysToMove,relays=`${n} more relay${n===1?"":"s"}`,left=cyc.piecesToUnlock-cyc.pieces,R=LISTENER_RETURN.returnRelays;/* 2026-11-05: one Mouth per Gate (LISTENER_CYCLE v2) */
-  const where=cyc.state==="unlocked"?`The Gate is unlocked. The Mouth at ${c.rx}, ${c.ry} is spent: a town and a way into the Deep. No coordinate for the next Mouth yet: answer ${relays} (restore or sever) and the line will give it.`:cyc.state==="away"?`The Listener's Mouth: ${c.rx}, ${c.ry}. The Listener is away; answer ${relays} (restore or sever) and a Listener returns to this Mouth.`:`The Listener's Mouth: ${c.rx}, ${c.ry}. A Listener waits there${f.listeners?", beyond the Listener's Dais beside the Mouth":", in the Mouth's next run"}${LISTENER_CYCLE.sealsCall&&f.pieces<piecesNeeded(f.gate)?` once the seals of its call are broken (${f.pieces}/${piecesNeeded(f.gate)})`:""}.`;
-  p.textContent=`${where} Gate ${f.gate} pieces: ${cyc.pieces}/${cyc.piecesToUnlock}. Each Listener you fell locks one, and so does each Gate Revenant horde you break; ${left} more unlock the Gate, and then ${R} more relays give a new Mouth. After every kill the Listener leaves, and ${R} more relays call it back to this Mouth until its Gate is unlocked. Relays answered: ${lean.answered} (${lean.restored} restored, ${lean.severed} severed); every relay answered makes the Listener stronger, and it ${form==="open"?"wears your face":form==="walled"?"starves behind walls":"is both, by turns"}.`;
-  if(!(f.quiet&&f.moves)){const pinned=compassPin?.rx===c.rx&&compassPin?.ry===c.ry;out.append(uiButton(pinned?"The compass points to the Mouth":"Point compass to the Array Mouth",()=>{compassPin={rx:c.rx,ry:c.ry,name:"The Array Mouth"};rememberGuidance();openJournal("gate")}));} // release 443 (Tim: "a button... make this your active compass... so I can just start navigating to it")
+  const mv=cyc.movesIn,moveIn=mv==null?"":`${mv} more relay${mv===1?"":"s"}`;/* LISTENER_CYCLE v3 (Tim, 2026-11-25): the Mouth moves every five relays */
+  const where=cyc.cycle>=3?(cyc.state==="away"&&f.moves?`The Listener's Mouth: ${c.rx}, ${c.ry}. The Listener has left it; answer ${moveIn} (restore or sever) and the Mouth moves, with a Listener waiting at the new one.`:cyc.state==="away"?`The Listener's Mouth: ${c.rx}, ${c.ry}. The Listener is away; answer ${relays} (restore or sever) and a Listener returns to this Mouth. The Mouth moves in ${moveIn}.`:`The Listener's Mouth: ${c.rx}, ${c.ry}. A Listener waits there${f.listeners?", beyond the Listener's Dais beside the Mouth":", in the Mouth's next run"}. The Mouth moves in ${moveIn}.`):cyc.state==="unlocked"?`The Gate is unlocked. The Mouth at ${c.rx}, ${c.ry} is spent: a town and a way into the Deep. No coordinate for the next Mouth yet: answer ${relays} (restore or sever) and the line will give it.`:cyc.state==="away"?`The Listener's Mouth: ${c.rx}, ${c.ry}. The Listener is away; answer ${relays} (restore or sever) and a Listener returns to this Mouth.`:`The Listener's Mouth: ${c.rx}, ${c.ry}. A Listener waits there${f.listeners?", beyond the Listener's Dais beside the Mouth":", in the Mouth's next run"}${LISTENER_CYCLE.sealsCall&&f.pieces<piecesNeeded(f.gate)?` once the seals of its call are broken (${f.pieces}/${piecesNeeded(f.gate)})`:""}.`;
+  if(cyc.cycle>=3)p.textContent=`${where} Gate ${f.gate} pieces: ${cyc.pieces}/${cyc.piecesToUnlock}. Each Listener you fell locks one, and so does each Gate Revenant horde you break; ${left} more unlock the Gate. Every ${LISTENER_CYCLE.moveRelays} relays the Mouth moves farther out and a Listener waits at the new one; the pieces go with you, and every old Mouth stays a town. Relays answered: ${lean.answered} (${lean.restored} restored, ${lean.severed} severed); every relay answered makes the Listener stronger, and it ${form==="open"?"wears your face":form==="walled"?"starves behind walls":"is both, by turns"}.`;
+  else p.textContent=`${where} Gate ${f.gate} pieces: ${cyc.pieces}/${cyc.piecesToUnlock}. Each Listener you fell locks one, and so does each Gate Revenant horde you break; ${left} more unlock the Gate, and then ${R} more relays give a new Mouth. After every kill the Listener leaves, and ${R} more relays call it back to this Mouth until its Gate is unlocked. Relays answered: ${lean.answered} (${lean.restored} restored, ${lean.severed} severed); every relay answered makes the Listener stronger, and it ${form==="open"?"wears your face":form==="walled"?"starves behind walls":"is both, by turns"}.`;
+  if(cyc.coordinate){const pinned=compassPin?.rx===c.rx&&compassPin?.ry===c.ry;out.append(uiButton(pinned?"The compass points to the Mouth":"Point compass to the Array Mouth",()=>{compassPin={rx:c.rx,ry:c.ry,name:"The Array Mouth"};rememberGuidance();openJournal("gate")}));} // release 443 (Tim: "a button... make this your active compass... so I can just start navigating to it")
   const canvas=document.createElement("canvas");canvas.width=300;canvas.height=220;canvas.style.width="100%";canvas.style.maxWidth="300px";canvas.style.display="block";canvas.style.margin="8px auto";out.append(canvas);drawGate(canvas,f);
   const stats=document.createElement("p");stats.className="options-note";stats.textContent=`Runs ${f.runs} · Listeners felled ${f.listeners}${f.ending?` · You chose to ${f.ending==="close"?"close the last line":"leave the line open"}`:""}`;out.append(stats);
   if(f.offer.length){const t=document.createElement("h3");t.textContent="Choose a boon";out.append(t);for(const id of f.offer){const b=BOONS[id];out.append(settingRow(b.name,uiButton("Take",()=>{chooseBoon(save,id);syncCharacterStats(save);persist();openJournal("gate")}),b.text))}}
@@ -1745,7 +1752,7 @@ async function handOverJourney(button,{yard=null,say=optionMessage,place="the Pr
   if(saveBlocked())return say(`This journey is not being saved just now, so ${place} cannot take a copy of it.`,true);
   const target=new URL(PROVING_GROUND_HANDOFF.entryPath,location.href).href;button.disabled=true;say(`Saving your journey for ${place}…`);
   try{if(!navigator.onLine){const reg=await navigator.serviceWorker?.getRegistration?.(target);if(!reg?.scope?.endsWith("/proving-ground/"))throw new Error("it needs one online visit before it works offline")}
-    const result=await journeyOperation.run(async()=>{await persist();await flushSaves();await writeHandoff(handoffRecord(save,{release:1057,slot:getActiveSlot(),returnUrl:location.href.split("#")[0],yard}))});
+    const result=await journeyOperation.run(async()=>{await persist();await flushSaves();await writeHandoff(handoffRecord(save,{release:1064,slot:getActiveSlot(),returnUrl:location.href.split("#")[0],yard}))});
     if(result.busy){button.disabled=false;return say("Another journey operation is already finishing.",true)}
     leavingForProvingGround=true;setTimeout(()=>{leavingForProvingGround=false},5000);location.assign(target)}
   catch(error){button.disabled=false;say(`Could not enter ${place} (${error?.message||error}). Your journey is unchanged.`,true)}}
@@ -1757,6 +1764,9 @@ async function renderSettings(category){const grid=document.createElement("div")
     sel.value=save.fractured||"";const note=FRACTURED.modes[save.fractured]?.text||"Creatures as they have always been: a cleared place stays cleared.";
     sel.onchange=()=>{save.fractured=sel.value||null;persist();game.message=save.fractured?`${FRACTURED.modes[save.fractured].name} mode: the Corridor is breaking open. Towns, home and cleared dungeons stay safe.`:"Fractured mode off."};
     grid.append(settingRow("Fractured mode (this journey)",sel,`${note} More creatures, in packs with champions and rares, and more keep coming; towns, home, the Refuge lands and cleared dungeons stay safe. Takes full effect in the next place you enter.`));
+    // Spare gear (game.ts SPARE_GEAR, 2026-11-22): off by default, so spares are salvaged on pickup and once on load.
+    const dup=document.createElement("input");dup.type="checkbox";dup.checked=save.keepDuplicateGear===true;dup.onchange=()=>{if(dup.checked)save.keepDuplicateGear=true;else delete save.keepDuplicateGear;persist();game.message=dup.checked?"Duplicate gear is kept in your Pack.":"Spare duplicate gear is salvaged as you pick it up."};
+    grid.append(settingRow("Keep duplicate gear (this journey)",dup,"Off by default: a piece you pick up is salvaged at once when a piece of the same kind you keep matches or beats it on every count (tier, power, rank, sockets, glyphs, affixes), for what salvaging it by hand pays. Equipped, preset and sling gear is never touched."));
   }
   if(category==="Camera"){const cv=document.createElement("input");cv.type="checkbox";cv.checked=save.closeView===true;cv.onchange=()=>{save.closeView=cv.checked;persist();game.message=cv.checked?"Close View on: inside the Pentagon, buildings and keeps, the camera walks behind you.":"Close View off."};grid.append(settingRow("Close View: third-person camera indoors (prototype, this journey)",cv,"Off by default. Turn it on and step inside the Pentagon, a great building or a keep: a low camera follows behind the Wayfarer and turns with them; use the left joystick to walk the way the view looks. Drag the open screen outside the joystick to turn the view (or use the crescent, below); the bullseye at the right edge locks on. Hold the stick back toward the camera and swipe down on the right for a quick turnaround. Use Overworld Close View for courts, roofs and the rest of the game."));
     const worldCv=document.createElement("input");
@@ -1771,7 +1781,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)),settingRow("Soundtrack",selectSetting("soundtrack",[["adaptive","Adaptive"],["calm","Calm only"]]),"Adaptive: the music grows urgent in a fight and settles after. Calm only: no combat lift."),settingRow("Music in background",toggleSetting("backgroundMusic"),"Keeps the music playing when you switch apps or lock the screen. The game stays paused and effects are silent. Lock-screen play and pause control the music only."));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:1057,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 1057\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:1064,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 1064\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${Math.ceil(report.totalJourneyBytes/1024)} KB\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);provingGroundRows(grid); // release 791
@@ -1783,7 +1793,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};{const T=sectionTerrainCacheStats();probeTerrain={hits:T.hits,misses:T.misses,warms:crossWarms}}probePhases={};probePrevious=null;probe.start({release:1057,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};{const T=sectionTerrainCacheStats();probeTerrain={hits:T.hits,misses:T.misses,warms:crossWarms}}probePhases={};probePrevious=null;probe.start({release:1064,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -2969,11 +2979,11 @@ function frame(now) {
   if(tickScene(now))return;
   const viewportBefore = viewportSeq ? viewportClosedStage(viewportSeq, viewportReduced()) : null;
   // Release 281 (Tim's Dodge probes): the probe records what became of every Dodge press: dodged (and how far), or why not.
-  const dodgeAsked = probe.running && input.state.dodge ? { x: game.player.x, y: game.player.y, stamina: game.player.stamina, held: now < (game.player.heldUntil || 0), stunned: now < (game.player.stunnedUntil || 0) } : null;
+  const dodgeAsked = probe.running && input.state.dodge; if (dodgeAsked) probeDodge.before(game.player, now); // the Briar Stag fight stutter (diagnostic-probe.ts createDodgeWatch): one event a press, the whole dodge's ground
   if (!viewportBefore || viewportBefore.world) measured("update", () => simClockStep(simClock, game, dt, now, (stepDt, stepNow) => { const steer = !viewportSeq && closeViewSteer(game, input.state, stepNow); try { game.update(stepDt, viewportSeq ? VIEWPORT_QUIET_INPUT : input, stepNow); } finally { if (steer) closeViewUnsteer(input.state); } })); /* feel pass 1 (sim-clock.ts): the clamped frame dt feeds fixed 60 Hz steps, each at its own time */ // Close View: movement relative to the view
   duelSounds(); // the dino duel's sounds of battle (battle-sfx.ts)
   if (game.parryCue) { game.parryCue = false; playNoticeSound("parry"); } // Power Aegis: a perfect parry's ring (hit-cast-passives.ts POWER_AEGIS)
-  if (dodgeAsked) probe.event("dodge", game.player.dodgeUntil > now ? { result: "dodged", stamina: Math.round(dodgeAsked.stamina), moved: Math.round(Math.hypot(game.player.x - dodgeAsked.x, game.player.y - dodgeAsked.y) * 100) / 100 } : { result: dodgeAsked.stunned ? "stunned" : dodgeAsked.held ? "held (struggle)" : dodgeAsked.stamina < 15 ? "no stamina" : "refused", stamina: Math.round(dodgeAsked.stamina) });
+  if (probe.running) { const refused = dodgeAsked ? probeDodge.after(game.player, now, !input.state.dodge) : null, dodged = probeDodge.end(game.player, now); if (refused) probe.event("dodge", refused); if (dodged) probe.event("dodge", dodged); }
   closeViewLookGuard(game); // Look mode ends with a new area, death or leaving Close View (the pause menu, Pack, Map and Journal end it as they open)
   if (game.paused) return;
   const viewportStage = viewportFrame(probeInterval / 1000, now);
@@ -3025,10 +3035,7 @@ function frame(now) {
     if(probe.running){const left=Math.ceil(probe.remaining);buffs.push(`PROBE ${Math.floor(left/60)}:${String(left%60).padStart(2,"0")}`)}
     $("#buff").textContent = buffs.join(" · ");
   }
-  if ((clock += dt) > 8) {
-    clock = 0;
-    persist();
-  }
+  if (autosaveDue(clock += dt, saveWanted, fightNow)) persist(); // persistence.ts AUTOSAVE: 8 s calm, 30 s in a fight
   } catch(error) {
     console.error("Infinite Corridor frame recovered from an error",error);
     game.message="The Corridor stuttered, then found its rhythm again.";

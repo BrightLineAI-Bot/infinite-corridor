@@ -2347,12 +2347,12 @@ test("ranged ecology mixes visible bolts with uncanny instant strikes",()=>{
   const bolt=createCombatant("sparkWarden",2,2),instant=createCombatant("veilMoth",2,2),map={tiles:Array.from({length:100},()=>({kind:"ash",blocked:false}))},p={x:3,y:2};bolt.telegraph=instant.telegraph=.01;let shots=0;assert.equal(updateEnemyAI(bolt,p,map,10,.02,1,null,()=>shots++),false);assert.equal(shots,1);assert.equal(instant.instantStrike,true);assert.equal(updateEnemyAI(instant,p,map,10,.02,1,null,()=>shots++),true);assert.equal(shots,1);
 });
 
-test("release 1057 loads normal play and the isolated Proving Ground coherently",()=>{
+test("release 1064 loads normal play and the isolated Proving Ground coherently",()=>{
   const html=readFileSync(new URL("../index.html",import.meta.url),"utf8"),sw=readFileSync(new URL("../sw.js",import.meta.url),"utf8");
   const build=readFileSync(new URL("../scripts/build.mjs",import.meta.url),"utf8");
-  assert.match(html,/const release = "1057"/);assert.match(html,/styles\.css\?v=1057/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
-  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v1057`/);assert.match(sw,/styles\.css\?v=1057/);assert.match(sw,/proving-ground-labs\.js\?v=1057/);assert.match(sw,/dungeon-framework\.js\?v=1057/);assert.match(sw,/renderer\.js\?v=1057/);
-  assert.match(build,/release='1057'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
+  assert.match(html,/const release = "1064"/);assert.match(html,/styles\.css\?v=1064/);assert.match(html,/params\.get\("dev"\) === "proving-ground"/);assert.match(html,/import\(\`\$\{entry\}\?v=\$\{release\}\`\)/);
+  assert.match(sw,/CACHE_PREFIX = "infinite-corridor-"/);assert.match(sw,/`\$\{CACHE_PREFIX\}v1064`/);assert.match(sw,/styles\.css\?v=1064/);assert.match(sw,/proving-ground-labs\.js\?v=1064/);assert.match(sw,/dungeon-framework\.js\?v=1064/);assert.match(sw,/renderer\.js\?v=1064/);
+  assert.match(build,/release='1064'/);assert.match(build,/proving-ground-labs/);assert.match(build,/\.js\?v=\$\{release\}/);
   assert.doesNotThrow(()=>new Script(sw),"normal-play service worker parses");
   assert.doesNotThrow(()=>new Script(readFileSync(new URL("../proving-ground/sw.js",import.meta.url),"utf8")),"Proving Ground service worker parses");
 });
@@ -3020,7 +3020,7 @@ test("overworld performance caches structure geometry and failed chase retries",
   assert.match(game,/ai\.pathRetryAt=now\+350/);
   assert.match(game,/activeEnemySet\.has\(e\)/);
   assert.match(main,/const pending=save\.scenes\?\.pending/);
-  assert.match(main,/if \(\(clock \+= dt\) > 8\)/);
+  assert.match(main,/if \(autosaveDue\(clock \+= dt, saveWanted, fightNow\)\) persist\(\);/); // the Briar Stag fight stutter: the 8 s autosave is persistence.ts AUTOSAVE.every (30 s in a fight)
 });
 
 test("story scenes are deterministic bounded and commit exactly once",()=>{const a=freshSave(),b=freshSave();assert.equal(sceneVariant(a,"rift-arrival","one"),sceneVariant(b,"rift-arrival","one"));assert.equal(Object.keys(SCENE_DEFINITIONS).length,4);assert.equal(queueScene(a,"rift-arrival","one"),true);const full=scenePlaybackPlan(a,"rift-arrival",{quality:"high"}),low=scenePlaybackPlan(a,"rift-arrival",{quality:"low",reduceMotion:true});assert.ok(full.shots.length>=2);assert.equal(low.layers,1);assert.ok(low.shots.every(q=>q.camera==="still"));assert.equal(commitScene(a,"rift-arrival"),true);assert.equal(commitScene(a,"rift-arrival"),false);assert.deepEqual(scenePlaybackPlan(a,"rift-arrival"),null);assert.equal(a.narrative.facts["scene.riftArrival"],true)});

@@ -38,6 +38,18 @@ export function ensureSalvageYield(save) {
   return save.salvageYield;
 }
 export const salvageYieldMode = (save) => ensureSalvageYield(save).mode;
+// Spare gear (game.ts SPARE_GEAR, 2026-11-22): `save.spareGearSwept` (the version of the one-time sweep of the pack's spares
+// that has run) and `save.keepDuplicateGear` (Options: true keeps spares; absent, the default, salvages them). Both additive at
+// schema 14: a new journey has nothing to sweep, so it starts swept; a loaded one keeps a sound version and is swept once if it
+// has none. Only `true` keeps duplicates.
+export const SPARE_GEAR_STATE = Object.freeze({ flag: "spareGearSwept", keep: "keepDuplicateGear", version: 1 });
+// `from` is the stored journey migrateSave read (its result starts from a fresh save's fields, which must not stand in for it).
+export function ensureSpareGear(save, fresh = false, from = save) {
+  const S = SPARE_GEAR_STATE, v = Math.floor(Number(from?.[S.flag]));
+  if (fresh) save[S.flag] = S.version; else if (Number.isFinite(v) && v >= 1) save[S.flag] = v; else delete save[S.flag];
+  if (from?.[S.keep] === true) save[S.keep] = true; else delete save[S.keep];
+  return save;
+}
 export function setSalvageYield(save, mode) {
   if (!SALVAGE_YIELD.modes.includes(mode)) return { ok: false, message: "Salvage cannot yield that." };
   ensureSalvageYield(save).mode = mode;

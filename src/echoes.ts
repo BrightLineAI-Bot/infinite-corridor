@@ -76,7 +76,7 @@ export const SPINO_ECHO = { delay: .32, share: .5, stunShare: 1 };
 // inside grows it by `grow` tiles (to `maxRadius`) and adds `extend` s to its time (from `seconds`, at most `cap` s after it was planted).
 // It stays where it was planted. When it ends, a new one can be planted `cooldown` ms later. Runtime only (game.earthResolve): a reload
 // drops the sigil; only its cooldown clock (player.echoResolveReadyAt) resumes, as the other Echo clocks do.
-export const APATO_ECHO = { still: .25, radius: 1.6, maxRadius: 4, grow: .2, seconds: 4, extend: .6, cap: 10, guard: .25, lifesteal: .1, cooldown: 4000 };
+export const APATO_ECHO = { still: .25, radius: 1.6, maxRadius: 4, grow: .2, seconds: 4, extend: .6, cap: 10, guard: .15, lifesteal: .08, cooldown: 4000 }; // Tim (2026-11-25): guard .25 → .15, lifesteal .1 → .08; the heal stays its own, outside the shared heal-on-hit cap
 export const ECHOES = {
   thunderhorn: { name: "Thunderhorn's Charge", cost: 2, trigger: "dodge", module: "ramCharge", text: "Your dodge becomes a charge: foes you pass through are trampled and staggered." },
   riftLynx: { name: "Lynx Pounce", cost: 2, trigger: "dodge", module: "blinkStrike", text: "Your first strike within 1.2 s of a dodge deals +60%." },
