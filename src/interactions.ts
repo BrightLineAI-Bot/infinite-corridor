@@ -30,6 +30,14 @@ export function progressLead(s,type){const f=s.narrative.facts;if(!f['leads.acti
 export const APERTURE_TIER_DUE=new WeakSet();
 export function gainAperture(s,amount,source,message='Your Aperture widens.',record=true){ensurePerceptionInPlace(s);/* perf pack: no copy of the awarded map per kill */if(s.perception.awarded[source])return 0;if(record)s.perception.awarded[source]=true;const before=apertureTier(s.perception.aperture);s.perception.aperture=cappedAperture(s,s.perception.aperture+Math.max(0,Math.floor(amount)));/* release 275: no further than the stage allows */const after=apertureTier(s.perception.aperture),names=APERTURE_BANDS.map(b=>b.name.toLowerCase());s.apertureBand=APERTURE_BANDS[after]?.id||'resonant';if(after>before){APERTURE_TIER_DUE.add(s);s.perception.announcedTier=after;journalOnce(s,'aperture-tier:'+after,message+` The world enters its ${names[after]} manifestation: future eligible encounters may answer differently, while completed stories and known creatures remain. Sela can now interpret new Aperture disciplines.`,'Aperture')}return amount}
 export function journalOnce(s,id,text,title='Consequences'){if(s.narrative.journal.some(j=>j.recordId===id))return;s.narrative.journal.push({recordId:id,instanceKey:'record:'+id,title,text,provenance:'original'});}
+// Tim (2026-11-25): the Journal logged every buried crossing cleared ("You cleared the guardian of this buried crossing..."). Shown
+// now: only those whose crossing held a relay (its history's relayNode); the rest fold into one count line where the first of them
+// stood. Display only: every record stays in the save as it was.
+export const JOURNAL_CROSSINGS=Object.freeze({prefix:'resolved:',title:'Crossings',foldedId:'crossings-cleared-folded'});
+export function journalDisplayEntries(s,entries=s?.narrative?.journal||[]){const C=JOURNAL_CROSSINGS,out=[];let folded=0,at=-1;
+  for(const j of entries){const id=String(j?.recordId||'');if(id.startsWith(C.prefix)&&s?.consequences?.dungeons?.[id.slice(C.prefix.length)]?.relayNode!==true){if(at<0)at=out.length;folded++;continue;}out.push(j);}
+  if(folded)out.splice(at,0,{recordId:C.foldedId,title:C.title,text:`Buried crossings cleared without a relay: ${folded}.`,folded,provenance:'original'});
+  return out;}
 export function resolveThread(s,id,ending){const prior=s.consequences.threads[id];if(prior?.status==='resolved')return prior.ending===ending;s.consequences.threads[id]={status:'resolved',ending};return true;}
 export function npcState(s,id){return s.consequences.npcs[id];}
 // The old harm actions some generated residents still list (types.ts REFUGE_NPCS); never offered (Tim, 2026-11-20).

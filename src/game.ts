@@ -220,7 +220,7 @@ const CLONE_HIT = Object.freeze({ melee: true, clone: true }); // the Shadow Clo
 export const PLAYER_CLOCKS = ["landRollUntil" /* FALL.rollPose, drawn only */, "castUntil", "attackReadyAt", "attackUntil", "actionVisualUntil", "primaryVisualUntil", "fistVisualUntil", "meleeUntil", "dodgeReadyAt", "invulnerableUntil", "dodgeUntil", "heldUntil", "stunnedUntil", "stunnedAt", "shockAt", "slowUntil", "confusedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoResolveReadyAt", "echoMirrorReadyAt"];
 export const GAME_CLOCKS = ["jumpUntil", "jumpStart", "kiSlamJump" /* the Ki Blast leap the slam belongs to: shifts with jumpStart (r946 review) */, "toolReadyAt", "golemReadyAt", "orreryLockUntil" /* the Aether Orrery overload */, "aegisUntil", "aegisLockUntil", "aegisPerfectUntil", "powerAegisUntil", "parryFlashAt", "reflectFlashAt" /* Power Aegis: the perfect window, the empowerment, the flashes (drawn only) */, "boxingUntil", "imbueUntil", "essenceUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "unstickReadyAt", "_inkShieldAt", "lastCrownAt", "plungeRecoverUntil" /* jump attacks */];
 // Timers inside runtime objects: { owner: [fields] } on the Game, and on the player.
-export const GAME_NESTED_CLOCKS = { triceratopsDash: ["until"], triceratopsJump: ["start", "until", "drillUntil", "nextAt"] /* mounted contacts follow the same paused dodge/leap */, golem: ["start", "nextAt", "sinkAt"], orbit: ["start"], fistCharge: ["start"], fistCombo: ["until"], fistBeat: ["at", "opens", "closes"] /* the rhythm window and its ball */, fistFlash: ["at"], fistQueued: ["until"], fistReleaseIntent: ["expiresAt"], shadowClone: ["until"], pendingToolUse:["acceptedAt","releaseAt"], aimMark: ["until"], rite: ["started", "until", "nextAt"], treeRise: ["start", "end", "nextRubble"], fracState: ["nextAt"], stalkFog: ["until"], ledgeHint: ["until"], fallen: ["until"], edgeHold: ["at"] /* perf pack P6 EDGE_HOLD: a wall-clock stamp */, plunge: ["start", "until"] /* jump attacks */, cycloneHold: ["start"] /* the Cyclone Heel's held press */ };
+export const GAME_NESTED_CLOCKS = { lockSeen: ["at"] /* AIM_RESOLVE: a pause keeps a hidden lock's last seen spot */, triceratopsDash: ["until"], triceratopsJump: ["start", "until", "drillUntil", "nextAt"] /* mounted contacts follow the same paused dodge/leap */, golem: ["start", "nextAt", "sinkAt"], orbit: ["start"], fistCharge: ["start"], fistCombo: ["until"], fistBeat: ["at", "opens", "closes"] /* the rhythm window and its ball */, fistFlash: ["at"], fistQueued: ["until"], fistReleaseIntent: ["expiresAt"], shadowClone: ["until"], pendingToolUse:["acceptedAt","releaseAt"], aimMark: ["until"], rite: ["started", "until", "nextAt"], treeRise: ["start", "end", "nextRubble"], fracState: ["nextAt"], stalkFog: ["until"], ledgeHint: ["until"], fallen: ["until"], edgeHold: ["at"] /* perf pack P6 EDGE_HOLD: a wall-clock stamp */, plunge: ["start", "until"] /* jump attacks */, cycloneHold: ["start"] /* the Cyclone Heel's held press */ };
 export const PLAYER_NESTED_CLOCKS = { echoCharge: ["until"], echoMist: ["until"] };
 // Timers inside lists of runtime objects on the player: { list: [fields] } (release 737: the haunt curses).
 export const PLAYER_LIST_CLOCKS = { curses: ["until", "at"] };
@@ -885,6 +885,11 @@ export function placeDungeonIndoors(map, seed, rx, ry) {
   const t = spots[(h >>> 10) % spots.length]; Object.assign(d, { x: t.x, y: t.y, indoors: true }); return d;
 }
 export const DODGE_BURST = { chainRadius: .8 }; // release 481: a Chain armor glyph's second burst, as a share of the first burst's radius
+// Tim 2026-11-25 (stuck aim: "I had locked onto [the Stalker] and the shots weren't firing at him"): a shot's aim is resolved
+// lock first. A lock whose foe has just hidden or turned untargetable (the Stalker's lurk, veil, mirage, mist and tide) still
+// aims at the spot it was last seen, and for `memoryMs` after a lock drops (Close View lets go of a hiding foe at once) a shot
+// with nothing better goes there too, never back along the stick. A tapped ground aim counts only while its reticle shows.
+export const AIM_RESOLVE = { memoryMs: 2400 };
 export const AIM_MARK = { ms: 450 }; // release 469: how long the struck foe stays marked
 const ART_PROFILE = Object.freeze({ shape: "staff", range: 0, arc: 0 }); // weapon-arts.ts: an art draws its own swing (game.ts artVisual)
 export const autoAimBody = (e) => Math.max(0, Number(e.bodyRadius) || 0, ((Number(e.scale) || 1) - 1) * .5);
@@ -3323,10 +3328,11 @@ export class Game {
         );
       const pending = this.save.pendingAim,
         last = { ...this.save.lastAim };
-      this.save.lastAim = this.player.meleeAim;
+      this.save.lastAim = this.player.meleeAim; this._pendingAimTaken = false;
       const hits = attack(now, explicitDirection, committed);
       this.save.lastAim = last;
-      this.save.pendingAim = pending;
+      if (!this._pendingAimTaken) this.save.pendingAim = pending; // a swing leaves a tap for the next Tool or Spell; a staff hand that took it used it up (AIM_RESOLVE)
+      this._pendingAimTaken = false;
       this.recordPrimaryConsequences(hits);
       return hits;
     };
@@ -9780,7 +9786,7 @@ export class Game {
     if (this.penned(now)) return [];
     if (!echo && this.cursed("attack", now)) return []; // release 737: NO ATTACK (the Iron Fists too)
     if (!committed&&this.fistsEquipped()) { if (!echo) this.fistPress(now, _direction, this.attackAction || null); return []; } // release 493: the Iron Fists punch instead of swinging
-    if (!committed&&this.quandrixEquipped()) { if (!echo) quandrixPress(this, now, _direction || this.player.meleeAim || this.save.lastAim, this.attackAction || null); return []; } // the Quandrix Staff casts hands (quandrix-staff.ts)
+    if (!committed&&this.quandrixEquipped()) { if (!echo) quandrixPress(this, now, _direction || this.lockSeenDirection() || this.player.meleeAim || this.save.lastAim, this.attackAction || null); return []; } // the Quandrix Staff casts hands (quandrix-staff.ts)
     const swingCall=echo?.swing||null,swingKind=!echo?this.swingWeaponKind():null; // melee-swing.ts: a weighted swing (the Verge Cleaver) runs its own clock
     if(swingKind&&this.pendingMeleeContact?.v===3&&!this.swingChainDue(now))return[];
     const glyphs = this.glyphLoadout("melee");
@@ -9889,21 +9895,9 @@ export class Game {
     if (!weapon || now < (this.player.attackReadyAt || 0)) return false;
     const acceptedToolKind = weapon.name === "Rift Bombard" ? "rift-bombard" : weapon.name === "Blunderbuss" ? "blunderbuss" : weapon.name === "Lumen Spindle" ? "lumen-spindle" : null;
     if(acceptedToolKind&&this.closeViewActionEligible()){const c=Number(this.save.toolUseCounter);if(!Number.isSafeInteger(c)||c<0||c>=Number.MAX_SAFE_INTEGER)return false;}
-    let d, aimedDistance = null;
-    if (this.save.pendingAim) {
-      aimedDistance = Math.hypot(this.save.pendingAim.x-(this.player.x+.5),this.save.pendingAim.y-(this.player.y+.45));
-      d = projectileDirection(
-        this.save.pendingAim.x - (this.player.x + 0.5),
-        this.save.pendingAim.y - (this.player.y + 0.45),
-        this.player.facing,
-      );
-      this.save.pendingAim = null;
-    } else
-      d = projectileDirection(
-        direction?.x ?? this.save.lastAim.x,
-        direction?.y ?? this.save.lastAim.y,
-        this.player.facing,
-      );
+    let aimedDistance = null;
+    const d = this.shotAim(direction), q = this._shotAimPoint; // AIM_RESOLVE: the lock first (a tap or a stale aim never beats it), then a fresh tap
+    if (q) aimedDistance = Math.hypot(q.x-(this.player.x+.5),q.y-(this.player.y+.45));
     this.save.lastAim = d;
     const toolKind = acceptedToolKind;
     const delayed=!!toolKind&&this.closeViewActionEligible(),effectiveCooldown=TOOL_PRESS.ms*glyphs.mods.cooldown*(1-armorGlyphBonus(this.save).attackSpeed),startupMs=delayed?toolUseStartupMs(toolKind,effectiveCooldown):null;
@@ -10004,8 +9998,7 @@ export class Game {
   quandrixOpen(x, y) { return Number.isFinite(x) && Number.isFinite(y) && projectileTileOpen(this.map, mapWidth(this.map, this.area), x, y); }
   quandrixDrag(e, dx, dy) { if ([dx, dy].every(Number.isFinite)) this.moveGrounded(e, dx, dy); } // the shared ordinary-displacement adapter: never into a wall or lethal ground
   quandrixAim(direction) {
-    const p = this.player; if (this.save.pendingAim) { const q = this.save.pendingAim; this.save.pendingAim = null; return projectileDirection(q.x - (p.x + .5), q.y - (p.y + .45), p.facing); }
-    const locked = this.lockedDirection(); if (locked) return projectileDirection(locked.x, locked.y, p.facing);
+    const p = this.player, chosen = this.lockAim() || this.freshPendingAim(); if (chosen) return this.shotAim(direction); // AIM_RESOLVE: the lock (or where it hid), then a fresh tap
     if (direction && Math.hypot(direction.x, direction.y) > .01) return projectileDirection(direction.x, direction.y, p.facing);
     const H = QUANDRIX.hand, auto = selectRangedAim(p, this.enemies, this.map, mapWidth(this.map, this.area), H.speed * H.life * (1 + characterStats(this.save).attackReach));
     return auto ? projectileDirection(auto.x, auto.y, p.facing) : projectileDirection(this.save.lastAim?.x ?? 0, this.save.lastAim?.y ?? 0, p.facing);
@@ -10229,10 +10222,7 @@ export class Game {
     const v = stampAttackVisual(this.player, "emitter", CARBINE.poseMs, d); this.player.attackUntil = now + ACTION_MOTION.toolMs;
     if (!v) return; v.toolAppearance = { v: 1, kind: "carbine" }; this.player.actionVisualUntil = now + CARBINE.poseMs;
   }
-  carbineAim(direction) {
-    if (this.save.pendingAim) { const q = this.save.pendingAim; this.save.pendingAim = null; return projectileDirection(q.x - (this.player.x + .5), q.y - (this.player.y + .45), this.player.facing); }
-    return projectileDirection(direction?.x ?? this.save.lastAim?.x ?? 0, direction?.y ?? this.save.lastAim?.y ?? 0, this.player.facing);
-  }
+  carbineAim(direction) { return this.shotAim(direction); } // AIM_RESOLVE: the lock, a fresh tap, then the given way
   // A press: with a held button (`action`), the charge starts and the beam fires on release (tickCarbine); without one (auto
   // attack), a tap beam fires at once. Refused while the last beam recovers, with no room for a shot, or with no round to fire.
   // Reliable holds (Tim, 2026-11-25: "I can't just hit the button and hold it, then hit it and hold it"): a held press (with a
@@ -12419,13 +12409,13 @@ export class Game {
   // will go towards the... monster that we clicked... until we click on another monster"; "rift step will still go in the
   // direction that you're pointing"). Tapping a creature locks it; while it lives and stays near, swings aim at it when it is
   // in reach and every tool shot and spell aims at it (save.lastAim follows it each frame). Tapping it again releases it.
-  lockTarget(id) {
+  lockTarget(id, { keepSeen = false } = {}) {
     // Release 347 (Tim: "the tap to targeting system... is inconsistent... when we tap on a target it kills them"): tapping
     // the locked creature again keeps the lock (a double tap mid-fight no longer drops it); it ends when the target falls or
     // is left behind, or with lockTarget(null).
-    if (!id) { this.targetId = null; this.message = "Target released."; return null; }
+    if (!id) { this.targetId = null; if (!keepSeen && this.lockSeen) this.lockSeen.id = ""; this.message = "Target released."; return null; } // AIM_RESOLVE: a lock let go on purpose leaves no aim behind; one that hid (Close View, keepSeen) does
     const e = this.enemies.find((q) => q.id === id && !q.dead); if (!e) return null;
-    const fresh = this.targetId !== id; this.targetId = id; if (fresh) this.message = `Targeting ${e.name || e.kind}.`; return e;
+    const fresh = this.targetId !== id; this.targetId = id; if (fresh) this.message = `Targeting ${e.name || e.kind}.`; this.noteLockSeen(); return e;
   }
   lockedTarget() {
     if (!this.targetId) return null;
@@ -12447,6 +12437,35 @@ export class Game {
     const e = this.lockedTarget(); if (!e || e.untargetable || e.hidden) return null;
     const dx = e.x + .5 - (this.player.x + .5), dy = e.y + .45 - (this.player.y + .45);
     return Math.hypot(dx, dy) <= within ? projectileDirection(dx, dy, this.player.facing) : null;
+  }
+  // AIM_RESOLVE: the last place the locked foe was seen (one reused record, runtime only). Noted each frame and on a lock.
+  noteLockSeen(now = this.lastUpdateNow || 0) {
+    const e = this.lockedTarget(); if (!e || e.hidden || e.untargetable) return;
+    const m = (this.lockSeen ||= { id: "", x: 0, y: 0, at: -Infinity, map: null }); m.id = e.id; m.x = e.x; m.y = e.y; m.at = now; m.map = this.map;
+  }
+  lockSeenDirection(id = null, now = this.lastUpdateNow || 0) {
+    const m = this.lockSeen; if (!m || !m.id || m.map !== this.map || !(this.player.hp > 0) || (id ? m.id !== id : now - m.at > AIM_RESOLVE.memoryMs)) return null; // never across a change of place, nor after death
+    const e = this.enemies.find((q) => q.id === m.id); if (!e || e.dead) return null;
+    return projectileDirection(m.x + .5 - (this.player.x + .5), m.y + .45 - (this.player.y + .45), this.player.facing);
+  }
+  // Where a shot goes for a lock: at the foe, or (it hid) where it was last seen. Null with no lock.
+  lockAim() {
+    const d = this.lockedDirection(); if (d) return d;
+    const e = this.lockedTarget(); return e ? this.lockSeenDirection(e.id) : null;
+  }
+  // A tapped ground aim (aimAt), only while its reticle still shows; a faded one is dropped. (Restored saves carry no reticle:
+  // their aim stands until used, as before.)
+  freshPendingAim() {
+    if (this.save.pendingAim && this.reticle && !(this.reticle.life > 0)) this.save.pendingAim = null;
+    return this.save.pendingAim;
+  }
+  // A shot's aim (the tool, the Carbine, the Quandrix Staff): the lock (or where it hid), then a fresh tap, then `direction`
+  // (the caller's choice: a tap, auto aim, the stick), else the saved aim. A lock clears a waiting tap; a tap used is consumed
+  // (`_shotAimPoint` holds it for the tool's lob distance).
+  shotAim(direction = null) {
+    const p = this.player, lock = this.lockAim(); this._shotAimPoint = null; if (lock) { this.save.pendingAim = null; this._pendingAimTaken = true; return lock; }
+    const q = this.freshPendingAim(); if (q) { this.save.pendingAim = null; this._pendingAimTaken = true; this._shotAimPoint = q; return projectileDirection(q.x - (p.x + .5), q.y - (p.y + .45), p.facing); }
+    return projectileDirection(direction?.x ?? this.save.lastAim?.x ?? 0, direction?.y ?? this.save.lastAim?.y ?? 0, p.facing);
   }
   // The creature under a world tap, if any (nearest whose body covers the point).
   enemyAt(x, y) {
@@ -12724,7 +12743,7 @@ export class Game {
       this.save.toolMode = true;
       let toolAccepted=false;const bt = rangedWeapon(this.save.equipment.secondary)?.brawlerTool; if (bt) toolAccepted=this.brawlerTool(bt, now); else { // release 493: Hammerfall and Great Sweep
       const weapon=rangedWeapon(this.save.equipment.secondary),width=mapWidth(this.map,this.area),
-        aim=weapon&&(this.lockedDirection()||selectRangedAim(this.player,this.enemies,this.map,width,(weapon.carbine?CARBINE.range:weapon.speed*weapon.lifetime*AUTO_AIM.rangedScale)*(1+characterStats(this.save).attackReach))); // release 343; 347: a locked target first; the Carbine looks as far as its beam reaches
+        aim=weapon&&(this.lockAim()||this.lockSeenDirection()||selectRangedAim(this.player,this.enemies,this.map,width,(weapon.carbine?CARBINE.range:weapon.speed*weapon.lifetime*AUTO_AIM.rangedScale)*(1+characterStats(this.save).attackReach))); // release 343; 347: a locked target first; the Carbine looks as far as its beam reaches
       toolAccepted=this.fireSecondary(now, aim || this.save.lastAim, "tool"); // the Aether Orrery charges while Tool is held
     } if(toolAccepted)this.cancelPendingMeleeContact('tool'); }this._toolInputUpdate=false;
     if (this.shadowClone?.charging) this.tickCloneCharge(!!input.held?.(this.shadowClone.charging.action), now); // release 417
@@ -13336,7 +13355,7 @@ export class Game {
     tickBuilds(this, dt, (e) => ATTACK_MODULES[e.pack?.attack]?.tags || []); // release 265: builds crumble; rushing world beasts break them
     this.tickHorde(dt); // release 269: the horde keeps coming
     this.tickMire(dt, now); // release 303
-    { const aim = this.lockedDirection(); if (aim) { this.save.lastAim = aim; this.save.pendingAim = null; } } // release 309: aim follows a locked target
+    { const aim = this.lockAim(); if (aim) { this.save.lastAim = aim; this.save.pendingAim = null; } this.noteLockSeen(now); } // release 309: aim follows a locked target; AIM_RESOLVE: also while it hides, toward where it was last seen
     if (this.area === "dungeon") this.dungeonClock = (this.dungeonClock || 0) + dt; // release 271
     this.tickSeaIce(dt); // release 261: the Mountain Turtle's ice floor freezes and thaws
     // Open-sea hazards (release 152): whirlpools, rogue waves and drifting ice.

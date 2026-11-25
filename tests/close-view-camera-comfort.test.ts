@@ -19,7 +19,7 @@ function frame(g, n = 1, before = () => {}) {
 }
 function fixture(scenario = 'heart') {
   const g = createLabFixture({ lab: 'close-view', scenario, now: 1000 }).game;
-  g.enemies = []; g.save.closeViewAutoFollow = true;
+  g.enemies = []; g.save.closeViewAutoFollow = true; g.save.closeViewPreset = 'standard'; // 2026-11-25: these pin the standard preset's rig (the default before overShoulder)
   if (scenario === 'heart') {
     // Use the widest existing square. Do not regenerate or alter any room tiles.
     let best = { x: g.player.x, y: g.player.y, r: -1 };
