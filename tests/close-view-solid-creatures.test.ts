@@ -77,7 +77,7 @@ test('designed opacity per kind: every creature is solid unless its profile flag
 
 function lane(scenario = 'terrain-ramps', now = 100000) {
   const { game } = createLabFixture({ lab: 'close-view', scenario, now });
-  game.presentation = { effectiveQuality: 'full', reduceMotion: true };
+  game.presentation = { effectiveQuality: 'full', reduceMotion: true }; game.save.closeViewPreset = 'standard'; // 2026-11-25: the distances below are in the standard preset's view (the default before overShoulder)
   return game;
 }
 // A creature `d` tiles ahead of the camera's eye along its view (camera depth about d), on the Wayfarer's level.

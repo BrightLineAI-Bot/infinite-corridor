@@ -190,6 +190,9 @@ function cachedRegionSignals(seed,rx,ry,generation){const key=`${seed}:g${genera
 // Release 167: each section crossing used to generate the five to ten newly in-range sections inside the crossing frame
 // (a visible hitch on a phone). main.ts calls this between frames to fill the cache, one section per call, for every
 // section the next crossing can ask about (radius 5). Returns true once all of them are cached.
+// The signals a section holds (a buried crossing, an unusual site), from the same cache the waymarks read. 2026-11-25: the compass keeps
+// a chosen far signal while its section is unexplored (main.ts objectiveList).
+export function sectionSignals(seed,rx,ry,generation=1){return cachedRegionSignals(seed,rx,ry,generation)}
 export function warmWayfindingSignals(seed,rx,ry,generation=1,limit=1,save=null){if(guidedSection(save,rx,ry))return true;/* waymark guides: guided ground asks no neighbour */let done=0;for(let radius=0;radius<=5;radius++)for(let oy=-radius;oy<=radius;oy++)for(let ox=-radius;ox<=radius;ox++){if(Math.abs(ox)+Math.abs(oy)!==radius||wayfindingSignalCache.has(`${seed}:g${generation}:${rx+ox},${ry+oy}`))continue;if(done>=limit)return false;cachedRegionSignals(seed,rx+ox,ry+oy,generation);done++}return true}
 export function wayfindingCacheStats(){return{size:wayfindingSignalCache.size,limit:WAYFINDING_SIGNAL_CACHE_LIMIT,hits:wayfindingSignalHits,misses:wayfindingSignalMisses}}
 export function clearWayfindingCache(){wayfindingSignalCache.clear();wayfindingSignalHits=wayfindingSignalMisses=0}

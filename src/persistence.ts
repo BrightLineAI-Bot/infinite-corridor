@@ -309,6 +309,29 @@ let lastWriteError=null;
 // of an unchanged area is reused from the previous save; only the rest of the save and changed areas are copied again.
 const areaCopies=new WeakMap();
 export function snapshotSave(save,updatedAt=Date.now()){const areas=save?.session?.areas;if(!areas||typeof areas!=="object"||Array.isArray(areas))return structuredClone({...save,updatedAt});const prev=mainCopies.get(save),live={...save,updatedAt,session:{...save.session,areas:null}},main=prev?shareCopy(live,prev):firstCopy(live),copies={};/* perf pack: unchanged parts reuse their copies */mainCopies.set(save,main);for(const[key,area]of Object.entries(areas)){if(!area||typeof area!=="object"){copies[key]=structuredClone(area);continue}let copy=areaCopies.get(area);if(!copy){copy=structuredClone(area);areaCopies.set(area,copy)}copies[key]=copy}const snapshot={...main,session:{...main.session,areas:copies}};sharedSnapshots.add(snapshot);return snapshot}
+// The Briar Stag fight stutter (Tim, 2026-11-22, r1050 probe: 37 saves in 277 s of a Briar Stag fight, each frame's persist
+// phase 19-38 ms on his phone with a 17 MB journey): besides the 8 s autosave, every tap on the world (attack, act, build,
+// Rift Step, Shadow Clone) and every resume saved at once. Each save walks the whole main record (snapshotSave), so in a
+// fight those taps put a long frame every second or two. The autosave policy (main.ts):
+// - calm play: every `every` seconds of play, as before; a save asked for by a tap or a resume (`pending`) comes `soon`
+//   seconds after the last one, coalescing a burst of taps into one;
+// - in a fight (a live foe within `fightReach` tiles hunting the Wayfarer), nothing until `fightEvery` seconds since the last
+//   save, or the fight ends (the first calm frame then saves what is due).
+// Exact resume is unchanged: the save made as the page hides (urgent) and the pause menu's save still happen at once, and
+// every reward, purchase and menu choice is saved by its own call as before. A crash in a fight loses at most `fightEvery`
+// seconds (a foe killed in them is still alive, its reward not yet paid, so nothing is paid twice).
+export const AUTOSAVE = Object.freeze({ every: 8, soon: 1, fightEvery: 30, fightReach: 14 });
+// since: seconds of play since the last save; pending: a save was asked for; fighting: called only when its answer matters.
+export function autosaveDue(since, pending, fighting, A = AUTOSAVE) {
+  if (!(since >= A.soon) || (!pending && !(since >= A.every))) return false;
+  return fighting() ? since >= A.fightEvery : true;
+}
+// A live, hunting foe near the Wayfarer (a bounded scan of the area's creatures, made only when a save is due).
+export function fightUnderway(game, A = AUTOSAVE) {
+  const p = game?.player, list = game?.enemies; if (!p || !Array.isArray(list)) return false;
+  for (let i = 0; i < list.length; i++) { const e = list[i]; if (e && !e.dead && e.aggro && !e.friendly && !(e.hp <= 0) && Math.hypot(e.x - p.x, e.y - p.y) <= A.fightReach) return true; }
+  return false;
+}
 export function saveGame(save,options={}){const slot=getActiveSlot();if(writeBlocked.has(slot))return writeQueue=Promise.resolve();/* release 734 */ensureProductionTriceratops(save);const snapshot=snapshotSave(save);save.updatedAt=snapshot.updatedAt;if(options?.urgent){urgentSnapshots.add(snapshot);hurry?.()}/* save hide fix: written at once */writeQueue=coordinator.enqueue(slot,snapshot).then(()=>undefined,error=>{lastWriteError=error;console.warn("IndexedDB save failed",error)});return writeQueue}
 // Save hide fix: a failed write is reported once (by lastWriteError), not again by the coordinator's rejected chain.
 export async function flushSaves(){await Promise.all([writeQueue,coordinator.flush().catch(()=>{})]);if(lastWriteError){const error=lastWriteError;lastWriteError=null;throw error}}

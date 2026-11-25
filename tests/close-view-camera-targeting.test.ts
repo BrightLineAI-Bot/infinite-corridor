@@ -48,7 +48,7 @@ test('every Close View preset sits farther back than before, the wide one farthe
   }
   assert.ok(P.wide.distance > P.standard.distance && P.standard.distance > P.close.distance, 'wide is the farthest, close the nearest');
   assert.equal(P.wide.distance, 5, 'Tim, 2026-11-11: wide at 5 tiles'); assert.ok(Math.abs(P.wide.fogPush - (P.wide.distance - before.wide[0])) < 1e-9, 'its fog moves out as far as it did');
-  assert.equal(C.defaultPreset, 'standard');
+  assert.equal(C.defaultPreset, 'overShoulder'); // 2026-11-25: Tim's over-the-shoulder framing is the default (tests/close-view-default-framing.test.ts)
 });
 
 test('in open ground each preset settles at its full boom, with the Wayfarer low of centre and whole, in portrait and landscape', () => {

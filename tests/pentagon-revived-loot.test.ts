@@ -6,7 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { freshSave, migrateSave } from '../src/types.ts';
-import { Game, ordinaryMonsterGearDrop } from '../src/game.ts';
+import { Game, ordinaryMonsterGearDrop, rankAndFileKill, rankAndFileGear, RANK_AND_FILE_LOOT } from '../src/game.ts';
 import { PENTAGON, pentagonPlan } from '../src/pentagon.ts';
 import { RESPAWN, respawnDropRate, respawnPlace } from '../src/fractured.ts';
 
@@ -17,8 +17,9 @@ const go = (g, P, q) => { g.save.session.activeDungeonId = `${P.base}:f${q.n + 1
 const rest = (g, P) => { go(g, P, P.nodes.find((n) => n.id === 'w0')); const o = g.map.objects.find((x) => x.kind === 'pentWaystone'); g.player.x = o.x; g.player.y = o.y; return g.interact('rest', o.id); };
 const lasting = (g) => JSON.stringify({ f: g.save.worldFlags, a: g.save.perception, gl: g.save.glyphs, ec: g.save.echoes, codex: g.save.codex, j: g.save.narrative.journal.length, t: g.save.consequences.dungeons });
 const room = (g) => { g.save.inventory = []; g.save.level = 1; g.save.xp = 0; };
-// Kill every living ordinary guard on the floor through the game's own defeat path; count items made and marks paid.
-const killGuards = (g) => { const d0 = g.save.dropCounter, m0 = g.save.currency; let n = 0; for (const e of g.enemies) if (e.buildingGuard && !e.dead && !e.boss && !e.pentBoss) { n++; e.hp = 0; e.dead = true; g.defeatEnemy(e); } g.update(.05, input, 1000); g.snapshotArea(); return { n, drops: g.save.dropCounter - d0, marks: g.save.currency - m0 }; };
+// Kill every living ordinary guard on the floor through the game's own defeat path; count items made and marks paid, and the items
+// the rank-and-file roll (game.ts RANK_AND_FILE_LOOT, 2026-11-25: monsters drop less) says should be made.
+const killGuards = (g) => { const d0 = g.save.dropCounter, m0 = g.save.currency; let n = 0, want = 0; for (const e of g.enemies) if (e.buildingGuard && !e.dead && !e.boss && !e.pentBoss) { n++; if (!rankAndFileKill(e) || rankAndFileGear(g.save.seed, g.areaId(), e.id, g.save.dropCounter)) want++; e.hp = 0; e.dead = true; g.defeatEnemy(e); } g.update(.05, input, 1000); g.snapshotArea(); return { n, want, drops: g.save.dropCounter - d0, marks: g.save.currency - m0 }; };
 const play = (g, secs, from = 1000) => { for (let i = 0; i < secs; i++) g.tickRespawns(1, from + i * 1000); return from + secs * 1000; };
 
 test('the drop rate of a respawned kill is a data table: every respawning building pays as a fresh creature (1), with full experience and one mark', () => {
@@ -30,20 +31,20 @@ test('the drop rate of a respawned kill is a data table: every respawning buildi
 
 test('a Waystone rest: the ordinary creatures that stand again drop items and marks as they did the first time; bosses and Aperture are not paid again', () => {
   const { g, P } = start(), street = P.nodes.find((q) => q.area === 'street'), heart = P.nodes.find((q) => q.kind === 'heart' && q.boss);
-  room(g); go(g, P, street); const first = killGuards(g); assert.ok(first.n > 0 && first.drops === first.n, `fresh: ${first.drops} of ${first.n}`);
+  room(g); go(g, P, street); const first = killGuards(g); assert.ok(first.n > 0 && first.drops === first.want, `fresh: ${first.drops} of ${first.n} (${first.want} rolled)`);
   go(g, P, heart); for (const e of g.enemies) if (!e.dead) { e.hp = 0; e.dead = true; g.defeatEnemy(e); } g.update(.05, input, 1000); g.snapshotArea();
   const bosses = [...(g.save.consequences.dungeons[`${P.base}:f1`].pentBosses || [])]; assert.ok(bosses.includes(heart.n));
   assert.ok(rest(g, P).ok); room(g); const before = lasting(g).replace(/"advRespawn":\d+/, '');
   go(g, P, street); const again = killGuards(g);
-  assert.equal(again.n, first.n, 'the same creatures stand again'); assert.equal(again.drops, again.n, 'every one drops an item, as fresh'); assert.equal(again.marks, first.marks, 'the same marks');
+  assert.equal(again.n, first.n, 'the same creatures stand again'); assert.equal(again.drops, again.want, 'each drops an item as a fresh one does (RANK_AND_FILE_LOOT)'); assert.equal(again.marks, first.marks, 'the same marks');
   assert.equal(lasting(g).replace(/"advRespawn":\d+/, ''), before, 'no Aperture, flag, glyph, Echo, codex or journal paid twice');
   go(g, P, heart); assert.ok(!g.enemies.some((e) => e.pentBoss && !e.dead), 'the keeper stays down'); assert.deepEqual(g.save.consequences.dungeons[`${P.base}:f1`].pentBosses, bosses);
   // A reload after the rest: the risen still drop.
   const back = new Game(migrateSave(JSON.parse(JSON.stringify(g.save))), 3000); back.rx = g.rx; back.ry = g.ry; room(back);
-  assert.ok(rest(back, P).ok); go(back, P, street); const r = killGuards(back); assert.ok(r.n > 0 && r.drops === r.n, `after reload: ${r.drops} of ${r.n}`);
+  assert.ok(rest(back, P).ok); go(back, P, street); const r = killGuards(back); assert.ok(r.n > 0 && r.drops === r.want, `after reload: ${r.drops} of ${r.n}`);
 });
 
-test('building respawns in a Pentagon chamber drop an item on every kill, from the ordinary table, and nothing lasting', () => {
+test('building respawns in a Pentagon chamber drop as fresh ones do (RANK_AND_FILE_LOOT.gear of kills since 2026-11-25), from the ordinary table, and nothing lasting', () => {
   const { g, P } = start(); let found = null;
   let pack = [];
   for (const q of P.nodes) { go(g, P, q); if (g.respawnFloor() !== 'pentagon') continue; for (const e of g.enemies) Object.assign(e, { hp: 0, dead: true, rewarded: true });
@@ -53,16 +54,16 @@ test('building respawns in a Pentagon chamber drop an item on every kill, from t
   assert.equal(ordinaryMonsterGearDrop(pack[0]), ordinaryMonsterGearDrop(fresh), 'the same drop table as a fresh creature of its sort');
   const before = lasting(g); let drops = 0, made = 0;
   for (let i = 0; i < 60; i++) { const c = g.respawnCreature({ id: `respawn-loot-${i}`, kind: pack[0].kind, x: pack[0].x, y: pack[0].y, traits: [], respawned: true }); g.enemies.push(c); room(g); const had = g.save.dropCounter, inv = g.save.inventory.length; g.defeatEnemy(Object.assign(c, { hp: 0, dead: true })); made++; if (g.save.dropCounter === had + 1) drops++; assert.ok(g.save.inventory.length >= inv); }
-  assert.equal(drops, made, 'every respawned kill in a Pentagon drops');
+  assert.ok(drops >= made * RANK_AND_FILE_LOOT.gear * .6 && drops <= made * RANK_AND_FILE_LOOT.gear * 1.4, `${drops} of ${made} respawned kills in a Pentagon drop (was every one before 2026-11-25)`);
   assert.equal(lasting(g), before, 'nothing lasting');
   // A creature already paid is never paid again.
   const c = g.enemies.find((e) => e.id === 'respawn-loot-0'), had = g.save.dropCounter; g.defeatEnemy(c); assert.equal(g.save.dropCounter, had, 'paid once');
 });
 
-test('keeps drop on every respawned kill too (Tim: normal loot everywhere)', () => {
+test('keeps drop on respawned kills as fresh ones do too (Tim: normal loot everywhere; RANK_AND_FILE_LOOT.gear of kills since 2026-11-25)', () => {
   const s = freshSave(); s.seed = 'GREAT1'; const at = { area: 'overworld', rx: 9, ry: 2, x: 16, y: 16 }; Object.assign(s.session, at); Object.assign(s.position, at);
   const g = new Game(s, 0); g.installSystems?.(); s.session.activeDungeonId = 'building:GREAT1:9:2:keep:4:f2'; s.session.dungeonReturn = { rx: 9, ry: 2, x: 16, y: 16 }; g.loadArea('dungeon', false);
   assert.equal(g.respawnFloor(), 'keep'); let drops = 0; const n = 200;
   for (let i = 0; i < n; i++) { const c = g.respawnCreature({ id: `respawn-k-${i}`, kind: 'ashling', x: g.player.x, y: g.player.y, traits: [], respawned: true }); g.enemies.push(c); room(g); const had = g.save.dropCounter; g.defeatEnemy(Object.assign(c, { hp: 0, dead: true })); if (g.save.dropCounter !== had) drops++; }
-  assert.equal(drops, n, `${drops} of ${n}`);
+  assert.ok(drops >= n * RANK_AND_FILE_LOOT.gear * .7 && drops <= n * RANK_AND_FILE_LOOT.gear * 1.3, `${drops} of ${n} (was every one before 2026-11-25)`);
 });

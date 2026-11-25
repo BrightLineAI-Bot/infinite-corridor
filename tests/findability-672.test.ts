@@ -80,7 +80,7 @@ test('version 14 grows great trees in forests and amberwood too, found wherever 
 });
 
 test('Starfield crossings: a fifth of new crossings, rolled once at first entry; every crossing that was one still is', () => {
-  assert.equal(CHASM.chance, .2); const seed = 'STARS';
-  let n = 0; for (let x = 0; x < 2000; x++) { const id = `dungeon:${seed}:g1:${x}:3:room`; if (old12(seed, id)) assert.ok(chasmRoll(seed, id)); if (chasmRoll(seed, id)) n++; }
+  assert.equal(CHASM.chances[1], .2); const seed = 'STARS'; // placement 1 (sections seen before the Starfield placement 2 pin keep it)
+  let n = 0; for (let x = 0; x < 2000; x++) { const id = `dungeon:${seed}:g1:${x}:3:room`; if (old12(seed, id)) assert.ok(chasmRoll(seed, id, 1)); if (chasmRoll(seed, id, 1)) n++; }
   assert.ok(Math.abs(n / 2000 - .2) < .03, `${n}`);
 });

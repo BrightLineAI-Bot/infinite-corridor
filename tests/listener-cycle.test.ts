@@ -18,7 +18,7 @@ import { freshSave, migrateSave } from '../src/types.ts';
 
 let relayN = 0;
 const answer = (s) => commitRelayNode(s, { areaId: `dungeon:${s.seed}:g1:${relayN++ % 200}:${7 + Math.floor(relayN / 200)}:cycle${relayN}` }, relayN % 3 ? 'restore' : 'sever', { guardianDefeated: true });
-const start = () => { relayN = 0; const s = freshSave(); s.seed = 'CYCLE'; for (let i = 0; i < RELAY_TARGET; i++) answer(s); assert.ok(s.relayNetwork.coordinate, 'five relays give the first Mouth'); return s; };
+const start = () => { relayN = 0; const s = freshSave(); s.seed = 'CYCLE'; s.farArray.cycle = 2; /* 2026-11-25: pinned to v2 */ for (let i = 0; i < RELAY_TARGET; i++) answer(s); assert.ok(s.relayNetwork.coordinate, 'five relays give the first Mouth'); return s; };
 const at = (g, c) => { g.area = 'overworld'; g.rx = c.rx; g.ry = c.ry; g.save.atlas[`${c.rx},${c.ry}`] ||= { terrain: 'ash' }; g.loadArea('overworld'); return g.map.objects; };
 const breakSeals = (s) => { if (LISTENER_CYCLE.sealsCall) while (ensureFarArray(s).pieces < piecesNeeded(s.farArray.gate)) guardianFelled(s); };
 const callBack = (s) => { let last = null; for (let i = 0; i < LISTENER_RETURN.returnRelays; i++) last = answer(s); return last; };
@@ -83,7 +83,7 @@ function timsJourney() {
   const s = freshSave(); s.seed = 'TIMLIKE';
   const net = ensureRelayNetwork(s); for (let i = 0; i < 41; i++) net.nodes[`dungeon:TIMLIKE:g1:${i}:3:r`] = { choice: i % 4 ? 'restore' : 'sever', at: i };
   s.narrative.facts['relay.networkAnswered'] = true; net.coordinate = { rx: 62, ry: -48 }; net.pastMouths = [{ rx: 50, ry: 46 }, { rx: -53, ry: -62 }, { rx: -50, ry: -44 }];
-  s.farArray = { v: 1, gate: 4, pieces: 3, runs: 24, listeners: 3, boons: ['dead-line'], offer: [], ending: 'close', endingPending: false, history: [], activeRun: null, quiet: false, relaysAt: 32, mouth: 3, toNext: 0 };
+  s.farArray = { v: 1, gate: 4, pieces: 3, runs: 24, listeners: 3, boons: ['dead-line'], offer: [], ending: 'close', endingPending: false, history: [], activeRun: null, quiet: false, relaysAt: 32, mouth: 3, toNext: 0, cycle: 2 /* 2026-11-25: pinned to v2 */ };
   s.hometowns = { towns: [{ rx: 49, ry: 45, name: 'Hearthfall', listener: 1 }, { rx: 50, ry: 46, name: 'Mosscross', listener: 1, mouth: true }, { rx: -53, ry: -62, name: 'Brinewatch', listener: 2, mouth: true }, { rx: -50, ry: -44, name: 'Glassgate', listener: 3, mouth: true }], home: '50,46' };
   return s;
 }
@@ -91,7 +91,7 @@ function timsJourney() {
 test("Tim's journey loads unchanged, and from here the fourth Mouth holds the Listener until five pieces unlock its Gate", () => {
   const raw = timsJourney(), s = migrateSave(JSON.parse(JSON.stringify(raw)));
   assert.deepEqual(s.farArray, { ...raw.farArray, moves: false, atMouth: 0, v2At: { listeners: 3, gate: 4 } }, 'nothing in the Far Array changes on load (three v2 fields are added)'); assert.deepEqual(s.hometowns.towns, raw.hometowns.towns, 'no town added or lost');
-  assert.deepEqual(listenerCycle(s), { gate: 4, pieces: 0, piecesToUnlock: 5, seals: 3, sealsNeeded: 6, quiet: false, relaysToMove: 0, mouth: 3, state: 'waits', moves: false, atMouth: 0, coordinate: { rx: 62, ry: -48 } });
+  assert.deepEqual(listenerCycle(s), { cycle: 2, movesIn: null, /* 2026-11-25: two v3 fields */ gate: 4, pieces: 0, piecesToUnlock: 5, seals: 3, sealsNeeded: 6, quiet: false, relaysToMove: 0, mouth: 3, state: 'waits', moves: false, atMouth: 0, coordinate: { rx: 62, ry: -48 } });
   for (const m of s.relayNetwork.pastMouths) assert.ok(silentMouthAt(s, m.rx, m.ry), 'every old Mouth stays');
   relayN = 100;
   for (let k = 1; k <= 4; k++) {
