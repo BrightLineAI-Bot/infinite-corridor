@@ -102,7 +102,7 @@ import { echoEvent, tickEchoes, echoDrop, noteRoomBeastKill, pounceBonus, ECHOES
 import { skillMeleeBonus, skillReachBonus, riftStep, riftStepTo, riftStepReady, riftReachOf, RIFT_AIM, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, SANCTUARY, sanctuaryOn, altOn, ALT_PASSIVES, altChosen, aerialChargesNow, tickAerialCharges, aerialStepBlocked } from "./constellation.ts";
 import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.ts";
 import { RULES as MARGIN_RULES, MARGINALIA, EMBER_WAKE, RED_MARGIN, SECOND_WIND, SHADOW_STEP, HOURGLASS, INK_SHIELD, GILDED, marginBonus, marginRun, beginMarginRun, endMarginRun, runHas, wardenSpawns, wardenOffer, wardenPage, chooseMarginalia, pasteMarginalia, marginaliaOpen, marginCrossing, ensureMarginalia } from "./marginalia.ts";
-import { chargeScale, giftResonances, giftTriads, hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, resonanceInfo, armorGlyphBonus as armorGlyphBase, skillGlyphMods, normalizeSockets } from "./glyphs.ts";
+import { chargeScale, chargeGlyphCount, giftResonances, giftTriads, hostLoadout, glyphHit, glyphDamage, echoPlan, tickGlyphStatus, discoverResonances, glyphDrop, salvageDust, GLYPHS, RESONANCES, resonanceInfo, armorGlyphBonus as armorGlyphBase, skillGlyphMods, normalizeSockets } from "./glyphs.ts";
 import { hashSeed, rng, byHash } from "./random.ts";
 import { riderLiftOf, MOUNT_BEASTS, MOUNT_RIDE, mountIdFor, catchableActor, neverCaught, catchRefusal, catchRoll, stableMount, ridingMount, mountById, mountName, mountLifeText, startRide, stopRide, tickRide, noteRideSection, defaultMount, releaseMount, ensureMounts } from "./beast-mounts.ts"; // release 748: penning catches, the stable and riding
 import { persistentMount, indoorMount, TRICERATOPS_INDOOR, TRICERATOPS_RIDE, TRICERATOPS_ATTACKS, TRICERATOPS_CONTROLS, TRICERATOPS_HORN_SHOT, normalizeTriceratopsDrill, damagePersistentMount, noteBeastRecoveryTransition, retrieveBeast, beastHotelId, isBeastHotelId } from "./beast-mounts.ts";
@@ -3301,7 +3301,7 @@ export class Game {
     this.primaryStrike = attack; // the swing itself, without aim selection (Echo repeats call it)
     this.primaryAttack = (now, explicitDirection = null, committed = null) => {
       this.releasePendingToolUse(now);this.reconcileHammerfallStartup();if(this.toolUseBlocksPrimary())return[];
-      if (!committed && now < (this.player.attackReadyAt || 0)) return [];
+      if (!committed && now < (this.player.attackReadyAt || 0) && !(this.attackAction && this.quandrixEquipped())) return []; // 2026-11-25: a held Quandrix press waits out the staff's cadence (quandrix-staff.ts quandrixPress)
       const baseProfile = primaryProfile(this.save.equipment.primary),
         profile = { ...baseProfile, range: baseProfile.range * (1 + characterStats(this.save).attackReach) * this.glyphLoadout("melee").mods.range },
         width = mapWidth(this.map, this.area),
@@ -9758,11 +9758,12 @@ export class Game {
     if(q.payload.kind==='fist'){const src=q.payload.effect,out=src.kind==='fist-kick'?0:.7/* the kick spins round her */,at={x:this.player.x+.5+q.aim.x*out,y:this.player.y+.45+q.aim.y*out},fx={...src,x:at.x,y:at.y,hits:{},pulseIndex:0,untilPulse:0,toolUseNewborn:true},landed=this.enemies.some(e=>!e.dead&&!e.untargetable&&!e.hidden&&Math.hypot(e.x+.5-at.x,e.y+.45-at.y)<=fx.radius+Math.max(0,enemyBodyRadius(e)-.38));this.effects.push(fx);if(this.fistCombo?.step===q.payload.step&&Array.isArray(this.fistCombo.landed))this.fistCombo.landed[this.fistCombo.landed.length-1]=landed;if(q.payload.cloneEligible)this.cloneSwing({...BRAWLER_ECHO.cloneArc,damage:Number(q.payload.cloneDamage)||1},q.aim,now);return{released:true,cancelled:false};}
     return{released:false,cancelled:true};
   }
-  clearAttackBuffer() { this.attackBufferUntil = 0; this.attackBufferToolUse=false; }
+  clearAttackBuffer() { this.attackBufferUntil = 0; this.attackBufferToolUse=false; this.attackBufferHoldOnly=false; }
   tickAttackBuffer(now = 0, input = null) {
     if (!(this.attackBufferUntil > 0)) return false;
     const eligible=this.attackBufferToolUse?((this.closeViewActionEligible()||this.fistsEquipped())&&this.save.activeWeaponSlot!=='secondary'&&!this.cursed('attack',now)&&!this.penned(now)):this.closeViewAttackBufferEligible(now);
     if (now > this.attackBufferUntil || !eligible) { this.clearAttackBuffer(); return false; }
+    if(this.attackBufferHoldOnly&&!input?.held?.('attack')){this.clearAttackBuffer();return false;} // IRON_FISTS.holdWait: an early press let go before its step could begin
     if(this.toolUseBlocksPrimary())return false;
     if (now < (this.player.attackReadyAt || 0)) return false;
     if(this.fistsEquipped()&&(this.fistCharge||now<(this.fistRecoverUntil||0)))return false;
@@ -10217,7 +10218,7 @@ export class Game {
   // Runtime only, never saved: { charge: { held, action, dir } | null, traces: fixed slots of the afterglow (a trace also holds
   // a charged beam's pending Continuous Assault volley), lances: Continuous Assault's fixed pool of strike effects }.
   carbineState() {
-    return (this.carbine ||= { charge: null, traces: Array.from({ length: CARBINE.trace.max }, () => ({ shot: null, x0: 0, y0: 0, x1: 0, y1: 0, k: 0, life: 0, where: "", assault: 0 })),
+    return (this.carbine ||= { charge: null, pending: { on: false, action: "", aim: false, x: 0, y: 0 }, traces: Array.from({ length: CARBINE.trace.max }, () => ({ shot: null, x0: 0, y0: 0, x1: 0, y1: 0, k: 0, life: 0, where: "", assault: 0 })),
       lances: Array.from({ length: CONTINUOUS_ASSAULT.maxLive }, () => ({ id: "", kind: "assault-lance", x: 0, y: 0, life: 0, radius: 0, pulse: 99, untilPulse: 0, damage: 0, pulseIndex: 0, hits: {}, delay: 0, glyphHost: null, damageType: "physical", track: "" })) });
   }
   // The Carbine raised (the simple-tool emitter visual with the carbine appearance), held `poseMs` so a charge restamps rarely.
@@ -10231,9 +10232,15 @@ export class Game {
   }
   // A press: with a held button (`action`), the charge starts and the beam fires on release (tickCarbine); without one (auto
   // attack), a tap beam fires at once. Refused while the last beam recovers, with no room for a shot, or with no round to fire.
+  // Reliable holds (Tim, 2026-11-25: "I can't just hit the button and hold it, then hit it and hold it"): a held press (with a
+  // button) that lands while the last beam recovers (`cadence`) is no longer dropped. It waits (`pending`, one fixed record) and
+  // its charge starts the moment the Carbine is ready if the button is still held; let go before then, it fires nothing (as a
+  // tap in the recovery always has). tickCarbine turns it into the charge through this same press, with every check.
   carbinePress(now, direction, action = null) {
     const K = this.carbineState(); if (K.charge) return false;
-    if (!(this.player.hp > 0) || now < (this.player.attackReadyAt || 0)) return false;
+    if (!(this.player.hp > 0)) return false;
+    if (now < (this.player.attackReadyAt || 0)) { if (!action || !K.pending) return false; const q = K.pending, m = direction ? Math.hypot(direction.x, direction.y) : 0; q.on = true; q.action = action; q.aim = m > 1e-6; q.x = q.aim ? direction.x / m : 0; q.y = q.aim ? direction.y / m : 0; return false; }
+    if (K.pending) K.pending.on = false;
     if (sharedShotCount(this.projectiles) >= (this.area === "dungeon" ? 32 : 64)) return false;
     const echoes = this.glyphLoadout("tool").count("echo"); if (!canFireRound(this.save, echoes)) { this.message = `${ROUNDS.messages.empty} (${roundIronCost(echoes)} a round).`; return false; }
     const d = this.carbineAim(direction); this.save.lastAim = d; this.player.meleeUntil = 0; this.player.meleeStrike = null;
@@ -10341,6 +10348,10 @@ export class Game {
       let foe = null; for (const e of this.enemies) if (e.id === L.track) { foe = e; break; }
       if (!foe || foe.dead || !(foe.hp > 0)) { foe = this.assaultFoe(L.x, L.y); L.track = foe ? foe.id : ""; if (!foe) continue; }
       const dx = foe.x + .5 - L.x, dy = foe.y + .45 - L.y, m = Math.hypot(dx, dy), step = A.track * dt; if (m <= step) { L.x = foe.x + .5; L.y = foe.y + .45; } else if (m > 0) { L.x += dx / m * step; L.y += dy / m * step; } } }
+    const q = K.pending; if (q?.on) { // a held press waiting out the recovery (carbinePress)
+      if (!held || !this.carbineOn() || !(this.player.hp > 0) || now < (this.player.stunnedUntil || 0)) q.on = false;
+      else if (now >= (this.player.attackReadyAt || 0)) { q.on = false; const d = q.aim ? { x: q.x, y: q.y } : null; if (this.carbinePress(now, d, q.action)) this.cancelConsumeVisual('tool'); }
+    }
     const c = K.charge; if (!c) return;
     if (!this.carbineOn() || !(this.player.hp > 0) || now < (this.player.stunnedUntil || 0)) { K.charge = null; return; } // put away, fallen or knocked down: the charge is lost
     { const aim = this.lockedDirection() || this.save.lastAim, m = aim ? Math.hypot(aim.x, aim.y) : 0; if (m > 1e-3) { c.dir.x = aim.x / m; c.dir.y = aim.y / m; } } // the muzzle follows the lock, else the aim
@@ -12196,6 +12207,7 @@ export class Game {
   // button to hold) throws it at once. `fistCombo` and `fistCharge` are runtime only.
   // Gathered Breath (glyphs.ts CHARGE_GLYPH): the multiplier on a charge whose key point is `span` s of holding (1 with none set).
   chargeQuicken(span = 1) { return chargeScale(this.save, span); }
+  chargeGlyphs() { return chargeGlyphCount(this.save); } // how many are set: the charge rings show one bead each (tool-forms.ts drawCarbine, quandrix-staff.ts drawSlamRing)
   fistsEquipped() { return !!primaryProfile(this.save.equipment.primary)?.fist; } // release 493: the Iron Fists are a weapon
   fistPower() { const item = this.save.equipment.primary, glyphs = hostLoadout(this.save, "melee"); return (this.spellbladeOn() ? 1 + FIELD_PASSIVES.spellblade.damage : 1) /* release 515: Spellblade */ * (IRON_FISTS.base + Math.max(1, Number(item?.power) || 1) * IRON_FISTS.perPower + this.weaponBonus()) * glyphs.mods.damage * (1 + armorGlyphBonus(this.save).attackDamage); }
   // The training combo (2026-11-13; brawler-spells.ts IRON_FISTS): right cross, left jab, right uppercut and, awakened, the
@@ -12219,6 +12231,7 @@ export class Game {
     const onBeat = !this._fistBuffered && fistOnBeat(this.fistBeat, now); // the rhythm (brawler-spells.ts): a fresh press while the ball is home; a press held over by the gate or the buffer never is
     if (now < (this.fistRecoverUntil || 0)) { // the gate: a press in its last `buffer` s is thrown as it opens
       if (this.fistRecoverUntil - now <= IRON_FISTS.buffer * 1000 + 1e-6) this.fistQueued = { action, direction: direction ? { x: direction.x, y: direction.y } : null, until: this.fistRecoverUntil + ACTION_MOTION.attackBufferMs };
+      else if (action && this.fistRecoverUntil - now <= IRON_FISTS.holdWait * 1000) this.fistQueued = { action, direction: direction ? { x: direction.x, y: direction.y } : null, until: this.fistRecoverUntil + ACTION_MOTION.attackBufferMs, holdOnly: true }; // IRON_FISTS.holdWait: an earlier press still held when the gate opens is thrown (and charges); let go before, nothing, so mashing is unchanged
       return false;
     }
     this.fistQueued = null;
@@ -12236,6 +12249,7 @@ export class Game {
     this.fistQueued = null;
     if (now > q.until || !this.fistsEquipped() || !(this.player.hp > 0) || this.fistCharge || this.cursed("attack", now) || this.penned(now) || this.toolUseBlocksPrimary() || this.pendingMeleeContact?.v === 1) return false;
     const action = q.action && input?.held?.(q.action) ? q.action : null;
+    if (q.holdOnly && !action) return false; // an early press let go before the gate: dropped, as before
     this._fistInputUpdate = true; this._fistBuffered = true; try { return this.fistPress(now, q.direction, action); } finally { this._fistInputUpdate = false; this._fistBuffered = false; }
   }
   fistPunch(step, charge = 0, now = this.lastUpdateNow || 0, direction = null, perfect = false, onBeat = false) {
@@ -12714,7 +12728,7 @@ export class Game {
     if (this.orbit) this.tickOrbit(dt, now); // release 487: Orbit Volley
     this.tickMirage(dt); // release 649: Mirage of Blades
     tickOrrery(this, dt, now, !!input.held?.(this.orrery?.charge?.action || "tool")); // the Aether Orrery: its shots, halo and charge
-    if (this.carbine) this.tickCarbine(dt, now, !!input.held?.(this.carbine.charge?.action || "tool")); // the Carbine: its charge, afterglow and Continuous Assault's lasers
+    if (this.carbine) this.tickCarbine(dt, now, !!input.held?.(this.carbine.charge?.action || (this.carbine.pending?.on && this.carbine.pending.action) || "tool")); // the Carbine: its charge, afterglow and Continuous Assault's lasers
     if (this.quandrix) tickQuandrix(this, dt, now, !!input.held?.((this.quandrix.hold.on ? this.quandrix.hold.action : this.quandrix.press.action) || "attack")); // the Quandrix Staff: its hands, the Mage's Hand fist and the awakened slam
     if (this.weaponArts) tickWeaponArts(this, dt, now, !!input.held?.(this.weaponArts.fist.on ? this.weaponArts.fist.action : "attack")); // weapon-arts.ts: arming, the charge, and what each art leaves in play
     if (this.awakenedArts) tickAwakenedArts(this, dt, now); // awakened-arts.ts: fissures, blades, lances, runes, the axe kick and the seal's pulse
@@ -13084,8 +13098,9 @@ export class Game {
       const plunged = this.airAttack(now, "attack"); // jump attacks (2026-11-12); "attack": the button a Cyclone Heel press is held on
       const ready = this.player.attackReadyAt || 0,guardWait=this.startupGuardWait(now),startupWait=Number.isFinite(guardWait)?Math.max(now+guardWait,ready,this.fistsEquipped()?this.fistRecoverUntil||0:0)-now:Infinity, canStartupBuffer=startupWait>=0&&startupWait<=ACTION_MOTION.attackBufferMs&&(this.closeViewActionEligible()||this.fistsEquipped()/* the fists' contact delay runs everywhere */)&&this.save.activeWeaponSlot!=='secondary'&&!this.cursed('attack',now)&&!this.penned(now),canBuffer = this.closeViewAttackBufferEligible(now);
       if(plunged){/* the press is the jump attack's */}
-      else if(canStartupBuffer){this.attackBufferUntil=now+ACTION_MOTION.attackBufferMs;this.attackBufferToolUse=true;}
-      else if (canBuffer && now < ready && ready - now <= ACTION_MOTION.attackBufferMs) this.attackBufferUntil = now + ACTION_MOTION.attackBufferMs;
+      else if(canStartupBuffer){this.attackBufferUntil=now+ACTION_MOTION.attackBufferMs;this.attackBufferToolUse=true;this.attackBufferHoldOnly=false;}
+      else if(this.fistsEquipped()&&startupWait>0&&startupWait<=IRON_FISTS.holdWait*1000&&this.save.activeWeaponSlot!=='secondary'&&!this.cursed('attack',now)&&!this.penned(now)){this.attackBufferUntil=now+startupWait+ACTION_MOTION.attackBufferMs;this.attackBufferToolUse=true;this.attackBufferHoldOnly=true;} // IRON_FISTS.holdWait: a held press before the step may begin waits for it
+      else if (canBuffer && now < ready && ready - now <= ACTION_MOTION.attackBufferMs) { this.attackBufferUntil = now + ACTION_MOTION.attackBufferMs; this.attackBufferHoldOnly = false; }
       else { this.clearAttackBuffer(); this.attackAction = "attack"; try { this.primaryAttack(now); } finally { this.attackAction = null; } } // release 493: the Iron Fists charge while Attack is held
     }
     // Hold Act for BOAT.leaveHold seconds while aboard to leave the skiff (release 158): step ashore if ground is beside
