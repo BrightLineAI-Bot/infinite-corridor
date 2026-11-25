@@ -18,7 +18,7 @@ import { dungeonId, regionSettled, CROSSING_ROLLS } from "./world.ts";
 import { WONDERS } from "./wonders.ts";
 import { openSeaQuick, farSleepSection, SEA_FEATURES } from "./landscape.ts";
 import { canyonHere, canyonIdFor } from "./canyon.ts";
-import { skylandSection, SKY_PLACE } from "./skylands.ts";
+import { skylandSection, SKY_PLACE, grantSeed } from "./skylands.ts";
 import { pentagonAt, PENTAGON } from "./pentagon.ts";
 import { hamletSection } from "./settlements.ts";
 import { HORDE } from "./revenant-horde.ts";
@@ -41,7 +41,7 @@ export const QUEST_PLACES = Object.freeze({
   layoutPool: 5, // game.ts: the layout pool every crossing first generated from now on takes (the Poison Crypt roll reads it)
 });
 export const QUEST_WORDS = Object.freeze({
-  open: "A QUEST", done: "QUEST COMPLETE",
+  open: "A QUEST", done: "QUEST COMPLETE", gift: "A GIFT",
   any: (what) => `${what}: any one will do (none lies close enough to point the compass at).`,
   starfield: "a crossing that opens on stars",
   canyon: "a canyon crater", wreck: "a shipwreck out at sea (you will want a boat)", skyway: "a Sky Stair at least 50 sections out",
@@ -176,6 +176,24 @@ export function openQuest(save, id, { giverAt = null } = {}) {
   R.open[id] = { state: "open", at: nowOf(save), steps: {}, places: [], ...(giverAt && Number.isInteger(giverAt.rx) && Number.isInteger(giverAt.ry) ? { giverAt: { rx: giverAt.rx, ry: giverAt.ry } } : {}) };
   for (const s of Q.steps) if (s.place) questPlace(save, id, s.key);
   return R.open[id];
+}
+// A quest's gift (quests.ts `gift`), handed once while the quest is open and the step it is for still waits: the seed into the
+// pouch, recorded as the quest's `gifted`. A quest opened before gifts existed is handed its gift the first time this runs after
+// (game.ts settleQuests). Returns the gift, or null.
+export function questGift(save, id) {
+  const G = QUESTS[id]?.gift; if (!G || !questOpen(save, id)) return null;
+  const q = questState(save, id); if (q.gifted === true || stepDone(save, id, G.step)) return null;
+  if (!grantSeed(save, G.seed, G.n)) return null;
+  q.gifted = true; return G;
+}
+// While a counted step's window runs (quests.ts `calls`), the kind of creature it calls to a floor tagged `where` (game.ts
+// questWhere): the creatures that come back there are of that kind. Returns the kind, or null.
+export function questCalled(save, where = [], at = nowOf(save)) {
+  for (const id of QUEST_IDS) {
+    if (!questOpen(save, id)) continue; const step = questStep(save, id); if (!step?.calls || !step.within || !where.includes(step.where)) continue;
+    const w = questState(save, id).window; if (w && w.step === step.key && at - w.at <= step.within && w.n < step.need) return step.kind;
+  }
+  return null;
 }
 // Marks step `key` of quest `id` done; the quest is done when no step waits. Returns whether it is now complete.
 function mark(save, id, key) {

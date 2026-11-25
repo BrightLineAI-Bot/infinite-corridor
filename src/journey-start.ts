@@ -243,6 +243,7 @@ export function ensureQuests(save) {
     if (q.tokens !== undefined) open[id].tokens = (Array.isArray(q.tokens) ? q.tokens : []).filter((t) => plain(t) && typeof t.id === "string" && t.id.length <= 120 && typeof t.step === "string" && typeof t.area === "string" && Number.isFinite(Number(t.x)) && Number.isFinite(Number(t.y))).map((t) => ({ ...t, x: Math.round(Number(t.x)), y: Math.round(Number(t.y)) })).slice(-R.tokensMax);
     if (q.window !== undefined) { const w = q.window; if (plain(w) && typeof w.step === "string" && Number.isFinite(Number(w.at)) && Number.isInteger(w.n) && w.n >= 0) open[id].window = { ...w, at: Number(w.at) }; else delete open[id].window; }
     if (q.seq !== undefined) open[id].seq = wholeOr(q.seq, 0, 0);
+    if (q.gifted !== undefined) open[id].gifted = q.gifted === true; // quest-places.ts questGift
     if (q.giverAt !== undefined) { if (plain(q.giverAt) && Number.isInteger(q.giverAt.rx) && Number.isInteger(q.giverAt.ry)) open[id].giverAt = { rx: q.giverAt.rx, ry: q.giverAt.ry }; else delete open[id].giverAt; }
   }
   for (const [k, v] of Object.entries(plain(raw.threads) ? raw.threads : {})) if (k.length <= 64 && typeof v === "string" && v && v.length <= 64) threads[k] = v;

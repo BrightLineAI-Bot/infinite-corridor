@@ -1223,3 +1223,10 @@ body.training-yard #provingGroundPanel,body.training-yard #pgIdentity{display:no
 .yard-bar{position:fixed;z-index:91;top:max(8px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);width:min(420px,calc(100vw - 16px));box-sizing:border-box;display:grid;gap:4px;padding:8px 10px;border:1px solid #58716d;border-radius:8px;background:rgba(8,16,18,.92);color:#e5e1d5;font-size:12px;text-align:center}
 .yard-bar[hidden]{display:none}.yard-bar strong{color:#f0d28e}.yard-bar .proving-buttons{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}.yard-bar button{min-height:36px;padding:0 10px}.yard-bar button[hidden]{display:none}
 .howto-try{display:grid;gap:4px;margin-top:8px}
+/* Paths (the progression view, part 1): plain cards in the Arcanum's own colours; every button keeps the 44 px touch height. */
+.paths-entry{display:grid;gap:3px;margin:0 0 8px}.paths-entry p{margin:2px 0}.paths-entry button{min-height:44px;justify-self:start}
+.paths-route{color:#b58c50;font-size:.85em}.paths-next>strong{color:#e2c04f}.paths-known>strong,.paths-silhouette>strong{color:#a39a88}.paths-rumoured>strong{color:#a98ad0;font-style:italic}.paths-silhouette{border-style:dashed}
+.paths-chain{list-style:none;margin:6px 0;padding:0}.paths-chain li{padding:2px 0;color:#a39a88}.paths-chain li.done{color:#9fe3a8}
+.paths-fold{margin:0 0 8px}.paths-fold>summary{min-height:44px;display:flex;align-items:center;cursor:pointer;color:#ddd5c4;overflow-wrap:anywhere}
+.paths-held{color:#b58c50;overflow-wrap:anywhere}.paths-ladder,.paths-summary{margin:0 0 10px}.paths-summary p{margin:3px 0}
+.paths-entry,.paths-ladder,.paths-summary{overflow-wrap:anywhere;min-width:0}.paths-ladder>button{display:block;min-height:44px;margin-top:6px}.paths-ladder>small{display:block}
