@@ -87,14 +87,42 @@ test('the controls take no browser long press: CSS on the buttons and the game, 
   P.down('tool', 13); assert.equal(P.input.held('tool'), true); P.buttons.tool.fire('pointercancel', { pointerId: 13 }); assert.equal(P.input.held('tool'), false, 'a pointercancel is a release, never a hold stuck down');
 }));
 
-test('Quandrix: tap, tap, hold the third slams the hand, at any tapping pace', withClock(() => {
+// The penultimate hand (Tim, 2026-11-25): every press throws its own hand; a hold slams the hand thrown before it, or, with none
+// out, slams right at the Wayfarer's feet. Watches the hold as it begins: the hand it took (its seq and place) and the newest hand.
+function holdWatch(g) {
+  const w = { slam: false, seq: 0, newest: 0, at: null, centre: null };
+  w.each = () => { const K = g.quandrix; if (!K) return; w.newest = Math.max(w.newest, K.seq);
+    if (K.hold.on && K.hold.mode === 'slam' && !w.slam) { w.slam = true; w.seq = K.hold.hand.seq; w.at = { x: K.hold.hand.x, y: K.hold.hand.y }; w.centre = { x: g.player.x + .5, y: g.player.y + .45 }; } };
+  return w;
+}
+
+test('Quandrix: tap, tap, hold the third throws hand 3 and slams hand 2, at any tapping pace', withClock(() => {
   for (const [gap, tap] of [[120, 50], [150, 60], [250, 80], [300, 100], [450, 90], [700, 120]]) {
-    const g = staffGame(), P = page(); clock = 1000; let slam = false; const run = stepper(g, P.input, () => { if (g.quandrix?.hold?.on && g.quandrix.hold.mode === 'slam') slam = true; });
+    const g = staffGame(), P = page(); clock = 1000; const w = holdWatch(g), run = stepper(g, P.input, w.each);
     for (let i = 0; i < 2; i++) { P.down('attack'); run(tap); P.up('attack'); run(gap - tap); }
-    P.down('attack'); run(1200); P.up('attack'); run(400);
-    assert.ok(slam, `gap ${gap} ms, taps ${tap} ms: the hand slams down`);
-    assert.ok(g.quandrix.seq >= 2, `gap ${gap}: both taps cast their hands (${g.quandrix.seq})`);
-    assert.equal(g.quandrix.hold.on, false, 'and it bursts (a held release past the window overcharges)');
+    P.down('attack'); run(1200); P.up('attack'); run(QUANDRIX.slam.max * 1000 + 400);
+    assert.ok(w.slam, `gap ${gap} ms, taps ${tap} ms: a hand slams down`);
+    assert.equal(w.seq, 2, `gap ${gap}: the hold slams hand 2 (the penultimate cast), not the newest`);
+    assert.equal(w.newest, 3, `gap ${gap}: the held press threw hand 3 (and no hand was made for the hold)`);
+    assert.equal(g.quandrix.hold.on, false, 'and it bursts (on its clock when let go outside the window)');
+  }
+}));
+
+test('Quandrix: a held first press slams at the feet; tap then hold throws hand 2 and slams hand 1', withClock(() => {
+  for (const pace of [0, 200, 600]) { // the first press held from a standstill, and after the staff's cadence is spent
+    const g = staffGame(), P = page(); clock = 1000; const w = holdWatch(g), run = stepper(g, P.input, w.each);
+    run(pace); P.down('attack'); run(QUANDRIX.hold.grace * 1000 + 200);
+    assert.ok(w.slam, 'held: it slams'); assert.ok(Math.hypot(w.at.x - w.centre.x, w.at.y - w.centre.y) < .05, `right at the feet (${JSON.stringify(w.at)})`);
+    const own = g.quandrix.hands.find((h) => h.on && h.mode === 'drift'); assert.ok(own && own.seq !== w.seq, 'the press threw its own hand too');
+    assert.ok(own.x - w.centre.x > .3, 'which flies on ahead');
+    P.up('attack'); run(QUANDRIX.slam.max * 1000 + 200); assert.equal(g.quandrix.hold.on, false);
+  }
+  for (const [gap, tap] of [[150, 60], [450, 90], [900, 100]]) {
+    const g = staffGame(), P = page(); clock = 1000; const w = holdWatch(g), run = stepper(g, P.input, w.each);
+    P.down('attack'); run(tap); P.up('attack'); run(gap - tap);
+    P.down('attack'); run(1100); P.up('attack'); run(QUANDRIX.slam.max * 1000 + 400);
+    assert.equal(w.seq, 1, `gap ${gap}: the hold slams hand 1`); assert.equal(w.newest, 2, `gap ${gap}: the held press threw hand 2`);
+    assert.ok(w.at.x - w.centre.x > .3, 'out where hand 1 had flown, not at the feet');
   }
 }));
 

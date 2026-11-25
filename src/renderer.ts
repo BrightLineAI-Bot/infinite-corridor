@@ -120,6 +120,13 @@ function drawLowHealth(ctx, g, w, h, now, fallCue) {
   drawLowHealthEdge(ctx, st, w, h, LHE_ART.frames);
 }
 let STD_HANDS_FREE = false; // set around the Wayfarer's own sprite draw (actor reads it for "player")
+// The Salvage Blade in the Standard View sprite (Tim, 2026-11-25: "a blue forked blade, with one of the forks broken off halfway
+// up"): body units from the hand outward, as the plain blade's rect. A blue body to the fork, the upper tine whole to its point,
+// the lower snapped halfway with a bright jagged end. Colours as Close View's (close-view-models.ts salvage.colors).
+export const SALVAGE_BLADE_STD = Object.freeze({ blade: "#3f74d8", tine: "#5b8fe6", break: "#a9c6f2", y: -.56, body: Object.freeze([.08, .2]),
+  prong: Object.freeze([.26, .068]), broken: .12, jag: .07 }); // sized for the sprite's own pixels (about 30 a body unit): tines and gap two pixels each // `body`, `prong`: length and width; `broken`: the snapped tine's length
+const salvageX = (facing, from, len) => facing === "left" ? -from - len : from; // body units outward from the hand, either side
+let STD_SALVAGE = false; // set around the Wayfarer's own sprite draw when the Salvage Blade is her primary
 const AERIAL_STD_ARMS = Object.freeze({ lean: .16, back: .34, up: .1, hang: .26, spread: .17, arm: "#3b2e23", hand: "#e0b48c" });
 function drawAerialArmsStd(ctx, x, y, s, facing, k) {
   const A = AERIAL_STD_ARMS, cx = (x + .5) * s, cy = (y + .38) * s, side = facing === "right" ? 1 : facing === "left" ? -1 : 0, up = facing === "up";
@@ -1869,7 +1876,16 @@ function actor(
     rect(p[2], 0.04, -0.66, 0.04, 0.04);
     rect("#24231f", -0.2, -0.08, 0.13, 0.12);
     rect("#24231f", 0.07, -0.08, 0.13, 0.12);
-    if (!STD_HANDS_FREE) rect(p[2], facing === "left" ? -0.38 : 0.2, -0.48, 0.18, 0.05); // the blade in hand (AERIAL_HANDS_FREE: put away for Aerial Step's cast)
+    if (STD_HANDS_FREE) { /* AERIAL_HANDS_FREE: the weapon put away for Aerial Step's cast */ }
+    else if (STD_SALVAGE) { // the forked Salvage Blade: rects only, no allocation
+      const B = SALVAGE_BLADE_STD, y = B.y, h0 = .2, t = B.prong[1], f = h0 + B.body[0], low = y + B.body[1] - t;
+      rect(B.blade, salvageX(facing, h0, B.body[0]), y, B.body[0], B.body[1]); // the body from the hand to the fork
+      rect(B.tine, salvageX(facing, f, B.prong[0]), y, B.prong[0], t); // the whole tine
+      rect(B.tine, salvageX(facing, f + B.prong[0], .03), y + t * .25, .03, t * .5); // its point
+      rect(B.tine, salvageX(facing, f, B.broken), low, B.broken, t); // the snapped tine
+      rect(B.break, salvageX(facing, f + B.broken, B.jag * .5), low, B.jag * .5, t * .5); // its jagged break, bright
+      rect(B.break, salvageX(facing, f + B.broken - B.jag * .4, B.jag * .5), low + t * .5, B.jag * .5, t * .5);
+    } else rect(p[2], facing === "left" ? -0.38 : 0.2, -0.48, 0.18, 0.05); // the blade in hand
   } else if(kind==='vesperwing'){rect(p[1],-.09,-.62,.18,.56);ctx.fillStyle=p[0];ctx.beginPath();ctx.moveTo(k-s*.08*sc,base-s*.5*sc);ctx.lineTo(k-s*.7*sc,base-s*.85*sc);ctx.lineTo(k-s*.48*sc,base-s*.22*sc);ctx.closePath();ctx.fill();ctx.beginPath();ctx.moveTo(k+s*.08*sc,base-s*.5*sc);ctx.lineTo(k+s*.7*sc,base-s*.85*sc);ctx.lineTo(k+s*.48*sc,base-s*.22*sc);ctx.closePath();ctx.fill();rect(p[2],-.07,-.55,.14,.18)}
   else if(kind==='gravitantBell'){ctx.fillStyle=p[0];ctx.beginPath();ctx.ellipse(k,base-s*.48*sc,s*.38*sc,s*.43*sc,0,0,7);ctx.fill();ctx.strokeStyle=p[2];ctx.stroke();for(let q=-2;q<=2;q++)rect(p[1],q*.12,-.18,.06,.28)}
   else if(kind==='mireApostle'){ctx.fillStyle=p[1];ctx.beginPath();ctx.ellipse(k,base-s*.25*sc,s*.48*sc,s*.32*sc,0,0,7);ctx.fill();rect(p[0],-.32,-.65,.64,.44);rect(p[2],-.08,-.53,.16,.16)}
@@ -3344,7 +3360,7 @@ export function render(ctx, g, w, h, now) {
       if (mech && !suited) drawSubmersible(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, "back", 0, false, g.mechBoosting);
       const subHidden = g.area === "overworld" && g.save.boat?.aboard && g._subDive > 0; if (subHidden) { ctx.save(); ctx.globalAlpha = .12; } // release 311: under the surface
       const aerialK = kd || suited || mech || seatInfo ? 0 : aerialCastStd(g, now); // Aerial Step's cast: lean and arms swept back
-      const handsFree = !kd && !suited && !mech && aerialHandsFreeStd(g, now); STD_HANDS_FREE = handsFree; // AERIAL_HANDS_FREE: the weapon put away for the cast
+      const handsFree = !kd && !suited && !mech && aerialHandsFreeStd(g, now); STD_HANDS_FREE = handsFree; { const q = g.save.equipment?.primary; STD_SALVAGE = !!q && (q.id === "salvage-blade" || q.name === "Salvage Blade"); } // items.ts primaryCarryKind's Salvage Blade test, without its per-call lookup // AERIAL_HANDS_FREE: the weapon put away for the cast
       const rushLean = (kd || suited || mech || seatInfo ? 0 : cleaverRushLean(g)) + (aerialK > 0 ? AERIAL_STD_ARMS.lean * aerialK * (p.facing === "right" ? 1 : p.facing === "left" ? -1 : 0) : 0); // the Verge Cleaver's Lava Slash rush (2026-11-14): tipped into the charge
       if (aerialK > 0 && p.facing === "down") drawAerialArmsStd(ctx, p.x, p.y - (lift + seat) / s, s, p.facing, aerialK); // facing the camera, the arms go behind the body
       if (rushLean) { const fx = (p.x + .5) * s, fy = (p.y + .9) * s - lift; ctx.save(); ctx.translate(fx, fy); ctx.rotate(rushLean); ctx.translate(-fx, -fy); }
@@ -3358,7 +3374,7 @@ export function render(ctx, g, w, h, now) {
         p.facing,
         Math.floor(p.walkPhase || 0),
         now < (p.attackUntil || 0) ? "attack" : "walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1,
-      ); STD_HANDS_FREE = false;
+      ); STD_HANDS_FREE = false; STD_SALVAGE = false;
       if (aerialK > 0 && p.facing !== "down") drawAerialArmsStd(ctx, p.x, p.y - (lift + seat) / s, s, p.facing, aerialK); // inside the lean
       if (rushLean) { ctx.restore(); if (cleaverRushLean(g)) drawCleaverRushBlade(ctx, g, s, lift); } // the blade carried low and trailing
       if (!suited && !mech) drawAerialRingsStd(ctx, g, (p.x + .5) * s, (p.y + .82) * s - lift - seat, s, now, 1); // Aerial Step: the near halves, over them

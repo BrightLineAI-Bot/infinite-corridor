@@ -39,9 +39,11 @@ const taken = (e) => 1e6 - e.hp;
 const press = (g, t, action = 'attack') => { g.attackAction = action; try { return g.primaryAttack(t, { x: 1, y: 0 }); } finally { g.attackAction = null; } };
 // A tap (a hand drifts out `driftMs`), then a press held until the hold begins: returns the time and the hold.
 function begin(g, driftMs) {
-  let t = 1000; press(g, t); t = run(g, t, t + 40); t = run(g, t, t + driftMs);
+  let t = 1000; press(g, t); t = run(g, t, t + 40); t = run(g, t, t + Math.round(driftMs * 2.2 / QUANDRIX.hand.speed)); // the same ground at the faster hands (2.2 tiles/s when these were written)
   g.player.attackReadyAt = 0; press(g, t); for (let i = 0; i < 40 && !g.quandrix.hold.on; i++) { frame(g, t, true); t += 20; }
-  assert.ok(g.quandrix.hold.on, 'the hold began'); return t;
+  assert.ok(g.quandrix.hold.on, 'the hold began');
+  // The penultimate hand (Tim, 2026-11-25): the held press threw its own hand too; it is put away so only the hold's blows count.
+  const own = latestHand(g); assert.ok(own && own !== g.quandrix.hold.hand, 'the held press threw its own hand'); own.on = false; return t;
 }
 // Runs until the hold ends (or `limit` ms): the time it ended and the hand's place in its last frame.
 function untilBurst(g, t, limit, held = false, move = { x: 0, y: 0 }) {

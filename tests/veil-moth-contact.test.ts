@@ -42,8 +42,9 @@ test('vertical intervals block at three levels and clear at four, including exac
   g.player.x=3;support=actorContactTop(e);g.actorContactPlatformSupport=(body)=>body===g.player?support:null;move(g,e,-4,0);assert.ok(e.x<2,'reverse mover sees the same exact-touch clearance');
 });
 
-test('actual Game walking and dodge stop at a living Veil Moth without changing its instant strike contract',()=>{
-  const outcomes=[];for(const action of ['','dodge']){const g=actualGame(),e=g.enemies[0],before={instant:e.instantStrike,range:e.range,damage:e.damage};for(let i=0;i<40;i++)g.update(.05,input(1,0,i===0?action:''),1000+i*50);assert.ok(Math.abs(gap(g)-radius(e))<1e-6);assert.deepEqual({instant:e.instantStrike,range:e.range,damage:e.damage},before);assert.equal(g.projectiles.length,0);outcomes.push([g.player.x,g.player.y,e.x,e.y])}assert.equal(outcomes.length,2);
+// Solid dodges (Tim, 2026-11-25): walking stops at the moth; a dodge into it, a minor foe, nudges it aside (actor-contact.ts DODGE_SHOVE), never through it.
+test('actual Game walking stops at a living Veil Moth and a dodge nudges it aside, without changing its instant strike contract',()=>{
+  const outcomes=[];for(const action of ['','dodge']){const g=actualGame(),e=g.enemies[0],before={instant:e.instantStrike,range:e.range,damage:e.damage};for(let i=0;i<40;i++){g.update(.05,input(1,0,i===0?action:''),1000+i*50);assert.ok(gap(g)>=radius(e)-1e-6,'never inside it')}if(action)assert.ok(Math.abs(e.y-5)>.2&&gap(g)>radius(e),'nudged aside');else assert.ok(Math.abs(gap(g)-radius(e))<1e-6);assert.deepEqual({instant:e.instantStrike,range:e.range,damage:e.damage},before);assert.equal(g.projectiles.length,0);outcomes.push([g.player.x,g.player.y,e.x,e.y])}assert.equal(outcomes.length,2);
 });
 
 test('actual ordinary AI uses reverse material contact without fabricating a flight or projectile branch',()=>{

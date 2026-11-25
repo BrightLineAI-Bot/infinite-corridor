@@ -12,6 +12,7 @@ import { PENTAGON, pentagonPlan, pentagonVaultId } from '../src/pentagon.ts';
 import { PENTAGON_ARENA, pentagonArenaId, pentagonArenaPick, pentagonArenaVersion, generatePentagonArena } from '../src/pentagon-arena.ts';
 import { DRAGON, isPackKind, PACK_EFFECT_CAP } from '../src/monster-pack.ts';
 import { stillworksSpriteCount } from '../src/pentagon-arena-render.ts';
+import { PRIMARY_PROFILES } from '../src/items.ts';
 
 const SEED = 'TIM1', A = PENTAGON_ARENA, N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const idle = { state: { x: 0, y: 0 }, consume: () => false, held: () => false, reset() {} };
@@ -119,6 +120,12 @@ test('the boss, its paths and its shots respect the pillars: each finale beast f
 // Tim (2026-11-11, WAYFARER_DAMAGE 0.9): "the early fight is still a loss": the early Wayfarer brings the Tyrant to about a fifth, then a
 // Sunfall it cannot reach the shade from (about ten tiles away) ends it and the Stillworks resets.
 test('a headless duel in the pillared Stillworks (early, mid, late, endgame): a Wayfarer who swings and hides behind a pillar when the Sunfall gathers is never touched by it; from mid on it kills the Tyrant, early it falls with the Tyrant near a fifth', { timeout: 300000 }, () => {
+  // The duel's timeline (when the Sunfall comes, when the Tyrant falls) was set with the starting Salvage Blade cutting at 1. At
+  // its 1.2 Focus boost (2026-11-25, items.ts PRIMARY_PROFILES) the mid build met a Sunfall at 53 s (the Tyrant at 23%) that the
+  // scripted Wayfarer, who starts for a pillar only when the wind-up begins, did not reach cover from. What this pins is the
+  // Stillworks' cover, so the blade cuts at 1 here.
+  const S = PRIMARY_PROFILES['salvage-blade'], share = S.share; S.share = 1;
+  try {
   const rows = [];
   for (const [name, base] of Object.entries(BUILDS)) { const save = JSON.parse(JSON.stringify(base)), g = game(SEED, save), P = plan(); intoArena(g, P, 'crimsonTyrant'); const b = beastOf(g), p = g.player; let now = 1000, t = 0, worst = 0, sun = 0, casts = 0, shade = null, was = false, low = 1;
     const hurt = g.packHurt.bind(g); g.packHurt = (src, amt, o, at) => { if (o?.source === 'dragonSupernova') sun++; return hurt(src, amt, o, at); };
@@ -130,6 +137,7 @@ test('a headless duel in the pillared Stillworks (early, mid, late, endgame): a 
     if (name === 'early') { assert.ok(!b.dead && !H(g, P).pentArenaWon, 'early: the Tyrant wins'); assert.ok(low > .1 && low < .3, `early: brought to about a fifth (${Math.round(low * 100)}%)`); } else assert.ok(b.dead, `${name}: it falls (${Math.round(b.hp / b.maxHp * 100)}% left)`); if (name === 'early') assert.ok(sun <= 1, `early: at most the one Sunfall that ends it (${sun})`); else assert.equal(sun, 0, `${name}: the Sunfall never reached behind the pillar (${casts} cast)`); assert.ok(worst >= g.save.maxHp * .2, `${name}: hit hard (${worst})`);
     if (name !== 'early') { assert.ok(t > 8 && t < 120, `${name}: ${t.toFixed(1)} s`); assert.equal(H(g, P).pentArenaWon, true); } }
   console.log(rows.join('\n'));
+  } finally { S.share = share; }
 });
 
 test('the pillars draw, bounded, in every quality tier and under reduced motion', () => {

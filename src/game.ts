@@ -1,7 +1,7 @@
 import { playerDroneVisualAnchor, projectileLaunchMetadata, actorPresentation, PLAYER_DRONE_VISUAL } from './actor-presentation.ts';
 import { playerFormPresentation } from './close-view-player-presentation.ts'; // Close View occlusion: the drawn height of the robot, the suit or the Ember Form
 import { canopyGateDestination } from './trees.ts';
-import { ACTOR_CONTACT, DODGE_CONTACT, actorContactContext, ordinaryContactEnemy, ordinaryContactPlayer, touchingBodies, boxedIn } from "./actor-contact.ts";
+import { ACTOR_CONTACT, DODGE_SHOVE, actorContactContext, ordinaryContactEnemy, ordinaryContactPlayer } from "./actor-contact.ts";
 import { PRIMARY_SWINGS, swingSpec, swingStep, swingTimes, sampleSwing, damageAngle, damageReach, swingBlades, circleTouchesSector, circleTouchesSegment, clampTempo, normalizePendingSwing } from "./melee-swing.ts";
 import { simpleToolAppearanceKind, heldToolKind, stowHeldTool, ACTION_MOTION, CLOSE_VIEW_MELEE_TIMING, TOOL_ACTION_TIMING, TOOL_USE_STARTUP_MS, toolUseStartupMs, normalizeHammerfallStartup, normalizePendingMeleeContact, normalizePendingToolUse, sampleToolActionMotion, attackVisualDeadline, attackVisualRemaining, normalizeActionVisualMotion, normalizeAttackVisual, normalizeCastVisual, normalizeDodgeVisual, normalizePrimaryCombo, acceptCleaverChoreography, advancePrimaryCombo, recentHeroPresentation, stampAttackVisual, stampCastVisual, cancelCastVisual } from "./action-motion.ts";
 import { DEEP_PLACEMENT, isDeepV2Id } from "./deep-dungeons.ts";
@@ -4588,8 +4588,8 @@ export class Game {
     const speed = (dodging ? 4.8 : 2.4) * (1 + (characterStats(this.save).moveSpeed || 0)), most = Math.abs(off) / Math.max(1e-6, speed * Math.max(dt, 1e-3));
     return Math.sign(off) * Math.min(Math.abs(off) * TREE_KEEL.pull, TREE_KEEL.max, most) * major;
   }
-  planGroundedPlayerMove(dx, dy, width, now, carrier = null, pass = null) {
-    const contacts = actorContactContext(this, this.player, dx, dy, pass); if (!contacts) return null;
+  planGroundedPlayerMove(dx, dy, width, now, carrier = null) {
+    const contacts = actorContactContext(this, this.player, dx, dy); if (!contacts) return null;
     const probe = contacts.probe, p = this.player, from = tileUnder(this.map, width, p.x, p.y), jumping = now < (this.jumpUntil || 0);
     // Simulation flags match the commit path, without mutating the player, lift or action clocks.
     probe.x = p.x; probe.y = p.y; probe.isPlayer = true; probe.jumping = jumping; probe.voidSuit = this.mechUp() && this.area !== "dungeon";
@@ -4618,19 +4618,32 @@ export class Game {
     contacts.record = false; contacts.canExit = null; contacts.carrier = null; contacts.endX = probe.x; contacts.endY = probe.y;
     return contacts;
   }
-  // DODGE_CONTACT (the Briar Stag fight stutter): a dodge step that bodies cut to less than `eaten` of its length is planned
-  // again past the bodies that touched the Wayfarer when the dodge began (`dodgeThrough`), and taken when it goes further.
-  // Only the shared context is reused (no allocation); the ordinary plan is made again when the second is no better, so the
-  // trace committed is always the plan's own.
+  // DODGE_SHOVE (solid dodges, Tim 2026-11-25): bodies stop a dodge as they stop walking. Before a dodge step is planned, each
+  // minor foe it would run into is staggered and nudged sideways off its line through the collision mover (dodgeShove); every
+  // other body, and a minor foe the nudge could not move far enough, stops the dodge at contact.
   planGroundedPlayer(dx, dy, width, now, carrier = null, dodging = false) {
-    const plan = this.planGroundedPlayerMove(dx, dy, width, now, carrier), p = this.player, want = Math.hypot(dx, dy), pass = this.dodgeThrough;
-    if (!plan || !dodging || !pass?.length || !(want > ACTOR_CONTACT.epsilon)) return plan;
-    const got = Math.hypot(plan.endX - p.x, plan.endY - p.y);
-    if (got >= want * DODGE_CONTACT.eaten) return plan;
-    const through = this.planGroundedPlayerMove(dx, dy, width, now, carrier, pass);
-    if (!through) return null; // no other body near: the ordinary terrain move
-    if (Math.hypot(through.endX - p.x, through.endY - p.y) > got + ACTOR_CONTACT.epsilon) return through;
+    if (dodging) this.dodgeShove(dx, dy);
     return this.planGroundedPlayerMove(dx, dy, width, now, carrier);
+  }
+  // A foe the dodge may shove: ordinary contact, not elite or stronger, not stagger-immune, small.
+  dodgeShovable(e) { return ordinaryContactEnemy(e) && !eliteOrStronger(e) && !e.eliteId && !e.staggerImmune && !e.packGuardian && enemyBodyRadius(e) <= DODGE_SHOVE.maxRadius; }
+  // Bounded: one pass over the area's creatures (the actor caps bound them), at most DODGE_SHOVE.most shoves a dodge (the list is
+  // runtime only, reused, and cleared when a dodge begins). No allocation per frame.
+  dodgeShove(dx, dy) {
+    const p = this.player, len = Math.hypot(dx, dy), S = DODGE_SHOVE; if (!(len > ACTOR_CONTACT.epsilon) || !ordinaryContactPlayer(this)) return 0;
+    const shoved = this.dodgeShoved ||= []; if (shoved.length >= S.most) return 0;
+    const ux = dx / len, uy = dy / len; let n = 0;
+    for (const e of this.enemies || []) {
+      if (shoved.length >= S.most) break;
+      const r = ACTOR_CONTACT.playerRadius + enemyBodyRadius(e), ex = e.x - p.x, ey = e.y - p.y, along = ex * ux + ey * uy, side = ex * uy - ey * ux;
+      // in front of the Wayfarer, reached within this step, and across the dodge's line
+      if (!(along > 0) || along - r > len + S.reach || Math.abs(side) >= r || shoved.includes(e) || !this.dodgeShovable(e)) continue;
+      shoved.push(e); n++;
+      e.hitStun = Math.max(e.hitStun || 0, S.stun); e.recoil = Math.max(e.recoil || 0, S.stun * .5);
+      const sign = side > 0 || (side === 0 && (hashSeed(String(e.id)) & 1)) ? 1 : -1, need = Math.min(S.nudge, r - Math.abs(side) + S.clear);
+      this.moveGrounded(e, uy * sign * need, -ux * sign * need);
+    }
+    return n;
   }
   // Release 736 (review F4/F8): the states that belong to where the Wayfarer was, cleared by a death and by Wayglass travel.
   clearCarriedStates() {
@@ -9833,7 +9846,7 @@ export class Game {
       { x: geometry.dx, y: geometry.dy },
       followCut ? 1 : 0,
     );
-    const cutShare = daggers ? FOURFOLD_DAGGERS.share : swingCall ? swingCall.share : 1; // a swing step's share (melee-swing.ts PRIMARY_SWINGS)
+    const cutShare = daggers ? FOURFOLD_DAGGERS.share : swingCall ? swingCall.share : Number(profile.share) || 1; // a swing step's share (melee-swing.ts PRIMARY_SWINGS); a plain swing's, its profile's (items.ts PRIMARY_PROFILES: the Salvage Blade's Focus boost)
     const contact = !swingCall || swingCall.contact, extra = swingCall ? PRIMARY_SWINGS[swingCall.kind].extraShare : 1; // once per swing: the Shadow Clone, the Echo, the awakened move (the Echo and the Clone scaled by the slower swing's cadence; the awakened move, every third swing, keeps its own weight)
     const pounce = isEcho || followCut || !hits.some((q) => !unharmablePerson(q)) ? 1 : pounceBonus(this, now);
     for (const e of hits) {
@@ -12779,7 +12792,7 @@ export class Game {
         const ax = Math.abs(p.dodgeX) >= Math.abs(p.dodgeY); p.dodgeX = ax ? Math.sign(p.dodgeX) || 1 : 0; p.dodgeY = ax ? 0 : Math.sign(p.dodgeY) || 1; p.lastMoveVector = { x: p.dodgeX, y: p.dodgeY };
       }
       if (r.ok) { const f = this.fall && this.fallApplies() && !this.aerialHeld() ? this.fall : null; if (f && f.rollT == null) f.rollT = Number(f.t) || 0; }
-      if (r.ok) { const w = mapWidth(this.map, this.area); touchingBodies(this, this.dodgeThrough ||= [], boxedIn(this, (bx, by) => footprintOpen(this.map, w, bx, by)) ? DODGE_CONTACT.boxTouch : DODGE_CONTACT.touch); } // DODGE_CONTACT: the bodies this dodge began pressed against (runtime only; a dodge resumed from a save keeps ordinary contact) // FALL.roll: the fall's first dodge is its landing-roll try, timed on the fall's own clock (saved with it)
+      if (r.ok) (this.dodgeShoved ||= []).length = 0; // DODGE_SHOVE: a new dodge may shove minor foes afresh (runtime only) // FALL.roll: the fall's first dodge is its landing-roll try, timed on the fall's own clock (saved with it)
       if (r.ok) { const logicalNow=now-(this.presentationPausedMs||0),prior=recentHeroPresentation(p,logicalNow,p.x,p.y),canonicalYaw=(yaw)=>Math.atan2(Math.sin(yaw),Math.cos(yaw));p.dodgeVisual = prior ? { facingYaw: canonicalYaw(prior.yaw), gaitPhase: prior.gaitPhase, moving: prior.speed > .01, speed: prior.speed, poseMs: prior.now } : { facingYaw: canonicalYaw(facingYaw), gaitPhase: (Number(p.walkPhase) || 0) * Math.PI, moving: Math.hypot(Number(x) || 0, Number(y) || 0) > .15, speed: Math.hypot(Number(x) || 0, Number(y) || 0) > .15 ? 2.4 : 0, poseMs: Math.max(0,logicalNow) }; }
       if (!r.ok && mired) { if (now >= (p.invulnerableUntil || 0)) { p.hp = Math.max(0, p.hp - Math.max(1, Math.ceil((this.save.maxHp || p.maxHp || 100) * STAG.mire.exhaustedShare))); p.invulnerableUntil = now + 200; } this.message = "The mire drags at you, and you have nothing left to pull free with."; } // release 708 (Tim: "if you dodge while you have zero stamina in the mire, then you take damage")
       else if (!r.ok) this.message = "Not enough stamina to dodge.";
