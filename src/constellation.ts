@@ -111,7 +111,9 @@ export const ALT_PASSIVES = {
 export const altUnlocked = (save) => APERTURE_BANDS.indexOf(apertureBand(save?.perception?.aperture || 0)) >= ALT_UNLOCK_TIER;
 // Progression Phase 6 (world-routes.ts): a secondary form whose Exploration route is a milestone or a reliquary is shut until it is
 // found; a form found (earned or kept) opens its switch once its node is learned, before Infinite III too, in either mode.
-export const WORLD_WAIT = "Not found yet: it waits out in the world (Journal → Leads).";
+// Paths part 1: no pointer to the Journal's Leads, which never list a hidden reward or a thread's before it begins; the Arcanum
+// shows the precise reason (paths.ts pathsReason) where it can.
+export const WORLD_WAIT = "Not found yet: it waits out in the world.";
 export const altOpen = (save, id) => (altUnlocked(save) || formFound(save, id)) && !formWithheld(save, id);
 // Is the secondary form chosen (and open) for a learned node?
 export const altChosen = (save, id) => !!save?.constellation?.alt?.[id] && !!ALT_PASSIVES[id] && altOpen(save, id);
