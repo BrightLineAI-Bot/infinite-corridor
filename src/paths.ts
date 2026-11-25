@@ -32,7 +32,7 @@ import { AWAKENED_ARTS } from "./weapon-arts.ts";
 import { ARCANA_UNLOCKS } from "./lore.ts";
 import { THREADS, ARCANA_SETS, arcanaWhere, threadFound } from "./threads.ts";
 import { RELAY_TARGET } from "./relay-network.ts";
-import { LISTENER_RETURN } from "./far-array.ts";
+import { relaysAwayOf } from "./far-array.ts";
 import { rescueGuidance } from "./hatchling.ts";
 import { WORLD_ROUTE_OF, MILESTONES, MILESTONE_FOR, RELIQUARY, worldWithheld, earnedWorld, featCount, milestoneLine } from "./world-routes.ts";
 import { QUESTS, QUEST_IDS, QUEST_FOR, THREAD_REWARDS, SEEDED_REWARDS, SEEDED_IDS, STORY_ROUTE_OF, STORY_SEEN, VISCERA_SHOP, seededPick, questOpen, questStep, questState, stepCount, stepDone, stepPlace, questFollowId, storyWithheld, boughtRumour } from "./quests.ts";
@@ -310,8 +310,8 @@ function ladderOf(ctx, states) {
     const f = save?.farArray && typeof save.farArray === "object" ? save.farArray : {}, kills = listenerKills(save), want = killsFor(t), n = answeredRelays(save);
     chain.push({ id: "aperture", done: held, text: held ? `The Aperture holds at ${fmt(top)}, the top of ${bandName(cap)}.` : `Aperture ${fmt(top)}, the top of ${bandName(cap)} (you: ${fmt(ap)}).`, progress: { n: Math.min(ap, top), need: top } });
     chain.push({ id: "relays", done: known, text: known ? `Relays answered: the network gave a coordinate.` : `Answer relays: ${Math.min(n, RELAY_TARGET)} of ${RELAY_TARGET}. Restore or sever each, after its crossing's guardian falls.`, progress: { n: known ? RELAY_TARGET : Math.min(n, RELAY_TARGET), need: RELAY_TARGET } });
-    const away = f.quiet ? Math.max(0, num(f.relaysAt) + LISTENER_RETURN.returnRelays - n) : 0;
-    chain.push({ id: "mouth", done: known && !f.quiet, text: !known ? "The Listener's Mouth: not known yet." : f.quiet ? `The Listener is away from its Mouth at ${coord.rx}, ${coord.ry}: answer ${away} more relay${away === 1 ? "" : "s"} and one returns.` : `The Listener's Mouth: ${coord.rx}, ${coord.ry}.` });
+    const away = f.quiet ? relaysAwayOf(save, f) : 0, moving = f.cycle >= 3 && f.moves; // LISTENER_CYCLE v3: after a kill, the next Listener waits at the next Mouth
+    chain.push({ id: "mouth", done: known && !f.quiet, text: !known ? "The Listener's Mouth: not known yet." : f.quiet ? `The Listener is away from its Mouth at ${coord.rx}, ${coord.ry}: answer ${away} more relay${away === 1 ? "" : "s"} and ${moving ? "the Mouth moves, with a Listener waiting at the new one" : "one returns"}.` : `The Listener's Mouth: ${coord.rx}, ${coord.ry}.` });
     chain.push({ id: "listener", done: kills >= want, text: `Fell the Listener${want > 1 ? `: ${Math.min(kills, want)} of ${want}` : ""}.`, progress: { n: Math.min(kills, want), need: want } });
     const compass = known ? { pin: { rx: coord.rx, ry: coord.ry, name: "The Far Array" } } : null; // the Journal's Leads pin the same lead by its title
     return { tier, band: bandName(tier), next: { tier: t, band: bandName(t), aperture: need, need: Math.max(0, need - ap), listener: true }, held, chain, opens, ...placeChips(ctx, known ? coord : null), compass, following: following(ctx, compass) };

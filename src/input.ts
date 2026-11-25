@@ -137,6 +137,14 @@ export function createInput(root, host = globalThis, options = {}) {
   canvas.onlostpointercapture = (e) => {
     if (pointers.has(e.pointerId)) canvas.onpointercancel(e);
   };
+  // Android Chrome's long press (Tim, 2026-11-25: "Android keeps recognising long presses as Chrome prompts"): a held action
+  // button or a finger resting on the game opens no context menu, callout, selection or drag; text fields keep theirs. With
+  // styles.css (touch-action, user-select, -webkit-touch-callout, -webkit-user-drag none) the charge keeps its pointer.
+  const textField = (t) => !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable === true);
+  const noMenu = (e) => { if (!textField(e.target)) e.preventDefault(); };
+  root.addEventListener?.("contextmenu", noMenu);
+  root.addEventListener?.("dragstart", noMenu);
+  canvas.oncontextmenu = (e) => e.preventDefault();
   host.addEventListener?.("keydown", keydown);
   host.addEventListener?.("keyup", (e) => keys.delete(e.key.toLowerCase()));
   host.addEventListener?.("blur", reset);
@@ -147,6 +155,7 @@ export function createInput(root, host = globalThis, options = {}) {
   // before the tap ends. The browser then delivers that same tap's click to whatever button now lies beneath it
   // (the Arcanum, Increase, Equip, Salvage...). Swallow the click that belongs to the action button's own gesture.
   let actionTap = null;
+  const HOLD_ENDS = ["pointerup", "pointercancel"];
   const press = (b, e) => {
     e.preventDefault();
     actionTap = { button: b, pointerId: e.pointerId, until: performance.now() + 1500 };
@@ -155,9 +164,15 @@ export function createInput(root, host = globalThis, options = {}) {
     // Release 281 (Tim: "We just want the button to be more responsive"): the button lights the instant it is touched.
     b.classList?.add("pressed"); clearTimeout(b.pressedTimer); b.pressedTimer = setTimeout(() => b.classList?.remove("pressed"), 160);
     // The release arrives where the press landed: the button itself, or the cluster for a press in a gap (release 181).
+    // Reliable holds (Tim, 2026-11-25: "it's weirdly like a charge function that doesn't work reliably"): the press keeps its
+    // pointer (an explicit capture, as touch already has), and the hold ends only on that pointer's own pointerup or
+    // pointercancel, heard on the button and on the window alike, so a capture the browser drops (lostpointercapture) or a
+    // thumb that drifts off the button mid-charge (pointerleave) no longer lets the charge go. A pointercancel (the browser
+    // took the finger) ends the hold as a release, so the charge still fires rather than vanishing or sticking held.
     const source = e.currentTarget || b, id = e.pointerId;
-    const up = (q) => { if (q?.pointerId != null && id != null && q.pointerId !== id) return; heldButtons.delete(b.dataset.action); for (const t of ["pointerup", "pointercancel", "pointerleave"]) source.removeEventListener(t, up); };
-    for (const t of ["pointerup", "pointercancel", "pointerleave"]) source.addEventListener(t, up);
+    if (id != null) try { source.setPointerCapture?.(id); } catch { /* a pointer the browser no longer tracks */ }
+    const up = (q) => { if (q?.pointerId != null && id != null && q.pointerId !== id) return; heldButtons.delete(b.dataset.action); for (const t of HOLD_ENDS) { source.removeEventListener(t, up); host.removeEventListener?.(t, up); } };
+    for (const t of HOLD_ENDS) { source.addEventListener(t, up); host.addEventListener?.(t, up); }
   };
   root.querySelectorAll("[data-action]").forEach((b) => (b.onpointerdown = (e) => press(b, e)));
   // Release 179 (Tim's probe, 2026-10-18): a thumb that lands in the gap between action buttons pressed nothing; his

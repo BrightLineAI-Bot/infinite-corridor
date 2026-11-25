@@ -111,3 +111,26 @@ export function createProbe(clock = () => performance.now()) {
   };
   return probe;
 }
+// The Briar Stag fight stutter (Tim's r1050 probe: ~130 dodges logged "moved" 0 or 0.09): the dodge event measured only the
+// frame the press came in. On a 120 Hz screen half the frames run no 60 Hz world step (sim-clock.ts), so the press waited a
+// frame (logged as "dodged" from the dodge before, moved 0) and was then logged again after one step (0.08-0.09 tiles). A
+// press is now logged once, when a world step takes it: a refusal at once, and a dodge when its window ends, with the ground
+// the whole dodge covered (`moved`) and the stamina before it. One small record per press; nothing per frame.
+export function createDodgeWatch() {
+  let asked = null, open = null, done = null;
+  const close = (x, y) => { const o = open; open = null; return { result: "dodged", stamina: o.stamina, moved: Math.round(Math.hypot(x - o.x, y - o.y) * 100) / 100 }; };
+  return {
+    // Before the frame's update, while a Dodge press waits (input.state.dodge).
+    before(p, now) { if (!asked) asked = { x: p.x, y: p.y, stamina: p.stamina, until: p.dodgeUntil || 0, held: now < (p.heldUntil || 0), stunned: now < (p.stunnedUntil || 0) }; else { asked.x = p.x; asked.y = p.y; asked.stamina = p.stamina; } },
+    // After the update. `taken`: a world step consumed the press (a frame with no step leaves it waiting, and logs nothing).
+    // Returns a refusal to log now, or null.
+    after(p, now, taken) {
+      const q = asked; if (!q || !taken) return null; asked = null;
+      if ((p.dodgeUntil || 0) > q.until) { if (open) done = close(q.x, q.y); open = { x: q.x, y: q.y, until: p.dodgeUntil, stamina: Math.round(q.stamina) }; return null; }
+      return { result: q.stunned ? "stunned" : q.held ? "held (struggle)" : q.stamina < 15 ? "no stamina" : "refused", stamina: Math.round(q.stamina) };
+    },
+    // Each frame: a dodge whose window has ended (or one cut short by the next), with the ground it covered; else null.
+    end(p, now) { if (done) { const d = done; done = null; return d; } return open && now >= open.until ? close(p.x, p.y) : null; },
+    reset() { asked = open = done = null; },
+  };
+}

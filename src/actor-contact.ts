@@ -3,6 +3,16 @@ import { liftAt, LIFT_PER_LEVEL } from "./landscape.ts";
 import { phaseShielded } from "./affixes.ts";
 
 export const ACTOR_CONTACT = Object.freeze({ playerRadius: .26, step: .16, maxSteps: 256, epsilon: 1e-7 });
+// The Briar Stag fight stutter (Tim, 2026-11-22, r1050: "everything just locked up"): in a crowd (Frenzied waves, up to 62
+// creatures) bodies pressed against the Wayfarer from different sides blocked every direction, so a dodge (stamina spent,
+// i-frames on) covered no ground at all, again and again. When a dodge begins, the bodies the Wayfarer is pressed against
+// are noted (touchingBodies): those within `touch` of contact, or, when the Wayfarer is boxed in (no direction of `boxProbe`
+// tiles in which bodies and ground let them move `boxFree` tiles, of `boxDirs` tried), those within `boxTouch` of contact.
+// A step of that dodge that bodies cut to less than `eaten` of its length is planned again with the noted bodies left out:
+// the roll goes through the crush it began in. A body further off or reached later still stops it (a dodge at a foe a step
+// away still stops at it), as do walls and lethal ground; a dodge the bodies only shorten or deflect keeps its contact; every
+// refusal rule (stamina, held, stunned, cursed) and walking are unchanged.
+export const DODGE_CONTACT = Object.freeze({ eaten: .25, touch: .05, boxTouch: .3, boxProbe: .4, boxFree: .1, boxDirs: 8 });
 // These controllers own teleportation, roaming, mounting or large-body movement outside ordinary AI.
 const SPECIAL = new Set(["voidWalker", "psychicCrystal", "astralWorm", "astralMirage", "lightningGiant", "mountainTurtle", "briarStag", "ashenMoth", "crimsonDragon", "doomChaser"]);
 const AIRBORNE_LEGACY = new Set(["cinderWisp"]);
@@ -102,7 +112,7 @@ export function actorContactSupport(game, body, x, y, width, phase = null, carri
 // A cache per Game, never a shared current-world context. Buffers, the candidate list and the
 // probe are reused. Enemy movement queries only the player; player movement scans foes once.
 const contexts = new WeakMap();
-export function actorContactContext(game, subject, dx, dy) {
+export function actorContactContext(game, subject, dx, dy, pass = null) {
   if (!ordinaryContactPlayer(game) || (subject !== game.player && !ordinaryContactEnemy(subject))) return null;
   let c = contexts.get(game);
   if (!c) {
@@ -119,9 +129,31 @@ export function actorContactContext(game, subject, dx, dy) {
       || other.y + r < Math.min(subject.y, subject.y + dy) || other.y - r > Math.max(subject.y, subject.y + dy)) return;
     c.candidates.push(other); c.candidateBottoms.push(actorContactBottom(other)); c.candidateTops.push(actorContactTop(other, game));
   };
-  if (subject === game.player) { for (const e of game.enemies || []) if (ordinaryContactEnemy(e)) add(e, enemyBodyRadius(e)); }
+  if (subject === game.player) { for (const e of game.enemies || []) if (ordinaryContactEnemy(e) && !(pass && pass.includes(e))) add(e, enemyBodyRadius(e)); }
   else add(game.player, ACTOR_CONTACT.playerRadius);
   return c.candidates.length ? c : null;
+}
+// DODGE_CONTACT: the ordinary bodies within `slack` of contact with the Wayfarer (or overlapping), into `out` (reused; at
+// most the area's creatures, which the actor caps bound).
+export function touchingBodies(game, out, slack = DODGE_CONTACT.touch) {
+  out.length = 0; const p = game?.player; if (!p || !ordinaryContactPlayer(game)) return out;
+  for (const e of game.enemies || []) {
+    if (!ordinaryContactEnemy(e)) continue;
+    const r = ACTOR_CONTACT.playerRadius + enemyBodyRadius(e) + slack, x = p.x - e.x, y = p.y - e.y;
+    if (x * x + y * y <= r * r) out.push(e);
+  }
+  return out;
+}
+// DODGE_CONTACT: true when no direction (of `boxDirs`) lets the Wayfarer move `boxFree` tiles: bodies cut the probe short, or
+// `open(x, y)` (the ground's footprint test) refuses its end. Bounded: boxDirs body sweeps, run once a dodge press.
+export function boxedIn(game, open) {
+  const p = game?.player, D = DODGE_CONTACT; if (!p) return false;
+  for (let i = 0; i < D.boxDirs; i++) {
+    const a = i * Math.PI * 2 / D.boxDirs, dx = Math.cos(a) * D.boxProbe, dy = Math.sin(a) * D.boxProbe;
+    const c = actorContactContext(game, p, dx, dy), f = c ? c.clip(p.x, p.y, dx, dy) : 1;
+    if (f * D.boxProbe >= D.boxFree && open(p.x + dx * D.boxFree / D.boxProbe, p.y + dy * D.boxFree / D.boxProbe)) return false;
+  }
+  return true;
 }
 export function actorContactStats(game) {
   const c = contexts.get(game); return { queries: c?.queries || 0, checks: c?.checks || 0, budgetStops: c?.budgetStops || 0 };
