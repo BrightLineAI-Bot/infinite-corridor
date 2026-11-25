@@ -12,7 +12,7 @@
 // build also keeps `gear: { primary, secondary }`, the tags of the weapon and tool it was left with. Switching to it equips
 // them from the pack when they are there (a piece that was salvaged or sold is named in the message instead). Gear gets a
 // tag (`item.tag`, additive) the first time a preset records it; the tag rides with the item wherever it goes.
-import { socketGlyph, GLYPHS } from "./glyphs.ts";
+import { socketGlyph, GLYPHS, growSockets } from "./glyphs.ts";
 import { ALT_PASSIVES } from "./constellation.ts";
 import { ensureLattice } from "./transit-lattice.ts";
 import { togglePreset } from "./spell-slots.ts";
@@ -73,7 +73,7 @@ export const PRESET_GEAR_SLOTS = ["primary", "secondary"];
 export function ensurePresetGear(save) {
   const held = Array.isArray(save.presetGear) ? save.presetGear : [];
   for (const set of held) { const q = set?.armor; if (q && typeof q === "object" && q.slot === "armor") (save.inventory ||= []).push(normalizeItemUpgrade(q)); }
-  save.presetGear = [0, 1].map((i) => Object.fromEntries(PRESET_GEAR_SLOTS.map((slot) => { const q = held[i]?.[slot]; return [slot, q && typeof q === "object" && q.slot === slot ? normalizeItemUpgrade(q) : null]; })));
+  save.presetGear = [0, 1].map((i) => Object.fromEntries(PRESET_GEAR_SLOTS.map((slot) => { const q = held[i]?.[slot]; return [slot, q && typeof q === "object" && q.slot === slot ? growSockets(normalizeItemUpgrade(q)) : null]; }))); // growSockets: an awakened weapon or tool held for the other preset opens its socket too (2026-11-25)
   return save;
 }
 const presetsInUse = (save) => (save.magicSkills?.presets || []).some((p) => p?.build);

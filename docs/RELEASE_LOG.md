@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1062 (this merge, #734); production serves `r1059-3629aeded9d0` (Publish run 195, 45646565675, succeeded 2026-11-25; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1063 (this merge, #735); production serves `r1059-3629aeded9d0` (Publish run 195, 45646565675, succeeded 2026-11-25; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 1063 | Claude | claude/apato-sockets-focus / #735 | Earth Resolve 15%/8%, the Apatosaurus from Infinite IV, awakening adds a socket, Quandrix hands hit harder | Merged (#735); preview follows. |
 | 1062 | Claude | claude/charge-holds / #734 | Reliable charged attacks on touch: no long-press menu, holds survive, Quandrix tap-tap-hold slam, Carbine and Iron Fists held presses, Gathered Breath beads | Merged (#734); preview follows. |
 | 1061 | Claude | claude/stag-fight-stutter / #733 | Briar Stag fight stutter: Stalker pool/mist prowl crash, dodges through crowding bodies, coalesced autosave in fights | Merged (#733); preview follows. |
 | 1060 | Claude | claude/completable-goals / #732 | Every offered goal can be completed: thread carriers guaranteed (story v7), burn and magma milestones count every source, horde lead told, Blade Stream lanterns, Sela's Pumice Seed | Merged (#732); preview follows. |
