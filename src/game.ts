@@ -96,7 +96,7 @@ import { HITSTOP_ACTORS, hitStopActorMs, beginHitStop, tickHitStop, normalizeHit
 import { GREAT_SWEEP_SWING, GREAT_SWEEP_RECORD_VERSION, sweepTempo, sweepTimes, sweepDamageAngle, sweptArcTouches, normalizeToolSwing, SWEEP_FREEZE, sweepFreezeTouch, tickSweepFreeze, sweepFrozen } from "./great-sweep.ts"; // the Great Sweep's 360° swing; its awakened freeze
 import { generateItem, spellOpen, explorationGateOpen, primaryCarryKind, ORRERY_LOOT, BRAWLER_LOOT, FOURFOLD_DAGGERS, isFourfoldDaggers, QUANDRIX_STAFF, isQuandrixStaff, SCALING_STATS, SCALING_STRENGTH, weaponScaling, toolScaling } from "./items.ts";
 import { itemCap, upgradeLimit, upgradedItem, unlockRefinement, toolKey } from "./items.ts"; import { socketCount } from "./glyphs.ts"; // 2026-11-18: gearReadout
-import { SMITHY, paySalvage, salvagePaidText, reforgeRoll } from "./smithy.ts"; // release 607: one salvage table; 2026-11-18: its yield (SALVAGE_YIELD)
+import { SMITHY, paySalvage, salvagePaidText, salvageYieldMode, reforgeRoll, SPARE_GEAR_STATE } from "./smithy.ts"; // release 607: one salvage table; 2026-11-18: its yield (SALVAGE_YIELD)
 import { earthResolvePlant, earthResolveHit, tickEarthResolve } from "./echoes.ts"; // Earth Resolve, the Earth Apatosaurus's Echo
 import { echoEvent, tickEchoes, echoDrop, noteRoomBeastKill, pounceBonus, ECHOES, hasEcho, WALL_CLING, plungeAfterimage } from "./echoes.ts";
 import { skillMeleeBonus, skillReachBonus, riftStep, riftStepTo, riftStepReady, riftReachOf, RIFT_AIM, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, SANCTUARY, sanctuaryOn, altOn, ALT_PASSIVES, altChosen, aerialChargesNow, tickAerialCharges, aerialStepBlocked } from "./constellation.ts";
@@ -1126,8 +1126,100 @@ export function packVictim(save, spareBrawler = false) {
   return i < 0 ? 0 : i;
 }
 // `keep` (release 545): the piece is kept whatever it is (a purchase), and the pack's least-kept, oldest piece makes room.
+// Spare gear (2026-11-22): a drop that is a spare of a piece you keep (SPARE_GEAR) is salvaged on arrival, by hand's own
+// salvage (`spare` lists it). A drop kept into a full pack makes room with the oldest copy of its kind it makes spare, when
+// there is one, before the full pack's own rule. Only the drop is judged otherwise: older copies are left as they are.
 export function storeInventoryItem(save, item, keep = false) {
   save.inventory ||= [];
+  if (keep || !spareSalvageOn(save) || !item || typeof item !== "object") return storeInPack(save, item, keep);
+  const n = save.inventory.length, plan = spareGearPlan(save, spareKind(item), item);
+  if (plan.includes(n)) { save.inventory.push(item); const r = salvageInventoryItem(save, n); return { stored: false, salvaged: item, iron: r.iron, lumenDust: r.lumenDust, spare: [r] }; }
+  if (plan.length && n >= EQUIPMENT_CAPACITY) { const r = salvageInventoryItem(save, plan[0]); save.inventory.push(item); return { stored: true, salvaged: r.item, iron: r.iron, lumenDust: r.lumenDust, spare: [r] }; }
+  return storeInPack(save, item, false);
+}
+// Spare gear (Tim, 2026-11-22: "We should just automatically salvage duplicates. There's no need to keep them."). A spare is a
+// piece in the pack of the same kind (slot, name and property: "Quiet Compass") as a piece you keep, which that kept piece
+// matches or beats on every axis (`covers`): tier, power, upgrade rank, masterwork, added sockets, socket count, each socketed
+// glyph and each affix (by id, at least the value). Kept pieces: everything equipped, held by a preset (presetGear) or in the
+// sling; in the pack, a piece whose tag a preset's build names, and any piece carrying a field this rule does not weigh
+// (an awakening, a refinement, anything newer): those are never salvaged here. Of the rest, each kind is read best first
+// (`order`: power, then upgrade rank, then tier; at a tie the newest first, so the older copy goes, as the full pack's rule)
+// and a piece is kept unless a kept piece covers it; then a kept pack piece that another kept piece covers and outdoes goes too.
+// So one best copy of each kind always stays, and a piece better on any axis stays beside it. Salvage is `salvageInventoryItem`
+// (the hand's salvage: its tier's iron in the chosen yield, glyph dust, socketed glyphs back to the pouch). On pickup, the drop
+// (storeInventoryItem), and once on load, the whole pack (`flag`, Game constructor); `save.keepDuplicateGear` turns both off.
+export const SPARE_GEAR = Object.freeze({
+  ...SPARE_GEAR_STATE, // flag, keep, version (smithy.ts; normalised in freshSave/migrateSave)
+  order: Object.freeze(["power", "rank", "tier"]),
+  named: 4, // kinds named in one message line
+  weighed: Object.freeze(["id", "name", "slot", "property", "power", "basePower", "upgradeRank", "tier", "affixes", "masterwork", "extraSockets", "glyphs", "reforged", "tag"]),
+});
+const SPARE_WEIGHED = new Set(SPARE_GEAR.weighed);
+const spareNum = (v) => Math.max(0, Number(v) || 0);
+const SPARE_KEYS = { power: (q) => spareNum(q?.power), rank: (q) => spareNum(q?.upgradeRank), tier: (q) => ITEM_TIERS.indexOf(itemTier(q)) };
+export const spareSalvageOn = (save) => save?.[SPARE_GEAR.keep] !== true;
+export const spareKind = (q) => `${q?.slot}|${q?.name}|${q?.property ?? ""}`;
+function spareCompare(a, b) { for (const k of SPARE_GEAR.order) { const d = SPARE_KEYS[k](a) - SPARE_KEYS[k](b); if (d) return d; } return 0; }
+// True when `k` is at least as good as `q` on every axis the rule weighs.
+export function spareCovers(k, q) {
+  if (!k || !q || spareKind(k) !== spareKind(q)) return false;
+  if (SPARE_KEYS.tier(k) < SPARE_KEYS.tier(q) || spareNum(k.power) < spareNum(q.power) || spareNum(k.upgradeRank) < spareNum(q.upgradeRank) || spareNum(k.extraSockets) < spareNum(q.extraSockets)) return false;
+  if (q.masterwork === true && k.masterwork !== true) return false;
+  const kg = Array.isArray(k.glyphs) ? k.glyphs : [], qg = Array.isArray(q.glyphs) ? q.glyphs : [];
+  if (kg.length < qg.length) return false;
+  const have = new Map(); for (const g of kg) if (g) have.set(g, (have.get(g) || 0) + 1);
+  for (const g of qg) if (g) { const c = have.get(g) || 0; if (!c) return false; have.set(g, c - 1); }
+  const best = new Map(); for (const a of Array.isArray(k.affixes) ? k.affixes : []) if (a?.id) best.set(a.id, Math.max(best.get(a.id) ?? -Infinity, Number(a.value) || 0));
+  for (const a of Array.isArray(q.affixes) ? q.affixes : []) if (a?.id && !(best.get(a.id) >= (Number(a.value) || 0))) return false;
+  return true;
+}
+const presetGearTags = (save) => { const tags = new Set(); for (const p of save.magicSkills?.presets || []) for (const t of Object.values(p?.build?.gear || {})) if (typeof t === "string" && t) tags.add(t); return tags; };
+// A pack piece the rule never salvages: a preset's tagged piece, or one carrying anything the rule does not weigh.
+function spareExempt(q, tags) {
+  if (!q || typeof q !== "object" || typeof q.name !== "string" || typeof q.slot !== "string") return true;
+  if (typeof q.tag === "string" && tags.has(q.tag)) return true;
+  for (const k in q) if (!SPARE_WEIGHED.has(k)) return true;
+  return false;
+}
+// The pack indices that are spares (ascending), for one kind (`only`) or all. `extra` is a drop weighed as the newest piece,
+// at index inventory.length. Pure.
+export function spareGearPlan(save, only = null, extra = null) {
+  const inv = Array.isArray(save.inventory) ? save.inventory : [], n = inv.length + (extra ? 1 : 0), at = (i) => (i < inv.length ? inv[i] : extra);
+  const tags = presetGearTags(save), kept = new Map(), mine = (q) => q && typeof q === "object" && (!only || spareKind(q) === only);
+  const keep = (q, i) => { const k = spareKind(q); if (!kept.has(k)) kept.set(k, []); kept.get(k).push({ q, i }); };
+  for (const q of Object.values(save.equipment || {})) if (mine(q)) keep(q, -1);
+  for (const set of Array.isArray(save.presetGear) ? save.presetGear : []) for (const q of Object.values(set || {})) if (mine(q)) keep(q, -1);
+  for (const q of Array.isArray(save.sling) ? save.sling : []) if (mine(q)) keep(q, -1);
+  const open = [];
+  for (let i = 0; i < n; i++) { const q = at(i); if (!mine(q)) continue; if (spareExempt(q, tags)) keep(q, -1); else open.push(i); }
+  open.sort((a, b) => spareCompare(at(b), at(a)) || b - a); // best first; at a tie the newest first
+  const spare = new Set();
+  for (const i of open) { const q = at(i); if ((kept.get(spareKind(q)) || []).some((k) => spareCovers(k.q, q))) spare.add(i); else keep(q, i); }
+  for (const list of kept.values()) for (const c of list) if (c.i >= 0 && list.some((k) => k !== c && !spare.has(k.i) && spareCovers(k.q, c.q) && !spareCovers(c.q, k.q))) spare.add(c.i);
+  return [...spare].sort((a, b) => a - b);
+}
+// Salvages the pack's spares (one kind, or all) by hand's salvage. Returns { count, iron, lumenDust, items, names }.
+export function salvageSpareGear(save, only = null) {
+  const plan = spareGearPlan(save, only), out = { count: 0, iron: 0, lumenDust: 0, items: [], names: {} };
+  for (let j = plan.length - 1; j >= 0; j--) { const r = salvageInventoryItem(save, plan[j]); if (!r) continue; out.count++; out.iron += r.iron; out.lumenDust += r.lumenDust; out.items.unshift(r.item); }
+  for (const q of out.items) out.names[q.name] = (out.names[q.name] || 0) + 1;
+  return out;
+}
+// The one-time sweep of a journey's pack on load: once (`flag`), and not while duplicates are kept.
+export function sweepSpareGearOnce(save) {
+  if (!save || !spareSalvageOn(save) || Number(save[SPARE_GEAR.flag]) >= SPARE_GEAR.version) return null;
+  const r = salvageSpareGear(save); save[SPARE_GEAR.flag] = SPARE_GEAR.version; return r;
+}
+// "Salvaged a spare Quiet Compass: +2 cinder iron" / "Salvaged 3 spares (Quiet Compass ×2, Kiln Mantle): +6 cinder iron".
+// The most salvaged kinds first, at most `SPARE_GEAR.named` of them, then "N more".
+export function spareSalvageText(save, tally) {
+  const names = Object.entries(tally.names || {}).sort((a, b) => b[1] - a[1]), count = names.reduce((t, [, c]) => t + c, 0), shown = names.slice(0, SPARE_GEAR.named), rest = names.length - shown.length;
+  const paid = tally.lumenDust > 0 ? `+${tally.lumenDust} lumen dust` : salvageYieldMode(save) === "lumenDust" ? salvagePaidText(save, tally) : `+${tally.iron || 0} cinder iron`;
+  const what = count === 1 ? `a spare ${names[0][0]}` : `${count} spares (${shown.map(([n, c]) => (c > 1 ? `${n} ×${c}` : n)).join(", ")}${rest > 0 ? `, ${rest} more kind${rest === 1 ? "" : "s"}` : ""})`;
+  return `Salvaged ${what}: ${paid}`;
+}
+// The pack as stored before spare gear: room is made by the full pack's rule.
+function storeInPack(save, item, keep = false) {
   if (save.inventory.length < EQUIPMENT_CAPACITY) {
     save.inventory.push(item);
     return { stored: true, salvaged: null };
@@ -3198,6 +3290,7 @@ export class Game {
     this.restoreTriceratopsDrill(s.playerRuntime.triceratopsDrill, now); // after area, ordinary leap and conflicting air states are restored
     for (const base of pentagonsDue(save)) this.payPentagonComplete(base); // a Pentagon completed before its completion paid a Tesseract: paid now, once
     if (this.map) this.stegoBaitArrive(); // the Stego Bait: the tails lying here (the first load does not pass the loadArea wrapper)
+    { const r = sweepSpareGearOnce(save); if (r?.count) this.message = `${spareSalvageText(save, r)}. Equipped, preset and best pieces are kept (Options → Challenge: Keep duplicate gear).`; } // SPARE_GEAR: the pack's spares, once
   }
   installSystems() {
     if (this._systemsInstalled) return;
@@ -5425,6 +5518,7 @@ export class Game {
     if (this.area !== "overworld" || canSwim(this.save) || this.mechUp() || this.glide) return false;
     const memo = this._seaLane; if (memo && memo.map === this.map && memo.dx === dx && memo.dy === dy) return memo.sea;
     const rx = this.rx + dx, ry = this.ry + dy, save = this.save, key = `overworld:${rx}:${ry}:g${save.worldGeneration}`, row = save.voidScars?.areas?.[key];
+    if (farDomainAt(save, rx, ry, !!save.atlas?.[`${rx},${ry}`])) { this._seaLane = { map: this.map, dx, dy, sea: false }; return false; } // a far domain is built whole on arrival (loadArea), whatever its base terrain: the full crossing decides
     let map = keptSectionTerrain(save.seed, rx, ry, save.worldGeneration, this.sectionTerrainSteps(rx, ry));
     if (row) { map = structuredClone(map); applyVoidScars({ voidScars: { ...save.voidScars, areas: { [key]: structuredClone(row) } } }, map, key); }
     const exits = sectionExits(save.seed, rx, ry), x = dx < 0 ? 30.75 : dx > 0 ? .25 : dy < 0 ? exits.south : exits.north, y = dx < 0 ? exits.east : dx > 0 ? exits.west : dy < 0 ? 30.75 : .25;
@@ -12341,12 +12435,23 @@ export class Game {
     this.message = "Aim fixed for the next Tool or Spell.";
     return true;
   }
+  // Spare gear salvaged on pickup: one line, its tally merged with the line before while that line is still the one shown (or
+  // waiting); a louder notice already waiting keeps its place.
+  noteSpare(list) {
+    const prev = this.spareTally, live = prev && (this.message === prev.text || this.glyphNotice === prev.text);
+    const t = live ? prev : { names: {}, iron: 0, lumenDust: 0, text: "" };
+    for (const r of list) { const n = r.item?.name || "piece"; t.names[n] = (t.names[n] || 0) + 1; t.iron += r.iron || 0; t.lumenDust += r.lumenDust || 0; }
+    t.text = spareSalvageText(this.save, t); this.spareTally = t;
+    if (!this.glyphNotice || (prev && this.glyphNotice === prev.text)) this.glyphNotice = t.text;
+    return t.text;
+  }
   obtainDrop(src, ordinaryMonster = false) {
     const n = this.save.dropCounter++;
     const deep = this.area === "dungeon" && this.map?.deepFloor ? lootBonus(this.map.deepFloor, deepShaft(this.save, this.areaId()).best) : 0; // release 677: deeper loot, only near your deepest floor
     const orrery = APERTURE_BANDS.indexOf(apertureBand(this.save.perception?.aperture || 0)) >= ORRERY_LOOT.band ? ORRERY_LOOT.version : 0; // items.ts ORRERY_LOOT: the Aether Orrery drops once its gift's band is reached
     const item = generateItem(`${this.save.seed}:${src}:${n}`, this.save.level + deep, ordinaryMonster || orrery ? { ...(ordinaryMonster ? { ordinaryMonster: true } : {}), ...(orrery ? { orreryLoot: orrery } : {}) } : null);
     const r = storeInventoryItem(this.save, item);
+    if (r.spare?.length) this.noteSpare(r.spare); // SPARE_GEAR: one quiet line, merged while nothing else is said
     if (r.stored && (item.property === "brawler" || item.property === "orrery")) this.glyphNotice ||= `${item.name} found: it is in your Pack.`; // release 513: say so
     this.save.materials.cinderIron++;
   }
