@@ -151,7 +151,7 @@ import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExi
 import { trackSeason, noteSeasonDiscovery } from "./seasons.ts";
 import { growRiteTree, riteTreeFits, COHERENCE, bridgeLanes, cohereSection, joinToLand, joinsCore, coherenceCore, creatureSpot, creatureRegions, settleSpawns } from "./landscape.ts";
 import { GREAT_MUSHROOMS } from "./great-mushrooms.ts";
-import { interiorTerrain, interiorSurfaceLevel, interiorSurfaceHeight, LIFT_PER_LEVEL, applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt, tileLiftScale, mendCanopy, HOT_SPRINGS, springMend, reachableFromPlaza, reachableFrom } from "./landscape.ts";
+import { interiorTerrain, interiorSurfaceLevel, interiorSurfaceHeight, LIFT_PER_LEVEL, applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt, tileLiftScale, mendCanopy, HOT_SPRINGS, springMend, reachableFromPlaza, reachableFrom, crownBarred } from "./landscape.ts";
 import { markArrival, createSquad, squadFrame, squadRequest, behaviourProfile, behaviourState, behaviourGate, behaviourReact, ringVector, shapeBlow, startFeint, afterBlow, BEHAVIOUR } from "./enemy-behaviour.ts"; // ordinary creature behaviour (Tim, 2026-11-14)
 import { tacticsMove, tacticsWindup, tacticsHurtWindow } from "./squad-tactics.ts"; // squad tactics (Tim, 2026-11-15)
 import { TRICERATOPS_HERDS, triceratopsHerdSpawns, SPINO, spinoTuned, DRAGON, FRENZY, STAG, stagMireAt, BOSS_PACE, bossPaced, staggerGovernor, staggerClass, windupHeld, GATE_REVENANT, GIANT, TURTLE, tuneGatePredator, updateGatePredator, resetGateAttack, nanoScatters, glyphsReachSwarm, CRYSTAL, reflectShotStep, MONSTER_PACK, PACK_KINDS, ATTACK_MODULES, MONSTER_PACK_VERSION, guardianKindFor, GUARDIAN_POOL, updatePackMonster, cancelPackAttack, tickPackEffects, addPackEffect, resetPackRuntime, packCombatantFields, STEGO, isClubTree, populateOverworldPack, isDungeonRoamer, isDungeonHunter, gloomDarkEnd, isPackKind } from "./monster-pack.ts";
@@ -293,6 +293,15 @@ export const GLIDE = { minDrop: 4, sink: 1.5, speed: 4.6, steer: 3.2, skim: .35,
 // transition could land on (perches hang two or three levels under the branch above; four levels kill), and with the glider it
 // becomes the closed freefall as before (treeFreefall), at its height and speed. A closed freefall saved before this resumes as it was.
 export const TREE_FALL = { on: true, openAbove: 1, clear: 3 };
+// The great tree's crown as its own level (Tim, 2026-11-22: "the top of the tree is not accessible... until you've passed through a series of
+// steps... the top must be kept separate from the bottom"). `levels`: the landscape record a rite's tree on flat ground is given
+// (riteTreeLevels) and `wood` the ground its tiles are drawn as (every other great tree's is the jungle's). The gate and the hold are
+// landscape.ts CROWN_GATE: the crown is entered only from the tree's last step (`below` levels under it) or from the crown itself, by
+// the level of the last ground stood on (`player.footLevel`), however the Wayfarer moves (walk, jump, dodge, a blow, a pull, Aerial
+// Step, a wall hold, the drone, Rift Step: blinkFooting). After waking on a crown (a crown wake, the Crown Rest, a reload there) the
+// crown hold (`crownHold`) keeps walking, a dodge or a blow from carrying the Wayfarer off its rim except onto that last step, until
+// they jump (the deliberate way down: the glider opens from it) or step down.
+export const GREAT_CROWN = Object.freeze({ levels: Object.freeze({ version: 1, biome: null, name: null, riteLevels: true }), wood: "jungle", freefallReach: 2 });
 // TREE_GLIDE.home: where a death after a glide from the crown wakes you: the crown tile nearest its middle that is neither the door nor the
 // Crown Rest (so waking there does not open the door; the rest point is taken by wakeOnCrown itself), as a player position. Null without a crown.
 export function crownSpot(map) {
@@ -302,7 +311,8 @@ export function crownSpot(map) {
   const crown = tiles.filter((t) => t.kind === "canopyTrunk" && t.elev === top && own(t)); if (!crown.length) return null;
   const mx = crown.reduce((a, t) => a + t.x, 0) / crown.length, my = crown.reduce((a, t) => a + t.y, 0) / crown.length;
   const free = crown.filter((t) => !(gate && t.x === gate.x && t.y === gate.y) && !(rest && Math.hypot(t.x - rest.x, t.y - .2 - rest.y) <= .9)), pool = free.length ? free : crown; // .9: touchCrownRest's reach
-  const t = pool.sort((a, b) => (Math.hypot(a.x - mx, a.y - my) - Math.hypot(b.x - mx, b.y - my)) || (a.y - b.y) || (a.x - b.x))[0];
+  const w = map.width || 32, drops = (t) => { let n = 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const q = tiles[(t.y + dy) * w + t.x + dx]; if (!q || (!q.blocked && ((q.elev || 0) < top - 1 || LETHAL_KINDS.has(q.kind)))) n++; } return n; }; // GREAT_CROWN: the fewest sides over a drop first (the crown's middle, else beside the last step)
+  const t = pool.map((q) => [drops(q), q]).sort(([da, a], [db, b]) => (da - db) || (Math.hypot(a.x - mx, a.y - my) - Math.hypot(b.x - mx, b.y - my)) || (a.y - b.y) || (a.x - b.x))[0][1];
   return { x: t.x, y: t.y - .2 };
 }
 export const PASS_CLEAR = .25; // release 643: how far past a body a projectile must be before its next pass counts as a new hit
@@ -3269,6 +3279,7 @@ export class Game {
 
     { const q = s.playerRuntime.glideHome; this.glideHome = q && s.area === "overworld" && [q.rx, q.ry].every(Number.isInteger) && [q.x, q.y].every(Number.isFinite) ? { rx: q.rx, ry: q.ry, x: q.x, y: q.y } : null; } // TREE_GLIDE.home
     { const q = s.playerRuntime.crownFoot; this.crownFoot = q && s.area === "overworld" && [q.rx, q.ry].every(Number.isInteger) ? { rx: q.rx, ry: q.ry } : null; } // TREE_GLIDE.home.reached
+    this.restoreCrown(s.playerRuntime, now); // GREAT_CROWN: the gate's level and the hold; a save standing on a crown's rim is set on safe crown ground
     this.restoreJumpAir(s.playerRuntime.jumpAir, now); // a jump resumes at the height it left from
     // Stegosaur's Grip: still on the wall, or down on the ground beneath it.
     this.restoreWallCling(s.playerRuntime.wallCling, s.playerRuntime.wallKick, now, s.playerRuntime.wallHolds);
@@ -3829,6 +3840,7 @@ export class Game {
     this.droneLift = null; // release 647: a booster lift never carries over a change of area or section
     this.shadowClone = null; this.cloneAim = false; // release 365: a shadow stays in the place it was cast
     this.builds = []; // release 265: builds belong to the map they stand on
+    if (this.area !== area && this.player) this.player.footLevel = null; // GREAT_CROWN: levels belong to the open world or the floor they were stood on
     this.area = area;
     this.mountArea(); // release 748
     const lostBeasts = worldBeastsLost(this.save, area, this.rx, this.ry, area === "dungeon" ? this.areaId() : null); // release 239: a retreating beast not followed is gone
@@ -3842,7 +3854,7 @@ export class Game {
     if(area==="overworld"&&!this.rx&&!this.ry)this.map.objects=hideDormantBossCue(this.map.objects,this.save); // 2026-11-19: the Refuge's world-boss cue only once something wakes it
     if(area==="overworld")this.tyrantVisit=null; // release 233: entering a section (from anywhere, or after a death) starts a fresh Tyrant visit
     if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addBell(this.map,this.save,this.areaId());/* release 431: the Seven Bells */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addTornPage(this.map,this.save,this.areaId());/* release 595: the Torn Pages */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addThreadRelic(this.map,this.save,this.areaId());/* release 627: the threads */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addMargin(this.map,this.save,this.areaId());/* release 455: margins */if(area==="dungeon")addPentagonInscription(this.map,this.save,this.areaId());/* the Pentagon's marks (PENTAGON_LORE) */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addSurveyorLink(this.map,this.save,this.areaId());/* release 505: the Surveyor's Chain */if(area==="dungeon"&&!this.map.beastHotel&&!this.map.pentFinale&&!this.map.pentArena&&!this.map.tallTower)addSecondFootprints(this.map,this.save,this.areaId());/* the Second Wayfarer's footprints */if(area==="dungeon"){applyTunnels(this.map,this.save,this.areaStateId());this.map.wallGlints=wallGlints(this.map,this.save.seed,this.areaStateId(),this.save);} // release 225: dug tunnels and glinting walls
-    if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];this._coherence=coherenceOf(seen);/* world coherence: new ground only (COHERENCE) *//* the landscape, Far Sleep, hamlet (release 371: a town where a Listener fell; 373: around its Mouth, explored or not) trails and lane-bridge (WG-01) passes ran in sectionTerrain */this.seaHazards=this.map.openSea?seaHazards(this.save.seed,this.rx,this.ry,this.map):null;this.novaFog=null;this.seaIce=null;this.skyAir=null;this.keelLine=null;this.skyLevel=0;this.discAir=null;this.roofDeck=null;this.deckHop=false;this.riftAim=null;this.riftAimMark=null;this.riftPress=null;/* roof decks; RIFT_AIM *//* 585; 587 */this.storm=null;this._stormCheck=0;ensureBoatState(this.save);this.placeMooredSkiff();this.placeSpareSkiff();const dive=diveSite(this.map,this.save.seed,this.rx,this.ry);if(dive)this.map.objects.push(dive);{const dom=farDomainAt(this.save,this.rx,this.ry,!!seen);if(dom)buildDomain(this.map,this.save.seed,this.rx,this.ry,dom);}/* release 723: a domain is built whole */}
+    if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];this._coherence=coherenceOf(seen);/* world coherence: new ground only (COHERENCE) *//* the landscape, Far Sleep, hamlet (release 371: a town where a Listener fell; 373: around its Mouth, explored or not) trails and lane-bridge (WG-01) passes ran in sectionTerrain */this.seaHazards=this.map.openSea?seaHazards(this.save.seed,this.rx,this.ry,this.map):null;this.novaFog=null;this.seaIce=null;this.skyAir=null;this.crownHold=false;this.player.crownHold=false;/* GREAT_CROWN: the hold is the crown's; the gate's level is kept over a section's edge */this.keelLine=null;this.skyLevel=0;this.discAir=null;this.roofDeck=null;this.deckHop=false;this.riftAim=null;this.riftAimMark=null;this.riftPress=null;/* roof decks; RIFT_AIM *//* 585; 587 */this.storm=null;this._stormCheck=0;ensureBoatState(this.save);this.placeMooredSkiff();this.placeSpareSkiff();const dive=diveSite(this.map,this.save.seed,this.rx,this.ry);if(dive)this.map.objects.push(dive);{const dom=farDomainAt(this.save,this.rx,this.ry,!!seen);if(dom)buildDomain(this.map,this.save.seed,this.rx,this.ry,dom);}/* release 723: a domain is built whole */}
     if(area==="overworld"&&!this.map.settlement)applyTunnels(this.map,this.save,overworldDigKey(this.rx,this.ry),true); // release 423: tunnels dug in the open world
     if(area==="overworld"){const seen=this.save.atlas?.[`${this.rx},${this.ry}`];if(!seen||seen.watcherVersion)placeWatcherOverworld(this.map,mapWidth(this.map,area),this.save.seed,this.rx,this.ry,(!seen||!!seen.guideVersion)&&guideHost(this.save.seed,"shrine",this.rx,this.ry));} // release 289: sections first seen from now on; waymark guides: a guided shrine host always holds its Watcher's Shrine
     if(area==="overworld"||area==="dungeon")for(const o of this.map.objects||[])if(o.kind==="watcherTomb"&&this.save.worldFlags[`watcher-tomb:${o.id}`])o.state="opened";
@@ -4048,6 +4060,7 @@ export class Game {
       const top = this.map.canopy.top, gate = this.map.objects.find((o) => o.kind === "canopyGate"), c = this.map.canopy, crown = this.map.tiles.filter((t) => t.kind === "canopyTrunk" && t.elev === top && !(gate && t.x === gate.x && t.y === gate.y) && (!(c.size > 0) || (t.x >= c.x0 && t.x < c.x0 + c.size && t.y >= c.y0 && t.y < c.y0 + c.size))); // the door tree's own crown (a canopy grove's other crowns may stand as high)
       const t = crown.sort((a, b) => (a.y - b.y) || (a.x - b.x))[0]; if (t) this.map.objects.push({ id: `crown-rest-${this.rx}-${this.ry}`, kind: "crownRest", name: "Crown Rest", x: t.x, y: t.y, state: "open", actions: [] });
     }
+    if (area === "overworld") this.riteTreeLevels(); // GREAT_CROWN.levels: a rite's tree on flat ground keeps its heights (after every generation step)
     if (area === 'dungeon' && this.map.skyland) for (const e of this.enemies) this.scaleSkyFoe(e); // release 571
     if (area === 'overworld') dropSeedRealms(this.save); // seed realms: a realm left is gone (all but the one the session still holds)
     if (area === 'overworld') { const areas = this.save.session?.areas || {}, hist = this.save.consequences?.dungeons || {}; for (const k of Object.keys(areas)) if (isSkyland(k)) delete areas[k]; for (const k of Object.keys(hist)) if (isSkyland(k)) delete hist[k]; } // release 571: a finished or abandoned Skyland run leaves nothing behind
@@ -4414,6 +4427,7 @@ export class Game {
         fall: this.fall && this.fallApplies() ? /* tall towers: a fall in an Upwell is saved too */ { z: this.fall.z, vz: this.fall.vz, from: this.fall.from, scale: this.fall.scale || 1, t: Number(this.fall.t) || 0, ...(Number.isFinite(this.fall.rollT) ? { rollT: this.fall.rollT } : {}), ...(Number.isFinite(this.fall.hold) ? { hold: this.fall.hold } : {}), ...(this.fall.tree === true ? { tree: true } : {}) } : null, // FALL: a fall resumes in the air (TREE_FALL: `tree`, additive) (AERIAL: with its held height) // release 635: a glide resumes in the air
         glideHome: this.glideHome && this.area === "overworld" ? { ...this.glideHome } : null, // TREE_GLIDE.home: the great tree a glide from its crown wakes you on
         crownFoot: this.crownFoot && this.area === "overworld" ? { rx: this.crownFoot.rx, ry: this.crownFoot.ry } : null, // TREE_GLIDE.home.reached: the great crown last stood on
+        crownHold: this.crownHold === true && this.area === "overworld", footLevel: Number.isFinite(this.player.footLevel) ? this.player.footLevel : null, // GREAT_CROWN: the hold on the crown's rim, and the level of the last ground stood on (the gate)
         roofDeck: this.standingDeck() && this.area === "overworld" ? { id: this.roofDeck.id, level: this.roofDeck.level } : null, // roof decks (roof-decks.ts): the roof stood on (additive, schema 14)
         hp: this.player.hp,
         stamina: this.player.stamina,
@@ -4508,11 +4522,16 @@ export class Game {
   // the Wayfarer cannot stand on (a blocked lava or abyss tile: walls stop them first) is tried out on a copy, and the
   // hazard is read where that copy stopped; ground the Wayfarer can enter (open lava, deep water, canyon) is unchanged.
   hazardWhereMoved(p, dx, dy, nx, ny, width, now) {
-    const h = footprintHazard(this.map, width, nx, ny); if (!h || footprintOpen(this.map, width, nx, ny, true)) return h;
+    const h = footprintHazard(this.map, width, nx, ny); if (h && this.onWoodAbove(nx, ny, width)) return null; // GREAT_CROWN: feet on a great tree's wood, high over water at its rim
+    if (!h || footprintOpen(this.map, width, nx, ny, true)) return h;
     const probe = { ...p, isPlayer: true, jumping: now < (this.jumpUntil || 0), voidSuit: this.mechUp() && this.area !== "dungeon" };
     moveAxis(probe, dx, dy, this.map, width, true);
     return footprintHazard(this.map, width, probe.x, probe.y);
   }
+  // GREAT_CROWN: the feet (tileUnder) stand on a great tree's wood more than FALL.minDrop over the hazard the box's front edge reaches
+  // (footprintHazard reads .03 of a tile nearer the rim than the feet): the Wayfarer is up on the wood, not in the water or lava below.
+  // Stepping off is a fall, judged where it lands.
+  onWoodAbove(x, y, width) { const u = tileUnder(this.map, width, x, y), h = this.map.tiles[Math.floor(y + .72) * width + Math.floor(x + .5)]; return !!u?.canopy && !u.blocked && u !== h && (u.elev || 0) - (h?.elev || 0) > FALL.minDrop; }
   actorContactPlatformSupport(body, x, y, ground, phase = null, carrier = null) {
     if (!body?.isPlayer) return null;
     if (body.jumping && Number.isFinite(this.discAir))
@@ -4579,6 +4598,7 @@ export class Game {
     if (!jumping && this.standingDeck() && this.decksApply()) probe.airElev = this.roofDeck.level; // roof decks: walking on a roof, the ground round the house is a drop
     { const air = this.aerialFloor(); if (air != null) probe.airElev = Math.max(probe.airElev ?? -Infinity, air); } // AERIAL: held air steps as ground at its level
     probe.deckReach = p.deckReach ?? null; probe.propLevel = p.propLevel; // solid props (926 bug 5)
+    probe.footLevel = p.footLevel; probe.crownHold = this.crownHold === true && !jumping; // GREAT_CROWN (landscape.ts canStep)
     contacts.supportSubject = probe;
     contacts.carrier = carrier;
     contacts.record = true;
@@ -4609,6 +4629,7 @@ export class Game {
     // Stegosaur's Grip: the wall held, a kick in the air and the holds taken since the feet last touched ground.
     this.wallCling = null; this.wallKick = null; this.wallHolds = 0;
     this.aerialCasts = 0; this.aerialAloft = false; { const a = this.save.magicSkills?.active; if (a && a.id === "aerial-step") delete a.hold; } // AERIAL: a new airtime; the held height belonged to where it was cast
+    this.crownHold = false; p.crownHold = false; p.footLevel = null; // GREAT_CROWN
     this.glide = null; this.glideHome = null; this.crownFoot = null; this.droneLift = null; this.fall = null; this.fallLanded = null; this.swimming = false; this.skyAir = null; this.roofDeck = null; this.deckHop = false; this.riftAim = null; this.riftAimMark = null; this.riftPress = null; this.jumpHold = false; this.keelLine = null; this.ledgeHint = null; this.poisonSoak = 0;
     this.clearCurses(); // release 737: the haunt curses (FRAIL gives its health back)
     this.orrery = null; // the Aether Orrery's circling orbs and charge (its overload clock stays)
@@ -5058,6 +5079,7 @@ export class Game {
     const edge = this.deckEdgeHold(x, y, top); if (edge) return { level: edge.level, deck: edge }; // pre-publish review of 916: a step whose feet leave a roof but whose box still stands over its walls lands on that roof's edge, never wedged in the wall
     if (!footprintOpen(this.map, w, x, y, false, false, false, false, null) || footprintHazard(this.map, w, x, y)) return null;
     const ground = this.elevationHere(x, y); if (propBlocked(this.map, w, x, y, ground)) return null; // solid props (926 bug 5): never inside the Watcher's tomb
+    if (this.map?.canopy && crownBarred(this.player, tileUnder(this.map, w, this.player.x, this.player.y), tileUnder(this.map, w, x, y))) return null; // GREAT_CROWN: no step onto the crown but from its last step
     return ground <= top ? { level: ground, deck: null } : null;
   }
   // Solid props (926 bug 5): does the collision box at (x, y) stand in a solid prop's footprint at all (any height)? A blink passes through one, never ends in it.
@@ -5257,6 +5279,7 @@ export class Game {
       this.loadArea("overworld");
       p.x = c.x;
       p.y = c.y;
+      this.wakeAtCrownRest(c); // GREAT_CROWN: woken on a Crown Rest, held from the crown's rim
       }
       p.invulnerableUntil = now + 2000;
       this.message = `Felled — ${crown ? TREE_GLIDE.home.wake : `recovered at ${c.name || "checkpoint"}`}. No items, marks, equipment, or XP were lost. You are protected briefly.${crown && TREE_GLIDE.home.setsRest ? TREE_GLIDE.home.rest : ""}${before < 2 ? " Restorative draughts replenished to 2." : ""}`;
@@ -6223,10 +6246,22 @@ export class Game {
     // Release 641 (Tim: "if you glide out over open sea... if you don't have the Tidemantle, you're just going to die"): it comes down
     // on water, lava or ground alike (the ordinary hazards then apply); only a wall or anything blocked holds it up.
     const hazard = footprintHazard(this.map, width, p.x, p.y), sea = !!here && DEEP_WATER.includes(here.kind), fit = (sea || !here?.blocked) && (footprintOpen(this.map, width, p.x, p.y, false, false, false, false, onDeck ? onDeck.level : null) || !!hazard && !onDeck || sea && !onDeck); // release 672: blocked deep water too (it held the glide over it for ever)
-    if (!fit) { g.z = Math.max(g.z, Math.min(z0, ground + G.skim)); g.pinned = true; if (!g.told) { g.told = true; this.message = G.skimming; } return "flying"; } // held above, never lifted (Tim, 2026-11-05)
-    const fell = g.open === false ? Math.max(0, (g.fallFrom ?? g.z) - ground) : 0; this.glide = null; this.skyAir = null; this.setRoofDeck(onDeck);
+    let landAt = ground;
+    if (!fit) { const q = g.open === false ? this.freefallFooting(p.x, p.y, z0, width) : null; // GREAT_CROWN: a closed freefall is no glide: it comes down on the nearest footing (a section's walled rim under it held it in the air for ever)
+      if (!q) { g.z = Math.max(g.z, Math.min(z0, ground + G.skim)); g.pinned = true; if (!g.told) { g.told = true; this.message = G.skimming; } return "flying"; } // held above, never lifted (Tim, 2026-11-05)
+      p.x = q.x; p.y = q.y; landAt = q.level; }
+    const fell = g.open === false ? Math.max(0, (g.fallFrom ?? g.z) - landAt) : 0; this.glide = null; this.skyAir = null; this.setRoofDeck(onDeck);
     if (fell > 1) { const hurt = fallDamage(Math.round(fell), this.save.maxHp); if (hurt === Infinity) { p.hp = 0; this._fatalFallPending = true; this.message = `The Wayfarer falls ${Math.round(fell)} levels.`; } else if (hurt > 0) { p.hp = Math.max(1, p.hp - hurt); this.message = `A hard landing: ${Math.round(fell)} levels down.`; } }
     else this.message = G.land; return "landed";
+  }
+  // GREAT_CROWN: where a closed freefall that cannot come down under it (a blocked tile, the section's rim) comes down instead: the
+  // nearest spot within GREAT_CROWN.freefallReach tiles, in quarter tiles, whose box is open and whose ground is no higher than the
+  // fall. { x, y, level } or null. Run once, on the landing.
+  freefallFooting(x, y, z, width) {
+    const ok = (px, py) => px >= -.2 && py >= -.2 && px <= SECTION_SIZE - .8 && py <= SECTION_SIZE - .9 && footprintOpen(this.map, width, px, py, true) && elevationAt(this.map, width, px, py) <= z + 1e-6;
+    const R = GREAT_CROWN.freefallReach; let best = null, bd = Infinity;
+    for (let dy = -R; dy <= R + 1e-9; dy += .25) for (let dx = -R; dx <= R + 1e-9; dx += .25) { const d = dx * dx + dy * dy; if (d >= bd || d > R * R + 1e-9 || !ok(x + dx, y + dy)) continue; bd = d; best = { x: x + dx, y: y + dy }; }
+    return best ? { ...best, level: elevationAt(this.map, width, best.x, best.y) } : null;
   }
   // Tim (2026-11-05): a glide over a Pentagon ends in death, as a fall does: the Wayfarer comes down where the glide had carried
   // them (inside this section), the message and a journal line (once) say why, and the ordinary death and recovery follow.
@@ -6269,9 +6304,36 @@ export class Game {
     this.rx = home.rx; this.ry = home.ry; this.loadArea("overworld", false);
     const c = this.map?.canopy, w = mapWidth(this.map, this.area), t = c?.top ? this.map.tiles[Math.floor(home.y + .75) * w + Math.floor(home.x + .5)] : null;
     const s = t && t.kind === "canopyTrunk" && t.elev === c.top ? { x: home.x, y: home.y } : crownSpot(this.map); if (!s) return false;
-    this.player.x = s.x; this.player.y = s.y; this.lastCrownAt = now; this.crownFoot = { rx: this.rx, ry: this.ry };
+    this.player.x = s.x; this.player.y = s.y; this.lastCrownAt = now; this.crownFoot = { rx: this.rx, ry: this.ry }; this.holdCrown();
     if (TREE_GLIDE.home.setsRest) { const o = this.map.objects.find((q) => q.kind === "crownRest" && !q.keepRest); if (o) this.takeCrownRest(o); } // Decision 14: the crown's Crown Rest, as if touched
     return true;
+  }
+  // GREAT_CROWN: the hold on the crown's rim (landscape.ts canStep `crownHold`), from a wake there until a jump or a step down.
+  holdCrown() { this.crownHold = true; this.player.crownHold = true; const lv = this.playerLevel(); if (Number.isFinite(lv)) this.player.footLevel = lv; }
+  // Is the Wayfarer standing on a great tree's crown wood (a `canopyTrunk` tile) with the whole box on it? { on, whole }.
+  onCrownWood(x = this.player.x, y = this.player.y) {
+    const w = mapWidth(this.map, this.area), u = this.area === "overworld" && this.map?.canopy ? tileUnder(this.map, w, x, y) : null; if (u?.kind !== "canopyTrunk") return { on: false, whole: false };
+    const x0 = Math.floor(x + .24), x1 = Math.floor(x + .76 - 1e-6), y0 = Math.floor(y + .5), y1 = Math.floor(y + .88 - 1e-6); let whole = true;
+    for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) { const q = this.map.tiles[ty * w + tx]; if (q?.kind !== "canopyTrunk" || (q.elev || 0) !== (u.elev || 0)) whole = false; }
+    return { on: true, whole };
+  }
+  // A death that returns the Wayfarer to a Crown Rest: they wake on its tile (wholly on the crown), held from the crown's rim, so no
+  // move they make there carries them off it; a jump is the way down. Any other rest point is as it was.
+  wakeAtCrownRest(c) {
+    if (!c?.crown || c.name !== "Crown Rest" || this.area !== "overworld" || !this.map?.canopy?.top || !this.onCrownWood().whole) return false;
+    this.crownFoot = { rx: this.rx, ry: this.ry }; this.holdCrown(); return true;
+  }
+  // Exact resume on a crown: the gate's level and the hold as saved. A save from before them (Tim's r1050 save stood on the crown of a
+  // rite's tree on flat ground, where the heights did not hold) standing on crown wood is repaired once: set on the crown's safest
+  // ground, held from its rim. In the air (a jump, fall, glide, drone or hold) nothing is moved.
+  restoreCrown(r, now) {
+    const p = this.player, lv = Number(r?.footLevel); p.footLevel = r?.footLevel != null && Number.isFinite(lv) ? lv : null; this.crownHold = false;
+    const air = now < (this.jumpUntil || 0) || !!this.fall || !!this.glide || !!this.droneLift || !!this.wallCling, c = this.onCrownWood();
+    if (air || !c.on) return;
+    if (r && typeof r.crownHold === "boolean") this.crownHold = r.crownHold; // saved since the hold: exactly as it was
+    else { const s = crownSpot(this.map); if (s) { p.x = s.x; p.y = s.y; } this.holdCrown(); }
+    if (!Number.isFinite(p.footLevel)) { const l = this.playerLevel(); if (Number.isFinite(l)) p.footLevel = l; }
+    this.crownFoot = this.map.canopy?.top && this.onCrownWood().on && tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.elev === this.map.canopy.top ? { rx: this.rx, ry: this.ry } : this.crownFoot;
   }
   // Release 647: one frame of the drone's booster (DRONE_LIFT). `droneLift` is { base, z, vz } in levels. While it lasts the jump
   // lasts, and `skyAir` is its height, so the move rules carry the Wayfarer over lower ground and onto ground no more than a level
@@ -6593,6 +6655,7 @@ export class Game {
     this.loadArea("overworld", false);
     p.x = c.x;
     p.y = c.y;
+    this.wakeAtCrownRest(c); // GREAT_CROWN: woken on a Crown Rest, held from the crown's rim
     }
     p.invulnerableUntil = now + 2000;
     this.message = `${lostTo || "Felled"} — ${crown ? TREE_GLIDE.home.wake : `recovered at ${c.name || "checkpoint"}`}. No items, marks, equipment, or XP were lost${woodLost ? `, but the ${woodLost} wood you carried is gone` : ""}. You are protected briefly.${crown && TREE_GLIDE.home.setsRest ? TREE_GLIDE.home.rest : ""}${before < 2 ? " Restorative draughts replenished to 2." : ""}`;
@@ -11651,11 +11714,11 @@ export class Game {
     const rec = riteRecord(this.save, this.rx, this.ry); if (!rec.done || rec.risen) return { ok: false, message: (this.message = ASCENDANCY.messages.ashes) };
     rec.risen = true; this.map.objects = this.map.objects.filter((q) => q !== o);
     const tree = this.raiseRiteTree({ x: o.x, y: o.y }), now = this.lastUpdateNow || 0, w = mapWidth(this.map, "overworld"), p = this.player;
-    if (tree) {
-      const tiles = []; this.map.tiles.forEach((t, i) => { if (t.canopy) { tiles.push([i, t.elev || 0]); t.elev = 0; } });
+    if (tree) { this.riteTreeLevels();
+      const tiles = []; this.map.tiles.forEach((t, i) => { if (t.canopy) { tiles.push([i, t.elev || 0]); t.elev = 0; t.rising = true; } }); // GREAT_CROWN: nobody rides the wood up (landscape.ts canStep)
       const trees = [this.map.canopy, ...(this.map.canopy.trees || [])].filter(Boolean), tops = trees.map((c) => c.top); for (const c of trees) c.top = 0;
-      this.treeRise = { start: now, end: now + ASCENDANCY.rise * 1000, tiles, trees, tops, nextRubble: now };
-      if (this.map.tiles[Math.floor(p.y + .6) * w + Math.floor(p.x + .4)]?.canopy) { let best = null; for (const t of this.map.tiles) { if (t.canopy || t.blocked || !footprintOpen(this.map, w, t.x, t.y)) continue; const d = Math.hypot(t.x - p.x, t.y - p.y); if (!best || d < best.d) best = { x: t.x, y: t.y, d }; } if (best) { p.x = best.x; p.y = best.y; } } // set clear of the rising wood
+      this.treeRise = { start: now, end: now + ASCENDANCY.rise * 1000, tiles, trees, tops, nextRubble: now, map: this.map }; // map: the section it rises in (its tiles are indexes into it)
+      if (this.map.tiles[Math.floor(p.y + .6) * w + Math.floor(p.x + .4)]?.canopy || this.overRisingWood(p.x, p.y)) { let best = null; for (const t of this.map.tiles) { if (t.canopy || t.blocked || !footprintOpen(this.map, w, t.x, t.y)) continue; const d = Math.hypot(t.x - p.x, t.y - p.y); if (!best || d < best.d) best = { x: t.x, y: t.y, d }; } if (best) { p.x = best.x; p.y = best.y; } } // set clear of the rising wood
     }
     (this.effects ||= []).push({ id: `rite-flash-${now}`, kind: "riteFlash", x: p.x, y: p.y, life: 1.1, maxLife: 1.1, damage: 0, radius: 0, pulse: 99, untilPulse: 99 });
     this.cameraShake = Math.max(this.cameraShake || 0, .8);
@@ -11663,10 +11726,27 @@ export class Game {
     journalOnce(this.save, `rite-risen:${riteKey(this.rx, this.ry)}`, ASCENDANCY.messages.rise, "The Rite of Ascendancy");
     this.message = ASCENDANCY.messages.rise; this.sync(); return { ok: true, message: this.message };
   }
+  // GREAT_CROWN.levels (Tim, 2026-11-22, r1050: walked onto the crown, then every jump there killed): a rite's tree can stand on flat
+  // ground that never had a landscape layer, and without one the height rules were off (canStep let any step through, elevationAt
+  // read 0, so a jump that left a platform landed 'from' its height onto level 0 and the fall model never ran). The section gains
+  // the minimal layer the skyways use, set after every generation step so nothing laid there changes; its tiles are not touched.
+  // Its wood had no ground of its own either (growTrees keeps a tile's `landscape`, and a rite's tree stands on plain ground), so the
+  // standard view drew no tile of it raised, nor its rims: the crown the Wayfarer stood on was painted flat on the ground far below.
+  // It is the jungle's wood, as every other great tree's is.
+  riteTreeLevels() {
+    const m = this.map; if (this.area !== "overworld" || !m?.canopy || !this.save.ascendancy?.[riteKey(this.rx, this.ry)]?.risen) return false;
+    if (!m.landscape) m.landscape = { ...GREAT_CROWN.levels };
+    for (const t of m.tiles) if (t.canopy && !t.landscape) t.landscape = GREAT_CROWN.wood;
+    return true;
+  }
+  // Does the Wayfarer's box at (x, y) stand over any of the rising wood (GREAT_CROWN)? Then they are set clear of it.
+  overRisingWood(x, y) { const w = mapWidth(this.map, "overworld"), x0 = Math.floor(x + .24), x1 = Math.floor(x + .76 - 1e-6), y0 = Math.floor(y + .5), y1 = Math.floor(y + .88 - 1e-6);
+    for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) if (this.map.tiles[ty * w + tx]?.canopy) return true; return false; }
   // One frame of the rising tree: every platform at its share of its height, rubble falling round the trunk.
   tickTreeRise(now) {
-    const T = this.treeRise, k = Math.max(0, Math.min(1, (now - T.start) / (T.end - T.start))), ease = 1 - (1 - k) ** 3;
-    for (const [i, e] of T.tiles) { const t = this.map.tiles[i]; if (t) t.elev = k >= 1 ? e : Math.round(e * ease); }
+    const T = this.treeRise; if (T.map && T.map !== this.map) { this.treeRise = null; return; } // GREAT_CROWN: left mid-rise, the tree is whole when next loaded; never another section's tiles
+    const k = Math.max(0, Math.min(1, (now - T.start) / (T.end - T.start))), ease = 1 - (1 - k) ** 3;
+    for (const [i, e] of T.tiles) { const t = this.map.tiles[i]; if (t) { t.elev = k >= 1 ? e : Math.round(e * ease); if (k >= 1) delete t.rising; } }
     T.trees.forEach((c, j) => { c.top = k >= 1 ? T.tops[j] : Math.round(T.tops[j] * ease); });
     if (k < 1 && now >= T.nextRubble) { T.nextRubble = now + 70; const c = T.trees[0], h = hashSeed(`rite-rubble:${Math.round(now)}`); (this.effects ||= []).push({ id: `rite-rubble-${now}`, kind: "riteRubble", x: c.x0 + (h % 1000) / 1000 * (c.size + 4) - 2, y: c.y0 + ((h >>> 10) % 1000) / 1000 * (c.size + 4) - 2, h: 1.5 + ((h >>> 20) % 100) / 30, life: .7, maxLife: .7, damage: 0, radius: 0, pulse: 99, untilPulse: 99 }); this.cameraShake = Math.max(this.cameraShake || 0, .25); }
     if (k >= 1) this.treeRise = null;
@@ -12818,7 +12898,7 @@ export class Game {
     if(fellIntoHazard){p.hp=0;this.message=terrainHazard==="lava"?"The caldera swallows the Wayfarer.":terrainHazard==="abyss"?"The Wayfarer falls into the sunless chasm.":DEEP_WATER.includes(terrainHazard)?"The deep water drags the Wayfarer under.":terrainHazard==="canyon"?(tileUnder(this.map,width,nx,ny)?.chasm?(this.fellStars=true,"The Wayfarer steps off the edge and falls away into the stars."):"The ledge gives way beneath the Wayfarer."):"The water closes over the Wayfarer."}
     else if (sailing) this.sail(p, dx, dy, width, now);
     else {
-      p.isPlayer = true; p.jumping = now < (this.jumpUntil || 0); p.voidSuit = this.mechUp() && this.area !== "dungeon"; /* 511: never through dungeon walls */ // release 509: only the robot steps into a star-void
+      p.isPlayer = true; p.jumping = now < (this.jumpUntil || 0); p.voidSuit = this.mechUp() && this.area !== "dungeon"; /* 511: never through dungeon walls */ if (p.jumping || this.glide || this.droneLift) this.crownHold = false; p.crownHold = this.crownHold === true; /* GREAT_CROWN: a jump is the way down */ // release 509: only the robot steps into a star-void
       const before = elevationAt(this.map, width, p.x, p.y), fromX = p.x, fromY = p.y;
       // Release 585 (the skyway climb): a jump from a sky platform keeps its height over the gap below until it ends, so the
       // next platform (one level up at most) can be reached; a jump that ends over the gap falls from that height.
@@ -12898,7 +12978,8 @@ export class Game {
       // Read once the frame's fall is settled, on the ground only: a jump or lift in the air, or a freefall begun this frame, keeps
       // the footing it left from. Allocated only when it changes.
       if (!p.jumping && !this.glide && !this.droneLift) { const u = tileUnder(this.map, width, p.x, p.y), top = this.area === "overworld" && u?.kind === "canopyTrunk" && this.map.canopy?.top && u.elev === this.map.canopy.top, f = this.crownFoot;
-        if (!top) this.crownFoot = null; else if (!f || f.rx !== this.rx || f.ry !== this.ry) this.crownFoot = { rx: this.rx, ry: this.ry }; }
+        if (!top) this.crownFoot = null; else if (!f || f.rx !== this.rx || f.ry !== this.ry) this.crownFoot = { rx: this.rx, ry: this.ry };
+        if (!this.fall && !this.wallCling) { const lv = this.playerLevel(); if (Number.isFinite(lv)) p.footLevel = lv; if (this.crownHold && u?.kind !== "canopyTrunk") this.crownHold = false; } } // GREAT_CROWN: the last ground stood on (the gate); stepped down, the hold is done
       if (!p.jumping) { this.skyAir = null; this.liftDrop = false; this.deckHop = false; } p.airElev = undefined;
       // Stegosaur's Grip: the feet on ground give the holds back (WALL_CLING.maxHolds).
       if (!p.jumping && !this.fall && !this.glide && !this.droneLift && !this.wallCling) this.wallHolds = 0;

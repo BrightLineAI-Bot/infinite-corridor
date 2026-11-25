@@ -2451,6 +2451,21 @@ export function liftAt(map, width, x, y) {
   const t = tileUnder(map, width, x, y);
   return t ? ((t.elev || 0) - (t.slope ? .5 : 0)) * LIFT_PER_LEVEL * tileLiftScale(t) : 0;
 }
+// The great tree's crown as its own level (game.ts GREAT_CROWN; Tim, 2026-11-22). For the Wayfarer only (`entity.isPlayer`):
+// - `crownBarred(entity, a, b)`: a step from tile a onto crown wood b (a `canopyTrunk` tile, the top of a great tree or of a grove's
+//   lesser tree) is refused unless the last ground stood on (`entity.footLevel`, kept by the game; the step's height when unknown) is at
+//   most `CROWN_GATE.below` levels under it: the tree's last step or the crown itself. However the move is made (walk, jump, dodge,
+//   blow, pull, held air, a wall hold, the drone), the crown is reached only by the climb.
+// - `entity.crownHold` (after a wake on a crown): a step off the crown onto anything more than `below` levels lower is refused, so
+//   walking, a dodge or a blow stops at the rim; a jump (`entity.jumping`) is never held.
+// - A tile still rising out of the ground (`rising`, the Rite of Ascendancy's tree) is not stepped on.
+export const CROWN_GATE = Object.freeze({ below: 1 });
+export function crownBarred(entity, a, b) {
+  if (!entity?.isPlayer || b?.kind !== "canopyTrunk" || (a?.kind === "canopyTrunk" && (a.elev || 0) === (b.elev || 0))) return false;
+  const foot = Number.isFinite(entity.footLevel) ? entity.footLevel : Math.max(a?.elev || 0, entity.airElev ?? -Infinity); // unknown (a probe, a test's solver): the step's own height
+  return foot < (b.elev || 0) - CROWN_GATE.below;
+}
+const crownHeld = (entity, a, b) => !!entity?.isPlayer && entity.crownHold === true && !entity.jumping && a?.kind === "canopyTrunk" && !(b?.kind === "canopyTrunk" && (b.elev || 0) === (a.elev || 0)) && (b?.blocked || (b?.elev || 0) < (a.elev || 0) - CROWN_GATE.below || LETHAL_KINDS.has(b?.kind));
 // Elevation rule for one movement step (see header). `entity.isPlayer` and `entity.jumping` are set by the game.
 export function canStep(entity, map, width, fromX, fromY, toX, toY) {
   if (map?.building && !interiorTerrain(map) && !entity?.flying && !entity?.phases) {
@@ -2460,6 +2475,7 @@ export function canStep(entity, map, width, fromX, fromY, toX, toY) {
   if (!map?.landscape || entity?.flying || entity?.phases) return true;
   const a = tileUnder(map, width, fromX, fromY), b = tileUnder(map, width, toX, toY);
   if (!a || !b || a === b) return true;
+  if (entity?.isPlayer && ((b.rising && b.canopy) || crownBarred(entity, a, b) || crownHeld(entity, a, b))) return false; // GREAT_CROWN
   if (interiorTerrain(map)) {
     // Compare the shared edge, not ramp centres; side entry across a retaining
     // face is a real step. moveAxis already subdivides motion to adjacent cells.
