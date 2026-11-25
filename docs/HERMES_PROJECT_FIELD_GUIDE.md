@@ -6,7 +6,7 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
-## Unreleased — Paths, the progression view (part 1)
+## Release 1057 — Paths, the progression view (part 1)
 
 Tim's request (2026-11-22): a dense, compact view of which abilities can be had, what to do for each (a quest, a milestone, "hunt dungeons in this desert until you find the pieces"), far leads that reward boldness, some things kept secret, and finding a passive feeling like an event. Part 1 of the Paths design's four: the read-only model, the three wrong Arcanum lines it found, and a plain first view.
 
