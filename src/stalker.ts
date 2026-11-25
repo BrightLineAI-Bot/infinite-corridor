@@ -642,6 +642,11 @@ export function updateStalker(e, w) {
   if (!["grab", "grabPull", "retract", "slamWarn", "slam", "sweep", "spin"].includes(a.kind)) e.stalkFists = null;
   switch (a.kind) {
     case "prowl": {
+      // The Briar Stag fight stutter (Tim's r1050 fight at -185,-203, a Stalker in it): a prowl begun in the pool or the mist
+      // (a decoy burst or a broken pen sets "prowl" whatever the form) went to the ape's moves with none chosen, and threw in
+      // Game.update every frame it stood in reach: the world stopped and nothing was drawn for seconds at a time. The pool and
+      // the mist have no prowl: such a form begins its own move instead (the slide, or the gathering).
+      if (e.stalkForm !== "cat" && e.stalkForm !== "ape") { beginForm(e, w, e.stalkForm === "pool" || e.stalkForm === "mist" ? e.stalkForm : "cat"); break; }
       // Close in to its range, circling once there; pounce or leap when the prowl is over.
       if (e.stalkForm === "ape" && !e.stalkApeNext) e.stalkApeNext = apeMoveNext(e);
       if (e.stalkForm === "cat" && !e.stalkCatNext) e.stalkCatNext = catMoveNext(e);
