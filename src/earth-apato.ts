@@ -116,7 +116,12 @@ export const APATO_ATTACKS = {
 // Big rooms (as the Wild Stegosaurus's, wild-stego.ts): a great building's floor or an adventure Pentagon's chamber first generated
 // from this version on (pinned on the floor's own history as `apatoRooms` by game.ts generatePinnedDungeon) may hold one in its
 // biggest open square, unless a stego or Spinosaurus already holds that room. A floor generated before holds none, and never gains one.
-export const APATO_ROOMS = { version: 1, chance: .1, side: 10 };
+// Version 2 (Tim, 2026-11-25: "too early"): a floor first generated from then on holds one only if the Wayfarer had reached Aperture
+// tier `tier` (Infinite IV) when it was first generated, in either progression mode; below it the floor pins 0 (apatoRoomsPin) and
+// never holds one. Floors pinned at version 1 keep their roll exactly as before.
+export const APATO_ROOMS = { version: 2, chance: .1, side: 10, tier: 14 };
+// The version a floor first generated now pins on its history, from the Wayfarer's Aperture tier (world.ts apertureTier) then.
+export const apatoRoomsPin = (tier) => (Number(tier) >= APATO_ROOMS.tier ? APATO_ROOMS.version : 0);
 export const isApato = (e) => e?.kind === "earthApato";
 export const isApatoClone = (e) => e?.kind === "apatoClone";
 export const apatoTuned = (e) => !!e?.apatoRoom;
