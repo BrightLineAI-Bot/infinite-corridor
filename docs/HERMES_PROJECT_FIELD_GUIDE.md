@@ -6,7 +6,7 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
-## Unreleased — choose a male or female Wayfarer
+## Release 1069 — choose a male or female Wayfarer
 
 Tim (2026-11-25): "When creating a character, alongside the weapon and tool choice, you can choose male or female." The female Wayfarer has the same colours, outfit and white hair, is slimmer in every dimension (narrower shoulders, waist and limbs, a slightly smaller head), has a modest bust, and wears a long white braid from the back of the neck down the back instead of the small bun; tasteful, a practical wanderer. In Standard View the braid comes forward over the off-hand shoulder to the chest. No release number is taken here.
 
