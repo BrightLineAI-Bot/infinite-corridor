@@ -144,7 +144,9 @@ test('frame sequences: a short and a long fall flow from the walk-off through th
       if (prev) { const d = delta(prev, m); if (d > most) { most = d; mostAt = `${g.fall ? `falling ${(g.fall.t * 1000).toFixed(0)} ms` : 'on the ground'}`; } } prev = m;
     }
     assert.ok(landed && fellMs >= minMs, `${h} levels: a fall of ${fellMs.toFixed(0)} ms`);
-    assert.ok(most < .045, `${h} levels, Close View: at most ${most.toFixed(4)} m a frame (${mostAt})`);
+    // .045 before HERO_STAND (2026-11-26): the landing absorb now bends knees that were standing straight, so at the touchdown the
+    // knee travels further in its first frames (.0518 at most, the knee; was .0407, the chest). Nothing else moves faster.
+    assert.ok(most < .055, `${h} levels, Close View: at most ${most.toFixed(4)} m a frame (${mostAt})`);
     assert.ok(armsJump < .05, `${h} levels, Standard View: the hands' weight moves at most ${armsJump.toFixed(3)} a frame`);
     assert.ok(lastArms < .1, `${h} levels: the arms are down by the touchdown (${lastArms.toFixed(3)})`);
   }

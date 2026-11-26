@@ -102,8 +102,11 @@ test('hero imports do not fetch, and pure decoding validates bounded arrays',asy
 test('hybrid reference has finite normalized normals, exact height and a seated unscaled collar',()=>{
   const {s,f}=sample(input({nowMs:0,reducedMotion:true,groundZ:0}));let min=Infinity,max=-Infinity;
   for(let i=0;i<f.positionsNormals.length;i+=6){for(let k=0;k<6;k++)assert.ok(Number.isFinite(f.positionsNormals[i+k]));min=Math.min(min,f.positionsNormals[i+2]);max=Math.max(max,f.positionsNormals[i+2]);assert.ok(Math.abs(Math.hypot(...f.positionsNormals.slice(i+3,i+6))-1)<1e-5);}
-  assert.ok(Math.abs(min)<1e-6);assert.ok(Math.abs(max-1.3776)<1e-5);assert.ok(s.seatY<0&&s.seatY>-.3);assert.equal(s.headScale,.4);
-  let collar=Infinity,head=Infinity;for(const v of meta.headAttachment.collarVertexIndices)collar=Math.min(collar,s.vertices[v*6+1]);for(const m of meta.meshes)if(m.node===41)for(let v=m.firstVertex;v<m.firstVertex+m.vertexCount;v++)head=Math.min(head,s.vertices[v*6+1]);assert.ok(Math.abs(head-(collar-.01))<1e-5);
+  // HERO_STAND (2026-11-26): standing straight, the idle is about 1.2% taller than the 1.3776 reference (was exactly it), and
+  // the boot soles stay where they were; only a heel crease that dipped under them by 1 mm no longer does (min was exactly 0).
+  assert.ok(min>=0&&min<.0011,`soles ${min}`);assert.ok(max>1.3776&&max<1.3776*1.02,`standing height ${max}`);assert.ok(s.seatY<0&&s.seatY>-.3);assert.equal(s.headScale,.4);
+  // The seat is set on the source Idle reference, which a new pose state holds until it is sampled (HERO_STAND then stands it up).
+  const ref=createHeroPoseState(asset);let collar=Infinity,head=Infinity;for(const v of meta.headAttachment.collarVertexIndices)collar=Math.min(collar,ref.vertices[v*6+1]);for(const m of meta.meshes)if(m.node===41)for(let v=m.firstVertex;v<m.firstVertex+m.vertexCount;v++)head=Math.min(head,ref.vertices[v*6+1]);assert.ok(Math.abs(head-(collar-.01))<1e-5);assert.equal(ref.seatY,s.seatY);
   assert.ok(Math.abs(s.pose[3*10+7]-asset.rest[3*10+7])<1e-5,'Rogue Head and collar were not scaled');
 });
 test('sampled source feet keep their independent root hierarchy and animated translation',()=>{
@@ -207,7 +210,7 @@ test('bind-space slimming preserves original height, intact head geometry, track
   const body=meta.meshes.find(m=>m.skin>=0&&m.paletteClass==='wayfarer-body'),head=meta.meshes.find(m=>m.node===41);
   assert.ok(body&&head);for(let v=body.firstVertex;v<body.firstVertex+body.vertexCount;v++){assert.ok(Math.abs(after.fit.positions[v*3]-originalPositions[v*3]*.8)<1e-7);assert.equal(after.fit.positions[v*3+1],originalPositions[v*3+1]);assert.ok(Math.abs(after.fit.positions[v*3+2]-originalPositions[v*3+2]*.82)<1e-7);}
   for(let v=head.firstVertex*3;v<(head.firstVertex+head.vertexCount)*3;v++)assert.equal(after.fit.positions[v],asset.arrays.positions[v]);
-  for(const f of [a,b]){const heights=f.positionsNormals.filter((_,k)=>k%6===2);assert.ok(Math.abs(Math.max(...heights)-i.height)<1e-5);assert.ok(Math.abs(Math.min(...heights))<1e-5);}
+  for(const f of [a,b]){const heights=f.positionsNormals.filter((_,k)=>k%6===2);assert.ok(Math.max(...heights)>i.height&&Math.max(...heights)<i.height*1.02);assert.ok(Math.min(...heights)>=0&&Math.min(...heights)<.0011);} // HERO_STAND: was exactly i.height and 0
   const span=(s,axis)=>{let lo=Infinity,hi=-Infinity;for(let v=body.firstVertex;v<body.firstVertex+body.vertexCount;v++){const y=asset.arrays.positions[v*3+1];if(y>.8&&y<1.8){lo=Math.min(lo,s.vertices[v*6+axis]);hi=Math.max(hi,s.vertices[v*6+axis]);}}return hi-lo;};
   assert.ok(span(after,0)<span(before,0)*.88);assert.ok(span(after,2)<span(before,2)*.9);
 });

@@ -99,7 +99,9 @@ test('the Orrery floats over the open right palm, steady through idle and walkin
     assert.equal(end / MODEL_FLOATS / 3, ORRERY_HELD_TRIANGLES); let lo = Infinity; for (let i = 0; i < end; i += MODEL_FLOATS) { assert.ok(Number.isFinite(out[i]) && Number.isFinite(out[i + 9])); lo = Math.min(lo, out[i + 2]); }
     assert.ok(lo > m[14], 'it floats above the palm, never in the hand');
   }
-  for (const p of at) assert.ok(Math.hypot(p[0] - at[0][0], p[1] - at[0][1], p[2] - at[0][2]) < .06, `the open palm holds steady through the gait ${JSON.stringify(at)}`);
+  // .06 before HERO_STAND (2026-11-26): standing straight, the idle torso is upright where the run leans in, so the palm sits
+  // about .04 nearer the chest at idle than it did (forward of the torso .436 standing, .504 running; was .479 standing).
+  for (const p of at) assert.ok(Math.hypot(p[0] - at[0][0], p[1] - at[0][1], p[2] - at[0][2]) < .075, `the open palm holds steady through the gait ${JSON.stringify(at)}`);
   // the right hand is not the primary's: the primary is in the left (source rightSocket)
   assert.equal(closeViewHandRoles('verge-cleaver').grip, 'rightSocket');
   // the small spheres turn slowly, and hold still with reduced motion

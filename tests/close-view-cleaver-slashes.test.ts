@@ -145,12 +145,14 @@ test('slashes keep source feet, read with reduced motion and stay continuous at 
 test('Salvage Blade reskin: the grip transform is unchanged and the model stays inside its budget', () => {
   const F = CLOSE_VIEW_HERO_WEAPON_FORM.salvage;
   assert.deepEqual([F.grip, F.gripRadius, F.pommel], [[.700, .742], .018, [.664, .684, .700]], 'the hold below the guard is unchanged');
-  // Socket matrices of the held Salvage Blade, pinned from release 914 (idle, walk, run; normal and reduced motion).
+  // Socket matrices of the held Salvage Blade, pinned from release 914 (idle, walk, run; normal and reduced motion). The idle and
+  // walk rows re-pinned for HERO_STAND (2026-11-26: the idle stands up straight; the walk at 1.2 tiles/s keeps a quarter of it);
+  // the run (3.5 tiles/s, none of the stance) is unchanged.
   const PINNED = [
-    [-0.31145, -0.13489, -0.13852, 0, 0.11351, 0.08504, -0.33803, 0, 0.15652, -0.33008, -0.03048, 0, 0.16582, -0.17427, 0.68024, 1],
-    [-0.31241, -0.13688, -0.13433, 0, 0.11626, 0.06904, -0.34073, 0, 0.15253, -0.33299, -0.01543, 0, 0.16508, -0.18622, 0.69416, 1],
-    [-0.08812, -0.14878, -0.32324, 0, 0.22307, 0.23634, -0.1696, 0, 0.27723, -0.23747, 0.03372, 0, 0.35153, -0.03873, 0.78001, 1],
-    [-0.08655, -0.15074, -0.32275, 0, 0.22422, 0.23504, -0.1699, 0, 0.2768, -0.23752, 0.03671, 0, 0.35309, -0.04073, 0.7834, 1],
+    [-0.29108, -0.12493, -0.18451, 0, 0.15585, 0.10281, -0.31547, 0, 0.15926, -0.32894, -0.02853, 0, 0.17731, -0.16971, 0.71967, 1],
+    [-0.29207, -0.12828, -0.18061, 0, 0.15884, 0.08705, -0.31871, 0, 0.15441, -0.33219, -0.01377, 0, 0.17669, -0.18131, 0.72383, 1],
+    [-0.07746, -0.14478, -0.32775, 0, 0.22846, 0.23836, -0.15928, 0, 0.27602, -0.23792, 0.03986, 0, 0.35049, -0.03913, 0.79598, 1],
+    [-0.0759, -0.14674, -0.32724, 0, 0.22962, 0.23706, -0.15956, 0, 0.27549, -0.23801, 0.04284, 0, 0.35202, -0.04114, 0.79707, 1],
     [-0.24983, -0.23072, -0.13689, 0, 0.16676, 0.01296, -0.3262, 0, 0.21014, -0.28458, 0.09612, 0, 0.17834, -0.23927, 0.61586, 1],
     [-0.24983, -0.23072, -0.13689, 0, 0.16676, 0.01296, -0.3262, 0, 0.21014, -0.28458, 0.09612, 0, 0.17834, -0.23927, 0.61586, 1],
   ];
