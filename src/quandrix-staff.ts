@@ -79,7 +79,8 @@ export const QUANDRIX = Object.freeze({
   // the foe auto aim picks within `reach` tiles; none: the held hand). A hand within `arrive` of the target's body claps: it
   // strikes everything within `radius` for `share` of its own power, stunning `stun` s, and is gone. One clap per hand, so
   // more hands out make more claps. Spectral, it passes walls on the way; past `maxTime` s it claps where it is.
-  recall: Object.freeze({ speed: 9, arrive: .15, radius: 1.1, share: .9, stun: .2, max: 8, maxTime: 1.2, reach: 8 }),
+  // `speed` 16 (was 9): Tim, 2026-11-26, the recalled hands "rush in" toward the enemy, about half a second from the edge of `reach`.
+  recall: Object.freeze({ speed: 16, arrive: .15, radius: 1.1, share: .9, stun: .2, max: 8, maxTime: .8, reach: 8 }),
   // Foes that hold their ground (the Gravity Well's boss rule, widened to every heavy kind): never grabbed or pulled.
   anchored: Object.freeze(["boss", "worldBeast", "worldBoss", "farArrayBoss", "eliteId", "elite", "questingBeast", "stalker", "seaKind", "pentBoss", "domainBoss", "unique", "fracWarden", "kitRole"]),
   flash: Object.freeze({ max: 4, life: .4 }),
