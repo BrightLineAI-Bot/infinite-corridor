@@ -83,9 +83,10 @@ test('a rounder backside (Tim, 2026-11-26): a bounded swell behind the hips; the
   const S = HERO_FEMALE.sculpt, flat = { ...S, glutes: { ...S.glutes, depth: 0 } }, o = [0, 0, 0];
   const at = (sc, x, y, z) => sculptHeroPoint(sc, x, y, z, o).slice();
   const swell = (x, y, z) => at(flat, x, y, z)[2] - at(S, x, y, z)[2];
-  // the back of the hips swells back (rounder), a little: about 2.5 cm at the fullest, never more than the parameter
+  // the back of the hips swells back (rounder), a little: about 5 cm at the fullest since the waist was drawn in (2.7 cm in
+  // release 1079), never more than the parameter
   assert.ok(swell(.1, .93, -.2) > .02 && swell(.1, .93, -.2) <= S.glutes.depth + 1e-9, `fullest ${swell(.1, .93, -.2).toFixed(4)}`);
-  assert.ok(S.glutes.depth <= .04, 'a little, not exaggerated');
+  assert.ok(S.glutes.depth <= .06, 'natural, not exaggerated');
   assert.ok(swell(.1, .93, -.2) > swell(.1, .82, -.2) * 2 && swell(.1, .93, -.2) > swell(.1, 1.08, -.25) * 4, 'round: easing under into the thigh and up to the belt');
   assert.ok(swell(.1, 1.1, -.26) < .002, 'the belt line barely moves, so the belt neither clips nor floats');
   assert.ok(swell(0, .93, -.22) > 0 && swell(0, .93, -.22) < swell(.1, .93, -.2), 'eased toward the centre');
@@ -95,6 +96,29 @@ test('a rounder backside (Tim, 2026-11-26): a bounded swell behind the hips; the
   // slimmer thighs, still with the slight natural gap
   assert.ok(S.thigh < 1.12 && S.thigh >= 1, 'thighs slimmer than release 1075, not thin');
   const gap = at(S, .07, .75, 0)[0]; assert.ok(gap > .04 && gap < .07, `gap ${gap.toFixed(4)}`);
+});
+
+test('a slimmer waist front to back (Tim, 2026-11-26): the belly and the small of the back drawn in, a gentle S from the side', () => {
+  const S = HERO_FEMALE.sculpt, D = S.waistDepth, flat = { ...S, waistDepth: { ...D, back: 0, front: 0 } }, o = [0, 0, 0];
+  const at = (sc, x, y, z) => sculptHeroPoint(sc, x, y, z, o).slice();
+  const shift = (x, y, z) => at(S, x, y, z)[2] - at(flat, x, y, z)[2];
+  assert.ok(D.back > .03 && D.back <= .06 && D.front > .01 && D.front <= .03, 'a little: the small of the back a few cm, the belly less');
+  assert.ok(shift(0, D.y, -.29) > .03 && shift(0, D.y, .11) < -.01, 'the small of the back forward, the belly back');
+  // a shift, not a squash: the back and the belt over it move together, and so do the belly and the buckle
+  assert.ok(Math.abs(shift(0, D.y, -.25) - shift(0, D.y, -.30)) < 1e-9 && Math.abs(shift(0, D.y, .10) - shift(0, D.y, .17)) < 1e-9);
+  // the bust, the backside, the thigh plates and the sides are untouched (under .1 mm); x and y never move
+  for (const [x, y, z] of [[.1, 1.75, .2], [0, 1.65, .15], [.1, .95, -.25], [.2, 1.0, -.05], [.3, 1.24, -.05], [.2, 1.24, -.09]]) assert.ok(Math.abs(shift(x, y, z)) < 1e-4, `${x} ${y} ${z}`);
+  { const a = at(S, .1, D.y, -.29), b = at(flat, .1, D.y, -.29); assert.equal(a[0], b[0]); assert.equal(a[1], b[1]); }
+  // the side silhouette (fitted bind, |x| < .15): the waist now behind the backside instead of the deepest point of her back
+  const P = createHeroPoseState(female).fit.positions, Q = createHeroPoseState(male).fit.positions;
+  const band = (A, y0, y1, pick, init) => { let r = init; for (let v = 0; v < 972; v++) if (Math.abs(A[v * 3]) < .15 && A[v * 3 + 1] > y0 && A[v * 3 + 1] < y1) r = pick(r, A[v * 3 + 2]); return r; };
+  const back = (A, y0, y1) => band(A, y0, y1, Math.min, 1), front = (A, y0, y1) => band(A, y0, y1, Math.max, -1);
+  // before (release 1079): small of the back -.293 (behind the backside's -.251), belly .118; his -.300 and .121
+  assert.ok(back(P, 1.2, 1.4) > back(Q, 1.2, 1.4) + .03 && back(P, 1.2, 1.4) < back(Q, 1.2, 1.4) + .07, 'the small of the back drawn in a little');
+  assert.ok(back(P, .95, 1.0) < back(P, 1.2, 1.4) - .015, 'the backside rounds out below the waist');
+  assert.ok(back(P, 1.2, 1.4) < back(P, 1.45, 1.65) - .02, 'and the back curves gently up to the shoulder blades');
+  assert.ok(front(P, 1.1, 1.45) < front(Q, 1.1, 1.45) - .005 && front(P, 1.1, 1.45) > front(Q, 1.1, 1.45) - .03, 'the belly drawn in a little');
+  assert.ok(front(P, 1.7, 1.85) > front(P, 1.1, 1.45) + .08, 'the bust still reads clearly above the waist');
 });
 
 const ACTIONS = [null, { kind: 'melee', profile: 'melee', phase: .4, durationMs: 300 }, { kind: 'melee', profile: 'hammer', phase: .5, durationMs: 400 }, { kind: 'melee', profile: 'fist', phase: .3, durationMs: 380, fistStep: 2 },

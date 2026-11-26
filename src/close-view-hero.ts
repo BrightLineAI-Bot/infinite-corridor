@@ -22,14 +22,20 @@ export const HERO_FEMALE = Object.freeze({
     // Her legs (Tim, 2026-11-26: "more shapely and naturally filled out", a slight gap between the thighs, not a wide one):
     // about each leg's own axis the calf keeps `calf` of the male girth, rising past the knee (`kneeY` to `thighY`) to `thigh`
     // (about his; 1.12 in release 1075, a little slimmer since Tim's 2026-11-26 follow-up); a gentle hip curve swells the
-    // outside of the hip and upper thigh (`hips`, outward only).
-    thigh: 1.05, calf: .86, kneeY: .56, thighY: .82, hips: Object.freeze({ y: .98, sigma: .13, out: .026, edge: .06 }),
+    // outside of the hip and upper thigh (`hips`, outward only; a little wider and smoother with the slimmer waist).
+    thigh: 1.05, calf: .86, kneeY: .56, thighY: .82, hips: Object.freeze({ y: .98, sigma: .14, out: .03, edge: .06 }),
     // A rounder backside (Tim, 2026-11-26: "a little rounder and more shapely"; tasteful, she's an armoured adventurer): the
-    // back of the hips and upper thighs swells back by `depth`, peaking at `y`, with a longer slope up to the belt (`up`) and a
-    // shorter, rounder underside into the thigh (`down`); across each cheek about `x` (`sx`), so it eases toward the centre
+    // back of the hips and upper thighs swells back by `depth`, peaking at `y`, rounding up to the belt (`up`) and under into
+    // the thigh (`down`; deeper since the waist was drawn in, below); across each cheek about `x` (`sx`), so it eases toward the centre
     // and the outside of the hip; only behind `z` (fitted, easing in over `back`), so the front, the sides and the thigh
     // plates are untouched. The belt above sits where it reaches only a few millimetres.
-    glutes: Object.freeze({ y: .93, up: .09, down: .07, x: .10, sx: .12, z: -.08, back: .08, depth: .035 }),
+    glutes: Object.freeze({ y: .95, up: .07, down: .07, x: .10, sx: .13, z: -.08, back: .08, depth: .055 }),
+    // A slimmer waist front to back (Tim, 2026-11-26: the belly and the small of the back drawn in a little, so the side reads
+    // as a gentle S from the bust in to the waist and out to the backside): about `y` (`sigma`) the back moves forward by
+    // `back` behind `backZ` (across x by `backSx`) and the belly moves back by `front` ahead of `frontZ` (across x by
+    // `frontSx`), each easing in over `ease`. A shift, not a squash: the belt and pouches over the waist move with the body.
+    // Fitted y .91-1.57 only, so the bust, the backside and the thigh plates are left as they are.
+    waistDepth: Object.freeze({ y: 1.24, sigma: .11, back: .05, backZ: -.10, backSx: .22, front: .02, frontZ: 0, frontSx: .14, ease: .08 }),
     // The bust (Tim, 2026-11-26: "slightly fuller... easy to tell she's a woman just by looking at her, but not exaggerated"):
     // the front of the upper chest swells forward by `depth`, fully from `from` to `to` (fitted y) and across the chest to
     // `x`, easing out over `edge` toward the armpits, with a long gentle upper slope (`up`) and a shorter, rounder underside
@@ -56,6 +62,8 @@ export function sculptHeroPoint(S, x, y, z, out) {
   }
   { const H = S.hips, c = S.legX * s; if (y < S.shoulderY && nx > c) nx += H.out * gauss((y - H.y) / H.sigma) * smoothstep((nx - c) / H.edge); } // the hip curve, outside only
   { const G = S.glutes; if (z < G.z && y > G.y - 3 * G.down && y < G.y + 3 * G.up) nz -= G.depth * gauss((y - G.y) / (y < G.y ? G.down : G.up)) * gauss((nx - G.x) / G.sx) * smoothstep((G.z - z) / G.back); } // the backside, behind only
+  { const D = S.waistDepth; if (y > D.y - 3 * D.sigma && y < D.y + 3 * D.sigma) { const g = gauss((y - D.y) / D.sigma); // the waist, front to back
+    if (z < D.backZ) nz += D.back * g * gauss(nx / D.backSx) * smoothstep((D.backZ - z) / D.ease); else if (z > D.frontZ) nz -= D.front * g * gauss(nx / D.frontSx) * smoothstep((z - D.frontZ) / D.ease); } }
   const B = S.bust;
   if (z > 0 && y > B.from - 3 * B.down && y < B.to + 3 * B.up) nz += B.depth * (1 - smoothstep((nx - B.x) / B.edge)) * (y < B.from ? gauss((y - B.from) / B.down) : y > B.to ? gauss((y - B.to) / B.up) : 1) * smoothstep(z / B.front);
   if (z > 0 && Math.abs(y - B.tuckY) < 3 * B.tuckSigma) nz -= B.tuck * gauss(nx / B.tuckSx) * gauss((y - B.tuckY) / B.tuckSigma) * smoothstep(z / B.front);
