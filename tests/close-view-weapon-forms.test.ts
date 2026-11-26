@@ -63,8 +63,8 @@ test('every reworked weapon stays inside the held-gear, equipment and 256-triang
     const frame = held(p), out = new Float32Array(256 * 3 * MODEL_FLOATS), roles = closeViewHandRoles(p);
     assert.equal(writeCloseViewHeroEquipment(out, 0, { profile: p, primaryStage: null, [roles.grip]: frame[roles.grip], [roles.free]: frame[roles.free] }, frame) / MODEL_FLOATS / 3, n);
   }
-  // Salvage Blade: the forked blade (Tim, 2026-11-25): 58 triangles (54 before), inside its old 58.
-  assert.deepEqual(WEAPONS.map(p => tris(gear(p))), [58, 58, 96, 92, 96]);
+  // Salvage Blade: the violin blade (Tim, 2026-11-26): 90 triangles (58 before), inside the 96 every held weapon keeps.
+  assert.deepEqual(WEAPONS.map(p => tris(gear(p))), [90, 90, 96, 92, 96]);
   // The native fallback Cleaver keeps its 40-triangle weapon inside the same 254-triangle actor.
   assert.equal(modelTriangleCount('playerVergeCleaver') - modelTriangleCount('playerUnarmed'), 40);
   assert.ok(modelTriangleCount('playerVergeCleaver') <= MODEL_MAX_VERTICES / 3);
@@ -153,7 +153,7 @@ test('Blunderbuss keeps its accepted silhouette; the reskinned Salvage Blade kee
   assert.ok(Math.abs(far - (1.535 - .79) * kb) < 1e-6, 'blunderbuss muzzle plane unchanged');
   // The round grip is slimmer than the old .055 x .06 block and lies on the socket axis.
   for (let i = 0; i < b.length; i += MODEL_FLOATS) if (isColor(b, i, 0x5a4330) && b[i] < (.98 - .79) * kb) assert.ok(Math.hypot(b[i + 1], b[i + 2]) <= .026 * kb + 1e-6);
-  // Salvage Blade (the forked blade, 2026-11-25): the first 8 triangles are the blue body to the fork; both profiles share it.
+  // Salvage Blade (the violin blade, 2026-11-26): the first 8 triangles are the whole blade's root, blue; both profiles share it.
   const s = gear('salvage-blade'), blade = 8 * 3 * MODEL_FLOATS;
   assert.deepEqual(gear('melee'), s);
   for (let i = 0; i < blade; i += MODEL_FLOATS) assert.ok(isColor(s, i, CLOSE_VIEW_HERO_WEAPON_FORM.salvage.colors.blade));

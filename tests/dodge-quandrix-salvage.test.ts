@@ -61,24 +61,39 @@ test('the Salvage Blade: its cuts at 1.2 (a data-table share), about .93 of the 
   assert.ok(ratio / 1.2 < .8, `before, it trailed (${(ratio / 1.2).toFixed(3)})`);
 });
 
-test('the Salvage Blade\'s look: blue, two tines, one whole to the point and one snapped about halfway (Close View and Standard View)', () => {
+test('the Salvage Blade\'s look: blue, two curved blades in a violin\'s outline, one whole to the point and one snapped about a third of the way (Close View and Standard View)', () => {
+  // Tim (2026-11-26): whole, two curved blades whose outline together is a violin's body; broken, one is about a third the
+  // length of the other, its break jagged.
   const F = CLOSE_VIEW_HERO_WEAPON_FORM.salvage, B = F.blade, out = new Float32Array(256 * 3 * MODEL_FLOATS), id = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
   const end = writeCloseViewHeroGear(out, 0, { profile: 'salvage-blade', leftSocket: id, rightSocket: id }), k = .82;
-  assert.equal(end / MODEL_FLOATS / 3, 58, 'inside its old 58: the held primary and the largest tool share one 256-triangle slot');
+  assert.equal(end / MODEL_FLOATS / 3, 90, 'within the 96 every held weapon keeps (the held primary and the largest tool share one 256-triangle slot)');
   const rgb = (c) => [(c >> 16) / 255, ((c >> 8) & 255) / 255, (c & 255) / 255], is = (i, c) => rgb(c).every((x, j) => Math.abs(out[i + 6 + j] - x) < 1e-4);
   for (const c of Object.values(F.colors)) { const [r, g, b] = rgb(c); assert.ok(b > r && b > g, 'blue'); }
-  // The tines: socket +X is up the blade; the recipe's Y (the blade's width) lands on the socket's Z, its sign flipped.
-  const tops = { whole: -Infinity, broken: -Infinity }; let breakFace = 0;
+  // Socket +X is up the blade; the recipe's Y (the blade's width) lands on the socket's Z, its sign flipped. Each blade's
+  // reach along the blade, and its centre's distance from the axis by height (the outline).
+  const up = (z) => (z - .79) * k, len = up(B.tip) - up(B.base);
+  const tops = { whole: -Infinity, broken: -Infinity }; let breakFace = 0; const bins = new Array(10).fill(0).map(() => [Infinity, -Infinity]);
   for (let i = 0; i < end; i += MODEL_FLOATS) {
-    if (is(i, F.colors.tine)) { const side = out[i + 2] < 0 ? 'whole' : 'broken'; tops[side] = Math.max(tops[side], out[i]); }
+    const blue = is(i, F.colors.blade) || is(i, F.colors.tine);
+    if (blue) { const side = out[i + 2] < -1e-6 ? 'whole' : out[i + 2] > 1e-6 ? 'broken' : 'whole'; tops[side] = Math.max(tops[side], out[i]);
+      if (side === 'whole') { const u = (out[i] - up(B.base)) / len, b = Math.min(9, Math.max(0, Math.floor(u * 10))); bins[b][0] = Math.min(bins[b][0], -out[i + 2]); bins[b][1] = Math.max(bins[b][1], -out[i + 2]); } }
     if (is(i, F.colors.break)) breakFace++;
   }
-  const up = (z) => (z - .79) * k, half = B.fork + (B.tip - B.fork) * B.broken.at;
-  assert.ok(Math.abs(tops.whole - up(B.tip)) < 1e-5, `one tine runs to the point (${JSON.stringify(tops)} ${up(B.tip)})`);
-  assert.ok(Math.abs(tops.broken - up(half)) <= Math.max(...B.broken.jag) * k + 1e-5 && tops.broken < tops.whole - .1, `the other stops about halfway (${tops.broken.toFixed(3)} of ${tops.whole.toFixed(3)})`);
+  assert.ok(Math.abs(tops.whole - up(B.tip)) < 1e-5, `one blade runs to the point (${JSON.stringify(tops)} ${up(B.tip)})`);
+  const third = (tops.broken - up(B.base)) / len;
+  assert.ok(third > .25 && third < .42, `the other is snapped about a third of the way (${third.toFixed(3)})`);
   assert.equal(breakFace, 6, 'a jagged, bright break (two triangles)');
   assert.ok(new Set(B.broken.jag).size === 4, 'its four corners at four heights');
-  // Standard View: the same blues, a whole tine longer than the snapped one.
-  assert.ok(SALVAGE_BLADE_STD.prong[0] > SALVAGE_BLADE_STD.broken * 1.6);
-  for (const c of [SALVAGE_BLADE_STD.blade, SALVAGE_BLADE_STD.tine, SALVAGE_BLADE_STD.break]) assert.ok(Object.values(F.colors).includes(parseInt(c.slice(1), 16)));
+  // the violin: the whole blade bows out (lower bout), in (the waist), out again (upper bout), then closes to the point
+  const g = (u) => { const O = B.outline; let i = 0; while (i < O.length - 2 && O[i + 1][0] < u) i++; return O[i][1] + (O[i + 1][1] - O[i][1]) * (u - O[i][0]) / (O[i + 1][0] - O[i][0]); };
+  assert.ok(g(.28) > g(.45) && g(.62) > g(.45) && g(.28) > g(.62) && g(1) === 0 && g(0) < g(.28), 'lower bout, waist, upper bout, point');
+  const mid = (b) => (bins[b][0] + bins[b][1]) / 2;
+  assert.ok(mid(2) > mid(4) && mid(6) > mid(4) && mid(9) < mid(6), `the drawn blade follows it (${[2, 4, 6, 9].map(b => mid(b).toFixed(3))})`);
+  // Standard View: the same blues, the same outline (out, in, out, to a point), the broken blade about a third as long.
+  const S = SALVAGE_BLADE_STD, O = S.outline, turns = [];
+  for (let i = 1; i < O.length; i++) { const d = Math.sign(O[i] - O[i - 1]); if (d && d !== turns[turns.length - 1]) turns.push(d); }
+  assert.deepEqual(turns, [1, -1, 1, -1], `violin outline: out, in, out, to the point (${O})`); assert.equal(O[O.length - 1], Math.min(...O));
+  assert.ok(S.broken / O.length > .25 && S.broken / O.length < .42, 'snapped about a third of the way');
+  for (const c of [S.blade, S.tine, S.break]) assert.ok(Object.values(F.colors).includes(parseInt(c.slice(1), 16)));
 });
+

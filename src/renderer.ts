@@ -121,18 +121,28 @@ function drawLowHealth(ctx, g, w, h, now, fallCue) {
   drawLowHealthEdge(ctx, st, w, h, LHE_ART.frames);
 }
 let STD_HANDS_FREE = false; // set around the Wayfarer's own sprite draw (actor reads it for "player")
-// The Salvage Blade in the Standard View sprite (Tim, 2026-11-25: "a blue forked blade, with one of the forks broken off halfway
-// up"): body units from the hand outward, as the plain blade's rect. A blue body to the fork, the upper tine whole to its point,
-// the lower snapped halfway with a bright jagged end. Colours as Close View's (close-view-models.ts salvage.colors).
-export const SALVAGE_BLADE_STD = Object.freeze({ blade: "#3f74d8", tine: "#5b8fe6", break: "#a9c6f2", y: -.56, body: Object.freeze([.08, .2]),
-  prong: Object.freeze([.26, .068]), broken: .12, jag: .07 }); // sized for the sprite's own pixels (about 30 a body unit): tines and gap two pixels each // `body`, `prong`: length and width; `broken`: the snapped tine's length
+// The Salvage Blade in the Standard View sprite (Tim, 2026-11-26): two curved blades side by side whose outline together is the
+// body of a violin (out at the lower bout, in at the waist, out again at the upper bout, closing to one point), one of them
+// snapped about a third of the way up with a bright, jagged end. Body units from the hand outward, one column every `step`
+// (about a sprite pixel): `outline` is the violin's half-width at each column about the centre line `y`; the upper blade
+// (lighter, `tine`) fills from the line up to the outline, the lower (`blade`) from the line down, and stops after `broken`
+// columns, its break `jag` ([column, from, to] as shares of that column's half-width, bright). The hilt (`hilt`: length,
+// height) holds both at the hand. Colours as Close View's (close-view-models.ts salvage.colors). Rects only, no allocation.
+export const SALVAGE_BLADE_STD = Object.freeze({ blade: "#3f74d8", tine: "#5b8fe6", break: "#a9c6f2", y: -.46, from: .2, step: .034,
+  hilt: Object.freeze([.05, .1]), outline: Object.freeze([.05, .085, .105, .105, .09, .065, .06, .075, .085, .08, .065, .04, .02]), broken: 4,
+  jag: Object.freeze([Object.freeze([3, .5, 1]), Object.freeze([4, 0, .5])]) });
 const salvageX = (facing, from, len) => facing === "left" ? -from - len : from; // body units outward from the hand, either side
 let STD_SALVAGE = false; // set around the Wayfarer's own sprite draw when the Salvage Blade is her primary
 let STD_BODY = "male"; // the same: the Wayfarer's body (journey-start.ts WAYFARER_BODY)
 // The female Wayfarer in Standard View (Tim, 2026-11-25): a slimmer frame and smaller head, and a small white braid brought
 // forward over the shoulder that is not holding the weapon, hanging down the front to the chest. A few rects, no new cost.
-export const STD_FEMALE = Object.freeze({ torso: Object.freeze([-0.185, -0.57, 0.37, 0.5]), head: Object.freeze([-0.165, -0.755, 0.33, 0.27]), visor: Object.freeze([-0.11, -0.685, 0.22, 0.13]), eyes: Object.freeze([-0.065, 0.035, -0.655, 0.035]), feet: Object.freeze([-0.17, 0.065, -0.08, 0.105, 0.12]),
-  braid: Object.freeze({ hair: "#e6e3da", shade: "#b9b5aa", tie: "#5a4632", x: 0.135, width: 0.06, top: -0.6, plaits: Object.freeze([0, 0.065, 0.13]), plait: 0.06, tieAt: 0.19, tieH: 0.025, tuft: 0.035 }) });
+// Tim (2026-11-26): a gentle hip curve (`hips`, a pixel wider each side than the torso, from below the waist to its foot), the feet
+// a little fuller and closer (a small natural gap, not a wide one), and the braid starting from behind her head: a `lock` beside
+// the head's side, above the shoulder (drawn under the head), then the plaits from below the head's edge down the front.
+// From behind (`back`, for the right shoulder; mirrored for the left), it runs from the nape out over the shoulder.
+export const STD_FEMALE = Object.freeze({ torso: Object.freeze([-0.185, -0.57, 0.37, 0.5]), hips: Object.freeze([-0.215, -0.25, 0.43, 0.18]), head: Object.freeze([-0.165, -0.755, 0.33, 0.27]), visor: Object.freeze([-0.11, -0.685, 0.22, 0.13]), eyes: Object.freeze([-0.065, 0.035, -0.655, 0.035]), feet: Object.freeze([-0.18, 0.055, -0.08, 0.125, 0.12]),
+  braid: Object.freeze({ hair: "#e6e3da", shade: "#b9b5aa", tie: "#5a4632", x: 0.15, width: 0.06, top: -0.455, plaits: Object.freeze([0, 0.065, 0.13]), plait: 0.06, tieAt: 0.19, tieH: 0.025, tuft: 0.035,
+    lock: Object.freeze({ x: 0.15, width: 0.08, top: -0.66, height: 0.18 }), back: Object.freeze([Object.freeze([0.06, -0.56, 0.07, 0.07]), Object.freeze([0.11, -0.52, 0.08, 0.06])]) }) });
 // The off-hand side for a facing (the blade is drawn on the left when facing left, otherwise on the right): -1 left, 1 right.
 export const stdBraidSide = (facing) => facing === "left" ? 1 : -1;
 const AERIAL_STD_ARMS = Object.freeze({ lean: .16, back: .34, up: .1, hang: .26, spread: .17, arm: "#3b2e23", hand: "#e0b48c" });
@@ -1878,10 +1888,12 @@ function actor(
   }
   if (kind === "player") {
     if (STD_BODY === "female") { const F = STD_FEMALE, B = F.braid, side = stdBraidSide(facing), bx = side * B.x - B.width / 2;
-      if (facing === "up") rect(B.hair, bx, B.top, B.width, B.plait * 2); // from behind, only where it crosses the shoulder
-      rect(p[1], ...F.torso); rect(p[0], ...F.head); rect("#171817", ...F.visor); rect(p[2], F.eyes[0], F.eyes[2], F.eyes[3], F.eyes[3]); rect(p[2], F.eyes[1], F.eyes[2], F.eyes[3], F.eyes[3]);
+      rect(p[1], ...F.torso); rect(p[1], ...F.hips);
+      if (facing !== "up") { const L = B.lock, lx = side > 0 ? L.x : -L.x - L.width; rect(B.shade, lx, L.top, L.width, L.height * .45); rect(B.hair, lx, L.top + L.height * .45, L.width, L.height * .55); } // from behind her head, over the shoulder
+      rect(p[0], ...F.head); rect("#171817", ...F.visor); rect(p[2], F.eyes[0], F.eyes[2], F.eyes[3], F.eyes[3]); rect(p[2], F.eyes[1], F.eyes[2], F.eyes[3], F.eyes[3]);
       rect("#24231f", F.feet[0], F.feet[2], F.feet[3], F.feet[4]); rect("#24231f", F.feet[1], F.feet[2], F.feet[3], F.feet[4]);
-      if (facing !== "up") { B.plaits.forEach((y, i) => rect(i & 1 ? B.shade : B.hair, bx + (i & 1 ? B.width * .15 : 0), B.top + y, B.width * (i & 1 ? .7 : 1), B.plait)); rect(B.tie, bx + B.width * .1, B.top + B.tieAt, B.width * .8, B.tieH); rect(B.hair, bx + B.width * .2, B.top + B.tieAt + B.tieH, B.width * .6, B.tuft); }
+      if (facing === "up") { for (const [x, y, w, h] of B.back) rect(B.hair, side > 0 ? x : -x - w, y, w, h); } // from behind: from the nape out over the shoulder
+      if (facing !== "up") { rect(B.hair, bx, B.top - B.plait * .5, B.width, B.plait * .5); B.plaits.forEach((y, i) => rect(i & 1 ? B.shade : B.hair, bx + (i & 1 ? B.width * .15 : 0), B.top + y, B.width * (i & 1 ? .7 : 1), B.plait)); rect(B.tie, bx + B.width * .1, B.top + B.tieAt, B.width * .8, B.tieH); rect(B.hair, bx + B.width * .2, B.top + B.tieAt + B.tieH, B.width * .6, B.tuft); }
     } else {
     rect(p[1], -0.22, -0.57, 0.44, 0.5);
     rect(p[0], -0.18, -0.76, 0.36, 0.28);
@@ -1892,14 +1904,13 @@ function actor(
     rect("#24231f", 0.07, -0.08, 0.13, 0.12);
     }
     if (STD_HANDS_FREE) { /* AERIAL_HANDS_FREE: the weapon put away for Aerial Step's cast */ }
-    else if (STD_SALVAGE) { // the forked Salvage Blade: rects only, no allocation
-      const B = SALVAGE_BLADE_STD, y = B.y, h0 = .2, t = B.prong[1], f = h0 + B.body[0], low = y + B.body[1] - t;
-      rect(B.blade, salvageX(facing, h0, B.body[0]), y, B.body[0], B.body[1]); // the body from the hand to the fork
-      rect(B.tine, salvageX(facing, f, B.prong[0]), y, B.prong[0], t); // the whole tine
-      rect(B.tine, salvageX(facing, f + B.prong[0], .03), y + t * .25, .03, t * .5); // its point
-      rect(B.tine, salvageX(facing, f, B.broken), low, B.broken, t); // the snapped tine
-      rect(B.break, salvageX(facing, f + B.broken, B.jag * .5), low, B.jag * .5, t * .5); // its jagged break, bright
-      rect(B.break, salvageX(facing, f + B.broken - B.jag * .4, B.jag * .5), low + t * .5, B.jag * .5, t * .5);
+    else if (STD_SALVAGE) { // the violin Salvage Blade, one blade snapped: rects only, no allocation
+      const B = SALVAGE_BLADE_STD, O = B.outline, f = B.from + B.hilt[0];
+      rect(B.blade, salvageX(facing, B.from, B.hilt[0]), B.y - B.hilt[1] / 2, B.hilt[0], B.hilt[1]); // the hilt, both blades in it
+      for (let i = 0; i < O.length; i++) { const x = salvageX(facing, f + i * B.step, B.step);
+        rect(B.tine, x, B.y - O[i], B.step, O[i]); // the whole blade, out to the violin's outline and on to the point
+        if (i < B.broken) rect(B.blade, x, B.y, B.step, O[i]); } // the snapped one, its mirror
+      for (const [i, a, b] of B.jag) rect(B.break, salvageX(facing, f + i * B.step, B.step), B.y + O[i] * a, B.step, O[i] * (b - a)); // the jagged break, bright
     } else rect(p[2], facing === "left" ? -0.38 : 0.2, -0.48, 0.18, 0.05); // the blade in hand
   } else if(kind==='vesperwing'){rect(p[1],-.09,-.62,.18,.56);ctx.fillStyle=p[0];ctx.beginPath();ctx.moveTo(k-s*.08*sc,base-s*.5*sc);ctx.lineTo(k-s*.7*sc,base-s*.85*sc);ctx.lineTo(k-s*.48*sc,base-s*.22*sc);ctx.closePath();ctx.fill();ctx.beginPath();ctx.moveTo(k+s*.08*sc,base-s*.5*sc);ctx.lineTo(k+s*.7*sc,base-s*.85*sc);ctx.lineTo(k+s*.48*sc,base-s*.22*sc);ctx.closePath();ctx.fill();rect(p[2],-.07,-.55,.14,.18)}
   else if(kind==='gravitantBell'){ctx.fillStyle=p[0];ctx.beginPath();ctx.ellipse(k,base-s*.48*sc,s*.38*sc,s*.43*sc,0,0,7);ctx.fill();ctx.strokeStyle=p[2];ctx.stroke();for(let q=-2;q<=2;q++)rect(p[1],q*.12,-.18,.06,.28)}
