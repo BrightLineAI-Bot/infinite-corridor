@@ -113,8 +113,8 @@ test('Quandrix: a held first press slams at the feet; tap then hold throws hand 
     const g = staffGame(), P = page(); clock = 1000; const w = holdWatch(g), run = stepper(g, P.input, w.each);
     run(pace); P.down('attack'); run(QUANDRIX.hold.grace * 1000 + 200);
     assert.ok(w.slam, 'held: it slams'); assert.ok(Math.hypot(w.at.x - w.centre.x, w.at.y - w.centre.y) < .05, `right at the feet (${JSON.stringify(w.at)})`);
-    const own = g.quandrix.hands.find((h) => h.on && h.mode === 'drift'); assert.ok(own && own.seq !== w.seq, 'the press threw its own hand too');
-    assert.ok(own.x - w.centre.x > .3, 'which flies on ahead');
+    assert.ok(w.newest === 2 && w.seq === 2, 'the press threw its own hand too (hand 1; the feet slam is hand 2)'); // and, awakened, it was recalled to the slam (no foe) and clapped (2026-11-26)
+    assert.equal(g.quandrix.hands.filter((h) => h.on && h.mode === 'drift').length, 0, 'recalled: no hand flies on');
     P.up('attack'); run(QUANDRIX.slam.max * 1000 + 200); assert.equal(g.quandrix.hold.on, false);
   }
   for (const [gap, tap] of [[150, 60], [450, 90], [900, 100]]) {

@@ -59,7 +59,7 @@ test('determinism: the same seed and Mouth number give the same place, far out, 
   assert.deepEqual(s.relayNetwork.coordinate, t.relayNetwork.coordinate); assert.deepEqual(s.relayNetwork.pastMouths, t.relayNetwork.pastMouths);
 });
 
-test('the Mouth moves at relays 10, 15, 20, 25 (restored or severed alike), with a notice, a Listener and a town each time', () => {
+test('the Mouth moves at relays 10, 15, 20, 25 (restored or severed alike), with a notice and a Listener each time (a town only where one fell: 2026-11-26)', () => {
   const s = start(), first = { ...s.relayNetwork.coordinate };
   assert.equal(answered(s), 5); assert.equal(s.farArray.moveAt, 10); assert.equal(relaysUntilMove(s), 5); assert.ok(!townAt(s, first.rx, first.ry), 'the first Mouth: a town on its first kill, as before');
   const moves = [];
@@ -70,12 +70,12 @@ test('the Mouth moves at relays 10, 15, 20, 25 (restored or severed alike), with
       assert.match(r.message, /A Listener has entered the corridor\. The Mouth has moved: it stands now at /); assert.ok(r.message.includes(`${c.rx}, ${c.ry}`));
       const j = s.narrative.journal.find((q) => q.recordId === `listener-moved-${s.farArray.mouth}`); assert.equal(j.title, 'The Mouth Moves'); assert.ok(j.text.includes(`${before.rx}, ${before.ry} stays`));
       assert.equal(s.farArray.quiet, false, 'a Listener waits at the new Mouth'); assert.equal(listenerCycle(s).state, 'waits'); assert.deepEqual(listenerCycle(s).coordinate, { rx: c.rx, ry: c.ry });
-      assert.equal(townAt(s, c.rx, c.ry)?.formed, 'move', 'a town gathers at the new Mouth at once'); assert.ok(townAt(s, before.rx, before.ry)?.mouth, 'the old Mouth is a town');
+      assert.equal(townAt(s, c.rx, c.ry), null, 'no town at the new Mouth before its Listener falls (2026-11-26)'); assert.equal(townAt(s, before.rx, before.ry), null, 'nor at a Mouth left unfelled');
       assert.ok(silentMouthAt(s, before.rx, before.ry)); assert.ok(arrayMouthAt(s, c.rx, c.ry));
     } else assert.deepEqual(s.relayNetwork.coordinate, before, `relay ${k} moves nothing`);
   }
   assert.deepEqual(moves, [10, 15, 20, 25]); assert.equal(s.farArray.mouth, 4); assert.equal(s.farArray.moveAt, 30);
-  assert.equal(s.hometowns.towns.filter((t) => t.mouth).length, 5, 'one town per Mouth, the first included (it was left)');
+  assert.equal(s.hometowns.towns.filter((t) => t.mouth).length, 0, 'no Listener fell, so no town (2026-11-26)');
   assert.equal(s.relayNetwork.pastMouths[0].rx, first.rx);
 });
 
@@ -105,18 +105,16 @@ test('nothing is lost: pieces, the Gate, kills, boons and offers cross every mov
 
 test('old towns stay and keep working: their Mouth, smith and Descent, past the last eight Mouths', () => {
   const s = start('TOWNS'), firsts = [];
-  for (let m = 0; m < 10; m++) { firsts.push({ ...s.relayNetwork.coordinate }); relays(s, 5); ensureHometowns(s); }
+  for (let m = 0; m < 10; m++) { firsts.push({ ...s.relayNetwork.coordinate }); kill(s); relays(s, 5); ensureHometowns(s); } // 2026-11-26: a town where a Listener fell
   assert.equal(s.relayNetwork.pastMouths.length, 8, 'pastMouths keeps eight'); const oldest = firsts[0];
   for (const c of firsts) { assert.ok(townAt(s, c.rx, c.ry)?.mouth, `town at ${c.rx},${c.ry}`); assert.ok(silentMouthAt(s, c.rx, c.ry), 'still a Mouth'); }
   const r = reload(s); assert.deepEqual(r.hometowns.towns, s.hometowns.towns, 'no town lost on reload');
   const g = new Game(r, 0), objs = at(g, oldest);
   assert.ok(objs.some((o) => o.kind === 'silentMouth')); assert.ok(objs.some((o) => o.kind === 'townSmith'), 'its smith'); assert.ok(objs.some((o) => o.mouthDeep), 'its Descent');
   const now = at(g, r.relayNetwork.coordinate), stone = now.find((o) => o.kind === 'listeningStone');
-  assert.ok(now.some((o) => o.kind === 'arrayMouth' && o.state === 'ready')); assert.ok(now.some((o) => o.kind === 'townSmith'), 'the new Mouth is a town at once');
-  assert.match(stone.lore, /beside the Listener's Mouth/);
+  assert.ok(now.some((o) => o.kind === 'arrayMouth' && o.state === 'ready')); assert.ok(!now.some((o) => o.kind === 'townSmith') && !stone, 'the new Mouth is no town before its Listener falls (2026-11-26)');
   // The relay that moves the Mouth names its town and journals it once.
-  const u = start('NOTE'); relays(u, 5); const note = mouthTownNote(u); assert.match(note, /gathers at the new Mouth/); assert.equal(mouthTownNote(u), '', 'once');
-  assert.ok(u.narrative.journal.some((j) => /made a town of it/.test(j.text)));
+  const u = start('NOTE'); relays(u, 5); assert.equal(mouthTownNote(u), '', 'no town at a move (2026-11-26)'); assert.ok(!u.narrative.journal.some((j) => /made a town of it/.test(j.text)));
 });
 
 test('the compass, the Journal and Paths follow the Mouth when it moves', () => {
@@ -175,7 +173,7 @@ test("Tim's journey migrates cleanly: the Listener v2 owed him still returns at 
   relays(s, 2); assert.deepEqual(s.relayNetwork.coordinate, { rx: 62, ry: -48 });
   const moved = answer(s); ensureHometowns(s); const c = s.relayNetwork.coordinate;
   assert.equal(moved.listenerMoved, true); assert.equal(answered(s), 57); assert.deepEqual(c, mouthCoordinateV3('CORRIDOR-MUHAPQHU', 4, { rx: 62, ry: -48 }, [{ rx: 50, ry: 46 }, { rx: -53, ry: -62 }, { rx: -50, ry: -44 }, { rx: 62, ry: -48 }, ...raw.hometowns.towns]));
-  assert.ok(townAt(s, c.rx, c.ry)?.formed === 'move'); assert.ok(townAt(s, 62, -48)?.mouth, 'Lanternreach stays'); assert.equal(s.hometowns.towns.length, 6);
+  assert.equal(townAt(s, c.rx, c.ry), null, 'no town at the new Mouth until its Listener falls (2026-11-26)'); assert.ok(townAt(s, 62, -48)?.mouth, 'Lanternreach stays'); assert.equal(s.hometowns.towns.length, 5);
   assert.deepEqual(s.guidance.pin, { rx: c.rx, ry: c.ry, name: 'The Array Mouth' }, 'his compass follows'); assert.equal(s.farArray.moveAt, 62);
   assert.deepEqual([s.farArray.toNext, s.farArray.gate, s.farArray.listeners], [3, 4, 6], 'his pieces go with him');
 });

@@ -43,7 +43,8 @@ function begin(g, driftMs) {
   g.player.attackReadyAt = 0; press(g, t); for (let i = 0; i < 40 && !g.quandrix.hold.on; i++) { frame(g, t, true); t += 20; }
   assert.ok(g.quandrix.hold.on, 'the hold began');
   // The penultimate hand (Tim, 2026-11-25): the held press threw its own hand too; it is put away so only the hold's blows count.
-  const own = latestHand(g); assert.ok(own && own !== g.quandrix.hold.hand, 'the held press threw its own hand'); own.on = false; return t;
+  // Awakened (2026-11-26) that hand is recalled toward the foe as the hold begins, so it is found in any mode.
+  const own = g.quandrix.hands.filter((h) => h.on && h !== g.quandrix.hold.hand).sort((a, b) => b.seq - a.seq)[0]; assert.ok(own, 'the held press threw its own hand'); own.on = false; return t;
 }
 // Runs until the hold ends (or `limit` ms): the time it ended and the hand's place in its last frame.
 function untilBurst(g, t, limit, held = false, move = { x: 0, y: 0 }) {
@@ -209,7 +210,7 @@ test('stress: sixty seconds of presses, holds and early releases in every mode w
       frame(g, t, held, move); g.player.x = Math.max(4, Math.min(15, g.player.x)); g.player.y = Math.max(4, Math.min(26, g.player.y));
       const K = g.quandrix; if (!K) continue; const H = K.hold;
       assert.equal(K.hands.length, QUANDRIX.hand.maxLive); assert.equal(K.flashes.length, QUANDRIX.flash.max); assert.ok(H.n <= H.grab.length && H.grab.length === Math.max(F.maxGrab, U.maxPull));
-      assert.ok(K.hands.filter((h) => h.on && h.mode !== 'drift').length <= 1, 'at most one held or let-go hand');
+      assert.ok(K.hands.filter((h) => h.on && h.mode !== 'drift' && h.mode !== 'recall').length <= 1, 'at most one held or let-go hand'); // recalled hands (2026-11-26) clap in flight
       if (H.on) { assert.ok(H.hand?.on && H.hand.kind === 'own'); assert.ok([H.hand.x, H.hand.y, H.held, H.tick, H.power].every(Number.isFinite)); }
       if (H.on && H.released) { if (lingerFrom < 0) { lingerFrom = t; lingers++; } longest = Math.max(longest, t - lingerFrom); assert.ok(t - lingerFrom <= limit, 'a let-go hand bursts within its clock'); } else lingerFrom = -1;
       for (const h of K.hands) if (h.on) assert.ok([h.x, h.y, h.age, h.power].every(Number.isFinite) && Object.keys(h.hits).length <= g.enemies.length);

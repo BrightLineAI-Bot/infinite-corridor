@@ -16,6 +16,9 @@
 //   this press's down where it is. While held it strikes everything under it every `slam.tick` s. A ring round the Wayfarer fills toward the
 //   perfect window (`slam.perfect`, s after the slam); letting go inside it bursts at once for the strongest burst, and holding
 //   to `slam.max` overcharges it and it bursts on its own for less than a perfect release.
+//   The slam yanks (Tim, 2026-11-26): as it lands it hauls the unanchored foes about it in hard (`slam.yank`) and holds them
+//   under it; its blows build Encumbered as a pull's do. And every other hand out is recalled (`recall`): each flies to the
+//   locked or auto-aimed foe (none: the held hand) and claps there, once, and is gone; the suction cup recalls them too.
 // - Awakened with Mage's Hand: the slammed hand becomes a suction cup: it pulls foes within `suction.radius` into itself (at
 //   most `suction.maxPull`) while it is reeled back toward the Wayfarer, then bursts by the same release rules.
 // - Let go (Tim, 2026-11-14: "if you let go of the charge, the slam will just stay there, and then it'll explode once its timer
@@ -50,13 +53,12 @@ export const QUANDRIX = Object.freeze({
   // `share` (Tim, 2026-11-25: "I just wasn't doing enough damage" with a Focus build against world bosses ~200 sections out): .32
   // before. Measured on the real Game at matched gear (tests/focus-damage.test.ts), the staff's hands dealt .67 to .83 of the
   // Verge Cleaver's damage per second at the same weapon bonus (the share varies with the beast's body); at .4, about .84 to 1.04.
-  // .36 with the faster hands below (2026-11-25): the faster hands no longer give way to the sixth while still striking a big
-  // body, so at .4 they dealt .96 to 1.21 of the Cleaver's; at .36, about .86 to 1.09 (the slower hands at .4: .94 to 1.10).
-  // `speed`, `life`, `rehit` (Tim, 2026-11-25: the hands fly faster): 2.2 tiles/s, 2.2 s and .3 s before. The reach (speed x
-  // life, items.ts PRIMARY_PROFILES 4.84) is kept, and `rehit` shrinks with the speed so a hand still lands the same blows per
-  // tile it passes through a body (speed x rehit .66 tiles). `step`: the most a hand moves between wall and body checks, so
-  // a long frame at the faster speed never carries it past a foe (no tunnelling).
-  hand: Object.freeze({ cadenceMs: 420, speed: 3.025, life: 1.6, radius: .35, rehit: .218, share: .36, maxLive: 5, lift: .45, stun: .08, step: .2 }),
+  // .36 with the faster hands (release 1070), .4 again with the old hands (2026-11-26: .94 to 1.10 of the Cleaver), then .33, then .355
+  // (Tim, 2026-11-26: tap spam sits "behind the Might build"; Focus builds have spells to make up the difference); .33 measured .79 to .92, too low (Tim: "eighty percent is too low"); .355 measures .84 to .98.
+  // `speed`, `life`, `rehit` (Tim, 2026-11-26: back to the values before release 1070, which flew them at 3.025 tiles/s for
+  // 1.6 s, rehit .218): the reach (speed x life, items.ts PRIMARY_PROFILES 4.84) and the blows per tile (speed x rehit .66)
+  // are the same either way. `step`: the most a hand moves between wall and body checks (no tunnelling on a long frame).
+  hand: Object.freeze({ cadenceMs: 420, speed: 2.2, life: 2.2, radius: .35, rehit: .3, share: .355, maxLive: 5, lift: .45, stun: .08, step: .2 }),
   hold: Object.freeze({ grace: .2, feet: 0 }), // `feet`: how far ahead of the Wayfarer's centre a hold with no earlier hand is made (tiles)
   // Let go before the charge is done (Tim, 2026-11-14): the hand lingers, keeps working and bursts when its clock runs out.
   // `tapWhileLive`: while one lingers a held press is a plain hand (one hold at a time). `record`: its saved shape's version.
@@ -65,8 +67,20 @@ export const QUANDRIX = Object.freeze({
     burst: Object.freeze({ radius: 1.6, share: 2.2, stun: .5 }) }),
   slam: Object.freeze({ tick: .25, radius: 1.4, tickShare: .22, perfect: Object.freeze([1, 1.3]), max: 2, stun: .1,
     burst: Object.freeze({ radius: 1.8, early: Object.freeze([.8, 1.4]), perfect: 2.6, late: 1.4, overcharge: 1.6, stun: .6,
-      released: 1.6 }) }), // `released`: a slam let go outside the gold window bursts at `max` for this (the full charge's, as an overcharge)
+      released: 1.6 }),
+    // The yank (Tim, 2026-11-26: "a strong yank of nearby enemies toward the slam point"): for the first `window` s of the
+    // slam (its charge clock) every unanchored foe within `radius` of it (at most `maxPull`) is caught and hauled in at `pull`
+    // tiles/s to `hug` from its centre, then held there while the slam lives, as the suction cup holds. The slam's ticks and
+    // burst then count as a pull's damage (Encumbered's build-up), as the Mage's Hand's fist and suction cup do.
+    yank: Object.freeze({ radius: 3.6, pull: 14, window: .35, maxPull: 6, hug: .35 }) }), // `released`: a slam let go outside the gold window bursts at `max` for this (the full charge's, as an overcharge)
   suction: Object.freeze({ radius: 3.2, pull: 3.2, maxPull: 6, reel: 2.6, arrive: 1, hug: .35 }),
+  // The recall (Tim, 2026-11-26): awakened, the moment a hold begins (the slam or the suction cup) every other hand out, the
+  // Wayfarer's and the echo and clone hands, at most `max`, turns and flies at `speed` tiles/s to the target (the lock, else
+  // the foe auto aim picks within `reach` tiles; none: the held hand). A hand within `arrive` of the target's body claps: it
+  // strikes everything within `radius` for `share` of its own power, stunning `stun` s, and is gone. One clap per hand, so
+  // more hands out make more claps. Spectral, it passes walls on the way; past `maxTime` s it claps where it is.
+  // `speed` 16 (was 9): Tim, 2026-11-26, the recalled hands "rush in" toward the enemy, about half a second from the edge of `reach`.
+  recall: Object.freeze({ speed: 16, arrive: .15, radius: 1.1, share: .9, stun: .2, max: 8, maxTime: .8, reach: 8 }),
   // Foes that hold their ground (the Gravity Well's boss rule, widened to every heavy kind): never grabbed or pulled.
   anchored: Object.freeze(["boss", "worldBeast", "worldBoss", "farArrayBoss", "eliteId", "elite", "questingBeast", "stalker", "seaKind", "pentBoss", "domainBoss", "unique", "fracWarden", "kitRole"]),
   flash: Object.freeze({ max: 4, life: .4 }),
@@ -76,7 +90,7 @@ export const QUANDRIX = Object.freeze({
   view: Object.freeze({ lift: .62, slamLift: .04, scale: 1, shadow: .3, ring: .62, drawn: 1.35, staff: .89 }),
   colors: Object.freeze({ glow: "#b896cf", core: "#efe4ff", deep: "#5b3f86", rune: "#c58cff", perfect: "#fff2a8", line: "#d9c4ff",
     staff: "#4a3a5c", wrap: "#5a4330", metal: "#c6a46f", emissive: 0xb896cf, emissiveCore: 0xc58cff, breath: "#9fd9e6" /* Gathered Breath's beads on the ring */ }),
-  messages: Object.freeze({ perfect: "A perfect release!", overcharge: "The hand overcharges and bursts.", grabbed: "The hand clenches.", released: "The hand you let go bursts." }),
+  messages: Object.freeze({ recall: "The hands converge.", perfect: "A perfect release!", overcharge: "The hand overcharges and bursts.", grabbed: "The hand clenches.", released: "The hand you let go bursts." }),
 });
 
 // ---------------------------------------------------------------- pure rules
@@ -97,13 +111,15 @@ const hittable = (e) => !!e && !e.dead && !e.untargetable && !e.hidden && !unhar
 const touching = (e, x, y, r) => Math.hypot(e.x + .5 - x, e.y + .45 - y) < r + enemyBodyRadius(e);
 
 // ---------------------------------------------------------------- runtime state (game.quandrix, never saved)
-const newHand = () => ({ on: false, mode: "drift", seq: 0, x: 0, y: 0, dx: 1, dy: 0, age: 0, life: 0, power: 0, hits: {}, kind: "own" });
+// `target`, `tx`, `ty`: a recalled hand's foe (its id, or null) and the point it last flew for (QUANDRIX.recall).
+const newHand = () => ({ on: false, mode: "drift", seq: 0, x: 0, y: 0, dx: 1, dy: 0, age: 0, life: 0, power: 0, hits: {}, kind: "own", target: null, tx: 0, ty: 0 });
+const GRAB_CAP = Math.max(QUANDRIX.fist.maxGrab, QUANDRIX.suction.maxPull, QUANDRIX.slam.yank.maxPull);
 export function quandrixState(game) {
   return (game.quandrix ||= {
     seq: 0, where: "",
     hands: Array.from({ length: QUANDRIX.hand.maxLive }, newHand),
     press: { on: false, held: 0, action: "", dx: 1, dy: 0, tap: false, owed: 0, thrown: false, holding: false, prev: null, prevSeq: 0 }, // `tap`: let go before the hold began; `owed`: an earlier press's hand still to cast when this press came (at most one); `thrown`: this press's own hand is out; `prev`/`prevSeq`: the hand out before it (the one a hold takes)
-    hold: { on: false, released: false, mode: "", hand: null, held: 0, tick: 0, power: 0, action: "", grab: Array.from({ length: Math.max(QUANDRIX.fist.maxGrab, QUANDRIX.suction.maxPull) }, () => ""), n: 0 },
+    hold: { on: false, released: false, mode: "", hand: null, held: 0, tick: 0, power: 0, action: "", grab: Array.from({ length: GRAB_CAP }, () => ""), n: 0 },
     flashes: Array.from({ length: QUANDRIX.flash.max }, () => ({ life: 0, x: 0, y: 0, r: 0, kind: "" })),
     extras: Array.from({ length: QUANDRIX.extra.maxLive }, newHand), // echo and clone hands (never a hold's)
     queue: Array.from({ length: QUANDRIX.extra.queue }, () => ({ on: false, left: 0, dx: 1, dy: 0, power: 0 })), // Echo hands to come
@@ -141,11 +157,18 @@ export function holdMode(game) {
 }
 
 // ---------------------------------------------------------------- casting
+// The slot a new hand of the Wayfarer's takes: a free one, else the oldest drifting hand gives way, else the oldest recalled
+// hand claps where it is now (its blow is never lost). The held hand never gives way. Null only if every slot is held.
+function handSlot(game, now) {
+  const K = game.quandrix; let slot = null, recalled = null;
+  for (const h of K.hands) { if (!h.on) return h; if (h.mode === "drift" && (!slot || h.seq < slot.seq)) slot = h; if (h.mode === "recall" && (!recalled || h.seq < recalled.seq)) recalled = h; }
+  if (slot || !recalled) return slot;
+  clap(game, recalled, now); return recalled;
+}
 // One hand, toward (dx, dy). A free slot, else the oldest drifting hand gives way. Returns the hand, or null.
 export function castHand(game, now, dx, dy) {
   const Q = QUANDRIX.hand, K = quandrixState(game), p = game.player;
-  let slot = null; for (const h of K.hands) { if (!h.on) { slot = h; break; } if (h.mode === "drift" && (!slot || h.seq < slot.seq)) slot = h; }
-  if (!slot) return null;
+  const slot = handSlot(game, now); if (!slot) return null;
   const m = Math.hypot(dx, dy) || 1, ux = dx / m, uy = dy / m, power = Number(game.quandrixPower()) || 0;
   slot.on = true; slot.mode = "drift"; slot.seq = ++K.seq; slot.x = p.x + .5 + ux * Q.lift; slot.y = p.y + .45 + uy * Q.lift; slot.dx = ux; slot.dy = uy;
   slot.age = 0; slot.life = Q.life; slot.power = power; clearHits(slot);
@@ -160,6 +183,7 @@ export function castExtra(game, x, y, dx, dy, power, kind) {
   const Q = QUANDRIX.hand, K = quandrixState(game);
   if (![x, y, dx, dy, power].every(Number.isFinite) || !(power > 0)) return null;
   let slot = null; for (const h of K.extras) { if (!h.on) { slot = h; break; } if (!slot || h.seq < slot.seq) slot = h; }
+  if (slot.on && slot.mode === "recall") clap(game, slot, game.lastUpdateNow || 0); // a recalled extra giving way claps first
   const m = Math.hypot(dx, dy) || 1, ux = dx / m, uy = dy / m;
   slot.on = true; slot.mode = "drift"; slot.kind = kind; slot.seq = ++K.seq; slot.x = x + ux * Q.lift; slot.y = y + uy * Q.lift; slot.dx = ux; slot.dy = uy;
   slot.age = 0; slot.life = Q.life; slot.power = power; clearHits(slot);
@@ -201,9 +225,8 @@ function throwOwn(game, now, P) {
   castHand(game, now, P.dx, P.dy);
 }
 // A hand made for a hold with no earlier hand: at the Wayfarer's feet. No cadence, no Echo or clone copy, no cast pose.
-function feetHand(game, dx, dy) {
-  const K = game.quandrix, p = game.player; let slot = null;
-  for (const h of K.hands) { if (!h.on) { slot = h; break; } if (h.mode === "drift" && (!slot || h.seq < slot.seq)) slot = h; }
+function feetHand(game, now, dx, dy) {
+  const K = game.quandrix, p = game.player, slot = handSlot(game, now);
   if (!slot) return null;
   const m = Math.hypot(dx, dy) || 1, ux = dx / m, uy = dy / m, f = QUANDRIX.hold.feet;
   slot.on = true; slot.mode = "drift"; slot.kind = "own"; slot.seq = ++K.seq; slot.x = p.x + .5 + ux * f; slot.y = p.y + .45 + uy * f; slot.dx = ux; slot.dy = uy;
@@ -213,11 +236,44 @@ function feetHand(game, dx, dy) {
 function beginHold(game, now) {
   const K = game.quandrix, P = K.press, mode = holdMode(game); if (!mode || K.hold.on) return false;
   const prev = P.prev && P.prev.on && P.prev.mode === "drift" && P.prev.kind === "own" && P.prev.seq === P.prevSeq ? P.prev : null;
-  const hand = prev || feetHand(game, P.dx, P.dy); if (!hand) return false;
+  const hand = prev || feetHand(game, now, P.dx, P.dy); if (!hand) return false;
   const H = K.hold; endHold(K);
   H.on = true; H.mode = mode; H.hand = hand; H.held = 0; H.tick = QUANDRIX.slam.tick; H.power = Number(game.quandrixPower()) || 0; H.action = P.action;
   hand.mode = mode === "fist" ? "fist" : "slam"; clearHits(hand);
+  if (mode !== "fist") recallHands(game, hand); // awakened (the slam or the suction cup): every other hand out converges and claps
   return true;
+}
+// The recall (QUANDRIX.recall): every hand out but the held one turns for the target, at most `max`. Runtime only.
+function recallHands(game, held) {
+  const R = QUANDRIX.recall, K = game.quandrix, t = typeof game.quandrixTarget === "function" ? game.quandrixTarget() : null, foe = hittable(t) ? t : null;
+  let n = 0;
+  for (const pool of [K.hands, K.extras]) for (const h of pool) {
+    if (n >= R.max) break;
+    if (!h.on || h === held || h.mode !== "drift") continue;
+    h.mode = "recall"; h.age = 0; h.target = foe ? foe.id : null; h.tx = foe ? foe.x + .5 : held.x; h.ty = foe ? foe.y + .45 : held.y; clearHits(h); n++;
+  }
+  if (n) game.message = QUANDRIX.messages.recall;
+  return n;
+}
+// A recalled hand's flight: toward its foe (followed as it moves; once it is gone, where it was last), else the held hand
+// (followed while it lives). It claps on arrival or past `maxTime`. It cannot overshoot: each step stops at the arrival.
+function flyRecall(game, h, dt, now) {
+  const R = QUANDRIX.recall, K = game.quandrix; h.age += dt;
+  let reach = R.arrive;
+  if (h.target !== null) { const e = findFoe(game, h.target); if (e && hittable(e)) { h.tx = e.x + .5; h.ty = e.y + .45; reach += enemyBodyRadius(e); } else h.target = null; }
+  else if (K.hold.on && K.hold.hand?.on) { h.tx = K.hold.hand.x; h.ty = K.hold.hand.y; }
+  const dx = h.tx - h.x, dy = h.ty - h.y, d = Math.hypot(dx, dy);
+  if (d > 1e-6) { h.dx = dx / d; h.dy = dy / d; }
+  const step = Math.min(R.speed * dt, Math.max(0, d - reach));
+  if (step > 0) { h.x += h.dx * step; h.y += h.dy * step; }
+  if (d - step <= reach + 1e-9 || h.age >= R.maxTime) clap(game, h, now);
+}
+// One recalled hand's clap where it is: every foe within `radius` takes `share` of the hand's own power; the hand is spent.
+function clap(game, h, now) {
+  const R = QUANDRIX.recall, x = h.x, y = h.y, amount = h.power * R.share;
+  h.on = false; h.mode = "drift"; h.target = null; clearHits(h);
+  if (amount > 0 && Number.isFinite(amount)) for (const e of game.enemies) if (hittable(e) && Math.hypot(e.x + .5 - x, e.y + .45 - y) <= R.radius + Math.max(0, enemyBodyRadius(e) - .38)) game.quandrixBlow(e, amount, now, R.stun, x, y);
+  flash(game.quandrix, x, y, R.radius, "clap");
 }
 
 // ---------------------------------------------------------------- the frame
@@ -261,8 +317,8 @@ function dragHeld(game, H, x, y, pull, hug, slip, dt, now) {
     else e.glyphSlow = { until: now + 150, factor: .15 }; // held: barely moving of its own accord (once per grab; reused after)
   }
 }
-// Encumbered (hit-cast-passives.ts ENCUMBERED): the fist's and the suction cup's blows are a pull's damage (anchored foes too).
-const pulling = (H) => H.mode === "fist" || H.mode === "suction";
+// Encumbered (hit-cast-passives.ts ENCUMBERED): the fist's, the suction cup's and the slam's blows are a pull's damage (anchored foes too).
+const pulling = (H) => H.mode === "fist" || H.mode === "suction" || H.mode === "slam"; // the slam yanks (QUANDRIX.slam.yank)
 function pullBlow(game, H, e, amount, now, stun, x, y) { const n = game.quandrixBlow(e, amount, now, stun, x, y); if (n > 0 && pulling(H)) game.pullBuild?.(e, n, now); }
 function burst(game, x, y, radius, share, stun, now, kind) {
   const H = game.quandrix.hold, power = H.power;
@@ -296,6 +352,10 @@ function tickHold(game, dt, now, held) {
     reel(game, h, U.reel, U.arrive, dt);
     for (const e of game.enemies) { if (H.n >= U.maxPull) break; if (hittable(e) && !staffAnchored(e) && !hasGrab(H, e.id) && Math.hypot(e.x + .5 - h.x, e.y + .45 - h.y) <= U.radius) H.grab[H.n++] = e.id; }
     dragHeld(game, H, h.x, h.y, U.pull, U.hug, U.radius + 1, dt, now);
+  } else { // the slam: the yank hauls the foes about it in hard, then holds them under it
+    const Y = S.yank;
+    if (H.held <= Y.window) for (const e of game.enemies) { if (H.n >= Y.maxPull) break; if (hittable(e) && !staffAnchored(e) && !hasGrab(H, e.id) && Math.hypot(e.x + .5 - h.x, e.y + .45 - h.y) <= Y.radius) H.grab[H.n++] = e.id; }
+    dragHeld(game, H, h.x, h.y, Y.pull, Y.hug, Y.radius + 1, dt, now);
   }
   H.tick += dt;
   while (H.tick >= S.tick) { H.tick -= S.tick; for (const e of game.enemies) if (hittable(e) && Math.hypot(e.x + .5 - h.x, e.y + .45 - h.y) <= S.radius + Math.max(0, enemyBodyRadius(e) - .38)) pullBlow(game, H, e, H.power * S.tickShare, now, S.stun, h.x, h.y); }
@@ -323,8 +383,8 @@ export function tickQuandrix(game, dt, now, held) {
   }
   if (K.hold.on) tickHold(game, dt, now, held);
   for (const q of K.queue) { if (!q.on) continue; q.left -= dt; if (q.left <= 0) { q.on = false; const c = centre(game); castExtra(game, c.x, c.y, q.dx, q.dy, q.power, "echo"); } } // as the swing's Echo: from where the Wayfarer is now
-  for (const h of K.hands) if (h.on && h.mode === "drift") driftHand(game, h, dt, now);
-  for (const h of K.extras) if (h.on) driftHand(game, h, dt, now);
+  for (const h of K.hands) if (h.on) { if (h.mode === "drift") driftHand(game, h, dt, now); else if (h.mode === "recall") flyRecall(game, h, dt, now); }
+  for (const h of K.extras) if (h.on) { if (h.mode === "recall") flyRecall(game, h, dt, now); else driftHand(game, h, dt, now); }
 }
 
 // ---------------------------------------------------------------- exact resume (playerRuntime.quandrixHold)
@@ -343,7 +403,7 @@ export function normalizeQuandrixHold(raw) {
   if (!raw || typeof raw !== "object" || raw.v !== QUANDRIX.release.record || typeof raw.where !== "string" || typeof raw.levelId !== "string" || !HOLD_MODES.includes(raw.mode)) return null;
   const n = (v) => Number.isFinite(Number(v)) && v !== null && v !== "" ? Number(v) : NaN, [x, y, dx, dy, held, tick, power] = [raw.x, raw.y, raw.dx, raw.dy, raw.held, raw.tick, raw.power].map(n);
   if (![x, y, dx, dy, held, tick, power].every(Number.isFinite) || !(Math.hypot(dx, dy) > 0)) return null;
-  const cap = Math.max(QUANDRIX.fist.maxGrab, QUANDRIX.suction.maxPull), grab = [];
+  const cap = GRAB_CAP, grab = [];
   for (const id of Array.isArray(raw.grab) ? raw.grab : []) { const k = foeId(id); if (k !== null && grab.length < cap && !grab.includes(k)) grab.push(k); }
   const m = Math.hypot(dx, dy), end = raw.mode === "fist" ? QUANDRIX.fist.time : QUANDRIX.slam.max;
   return { v: raw.v, where: raw.where, levelId: raw.levelId, mode: raw.mode, x, y, dx: dx / m, dy: dy / m, held: Math.max(0, Math.min(end, held)),

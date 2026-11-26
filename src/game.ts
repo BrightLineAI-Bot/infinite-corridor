@@ -852,7 +852,7 @@ function addRoofExit(save, id, map, history) {
 }
 // Release 363: a fallen Listener pays its Gate in Transit Coordinates (its pieces + 1).
 // Release 371: a fallen Listener raises a town near its Mouth.
-function townNote(save) { const had = save.hometowns?.towns?.length ?? 0; if (save.hometowns) grantTowns(save); else ensureHometowns(save); const t = save.hometowns.towns.slice(had).find((q) => q.mouth) || null; if (!t) return ""; /* 2026-11-05: ensureHometowns grants first, so the old grantTowns(save)[0] after it never named the town */ journalOnce(save, `listener-town:${t.listener}`, `Where the Listener fell, people have come to live: ${t.name}, at ${t.rx}, ${t.ry}. Light its Wayglass and it can be home (Atlas).`, "The Far Gate"); return ` A town springs up near the Mouth: ${t.name} (${t.rx}, ${t.ry}).`; }
+function townNote(save) { const had = save.hometowns?.towns?.length ?? 0; if (save.hometowns) grantTowns(save); else ensureHometowns(save); const t = save.hometowns.towns.slice(had).find((q) => q.mouth) || null; if (!t) return ""; /* 2026-11-05: ensureHometowns grants first, so the old grantTowns(save)[0] after it never named the town */ journalOnce(save, `listener-town:${t.listener}`, `Where the Listener fell, people have come to live: ${t.name}, at ${t.rx}, ${t.ry}. Light its Wayglass and it can be home (Atlas).`, "The Far Gate"); return ` A town springs up near the Mouth: ${t.name} (${t.rx}, ${t.ry}), and the Mouth opens into the Deep (the Listener's Descent).`; }
 function latticeNote(save) { const before = save.lattice ? save.lattice.coordinates : 0; if (save.lattice) grantCoordinates(save); else ensureLattice(save); const n = save.lattice.coordinates - before; return n ? ` ${n} Transit Coordinates resolve in you (${save.lattice.coordinates} held${latticeOpen(save) ? "; spend them in the Arcanum's Transit Lattice" : ""}).` : ""; }
 // LISTENER_CYCLE v3 (Tim, 2026-11-25): the relay that moves the Mouth names the town gathering there (and any older Mouth's town).
 export function mouthTownNote(save) { const had = save.hometowns?.towns?.length ?? 0; if (save.hometowns) grantTowns(save); else ensureHometowns(save); const fresh = save.hometowns.towns.slice(had).filter((q) => q.mouth); if (!fresh.length) return ""; for (const t of fresh) journalOnce(save, `listener-town:${t.listener}`, t.formed === "move" ? `People have come to the Listener's new Mouth and made a town of it: ${t.name}, at ${t.rx}, ${t.ry}. Light its Wayglass and it can be home (Atlas).` : `People have come to live at the Listener's old Mouth: ${t.name}, at ${t.rx}, ${t.ry}. Light its Wayglass and it can be home (Atlas).`, "The Far Gate"); return ` ${fresh.map((t) => `${t.name} gathers at ${t.formed === "move" ? "the new Mouth" : "the old Mouth"} (${t.rx}, ${t.ry})`).join("; ")}.`; }
@@ -10059,6 +10059,11 @@ export class Game {
     if (direction && Math.hypot(direction.x, direction.y) > .01) return projectileDirection(direction.x, direction.y, p.facing);
     const H = QUANDRIX.hand, auto = selectRangedAim(p, this.enemies, this.map, mapWidth(this.map, this.area), H.speed * H.life * (1 + characterStats(this.save).attackReach));
     return auto ? projectileDirection(auto.x, auto.y, p.facing) : projectileDirection(this.save.lastAim?.x ?? 0, this.save.lastAim?.y ?? 0, p.facing);
+  }
+  // The awakened recall's target (quandrix-staff.ts QUANDRIX.recall): the lock, else the foe auto aim picks within `reach`.
+  quandrixTarget() {
+    const t = this.lockedTarget(); if (t && !t.dead && !t.untargetable && !t.hidden) return t;
+    return pickMeleeTarget(this.player, this.enemies, this.map, mapWidth(this.map, this.area), QUANDRIX.recall.reach * (1 + characterStats(this.save).attackReach))?.e || null;
   }
   // One blow of a hand, a slam tick or a burst: magic, carrying the weapon's glyphs, through the Wayfarer's damage scale.
   quandrixBlow(e, amount, now, stun = 0, x = e.x + .5, y = e.y + .45) {
