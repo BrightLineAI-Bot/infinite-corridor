@@ -79,32 +79,32 @@ test('the female body is slimmer, with a smaller head, the same world height and
   for (const k of [12, 13, 14]) { assert.ok(Number.isFinite(ff.leftSocket[k])); assert.ok(Number.isFinite(ff.rightSocket[k])); }
 });
 
-test('rounder buttocks (Tim, 2026-11-26): fullest low, a fold under them, a slight centre groove; the front, sides and belt line kept', () => {
-  const S = HERO_FEMALE.sculpt, G = S.glutes, flat = { ...S, glutes: { ...G, depth: 0, fold: 0 } }, o = [0, 0, 0];
+test('rounder buttocks (Tim, 2026-11-26): smooth and round, fullest low, fuller below, a slight centre groove; the front, sides and belt kept', () => {
+  const S = HERO_FEMALE.sculpt, G = S.glutes, flat = { ...S, glutes: { ...G, depth: 0 } }, o = [0, 0, 0];
   const at = (sc, x, y, z) => sculptHeroPoint(sc, x, y, z, o).slice();
   const swell = (x, y, z) => at(flat, x, y, z)[2] - at(S, x, y, z)[2];
-  // clearly rounder, bounded: about 9.5 cm at the fullest in fitted space (release 1079's first swell 2.7 cm; Tim reverted a
-  // 5 cm try that peaked too high and had no fold), never more than the parameter
+  // clearly rounder, bounded: about 9 cm at the fullest in fitted space (release 1079's first swell 2.7 cm), never more than the parameter
   const peak = swell(.088, .975, -.23);
   assert.ok(peak > .07 && peak <= G.depth + 1e-9 && G.depth <= .10, `fullest ${peak.toFixed(4)}`);
-  // the side: fullest at the lower-middle (about the hip joint), only starting just below the belt, never a shelf at it
-  assert.ok(peak > swell(0, 1.057, -.28) * 3 && swell(.1, 1.1, -.26) < .002, 'fullest low, not at the belt');
-  // full low, then a fold: the bottom row stays full, the row just under it (the top of the thigh) is taken back off
-  assert.ok(swell(.04, .885, -.16) > peak * .6 && swell(.117, .859, -.2) < swell(.04, .885, -.16) * .35, 'curves under into a fold');
+  // the side: fullest at about the hip joint, rising gently to just below the belt (never a shelf at it), fuller below than above
+  assert.ok(peak > swell(0, 1.057, -.28) * 3 && swell(.1, 1.18, -.26) < .002, 'fullest low; the belt line (fitted y 1.18 up) barely moves');
+  assert.ok(swell(.1, G.y - .08, -.2) > swell(.1, G.y + .08, -.2), 'fuller below than above');
   for (let y = .45; y < 1.3; y += .005) assert.ok(swell(.1, y, -.2) >= 0, `never pulled forward (${y.toFixed(3)})`);
-  assert.ok(Math.abs(swell(.1, .6, -.2)) < 1e-6, 'the back of the thigh toward the knee is untouched');
+  assert.ok(Math.abs(swell(.1, .55, -.2)) < 1e-4, 'the back of the thigh toward the knee is untouched');
   // the back: two masses, a little less on the centre line (a slight groove), easing toward the outer hip
   assert.ok(swell(0, .979, -.23) < peak * .9 && swell(0, .979, -.23) > peak * .6 && swell(.25, .975, -.2) < peak * .5, 'a slight centre groove; eased to the outer hip');
   // only behind: the front, the outside of the hip and the thigh plates (in front of z -.06) are untouched; x and y never move
   for (const [x, y, z] of [[.1, .93, .1], [.25, .93, -.03], [.2, 1.0, -.055], [.1, 1.7, -.2], [.1, .5, -.2]]) assert.ok(Math.abs(swell(x, y, z)) < 1e-9, `${x} ${y} ${z}`);
   for (const [x, y, z] of [[.1, .93, -.2], [0, .9, -.25]]) { const a = at(S, x, y, z), b = at(flat, x, y, z); assert.equal(a[0], b[0]); assert.equal(a[1], b[1]); }
-  // standing (idle, posed): the bottom of the buttocks curves in sharply to the thigh, the peak at about hip-joint height
+  // standing (idle, posed): the side silhouette is fullest at about hip-joint height and round, with no sharp point: over .02
+  // steps it never turns more than 35 degrees (the .055/.095 versions, on the source mesh: about 59 degrees at the peak)
   const s = createHeroPoseState(female), V = s.vertices, I = female.arrays.indices, M = female.meta.meshes.find(m => m.name === 'RogueBody'); // the body only
   const back = (y, xl) => { let b = 1; for (let i = M.firstIndex; i < M.firstIndex + M.indexCount; i += 3) for (let e = 0; e < 3; e++) { const p = I[i + e] * 6, q = I[i + (e + 1) % 3] * 6, y0 = V[p + 1], y1 = V[q + 1];
     if ((y0 - y) * (y1 - y) > 0 || y0 === y1) continue; const t = (y - y0) / (y1 - y0); if (Math.abs(V[p] + (V[q] - V[p]) * t) < xl) b = Math.min(b, V[p + 2] + (V[q + 2] - V[p + 2]) * t); } return b; };
   let low = 1, lowY = 0; for (let y = .86; y < 1.02; y += .01) { const b = back(y, .16); if (b < low) { low = b; lowY = y; } }
-  assert.ok(lowY > .9 && lowY < .98, `fullest at ${lowY.toFixed(2)}`);
-  assert.ok(back(lowY - .09, .16) - low > .06 && back(lowY + .09, .16) - low < .03, 'round: a short, full top and a sharper underside');
+  assert.ok(lowY > .9 && lowY < .98 && low < -.27, `fullest at ${lowY.toFixed(2)} (${low.toFixed(3)})`);
+  let turn = 0; for (let y = .8; y <= 1.1; y += .005) { const a1 = Math.atan2(back(y, .16) - back(y - .02, .16), .02), a2 = Math.atan2(back(y + .02, .16) - back(y, .16), .02); turn = Math.max(turn, Math.abs(a2 - a1) * 180 / Math.PI); }
+  assert.ok(turn < 35, `round, no sharp point (${turn.toFixed(1)} degrees)`);
   // the back above stays straight from the shoulder blades to the top of the buttocks (no hollow, no hump; was a 5 cm hump at the waist)
   const top = back(1.6, .06), bot = back(1.1, .06); let dev = 0;
   for (let y = 1.1; y <= 1.6; y += .02) { const d = back(y, .06) - (bot + (top - bot) * (y - 1.1) / .5); if (Math.abs(d) > Math.abs(dev)) dev = d; }
@@ -195,7 +195,9 @@ test('the braid comes from behind the head over the off-hand shoulder and rests 
 
 test('bounded cost: fixed braid size, no per-frame growth, sampling no dearer than the male body by much', () => {
   assert.equal(female.braid.triangles, 222);
-  assert.ok(female.indexCount / 3 < male.indexCount / 3, 'fewer triangles than the male body (the bun is gone)');
+  // 2026-11-26: her refined buttocks and bust (HERO_FEMALE.refine) take her past the male body (was: fewer, the bun gone), well under the cap
+  assert.equal(female.indexCount / 3, male.indexCount / 3 - female.braid.bunTriangles + female.braid.triangles + female.refined.triangles);
+  assert.ok(female.refined.triangles > 100 && female.indexCount / 3 <= HERO_BODY_TRIANGLES - 40, `refined ${female.refined.triangles}, ${female.indexCount / 3} of ${HERO_BODY_TRIANGLES}`);
   const time = (asset) => { const s = createHeroPoseState(asset), f = createHeroFrame(asset), runs = []; for (let i = 0; i < 260; i++) { const t0 = performance.now(); sampleCloseViewHero(asset, s, input({ nowMs: 1e5 + i * 16, speed: 2, gaitPhase: i / 10, x: 3 + i * .03, yaw: i * .02 }), f); if (i >= 60) runs.push(performance.now() - t0); } runs.sort((a, b) => a - b); return runs[runs.length >> 1]; };
   time(male); time(female);
   const m = time(male), f = time(female);
