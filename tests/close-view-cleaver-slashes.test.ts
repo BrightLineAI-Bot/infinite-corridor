@@ -163,9 +163,9 @@ test('Salvage Blade reskin: the grip transform is unchanged and the model stays 
   for (const profile of ['salvage-blade', 'melee']) {
     const out = new Float32Array(256 * 3 * MODEL_FLOATS), id = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
     const end = writeCloseViewHeroGear(out, 0, { profile, leftSocket: id, rightSocket: id }), tris = end / MODEL_FLOATS / 3;
-    assert.ok(tris > 0 && tris <= 58 && tris <= HERO_EQUIPMENT_MAX_TRIANGLES, `${profile}: ${tris} triangles, within the old 58`);
+    assert.ok(tris > 0 && tris <= 96 && tris <= HERO_EQUIPMENT_MAX_TRIANGLES, `${profile}: ${tris} triangles, within the 96 of every held weapon (the violin blade, 2026-11-26)`);
     assert.ok(Array.from(out.subarray(0, end)).every(Number.isFinite));
-    // The whole tine points up the socket axis, to the accepted point (the forked blade, 2026-11-25).
+    // The whole blade points up the socket axis, to the accepted point (the violin blade, 2026-11-26).
     let far = -Infinity; for (let k = 0; k < end; k += MODEL_FLOATS) far = Math.max(far, out[k]);
     assert.ok(Math.abs(far - (F.blade.tip - .79) * .82) < 1e-5);
     const frame = createHeroFrame(asset), s = createHeroPoseState(asset); sampleCloseViewHero(asset, s, { ...base, nowMs: 1500, heldProfile: profile, handProfile: profile }, frame);
