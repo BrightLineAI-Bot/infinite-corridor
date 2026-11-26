@@ -17,7 +17,7 @@
 // statue line and the Viewport's first hunt) turns the section's coordinates into the journey's frame first, then asks the
 // same question it always asked, so the stories keep their places relative to each other and every distance is unchanged.
 // A journey at start version 0 has the identity frame: every answer is exactly what it was. The Refuge stays at 0,0.
-import { hashSeed } from "./random.js?v=r1059-3629aeded9d0";
+import { hashSeed } from "./random.js?v=r1076-4dec3446cb5b";
 
 export const START_FRAME = Object.freeze({
   version: 1, // the start version that turns the frame
@@ -243,9 +243,25 @@ export function ensureQuests(save) {
     if (q.tokens !== undefined) open[id].tokens = (Array.isArray(q.tokens) ? q.tokens : []).filter((t) => plain(t) && typeof t.id === "string" && t.id.length <= 120 && typeof t.step === "string" && typeof t.area === "string" && Number.isFinite(Number(t.x)) && Number.isFinite(Number(t.y))).map((t) => ({ ...t, x: Math.round(Number(t.x)), y: Math.round(Number(t.y)) })).slice(-R.tokensMax);
     if (q.window !== undefined) { const w = q.window; if (plain(w) && typeof w.step === "string" && Number.isFinite(Number(w.at)) && Number.isInteger(w.n) && w.n >= 0) open[id].window = { ...w, at: Number(w.at) }; else delete open[id].window; }
     if (q.seq !== undefined) open[id].seq = wholeOr(q.seq, 0, 0);
+    if (q.gifted !== undefined) open[id].gifted = q.gifted === true; // quest-places.ts questGift
     if (q.giverAt !== undefined) { if (plain(q.giverAt) && Number.isInteger(q.giverAt.rx) && Number.isInteger(q.giverAt.ry)) open[id].giverAt = { rx: q.giverAt.rx, ry: q.giverAt.ry }; else delete open[id].giverAt; }
   }
   for (const [k, v] of Object.entries(plain(raw.threads) ? raw.threads : {})) if (k.length <= 64 && typeof v === "string" && v && v.length <= 64) threads[k] = v;
   save.quests = { ...raw, v: R.v, open, threads };
   return save.quests;
 }
+
+// ---------------------------------------------------------------- the Wayfarer's body
+// save.wayfarer (additive at schema 14; normalised by ensureWayfarerBody from freshSave and migrateSave, unknown fields
+// kept): { body } is "male" (every journey from before, and the default) or "female". Presentation only: Close View
+// (close-view-hero.ts closeViewHeroBodyAsset) and Standard View (renderer.ts) draw it; no rule, stat or generator reads it.
+export const WAYFARER_BODY = Object.freeze({ bodies: Object.freeze(["male", "female"]), default: "male", labels: Object.freeze({ male: "Male", female: "Female" }) });
+export const wayfarerBodyOf = (value) => WAYFARER_BODY.bodies.includes(value) ? value : WAYFARER_BODY.default;
+export function ensureWayfarerBody(save, from = save) {
+  if (!save || typeof save !== "object") return save;
+  const prior = from?.wayfarer, record = prior && typeof prior === "object" && !Array.isArray(prior) ? prior : {};
+  save.wayfarer = { ...record, body: wayfarerBodyOf(record.body) };
+  return save;
+}
+export const wayfarerBody = (save) => wayfarerBodyOf(save?.wayfarer?.body);
+export function setWayfarerBody(save, body) { ensureWayfarerBody(save); save.wayfarer.body = wayfarerBodyOf(body); return save.wayfarer.body; }

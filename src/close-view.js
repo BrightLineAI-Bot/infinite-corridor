@@ -1,46 +1,47 @@
-import { weaponArtCharge, javelinInFlight } from "./weapon-arts.js?v=r1059-3629aeded9d0"; // weapon arts (2026-11-13): the Close View charge pose; the pike gone from her hands while the javelin flies
-import { rangedWeapon, PRIMARY_CARRY_MODEL, primaryCarryKind } from './items.js?v=r1059-3629aeded9d0';
-import { biomechanicalKeep } from "./close-view-room-routing.js?v=r1059-3629aeded9d0";
-import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from "./vehicle-gates.js?v=r1059-3629aeded9d0";
-import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, legacyInteriorBuildLevel, LIFT_PER_LEVEL } from "./landscape.js?v=r1059-3629aeded9d0";
-import { buildVisualRevision, hasStoneBuilds } from "./building.js?v=r1059-3629aeded9d0";
-import { importedEmitterAppearance, heldToolKind, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, normalizeMeleeActionVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage, cleaverCarryFrame, sampleCleaverChoreography } from "./action-motion.js?v=r1059-3629aeded9d0";
-import { swingVisualProgress } from "./melee-swing.js?v=r1059-3629aeded9d0"; // the weighted swing's clock (2026-11-14)
-import { creaturePoseFamily, creatureFootprint, MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, writeCloseViewHeroKit, HERO_SLOT_EXTRA_TRIANGLES, closeViewToolEmissionPoint, closeViewHeldMuzzlePoint } from "./close-view-models.js?v=r1059-3629aeded9d0";
-import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero, aerialHandsFree } from './close-view-hero.js?v=r1059-3629aeded9d0';
-import { actorPresentation, actorProfile, designedAlpha, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight, shotVisualHeight } from "./actor-presentation.js?v=r1059-3629aeded9d0";
-import { closeViewHeldToolKind, writeCloseViewHeldTool } from './close-view-sweep-gear.js?v=r1059-3629aeded9d0'; // the Great Sweep and the Orrery held in the right hand (2026-11-14)
-import { closeViewPlayerForm, closeViewWaterState, closeViewWaterLift, closeViewSwimPhases, CLOSE_VIEW_WATER, playerFormModelKey, cleaverHandRoles, closeViewHeldHand, CLOSE_VIEW_HELD_GEAR, carbineRecoil, ordinaryJumpPresentation, ordinaryFallPresentation, ordinaryDefeatPresentation, ordinaryLandingPresentation } from './close-view-player-presentation.js?v=r1059-3629aeded9d0';
-import { HURT_VISUAL_MS, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from './consume-visual.js?v=r1059-3629aeded9d0';
-import { fistCharge, fistHeld, shadowDashGhosts, shadowDashPose } from './brawler-spells.js?v=r1059-3629aeded9d0';
-import { CLOSE_VIEW_SHADOW_FORMS, createShadowDash, resetShadowDash, stepShadowDash, shadowStrikePhase, shadowCloneAlpha, followShadowDash } from './close-view-shadow-forms.js?v=r1059-3629aeded9d0';
-import { dronePos, phaseShielded } from "./affixes.js?v=r1059-3629aeded9d0";
-import { PENTAGON_BACKDROPS } from "./pentagon-halls.js?v=r1059-3629aeded9d0";
-import { standardProjectile, standardProjectileColor, triceratopsHornVertices, TRICERATOPS_HORN_TRAIL } from "./combat-visuals.js?v=r1059-3629aeded9d0";
+import { weaponArtCharge, javelinInFlight } from "./weapon-arts.js?v=r1076-4dec3446cb5b"; // weapon arts (2026-11-13): the Close View charge pose; the pike gone from her hands while the javelin flies
+import { rangedWeapon, PRIMARY_CARRY_MODEL, primaryCarryKind } from './items.js?v=r1076-4dec3446cb5b';
+import { biomechanicalKeep } from "./close-view-room-routing.js?v=r1076-4dec3446cb5b";
+import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from "./vehicle-gates.js?v=r1076-4dec3446cb5b";
+import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, legacyInteriorBuildLevel, LIFT_PER_LEVEL } from "./landscape.js?v=r1076-4dec3446cb5b";
+import { buildVisualRevision, hasStoneBuilds } from "./building.js?v=r1076-4dec3446cb5b";
+import { importedEmitterAppearance, heldToolKind, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, normalizeMeleeActionVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage, cleaverCarryFrame, sampleCleaverChoreography } from "./action-motion.js?v=r1076-4dec3446cb5b";
+import { swingVisualProgress } from "./melee-swing.js?v=r1076-4dec3446cb5b"; // the weighted swing's clock (2026-11-14)
+import { creaturePoseFamily, creatureFootprint, MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, writeCloseViewHeroKit, HERO_SLOT_EXTRA_TRIANGLES, closeViewToolEmissionPoint, closeViewHeldMuzzlePoint } from "./close-view-models.js?v=r1076-4dec3446cb5b";
+import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero, aerialHandsFree, closeViewHeroBodyAsset } from './close-view-hero.js?v=r1076-4dec3446cb5b';
+import { wayfarerBody } from './journey-start.js?v=r1076-4dec3446cb5b'; // the Wayfarer's body: which hero asset is drawn
+import { actorPresentation, actorProfile, designedAlpha, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight, shotVisualHeight } from "./actor-presentation.js?v=r1076-4dec3446cb5b";
+import { closeViewHeldToolKind, writeCloseViewHeldTool } from './close-view-sweep-gear.js?v=r1076-4dec3446cb5b'; // the Great Sweep and the Orrery held in the right hand (2026-11-14)
+import { closeViewPlayerForm, closeViewWaterState, closeViewWaterLift, closeViewSwimPhases, CLOSE_VIEW_WATER, playerFormModelKey, cleaverHandRoles, closeViewHeldHand, CLOSE_VIEW_HELD_GEAR, carbineRecoil, ordinaryJumpPresentation, ordinaryFallPresentation, ordinaryDefeatPresentation, ordinaryLandingPresentation } from './close-view-player-presentation.js?v=r1076-4dec3446cb5b';
+import { HURT_VISUAL_MS, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from './consume-visual.js?v=r1076-4dec3446cb5b';
+import { fistCharge, fistHeld, shadowDashGhosts, shadowDashPose } from './brawler-spells.js?v=r1076-4dec3446cb5b';
+import { CLOSE_VIEW_SHADOW_FORMS, createShadowDash, resetShadowDash, stepShadowDash, shadowStrikePhase, shadowCloneAlpha, followShadowDash } from './close-view-shadow-forms.js?v=r1076-4dec3446cb5b';
+import { dronePos, phaseShielded } from "./affixes.js?v=r1076-4dec3446cb5b";
+import { PENTAGON_BACKDROPS } from "./pentagon-halls.js?v=r1076-4dec3446cb5b";
+import { standardProjectile, standardProjectileColor, triceratopsHornVertices, TRICERATOPS_HORN_TRAIL } from "./combat-visuals.js?v=r1076-4dec3446cb5b";
 const HORN_TRAIL_COLOR = 0xfff7dc, HORN_FLASH_COLOR = 0xfffbe8; // the horn shot's trail and muzzle flash (distinct from its body colour)
-import { TRICERATOPS_COMPOSITE, TRICERATOPS_CLOSE_VIEW, MOUNT_BEASTS, TRICERATOPS_DRILL_POSE, triceratopsHornPose, triceratopsDrillPose, triceratopsWhirlAngle } from "./beast-mounts.js?v=r1059-3629aeded9d0";
-import { CARBINE, CONTINUOUS_ASSAULT, CLONE_CARBINE, carbineCharged, carbineFill, shotFade } from "./tool-forms.js?v=r1059-3629aeded9d0"; // the Carbine's beam and charge glow; Continuous Assault's sky lasers
-import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r1059-3629aeded9d0";
-import { behaviourProfile } from "./enemy-behaviour.js?v=r1059-3629aeded9d0"; // a heavy blow's real recovery (creature motion, 2026-11-15)
-import { CREATURE_MOTION, MOTION_STATE_FLOATS, swapStep, swapEase, deathAlpha } from "./creature-motion.js?v=r1059-3629aeded9d0"; // the shared creature motion layers (2026-11-15)
-import { hashSeed } from "./random.js?v=r1059-3629aeded9d0";
-import { knockdownPose } from "./lightning-giant-render.js?v=r1059-3629aeded9d0";
-import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r1059-3629aeded9d0";
-import { holeDrops, labFogState, HOLE_DROPS, sightLineTo, sightExempt, creatureInSight, creatureSightLevel, sightField, sightFieldAt, SIGHT_LINES } from "./labyrinths.js?v=r1059-3629aeded9d0"; // sight lines (2026-11-18): lock-on and threat framing see what the Wayfarer sees
-import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.js?v=r1059-3629aeded9d0";
-import { SIGIL_CELLS } from "./watcher.js?v=r1059-3629aeded9d0";
-import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT, DUELIST_SLOT, TRICERATOPS_SLOT, CLOSE_VIEW_BEAST_SIGHT, closeViewSectionBeast } from "./close-view-beasts.js?v=r1059-3629aeded9d0";
-import { createTriceratopsTrack, sampleTriceratops, triceratopsMesh, TRICERATOPS_RIG } from "./close-view-beast-triceratops.js?v=r1059-3629aeded9d0";
-import { MOUNT_DRAW } from "./beast-mounts-render.js?v=r1059-3629aeded9d0";
-import { HATCH_DRAW, hatchlingPresentation } from "./hatchling-render.js?v=r1059-3629aeded9d0"; // the Triceratops hatchling's skinned body
-import { drawApatoCloseFx, admitApatoProps } from "./close-view-beast-apato.js?v=r1059-3629aeded9d0"; // the Earth Apatosaurus's standing hazards (cards)
-import { stageDuel } from "./close-view-duel.js?v=r1059-3629aeded9d0"; // the dino duel: the two bodies spaced and the held one in the other's jaws // release 891: world beasts' skinned bodies (and the Gaunt's)
-import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, prepareCloseViewBeastMesh, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, glProps, closeViewPropsAvailable, glRelief, closeViewReliefAvailable, closeViewOutdoorAvailable, closeViewOccluderAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.js?v=r1059-3629aeded9d0"; // version 4: the GPU scene
-import { closeViewFolkKind, folkLookCached, folkHeightJitter, createFolkTrack, sampleFolk, createTurtleFolkTrack, sampleTurtleFolk, folkMesh, turtleFolkMesh, FOLK_SLOT, FOLK_MOTION } from "./close-view-folk.js?v=r1059-3629aeded9d0"; // 2026-11-13: the townsfolk's skinned bodies
-import { lanternReach, lanternNightReach } from "./spell-slots.js?v=r1059-3629aeded9d0"; // the Lantern lengthens the torch
-import { OUTDOOR, outdoorScene, outdoorInsideHouse, outdoorTreeObject, outdoorPropObject, propScene, outdoorRelief, outdoorSurfaceZ, outdoorLightning, LIGHTNING, outdoorRoofZ, outdoorRoofTopAt, OUTDOOR_FLOATS, outdoorTowerAir, outdoorMoodId } from "./close-view-outdoor.js?v=r1059-3629aeded9d0";
-import { CLOSE_VIEW_POLISH, smoothDamp, softTilt, recentreStep, fadeToward, smoothstep01, crossfadeAlpha, inertiaRelease, inertiaDecay, inertiaTravel } from "./close-view-polish.js?v=r1059-3629aeded9d0"; // the polish pass (2026-11-19): smooth pitch, zoom, recentre, fades, cross-fades and hit-stop
-import { roofDeckAt, roofDeckById } from "./roof-decks.js?v=r1059-3629aeded9d0"; // roof decks: the Wayfarer on a roof, the roof kept, the tap on a roof
+import { TRICERATOPS_COMPOSITE, TRICERATOPS_CLOSE_VIEW, MOUNT_BEASTS, TRICERATOPS_DRILL_POSE, triceratopsHornPose, triceratopsDrillPose, triceratopsWhirlAngle } from "./beast-mounts.js?v=r1076-4dec3446cb5b";
+import { CARBINE, CONTINUOUS_ASSAULT, CLONE_CARBINE, carbineCharged, carbineFill, shotFade } from "./tool-forms.js?v=r1076-4dec3446cb5b"; // the Carbine's beam and charge glow; Continuous Assault's sky lasers
+import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r1076-4dec3446cb5b";
+import { behaviourProfile } from "./enemy-behaviour.js?v=r1076-4dec3446cb5b"; // a heavy blow's real recovery (creature motion, 2026-11-15)
+import { CREATURE_MOTION, MOTION_STATE_FLOATS, swapStep, swapEase, deathAlpha } from "./creature-motion.js?v=r1076-4dec3446cb5b"; // the shared creature motion layers (2026-11-15)
+import { hashSeed } from "./random.js?v=r1076-4dec3446cb5b";
+import { knockdownPose } from "./lightning-giant-render.js?v=r1076-4dec3446cb5b";
+import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r1076-4dec3446cb5b";
+import { holeDrops, labFogState, HOLE_DROPS, sightLineTo, sightExempt, creatureInSight, creatureSightLevel, sightField, sightFieldAt, SIGHT_LINES } from "./labyrinths.js?v=r1076-4dec3446cb5b"; // sight lines (2026-11-18): lock-on and threat framing see what the Wayfarer sees
+import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.js?v=r1076-4dec3446cb5b";
+import { SIGIL_CELLS } from "./watcher.js?v=r1076-4dec3446cb5b";
+import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT, DUELIST_SLOT, TRICERATOPS_SLOT, CLOSE_VIEW_BEAST_SIGHT, closeViewSectionBeast } from "./close-view-beasts.js?v=r1076-4dec3446cb5b";
+import { createTriceratopsTrack, sampleTriceratops, triceratopsMesh, TRICERATOPS_RIG } from "./close-view-beast-triceratops.js?v=r1076-4dec3446cb5b";
+import { MOUNT_DRAW } from "./beast-mounts-render.js?v=r1076-4dec3446cb5b";
+import { HATCH_DRAW, hatchlingPresentation } from "./hatchling-render.js?v=r1076-4dec3446cb5b"; // the Triceratops hatchling's skinned body
+import { drawApatoCloseFx, admitApatoProps } from "./close-view-beast-apato.js?v=r1076-4dec3446cb5b"; // the Earth Apatosaurus's standing hazards (cards)
+import { stageDuel } from "./close-view-duel.js?v=r1076-4dec3446cb5b"; // the dino duel: the two bodies spaced and the held one in the other's jaws // release 891: world beasts' skinned bodies (and the Gaunt's)
+import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, prepareCloseViewBeastMesh, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, glProps, closeViewPropsAvailable, glRelief, closeViewReliefAvailable, closeViewOutdoorAvailable, closeViewOccluderAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.js?v=r1076-4dec3446cb5b"; // version 4: the GPU scene
+import { closeViewFolkKind, folkLookCached, folkHeightJitter, createFolkTrack, sampleFolk, createTurtleFolkTrack, sampleTurtleFolk, folkMesh, turtleFolkMesh, FOLK_SLOT, FOLK_MOTION } from "./close-view-folk.js?v=r1076-4dec3446cb5b"; // 2026-11-13: the townsfolk's skinned bodies
+import { lanternReach, lanternNightReach } from "./spell-slots.js?v=r1076-4dec3446cb5b"; // the Lantern lengthens the torch
+import { OUTDOOR, outdoorScene, outdoorInsideHouse, outdoorTreeObject, outdoorPropObject, propScene, outdoorRelief, outdoorSurfaceZ, outdoorLightning, LIGHTNING, outdoorRoofZ, outdoorRoofTopAt, OUTDOOR_FLOATS, outdoorTowerAir, outdoorMoodId } from "./close-view-outdoor.js?v=r1076-4dec3446cb5b";
+import { CLOSE_VIEW_POLISH, smoothDamp, softTilt, recentreStep, fadeToward, smoothstep01, crossfadeAlpha, inertiaRelease, inertiaDecay, inertiaTravel } from "./close-view-polish.js?v=r1076-4dec3446cb5b"; // the polish pass (2026-11-19): smooth pitch, zoom, recentre, fades, cross-fades and hit-stop
+import { roofDeckAt, roofDeckById } from "./roof-decks.js?v=r1076-4dec3446cb5b"; // roof decks: the Wayfarer on a roof, the roof kept, the tap on a roof
 // The overworld's heightfield (OUTDOOR.terrain): while it is drawn, everything that stands on the ground (the Wayfarer, the
 // creatures, their shadows, shots, the camera's floor) stands at its height; elsewhere the interiors' own heights, as before.
 const RELIEF = { map: null, R: null };
@@ -400,9 +401,20 @@ export const CLOSE_VIEW = Object.freeze({
     // `outdoorDistance` / `outdoorHeight`; the old collision rig (orbit off) keeps `distance` / `height`.
     standard: Object.freeze({ label: "Standard", height: 2.05, outdoorHeight: 3, distance: 3.5, outdoorDistance: 4.5, orbitDistance: 2.3, orbitHeight: 1.7, lookAhead: 2.9, lookHeight: .35, shoulder: .42, fov: 72, fogPush: .8 }), // the blend: Remnant's offset and distance, ESO's field of view, Bloodborne's closeness
     close: Object.freeze({ label: "Close (tight, low)", height: 1.8, outdoorHeight: 2.6, distance: 2.6, outdoorDistance: 3.6, orbitDistance: 1.8, orbitHeight: 1.55, lookAhead: 2.2, lookHeight: .5, shoulder: .32, fov: 66, fogPush: .6 }), // Bloodborne
+    // version 7 (Tim, 2026-11-25, with a screenshot of the dungeon framing he likes: "behind the Wayfarer, slightly over the
+    // shoulder, looking forward along the corridor, with the character in the lower middle of the screen"): `overShoulder`, the
+    // default. The eye stands higher and a little farther back (about 45 degrees over the Wayfarer, 3.6 tiles from the body's
+    // middle), looks down the way ahead at about 36 degrees, and sits a little to the right; on a portrait phone the feet land
+    // about two thirds of the way down, the head just under the middle and the corridor's far end in the top quarter. The same
+    // framing indoors and in the open world (its outdoor and orbit numbers are its own). The other presets are unchanged.
+    overShoulder: Object.freeze({ label: "Over the shoulder (default)", height: 3.45, outdoorHeight: 3.45, distance: 2.5, outdoorDistance: 2.5, orbitDistance: 2.5, orbitHeight: 3.45, lookAhead: 2, lookHeight: .2, shoulder: .3, fov: 72, fogPush: 1 }),
     wide: Object.freeze({ label: "Wide (further back)", height: 2.2, outdoorHeight: 3.4, distance: 5, outdoorDistance: 6, orbitDistance: 3.2, orbitHeight: 1.95, lookAhead: 3.4, lookHeight: .25, shoulder: .5, fov: 80, fogPush: 1.6 }), // Remnant / ESO
   }),
-  defaultPreset: "standard",
+  defaultPreset: "overShoulder",
+  // save.closeViewDefaults: which default the save's camera was set from. Saves from before version 1 hold the old default
+  // ("standard"), written for every player; one still on it with the Wayfarer's own distance (closeViewZoom 0) never chose a
+  // camera, so it moves to the new default once. Any other preset or a pinched distance is the player's choice and is kept.
+  defaults: Object.freeze({ version: 1, legacyPreset: "standard" }),
   fov: Object.freeze({ verticalMax: 100 }), // the horizontal fov (by preset) or this vertical one, whichever is narrower, sets the focal length
   near: .2, // nothing nearer than this (camera depth) is drawn
   // Tim, 2026-11-06 ("the camera should function essentially similar to the camera in Elden Ring: for the most part you're
@@ -433,6 +445,11 @@ export const CLOSE_VIEW = Object.freeze({
   // wait). Locked in target mode the view holds the foe harder: spring `rate`, at most `maxRate` degrees a second.
   // Strafe (every lock): with the stick mostly sideways (its toward/away share under `strafeForward`) the Wayfarer circles at
   // the distance held when the strafe began: `strafeGain` x the radial error (tiles) is mixed in, at most `strafePull`.
+  // Tim, 2026-11-26 ("you just get to keep the camera, move it wherever you want; centre takes you to that angle at the distance
+  // you set"): every press of the Target button also puts the camera back to the default angle: behind the Wayfarer (the centered
+  // recentre), the preset's own height and pitch (the tilt set to `tilt`) and Look mode off (`lookOff`). The distance he pinched
+  // (save.closeViewZoom) and the preset chosen in Options are his and are kept.
+  targetHome: Object.freeze({ tilt: 0, lookOff: true }),
   targetButton: Object.freeze({ on: "#ff2d2d", locked: "#ff8a78", off: "#ddd5c4", glow: "drop-shadow(0 0 6px #ff2d2dcc)" }), // the Target button's ink: target mode on (red), a tap lock alone, off
   // Second pass (2026-11-11): one priority for every choice (the first lock, the next after a fall, a better foe while
   // locked): score = wDist x (distance / range) + wAngle x (angle off the view / 180) - wClose x (how far inside threatRange)
@@ -635,7 +652,7 @@ export const CLOSE_VIEW = Object.freeze({
   // opacity follows CLOSE_VIEW.creatures, and `fade` eases only how far a wall hides it). `ghost`: seen through a wall that
   // stands between it and the camera, it is drawn again over the wall at this opacity (eased the same way), never lost.
   // `windup`: a creature winding up an attack glows (`glowRGB`, pulsing every `pulseMs` between `glow` and `glowPeak`) with a
-  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r1059-3629aeded9d0's hitFlash,
+  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r1076-4dec3446cb5b's hitFlash,
   // `flashSec` long) at up to this opacity. All tiers: these are what a fight needs to read.
   // Version 4: the GPU scene (close-view-gl.ts; quality.*.gl, glScale (of the screen's own resolution), mip, aniso). Without
   // WebGL2 the 2D view of version 3 draws instead. `maskMs`: how often the hazard mask (one texel a tile) follows what the fog of
@@ -809,7 +826,7 @@ export const CLOSE_VIEW = Object.freeze({
   maxItems: 4096,
 });
 
-// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r1059-3629aeded9d0's traps, aperture marks
+// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r1076-4dec3446cb5b's traps, aperture marks
 // and ranged effects; the Proving Ground's ranged effects), drawn onto the ground texture after the renderer, and `art`, a map
 // from creature kind to a phase-2 close-view drawer.
 export const CLOSE_VIEW_HOOKS = { makeCanvas: null, groundLayers: [], art: Object.create(null), navigationDoors: null, gl: null, orbit: null }; // orbit: false runs the collision rig that the fixed-distance orbit replaced (2026-11-18; its own regression tests) // gl: false keeps the 2D view (the lab's ?cvGL=0)
@@ -822,7 +839,9 @@ export const CLOSE_VIEW_HOOKS = { makeCanvas: null, groundLayers: [], art: Objec
 // save.closeViewZoom (2026-11-18, Tim's review): the Wayfarer's normal Close View distance, set by Look mode's pinch on her, in
 // Look's zoom units ([CLOSE_VIEW.camera.look.minZoom, 1]; 0, the preset's own, unless chosen; CLOSE_VIEW.camera.orbit.zoom).
 export const closeViewZoomOf = (v) => { const k = Number(v), L = CLOSE_VIEW.camera.look; return Number.isFinite(k) ? Math.max(L.minZoom, Math.min(1, k)) : 0; };
-export function ensureCloseView(s) { if (s && typeof s === "object") { s.closeView = s.closeView === true; s.overworldCloseView = s.overworldCloseView === true; if (!Object.hasOwn(CLOSE_VIEW.presets, s.closeViewPreset)) s.closeViewPreset = CLOSE_VIEW.defaultPreset; s.closeViewAutoFollow = s.closeViewAutoFollow !== false;
+export function ensureCloseView(s) { if (s && typeof s === "object") { s.closeView = s.closeView === true; s.overworldCloseView = s.overworldCloseView === true;
+  { const D = CLOSE_VIEW.defaults; if (!(Number(s.closeViewDefaults) >= D.version)) { if (s.closeViewPreset === D.legacyPreset && closeViewZoomOf(s.closeViewZoom) === 0) s.closeViewPreset = CLOSE_VIEW.defaultPreset; s.closeViewDefaults = D.version; } } // a camera never chosen takes the new default; a chosen one is kept
+  if (!Object.hasOwn(CLOSE_VIEW.presets, s.closeViewPreset)) s.closeViewPreset = CLOSE_VIEW.defaultPreset; s.closeViewAutoFollow = s.closeViewAutoFollow !== false;
   if (!CLOSE_VIEW.controls.includes(s.closeViewCamera)) s.closeViewCamera = CLOSE_VIEW.defaultControl;
   const k = Number(s.closeViewSensitivity), [lo, hi] = CLOSE_VIEW.drag.sensitivity; s.closeViewSensitivity = Number.isFinite(k) ? Math.max(lo, Math.min(hi, k)) : 1; s.closeViewZoom = closeViewZoomOf(s.closeViewZoom); } return s; }
 export const closeViewControl = (g) => g?.save?.closeViewCamera === "crescent" ? "crescent" : "drag";
@@ -1050,7 +1069,7 @@ function grow() { N *= 2; const re = (A, n) => { const b = new A.constructor(n);
   boardSX = re(boardSX, N); boardSY = re(boardSY, N); boardPW = re(boardPW, N); boardPH = re(boardPH, N); boardX = re(boardX, N); boardY = re(boardY, N); boardK = re(boardK, N); boardB = re(boardB, N); boardScale = re(boardScale, N); boardHalfWidth = re(boardHalfWidth, N); boardTop = re(boardTop, N); boardBelow = re(boardBelow, N); boardWX = re(boardWX, N); boardWY = re(boardWY, N); boardOcc = re(boardOcc, N); boardFade = re(boardFade, N); swapCard = re(swapCard, N); }
 
 // What the last frame cost (tests and the Proving Ground read it).
-// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r1059-3629aeded9d0's renderTimings).
+// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r1076-4dec3446cb5b's renderTimings).
 export const closeViewTimings = { on: false, ground: 0, torch: 0, floor: 0, scene: 0, overlay: 0 };
 export const closeViewStats = { rigProbes: 0, rigSamples: 0, sightCuts: 0, terrainPulls: 0, snapshots: 0, frames: 0, faces: 0, facesCut: 0, boards: 0, bands: 0, wallBuilds: 0, culled: 0, detailed: 0, gl: 0, flat: 0 };
 // Last completed scene, not the most recent GPU attempt. Reuse existing fallback
@@ -1500,11 +1519,20 @@ export function closeViewLockToggle(g) {
   const e = closeViewLockCandidate(g); if (!e) { g.message = "Nothing to lock on to in view."; return null; }
   g.lockTarget(e.id); CAM.lockId = e.id; CAM.lostFor = 0; return e;
 }
+// The default angle (CLOSE_VIEW.targetHome): Look mode let go (eased back, Reduced Motion at once) and the tilt reset; the swing
+// behind the Wayfarer is the centered recentre that follows. Nothing in the save changes: the pinched distance and the preset stay.
+export function closeViewHome(g) {
+  const T = CLOSE_VIEW.targetHome;
+  if (T.lookOff) { if (LOOK.on) closeViewLookSet(g, false, !!(g?.presentation?.reduceMotion || g?.presentation?.safeMode)); LOOK.want = 0; }
+  CAM.pitchUser = T.tilt;
+}
 // The mounted Target command switches target mode (CLOSE_VIEW.targetMode) on or off, then requests an open-ground centered
 // rear view. On: a lock already made (a tap on a foe) is kept, else the best foe in front of the camera (the existing
 // pre-recenter acquisition), else the best one in sight anywhere round the Wayfarer. Off: the lock is released.
+// Every press first puts the camera back to the default angle (closeViewHome), at the distance the player set.
 export function closeViewTargetActivate(g, now = 0) {
   if (!g || g.paused || !closeViewShowing(g)) return null;
+  closeViewHome(g); // Tim, 2026-11-26: the Target press always returns to the default angle, keeping the distance
   let target = null;
   if (CAM.targetMode) { CAM.targetMode = false; if (g.lockedTarget?.()) g.lockTarget(null); CAM.lockId = null; CAM.lostFor = 0; g.message = "Auto-target off."; }
   else {
@@ -1568,7 +1596,7 @@ function lockKeep(g, dt) {
   const L = CLOSE_VIEW.lock; let t = g.lockedTarget?.() || null;
   if (CAM.lockId && (!t || t.id !== CAM.lockId)) { const old = (g.enemies || []).find((e) => e.id === CAM.lockId);
     if (!t && old && old.dead && !CAM.targetMode) { const next = closeViewLockCandidate(g, { cone: 180, range: L.rehop, ox: old.x + .5, oy: old.y + .75, screen: false }); if (next) { g.lockTarget(next.id); t = next; } } }
-  if (t && !lockable(t)) { g.lockTarget(null); CAM.lockId = null; CAM.lostFor = 0; return null; }
+  if (t && !lockable(t)) { g.lockTarget(null, { keepSeen: !t.dead }); CAM.lockId = null; CAM.lostFor = 0; return null; } // a foe that hid: its last seen spot stays the shots' aim a moment (game.ts AIM_RESOLVE)
   CAM.lockId = t ? t.id : null; if (!t) { CAM.lostFor = 0; return null; }
   const p = g.player, px = footX(p), py = footY(p), ex = t.x + .5, ey = t.y + .75;
   if (Math.hypot(ex - px, ey - py) > L.range + L.slack) { g.lockTarget(null); CAM.lockId = null; return null; }
@@ -2102,7 +2130,7 @@ export function closeViewScreenToWorld(g, w, h, x, y) {
   return { x: CAM.cx + CAM.rx * u + CAM.fx * v, y: CAM.cy + CAM.ry * u + CAM.fy * v };
 }
 const PROJ = { sx: 0, sy: 0, depth: 0 };
-// Version 4, for tests: the GPU floor's own sum (close-view-gl.js?v=r1059-3629aeded9d0's ENV_FS), in JS. The world point on the floor (z 0) under a
+// Version 4, for tests: the GPU floor's own sum (close-view-gl.js?v=r1076-4dec3446cb5b's ENV_FS), in JS. The world point on the floor (z 0) under a
 // screen point of the last frame, or null above the horizon; exact, so project(closeViewFloorRay(x, y)) lands on (x, y).
 export function closeViewFloorRay(x, y) {
   if (CAM.valid && (interiorTerrain(CAM.map) || hasStoneBuilds(CAM.map))) return terrainFloorRay(CAM.map, x, y);
@@ -2440,6 +2468,7 @@ export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
       const auxiliarySeen=glSeen(g.map);
       shots.captureActor = (spec) => {
         if (!spec?.source || !Number.isFinite(spec.x) || !Number.isFinite(spec.y) || typeof spec.draw !== 'function' || typeof spec.sample !== 'function') return false;
+        if(Number.isFinite(spec.source?.seq)&&typeof spec.source?.mode==='string')closeViewShotSupport(g,spec.source,spec.x,spec.y,spec.source.seq); // a Quandrix hand: its skyway footing is noted as it is loosed (CLOSE_VIEW_SKY_SHOTS)
         if(auxiliarySeen&&!auxiliarySeen(spec.x,spec.y))return true;
         captured.push({ x:spec.x-.5,y:spec.y-.82,lift:spec.lift||0,nativeAux:spec,nativeHeight:spec.height||1.8,nativeEffects:!!spec.decorate,
           nativeDecorations:spec.decorate?()=>spec.decorate(gc,s):null,
@@ -3834,6 +3863,28 @@ export function selectProjectedShots(g, q, reduce = false) {
   PROJECTED_SHOTS.orbit = PROJECTED_ENTRIES.some(e=>e.kind==="orbit") ? orbit : null;
   return PROJECTED_SHOTS;
 }
+// Skyways (Tim, 2026-11-25: "the player's body is drawn a few tiles above where their shots come from"): up on a sky platform
+// or mid sky hop the body stands at the platform's drawn height, but shots and Quandrix hands were drawn over the ground under
+// them, which over a gap is far below. A shot or hand the Wayfarer looses there (first seen within `launchAge` s, `near` tiles)
+// keeps the footing it left from: it is drawn at the higher of that and the ground under it, so the body, the shot's origin and
+// where it strikes agree. Ordinary ground and an ordinary jump are unchanged. Presentation only: one entry per shot or pooled
+// hand ([seq, height]), set once, never per frame; the game's positions, aim and hits are untouched.
+export const CLOSE_VIEW_SKY_SHOTS = Object.freeze({ launchAge: .3, near: 4 });
+const SKY_SHOT = new WeakMap();
+// The footing a skyway shot leaves from: the platform under the feet, or the height a sky hop holds over the gap. NaN elsewhere.
+export function closeViewSkyFooting(g) {
+  const p = g?.player, map = g?.map; if (!p || !map) return NaN; const fx = footX(p), fy = footY(p), t = map.tiles?.[Math.floor(fy) * (map.width || 32) + Math.floor(fx)];
+  if (!(g.skyAir != null && !g.deckHop) && !t?.skyPlatform && !t?.interiorPlatform) return NaN;
+  const ground = surfaceZ(map, fx, fy); return LEAP.map === map && Number.isFinite(LEAP.base) ? Math.max(ground, LEAP.base) : ground;
+}
+// The height a player's shot or hand `src` is drawn over at (x, y): the ground there, or the skyway footing it was loosed from.
+export function closeViewShotSupport(g, src, x, y, seq = 0) {
+  const ground = surfaceZ(g.map, x, y); if (!src || typeof src !== "object" || src.hostile) return ground;
+  let r = SKY_SHOT.get(src);
+  if (!r || r[0] !== seq) { const S = CLOSE_VIEW_SKY_SHOTS, p = g.player, age = Number(src.age) || 0, fresh = age <= S.launchAge && Math.hypot(x - footX(p), y - footY(p)) <= S.near;
+    if (!r) { r = new Float64Array(2); SKY_SHOT.set(src, r); } r[0] = seq; r[1] = fresh ? closeViewSkyFooting(g) : NaN; }
+  return r[1] > ground ? r[1] : ground;
+}
 // A Close View shot from the player's held tool leaves the drawn muzzle: the offset from its
 // authoritative spawn point to this frame's posed muzzle is latched once, then eased out over
 // `settle` seconds. Presentation only: position, collision, aim and saves are never touched.
@@ -3860,7 +3911,7 @@ function shotMuzzleWeight(g, shot) {
     for (let i = 0; i < S.slots; i++) { const q = R.refs[i]; if (!q || q.dead || !(q.age < S.settle)) { R.refs[i] = null; if (slot < 0) slot = i; } }
     if (slot < 0) return 0;
     const back = shot.speed * age, d = Math.hypot(shot.dx, shot.dy) || 1;
-    if (!closeViewMuzzleOffset(MUZZLE_OFF, shot, MODEL_STATE.muzzle, surfaceZ(g.map, shot.x - shot.dx / d * back, shot.y - shot.dy / d * back))) return 0;
+    if (!closeViewMuzzleOffset(MUZZLE_OFF, shot, MODEL_STATE.muzzle, closeViewShotSupport(g, shot, shot.x - shot.dx / d * back, shot.y - shot.dy / d * back))) return 0;
     R.refs[slot] = shot; R.offset[slot * 3] = MUZZLE_OFF[0]; R.offset[slot * 3 + 1] = MUZZLE_OFF[1]; R.offset[slot * 3 + 2] = MUZZLE_OFF[2];
   }
   MUZZLE_OFF[0] = R.offset[slot * 3]; MUZZLE_OFF[1] = R.offset[slot * 3 + 1]; MUZZLE_OFF[2] = R.offset[slot * 3 + 2];
@@ -4520,7 +4571,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     track.attacking = attack;
     let imported = false, heroWaiting = false;
     if (who === player && importedPlayer && count < limit) {
-      const asset = getCloseViewHeroAsset(), heroReady = !!asset && prepareCloseViewHeroGL(asset);
+      const sourceHero = getCloseViewHeroAsset(), asset = sourceHero && closeViewHeroBodyAsset(sourceHero, wayfarerBody(g.save)), heroReady = !!asset && prepareCloseViewHeroGL(asset); // the female body is a cached derivative of the source asset
       heroWaiting = !heroReady && (!!asset || closeViewHeroAssetStatus() === 'loading'); // 926 bug 11: the real model is on its way
       if (heroReady) {
         if (state.heroAsset !== asset || !state.heroPose) {
@@ -4670,9 +4721,10 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if(dist>.002&&dist<3){track.phase=(track.phase+dist*MODEL_TIMING.walkRadians)%(Math.PI*2);track.yaw=Math.atan2(dy,dx);}
     const pace=elapsed>0&&dist<3?Math.min(1,dist/elapsed/MODEL_TIMING.strideSpeed):0;
     if(a.kind==='playerShadow'&&Number.isFinite(source?.until)){a.alpha=shadowCloneAlpha(source.until,now,reduce);if(!reduce&&!Number.isFinite(a.phase))a.phase=track.phase+now/450;} // the wraith clone: stronger, its wisps drifting (close-view-shadow-forms.ts)
-    const actor={x,y,z:surfaceZ(g.map,a.supportX??x,a.supportY??y)+(a.lift||0),yaw:Number.isFinite(a.yaw)?a.yaw:track.yaw,
+    const handSeq=a.kind==='quandrixHand'||a.kind==='quandrixFist'||a.kind==='quandrixSlam'?Number(source?.seq)||0:-1,support=handSeq>=0?closeViewShotSupport(g,source,a.supportX??x,a.supportY??y,handSeq):surfaceZ(g.map,a.supportX??x,a.supportY??y); // a Quandrix hand loosed on a skyway keeps its footing (CLOSE_VIEW_SKY_SHOTS)
+    const actor={x,y,z:support+(a.lift||0),yaw:Number.isFinite(a.yaw)?a.yaw:track.yaw,
       phase:track.phase,pace,amount:0,reduceMotion:reduce,effectTime:now,...a,pace:Number.isFinite(a.pace)?a.pace:pace,pose:a.pose||(pace>.01?'walk':'idle'),yaw:Number.isFinite(a.yaw)?a.yaw:track.yaw,
-      z:surfaceZ(g.map,a.supportX??x,a.supportY??y)+(a.lift||0),alpha:Math.max(0,Math.min(1,(a.alpha??1)*boardB[it])),camYaw:CAM.yaw/* a model may face the camera (the Mirage blades' tilt) */};
+      z:support+(a.lift||0),alpha:Math.max(0,Math.min(1,(a.alpha??1)*boardB[it])),camYaw:CAM.yaw/* a model may face the camera (the Mirage blades' tilt) */};
     const a0=offset;if(!append(actor))return;markSil(a0,offset);Object.assign(track,{x,y,at:now,actor});state.tracks.set(source,track);state.admitted.add(it);
     closeViewGLStats.auxModels=(closeViewGLStats.auxModels||0)+1;closeViewGLStats.auxKinds[a.kind]=(closeViewGLStats.auxKinds[a.kind]||0)+1;
   };
@@ -5190,7 +5242,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   // Accepted release cue follows this frame's actual final socket. It never moves the shot.
   if(MODEL_STATE.toolEmissionReady&&MODEL_STATE.toolRelease){const release=MODEL_STATE.toolRelease,releaseNow=g.paused&&Number.isFinite(g.pauseStarted)?g.pauseStarted:now,elapsed=Math.max(0,release.durationMs-Math.max(0,(g.player.actionVisualUntil||0)-releaseNow)),age=toolUseReleaseAge(release,elapsed);
     if(age!==null&&age<=58){const a=(1-age/58)*(reduce?.42:.82)*MODEL_STATE.toolAlpha,r=.045;room(6);card(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,MODEL_STATE.toolEmission[2]+r,r,11,a,0xffc56b,0,true);}
-    if(age!==null&&!reduce&&age<=120&&release.toolShotId){let shot=null;for(const q of shots||[])if(q.id===release.toolShotId&&!q.dead&&!q.returning&&!q.impact){shot=q;break;}if(shot&&!(shotMuzzleWeight(g,shot)>0)){const head=projectileVisualPoint(shot,surfaceZ(g.map,shot.x,shot.y));if(closeViewToolConnectorWithin(MODEL_STATE.toolEmission,head,release.aim)&&toolCueSegmentOpen(g.map,MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],head.x,head.y)){const r=.014,a=.45*(1-age/120)*MODEL_STATE.toolAlpha;room(6);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,-1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z-r,1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z+r,1,1,11,a,0xffd38a,1,true);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,-1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z+r,1,1,11,a,0xffd38a,1,true);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]+r,-1,1,11,a,0xffd38a,1,true);}}}
+    if(age!==null&&!reduce&&age<=120&&release.toolShotId){let shot=null;for(const q of shots||[])if(q.id===release.toolShotId&&!q.dead&&!q.returning&&!q.impact){shot=q;break;}if(shot&&!(shotMuzzleWeight(g,shot)>0)){const head=projectileVisualPoint(shot,closeViewShotSupport(g,shot,shot.x,shot.y));if(closeViewToolConnectorWithin(MODEL_STATE.toolEmission,head,release.aim)&&toolCueSegmentOpen(g.map,MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],head.x,head.y)){const r=.014,a=.45*(1-age/120)*MODEL_STATE.toolAlpha;room(6);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,-1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z-r,1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z+r,1,1,11,a,0xffd38a,1,true);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]-r,-1,-1,11,a,0xffd38a,1,true);DV(head.x,head.y,head.z+r,1,1,11,a,0xffd38a,1,true);DV(MODEL_STATE.toolEmission[0],MODEL_STATE.toolEmission[1],MODEL_STATE.toolEmission[2]+r,-1,1,11,a,0xffd38a,1,true);}}}
   }
   { const c = g.carbine?.charge; if (c && MODEL_STATE.muzzleReady && carbineCharged(c.held)) { const k = carbineFill(c.held), m = MODEL_STATE.muzzle, pulse = reduce ? 1 : 1 + .12 * Math.sin(now / 55), r = (.045 + .07 * k) * pulse;
     card(m[0], m[1], m[2] - r * 1.9, m[2] + r * 1.9, r * 1.9, 11, .3 + .3 * k, CARBINE.colors.glow, 0, true); card(m[0], m[1], m[2] - r * .7, m[2] + r * .7, r * .7, 11, .95, 0xeafcff, 0, true); } } // the Carbine's charge
@@ -5224,7 +5276,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
       const X=entry.geom.x,Y=entry.geom.y,z=entry.geom.z,size=shot.radius>1.1?.32:.22,color=shot.perfect?0xffd86a:0xb48cff;
       room(6);card(X,Y,z-size,z+size,size,11,SHOT_DRAW.headAlpha,color,0,true);continue;
     }
-    const fire=entry.kind==="fire",head=fire?entry.geom:projectileVisualPoint(shot,surfaceZ(g.map,shot.x,shot.y)),mw=fire?0:shotMuzzleWeight(g,shot),X=head.x+MUZZLE_OFF[0]*mw,Y=head.y+MUZZLE_OFF[1]*mw,z=head.z+MUZZLE_OFF[2]*mw,magic = shot.damageType === "magic";
+    const fire=entry.kind==="fire",head=fire?entry.geom:projectileVisualPoint(shot,closeViewShotSupport(g,shot,shot.x,shot.y)),mw=fire?0:shotMuzzleWeight(g,shot),X=head.x+MUZZLE_OFF[0]*mw,Y=head.y+MUZZLE_OFF[1]*mw,z=head.z+MUZZLE_OFF[2]*mw,magic = shot.damageType === "magic";
     const size = fire?.2:(magic ? SHOT_DRAW.magicSize : SHOT_DRAW.minSize) * Math.max(.55, Math.min(2, shot.scale || 1)) * (.25 + .75 * shotFade(shot)); // tool-forms.ts TOOL_RANGE: a Spindle dissipating shrinks away
     const hue = fire?"#ff7a2a":standardProjectileColor(shot);
     if (!SHOT_COLORS.has(hue)) SHOT_COLORS.set(hue, parseInt(hue.slice(1), 16));
@@ -5247,7 +5299,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
         const beam = !fire && shot.carbine === true && finite(shot.bx) && finite(shot.by); // the Carbine: a beam from where it left the muzzle
         const trailTime = beam ? Math.max(0, shot.age || 0) : Math.min(SHOT_DRAW.trailSeconds, Math.max(0, shot.age || 0));
         const length = beam ? Math.min(SHOT_DRAW.beamTrail, Math.hypot(shot.x - shot.bx, shot.y - shot.by)) : Math.min(SHOT_DRAW.maxTrail, Math.max(0, shot.speed || 0) * trailTime);
-        const px=shot.x-shot.dx*length/d,py=shot.y-shot.dy*length/d;if(!fire||entry.geom.tail){const tail=fire?entry.geom.tail:projectileVisualPoint(shot,surfaceZ(g.map,px,py),px,py,Math.max(0,(shot.age||0)-trailTime)),tw=mw>0?closeViewMuzzleWeight((shot.age||0)-trailTime):0,tx=tail.x+MUZZLE_OFF[0]*tw,ty=tail.y+MUZZLE_OFF[1]*tw,tz=tail.z+MUZZLE_OFF[2]*tw,r = size * .75;
+        const px=shot.x-shot.dx*length/d,py=shot.y-shot.dy*length/d;if(!fire||entry.geom.tail){const tail=fire?entry.geom.tail:projectileVisualPoint(shot,closeViewShotSupport(g,shot,px,py),px,py,Math.max(0,(shot.age||0)-trailTime)),tw=mw>0?closeViewMuzzleWeight((shot.age||0)-trailTime):0,tx=tail.x+MUZZLE_OFF[0]*tw,ty=tail.y+MUZZLE_OFF[1]*tw,tz=tail.z+MUZZLE_OFF[2]*tw,r = size * .75;
         room(6);
         DV(tx, ty, tz - r, -1, -1, 11, SHOT_DRAW.trailAlpha, color, 1, true);
         DV(X, Y, z - r, 1, -1, 11, SHOT_DRAW.trailAlpha, color, 1, true);
@@ -5282,7 +5334,7 @@ export function mountCloseViewControls(getGame, host = globalThis, opts = {}) {
   // version 4: `outer`, the wider band beyond the arc (never drawn), where it is clear of everything else
   outer.setAttribute("fill", "none"); outer.setAttribute("stroke", "transparent"); outer.setAttribute("stroke-width", String(K.reach)); outer.setAttribute("stroke-linecap", "butt"); outer.style.pointerEvents = "stroke"; outer.style.touchAction = "none"; outer.style.cursor = "ew-resize";
   svg.append(rail, hit, outer); actions.insertBefore(svg, cluster); // before the cluster: beneath its buttons
-  lock.type = "button"; lock.id = "closeViewLock"; lock.className = "close-lock"; lock.setAttribute("aria-label", "Target and recenter behind the Wayfarer: auto-targets foe after foe while lit red; tap again to turn it off; swipe the camera left or right to switch"); lock.setAttribute("aria-pressed", "false"); lock.setAttribute("data-target-mode", "off");
+  lock.type = "button"; lock.id = "closeViewLock"; lock.className = "close-lock"; lock.setAttribute("aria-label", "Target and recenter behind the Wayfarer at the default camera angle: auto-targets foe after foe while lit red; tap again to turn it off; swipe the camera left or right to switch"); lock.setAttribute("aria-pressed", "false"); lock.setAttribute("data-target-mode", "off");
   // version 3 (Tim): a bullseye, concentric rings and a centre dot; locked, the inner ring fills (styles.css .close-lock)
   lock.innerHTML = '<svg class="bullseye" viewBox="0 0 24 24" width="52%" height="52%" aria-hidden="true" style="pointer-events:none;position:relative"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><circle class="bull-ring" cx="12" cy="12" r="6.2" fill="currentColor" fill-opacity="0" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="2.4" fill="currentColor"/></svg>';
   Object.assign(lock.style, { position: "absolute", width: `${K.lockSize}px`, height: `${K.lockSize}px`, padding: "0", borderRadius: "50%", border: "0", background: "none", color: "#ddd5c4", display: "none", placeItems: "center", pointerEvents: "auto", touchAction: "manipulation", zIndex: "2" });

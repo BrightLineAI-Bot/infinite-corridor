@@ -1,4 +1,4 @@
-import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.js?v=r1059-3629aeded9d0";
+import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.js?v=r1076-4dec3446cb5b";
 // Dungeon Monster Pack v1: ten composable creatures built from shared attribute tables.
 //
 // A pack monster is a composition of five reusable parts, each defined once below:
@@ -8,18 +8,18 @@ import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.js?v=r1059-
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { stageOneBeastReference } from "./stages.js?v=r1059-3629aeded9d0";
-import { hashSeed, byHash } from "./random.js?v=r1059-3629aeded9d0";
-import { updateAstralActor } from "./astral-worm.js?v=r1059-3629aeded9d0";
-import { WORLD_BOSS_PACE } from "./boss-kit.js?v=r1059-3629aeded9d0"; // world-boss pacing (Tim, 2026-11-18)
-import { ADV, levelAt, heightReach, dropBonus, findPerch, findRetreat, kiteLoop, lampLoop } from "./adventure-creatures.js?v=r1059-3629aeded9d0"; // adventure creatures (Tim, 2026-11-11)
-import { onStegoTailSevered } from "./stego-bait.js?v=r1059-3629aeded9d0";
-import { DINO_DUEL, duelBlow as dinoDuelBlow, noteRivalHurt, duelOf, duelWinner, duelPair, DUEL_KINDS } from "./dino-duel.js?v=r1059-3629aeded9d0";
-import { APATO, APATO_ATTACKS, APATO_START, APATO_RUN, installApatoKit, apatoFx, apatoTick, apatoCan, apatoAfflicted, apatoCloneTick, apatoIdle, apatoLetGo, resetApatoRuntime, apatoRivalNear } from "./earth-apato.js?v=r1059-3629aeded9d0"; // the Earth Apatosaurus (Tim, 2026-11-18) // the dino duel's blows, floors and verdict (Tim, 2026-11-14)
-import { BLEED, tickCreatureBleed } from "./bleed.js?v=r1059-3629aeded9d0"; // the Spinosaurus's bleed (its numbers and the Wayfarer's record) // the Wild Stegosaurus: its cut tail becomes the Stego Bait (the bait module owns what happens)
-import { DUELISTS, duelistStats, duelSeparation, findHop, hopArc, duelStepTooClose } from "./duelists.js?v=r1059-3629aeded9d0"; // the Gaunt, hooded duelists (Tim, 2026-11-12)
-import { behaviourProfile, behaviourState, behaviourGate, behaviourReact, resetBehaviour, ringVector, pressVector, squadRequest, shapeBlow, startFeint, afterBlow } from "./enemy-behaviour.js?v=r1059-3629aeded9d0"; // ordinary creature behaviour (Tim, 2026-11-14)
-import { tacticsMove, tacticsWindup } from "./squad-tactics.js?v=r1059-3629aeded9d0"; // squad tactics (Tim, 2026-11-15)
+import { stageOneBeastReference, reductionGuard } from "./stages.js?v=r1076-4dec3446cb5b";
+import { hashSeed, byHash } from "./random.js?v=r1076-4dec3446cb5b";
+import { updateAstralActor } from "./astral-worm.js?v=r1076-4dec3446cb5b";
+import { WORLD_BOSS_PACE } from "./boss-kit.js?v=r1076-4dec3446cb5b"; // world-boss pacing (Tim, 2026-11-18)
+import { ADV, levelAt, heightReach, dropBonus, findPerch, findRetreat, kiteLoop, lampLoop } from "./adventure-creatures.js?v=r1076-4dec3446cb5b"; // adventure creatures (Tim, 2026-11-11)
+import { onStegoTailSevered } from "./stego-bait.js?v=r1076-4dec3446cb5b";
+import { DINO_DUEL, duelBlow as dinoDuelBlow, noteRivalHurt, duelOf, duelWinner, duelPair, DUEL_KINDS } from "./dino-duel.js?v=r1076-4dec3446cb5b";
+import { APATO, APATO_ATTACKS, APATO_START, APATO_RUN, installApatoKit, apatoFx, apatoTick, apatoCan, apatoAfflicted, apatoCloneTick, apatoIdle, apatoLetGo, resetApatoRuntime, apatoRivalNear } from "./earth-apato.js?v=r1076-4dec3446cb5b"; // the Earth Apatosaurus (Tim, 2026-11-18) // the dino duel's blows, floors and verdict (Tim, 2026-11-14)
+import { BLEED, tickCreatureBleed } from "./bleed.js?v=r1076-4dec3446cb5b"; // the Spinosaurus's bleed (its numbers and the Wayfarer's record) // the Wild Stegosaurus: its cut tail becomes the Stego Bait (the bait module owns what happens)
+import { DUELISTS, duelistStats, duelSeparation, findHop, hopArc, duelStepTooClose } from "./duelists.js?v=r1076-4dec3446cb5b"; // the Gaunt, hooded duelists (Tim, 2026-11-12)
+import { behaviourProfile, behaviourState, behaviourGate, behaviourReact, resetBehaviour, ringVector, pressVector, squadRequest, shapeBlow, startFeint, afterBlow } from "./enemy-behaviour.js?v=r1076-4dec3446cb5b"; // ordinary creature behaviour (Tim, 2026-11-14)
+import { tacticsMove, tacticsWindup } from "./squad-tactics.js?v=r1076-4dec3446cb5b"; // squad tactics (Tim, 2026-11-15)
 
 export const MONSTER_PACK_VERSION = 1;
 // A separate content pin: generic pack selectors still exclude this species.
@@ -5384,7 +5384,7 @@ export function tuneGatePredator(e, save, stats = {}) {
   if (!e.gatePredator || e.gateTuningVersion === 1) return e;
   const t = GATE_REVENANT, level = Math.max(1, Number(save.level) || 1), weapon = save.equipment?.[save.activeWeaponSlot];
   // Release 275: the Gate Revenant is held with the Stage 1 world beasts (stages.ts), from tier 13 until three Listeners.
-  const ref = stageOneBeastReference(save, { level, perHit: Math.max(6, (Number(weapon?.power) || 6) + (Number(stats.weaponBonus ?? stats.meleeBonus) || 0)), maxHp: Number(save.maxHp) || 60, guard: Math.max(0, Math.min(.75, Number(stats.damageReduction) || 0)) });
+  const ref = stageOneBeastReference(save, { level, perHit: Math.max(6, (Number(weapon?.power) || 6) + (Number(stats.weaponBonus ?? stats.meleeBonus) || 0)), maxHp: Number(save.maxHp) || 60, guard: reductionGuard(stats.damageReduction) });
   const hit = ref.perHit, guard = ref.guard;
   const oldMax = Math.max(1, Number(e.maxHp) || 1), missing = Math.max(0, oldMax - (Number.isFinite(e.hp) ? e.hp : oldMax));
   e.maxHp = Math.max(oldMax, t.hpFloor, Math.round((hit * t.referenceHits + ref.level * t.referenceLevelHp) * t.beastShare));

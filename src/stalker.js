@@ -16,8 +16,8 @@
 //   At `swarm.at` health it calls small silver copies of itself (capped). It carries 1–2 elite affixes and scales with
 //   regionalThreat.
 // Runtime fields on the creatures (`stalkForm`, `stalkAct`, …) are never saved; only `save.stalker` is.
-import { hashSeed } from "./random.js?v=r1059-3629aeded9d0";
-import { ENCLOSURE, trapChance } from "./building.js?v=r1059-3629aeded9d0"; // release 696: the Enclosure trap
+import { hashSeed } from "./random.js?v=r1076-4dec3446cb5b";
+import { ENCLOSURE, trapChance } from "./building.js?v=r1076-4dec3446cb5b"; // release 696: the Enclosure trap
 
 export const STALKER = {
   version: 1,
@@ -642,6 +642,11 @@ export function updateStalker(e, w) {
   if (!["grab", "grabPull", "retract", "slamWarn", "slam", "sweep", "spin"].includes(a.kind)) e.stalkFists = null;
   switch (a.kind) {
     case "prowl": {
+      // The Briar Stag fight stutter (Tim's r1050 fight at -185,-203, a Stalker in it): a prowl begun in the pool or the mist
+      // (a decoy burst or a broken pen sets "prowl" whatever the form) went to the ape's moves with none chosen, and threw in
+      // Game.update every frame it stood in reach: the world stopped and nothing was drawn for seconds at a time. The pool and
+      // the mist have no prowl: such a form begins its own move instead (the slide, or the gathering).
+      if (e.stalkForm !== "cat" && e.stalkForm !== "ape") { beginForm(e, w, e.stalkForm === "pool" || e.stalkForm === "mist" ? e.stalkForm : "cat"); break; }
       // Close in to its range, circling once there; pounce or leap when the prowl is over.
       if (e.stalkForm === "ape" && !e.stalkApeNext) e.stalkApeNext = apeMoveNext(e);
       if (e.stalkForm === "cat" && !e.stalkCatNext) e.stalkCatNext = catMoveNext(e);

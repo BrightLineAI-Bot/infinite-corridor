@@ -11,9 +11,9 @@
 // Wayfarer dies (or loses them) simply go back: the count only falls by kills. The last kill locks a piece of the Far Gate
 // (far-array.ts lockGatePiece; a seal of the Listener's call while LISTENER_CYCLE.sealsCall).
 // State: save.consequences.dungeons[id].horde = { total, left } (additive; decided once, on the first visit).
-import { hashSeed } from "./random.js?v=r1059-3629aeded9d0";
-import { isDeepDungeonId } from "./world.js?v=r1059-3629aeded9d0";
-import { ensureFarArray, piecesNeeded, gateOpen, lockGatePiece, LISTENER_CYCLE } from "./far-array.js?v=r1059-3629aeded9d0";
+import { hashSeed } from "./random.js?v=r1076-4dec3446cb5b";
+import { isDeepDungeonId } from "./world.js?v=r1076-4dec3446cb5b";
+import { ensureFarArray, piecesNeeded, gateOpen, lockGatePiece, LISTENER_CYCLE } from "./far-array.js?v=r1076-4dec3446cb5b";
 
 // Release 273 (Tim: "in the swarm dungeon... maybe you'll get like four crossing sigils throughout... you can break it into
 // waves"): the count is cut into `sigils` waves, and the kill that ends each wave leaves a Crossing Sigil.
@@ -51,7 +51,7 @@ export function hordeKill(save, history) {
   }
   // Tim, 2026-11-05: "if you complete a Revenant horde dungeon it locks other pieces of the gate".
   const lock = lockGatePiece(save, "horde", f);
-  return { sigils, message: `${broken} ${lock.text}${lock.unlocked ? " The Listener leaves this Mouth for good: the next relays will give a new one." : ""}`, cleared: true, unlocked: lock.unlocked };
+  return { sigils, message: `${broken} ${lock.text}${lock.unlocked && f.cycle < 3 ? " The Listener leaves this Mouth for good: the next relays will give a new one." : ""}`, cleared: true, unlocked: lock.unlocked };
 }
 // The spawn points for a horde dungeon: open tiles far from the entrance, spread out.
 export function hordeSpawnPoints(map, entry, n = 6, reach = null) {

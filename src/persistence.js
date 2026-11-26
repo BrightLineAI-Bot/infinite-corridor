@@ -1,6 +1,7 @@
-import { freshSave, migrateSave, unsupportedVersion, compactedAreas } from "./types.js?v=r1059-3629aeded9d0";
-import { ensureProductionTriceratops } from "./beast-mounts.js?v=r1059-3629aeded9d0";
-import { startJourney } from "./progression.js?v=r1059-3629aeded9d0";
+import { freshSave, migrateSave, unsupportedVersion, compactedAreas } from "./types.js?v=r1076-4dec3446cb5b";
+import { ensureProductionTriceratops } from "./beast-mounts.js?v=r1076-4dec3446cb5b";
+import { startJourney } from "./progression.js?v=r1076-4dec3446cb5b";
+import { setWayfarerBody } from "./journey-start.js?v=r1076-4dec3446cb5b";
 
 const DB = "infinite-corridor", STORE = "saves", SLOT_COUNT = 3;
 const LEGACY_MIRROR = "infinite-corridor:active-v2", ACTIVE_SLOT = "infinite-corridor:active-slot-v1", SETTINGS = "infinite-corridor:settings-v1";
@@ -17,7 +18,7 @@ export function withMotionDefault(raw,env=globalThis){const r=raw&&typeof raw===
 export function loadSettings(env=globalThis){let raw={};try{raw=JSON.parse(localStorage.getItem(SETTINGS)||"{}")}catch{}return normalizeSettings(withMotionDefault(raw,env))}
 export function saveSettings(settings){const clean=normalizeSettings(settings);try{localStorage.setItem(SETTINGS,JSON.stringify(clean))}catch{}return clean}
 export function effectiveQuality(settings,env={}){if(settings?.safeMode||settings?.quality==="low")return"low";if(settings?.quality&&settings.quality!=="auto")return settings.quality;const width=Number(env.width)||1280,height=Number(env.height)||800,memory=Number(env.deviceMemory)||4,cores=Number(env.hardwareConcurrency)||4;return Math.min(width,height)<500||memory<=3||cores<=3?"low":"balanced"}
-export { serializeSave, deserializeSave } from "./save-codec.js?v=r1059-3629aeded9d0";
+export { serializeSave, deserializeSave } from "./save-codec.js?v=r1076-4dec3446cb5b";
 export function validateJourney(raw){try{if(!raw||typeof raw!=="object"||Array.isArray(raw))throw new Error("Save is not an object");const save=migrateSave(structuredClone(raw));if(!save.seed||!save.position||!Number.isFinite(Number(save.level)))throw new Error("Required journey fields are missing");return{health:"healthy",save,error:null}}catch(error){return{health:"damaged",save:null,error:String(error?.message||error)}}}
 export function journeyMetadata(raw,slot=1){if(!raw)return{slot,health:"empty",empty:true,name:`Journey ${slot}`,bytes:0};const checked=validateJourney(raw),source=checked.save||raw;let bytes=0;try{bytes=new Blob([JSON.stringify(raw)]).size}catch{}return{slot,health:checked.health,empty:false,error:checked.error,name:String(source.name||`Journey ${slot}`),seed:String(source.seed||"unknown"),level:Number(source.level)||1,location:source.position?.area==="dungeon"?"Dungeon":`${source.position?.rx||0}, ${source.position?.ry||0}`,updatedAt:Number(source.updatedAt)||0,explored:Object.keys(source.explored||{}).length,playSeconds:Math.max(0,Number(source.playSeconds)||0),bytes}}
 // The Wayfarer tab's "Your journey" figures (release 387; Tim approved the suggestion "a short 'your journey so far' page in the
@@ -308,6 +309,29 @@ let lastWriteError=null;
 // of an unchanged area is reused from the previous save; only the rest of the save and changed areas are copied again.
 const areaCopies=new WeakMap();
 export function snapshotSave(save,updatedAt=Date.now()){const areas=save?.session?.areas;if(!areas||typeof areas!=="object"||Array.isArray(areas))return structuredClone({...save,updatedAt});const prev=mainCopies.get(save),live={...save,updatedAt,session:{...save.session,areas:null}},main=prev?shareCopy(live,prev):firstCopy(live),copies={};/* perf pack: unchanged parts reuse their copies */mainCopies.set(save,main);for(const[key,area]of Object.entries(areas)){if(!area||typeof area!=="object"){copies[key]=structuredClone(area);continue}let copy=areaCopies.get(area);if(!copy){copy=structuredClone(area);areaCopies.set(area,copy)}copies[key]=copy}const snapshot={...main,session:{...main.session,areas:copies}};sharedSnapshots.add(snapshot);return snapshot}
+// The Briar Stag fight stutter (Tim, 2026-11-22, r1050 probe: 37 saves in 277 s of a Briar Stag fight, each frame's persist
+// phase 19-38 ms on his phone with a 17 MB journey): besides the 8 s autosave, every tap on the world (attack, act, build,
+// Rift Step, Shadow Clone) and every resume saved at once. Each save walks the whole main record (snapshotSave), so in a
+// fight those taps put a long frame every second or two. The autosave policy (main.ts):
+// - calm play: every `every` seconds of play, as before; a save asked for by a tap or a resume (`pending`) comes `soon`
+//   seconds after the last one, coalescing a burst of taps into one;
+// - in a fight (a live foe within `fightReach` tiles hunting the Wayfarer), nothing until `fightEvery` seconds since the last
+//   save, or the fight ends (the first calm frame then saves what is due).
+// Exact resume is unchanged: the save made as the page hides (urgent) and the pause menu's save still happen at once, and
+// every reward, purchase and menu choice is saved by its own call as before. A crash in a fight loses at most `fightEvery`
+// seconds (a foe killed in them is still alive, its reward not yet paid, so nothing is paid twice).
+export const AUTOSAVE = Object.freeze({ every: 8, soon: 1, fightEvery: 30, fightReach: 14 });
+// since: seconds of play since the last save; pending: a save was asked for; fighting: called only when its answer matters.
+export function autosaveDue(since, pending, fighting, A = AUTOSAVE) {
+  if (!(since >= A.soon) || (!pending && !(since >= A.every))) return false;
+  return fighting() ? since >= A.fightEvery : true;
+}
+// A live, hunting foe near the Wayfarer (a bounded scan of the area's creatures, made only when a save is due).
+export function fightUnderway(game, A = AUTOSAVE) {
+  const p = game?.player, list = game?.enemies; if (!p || !Array.isArray(list)) return false;
+  for (let i = 0; i < list.length; i++) { const e = list[i]; if (e && !e.dead && e.aggro && !e.friendly && !(e.hp <= 0) && Math.hypot(e.x - p.x, e.y - p.y) <= A.fightReach) return true; }
+  return false;
+}
 export function saveGame(save,options={}){const slot=getActiveSlot();if(writeBlocked.has(slot))return writeQueue=Promise.resolve();/* release 734 */ensureProductionTriceratops(save);const snapshot=snapshotSave(save);save.updatedAt=snapshot.updatedAt;if(options?.urgent){urgentSnapshots.add(snapshot);hurry?.()}/* save hide fix: written at once */writeQueue=coordinator.enqueue(slot,snapshot).then(()=>undefined,error=>{lastWriteError=error;console.warn("IndexedDB save failed",error)});return writeQueue}
 // Save hide fix: a failed write is reported once (by lastWriteError), not again by the coordinator's rejected chain.
 export async function flushSaves(){await Promise.all([writeQueue,coordinator.flush().catch(()=>{})]);if(lastWriteError){const error=lastWriteError;lastWriteError=null;throw error}}
@@ -324,7 +348,7 @@ export async function listJourneySlots(){try{await migrateLegacy()}catch{}const 
 export function randomSeed(){let tail="";try{const a=new Uint32Array(2);crypto.getRandomValues(a);tail=a[0].toString(36)+a[1].toString(36)}catch{tail=Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2)}return`CORRIDOR-${Date.now().toString(36)}${tail.slice(0,6)}`.toUpperCase().slice(0,64)}
 // A new journey (progression.ts startJourney): its name, its seed (typed, or random), and the creator's choices: the mode
 // (Exploration unless Classic is chosen), the weapon and the tool. Every new journey is created at start version 1.
-export function namedFresh(name,seed,choices={}){const save=ensureProductionTriceratops(freshSave());save.name=String(name||"Wayfarer").slice(0,40);save.seed=String(String(seed||"").trim()||randomSeed()).slice(0,64);return startJourney(save,{mode:choices.mode,weapon:choices.weapon,tool:choices.tool})}
+export function namedFresh(name,seed,choices={}){const save=ensureProductionTriceratops(freshSave());save.name=String(name||"Wayfarer").slice(0,40);save.seed=String(String(seed||"").trim()||randomSeed()).slice(0,64);setWayfarerBody(save,choices.body);/* the creator's body choice (journey-start.ts WAYFARER_BODY) */return startJourney(save,{mode:choices.mode,weapon:choices.weapon,tool:choices.tool})}
 async function snapshotRecovery(slot,raw,checked=false){if(!raw||!checked&&validateJourney(raw).health!=="healthy")return;const previous=await read(`recovery:${slot}:1`);if(previous)await write(`recovery:${slot}:2`,previous);await write(`recovery:${slot}:1`,raw)}
 export async function createJourney(slot,options={}){const current=await readJourney(slotKey(slot))||mirrorRead(slot);if(current&&!options.replace)throw new Error("That journey slot is occupied.");if(current)await snapshotRecovery(slot,current);const save=namedFresh(options.name,options.seed,options);replaced(slot);await writeJourney(slotKey(slot),save);mirrorWrite(slot,save);return journeyMetadata(save,slot)}
 export async function renameJourney(slot,name){const raw=await readJourney(slotKey(slot)),valid=validateJourney(raw);if(valid.health!=="healthy")throw new Error("Only a healthy journey can be renamed.");valid.save.name=String(name||valid.save.name).slice(0,40);valid.save.updatedAt=Date.now();await writeJourney(slotKey(slot),valid.save);mirrorWrite(slot,valid.save);return journeyMetadata(valid.save,slot)}

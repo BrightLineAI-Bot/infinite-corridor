@@ -15,8 +15,8 @@
 // - Shaman (`SHAMAN`): now and then a pack has a shaman standing apart, channelling; while it lives, its packmates within `radius` of
 //   it cannot be harmed (a ward shimmers round them, a ring round the shaman). Kill the shaman first.
 // Runtime state on the creatures (`affixClock`, `inAura`, `wardedBy`) and in game.affixHazards (never saved; at most `maxHazards`).
-import { hashSeed, byHash } from "./random.js?v=r1059-3629aeded9d0";
-import { projectileVisualHeight } from "./actor-presentation.js?v=r1059-3629aeded9d0";
+import { hashSeed, byHash } from "./random.js?v=r1076-4dec3446cb5b";
+import { projectileVisualHeight } from "./actor-presentation.js?v=r1076-4dec3446cb5b";
 
 export const AFFIXES = {
   volcanic: { name: "Volcanic", color: "#ff6a2a", every: 3.2, arm: .8, radius: 1.15, life: 4, dps: .35 },
@@ -78,7 +78,7 @@ export function tickAffixes(game, dt, now, hurt, poison) {
   // The hazards: a burst strikes once as it lands; burning ground and poison pools keep hurting while stood in.
   for (const h of hz) {
     if (now < h.armAt) continue; const inside = Math.hypot(px - h.x, py - h.y) <= h.radius;
-    if (h.kind === "volcanic") { if (inside && now >= (h.nextTick || 0)) { h.nextTick = now + 1000; hurt(h.damage); } }
+    if (h.kind === "volcanic") { if (inside && now >= (h.nextTick || 0)) { h.nextTick = now + 1000; hurt(h.damage, h.kind); } } // the kind: a burn (world-routes.ts BURNS)
     else if (h.kind === "venomous") { if (inside && now >= (h.nextTick || 0)) { h.nextTick = now + 1000; poison(...AFFIXES.venomous.poison); } }
     else if (!h.struck) { h.struck = true; if (inside) hurt(h.damage); }
   }

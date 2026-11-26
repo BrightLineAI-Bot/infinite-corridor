@@ -7,14 +7,14 @@
 // Tome keeps the thread as a book. A crossing holds at most one thread piece (`chance`, by seed; `minDepth` from the Refuge).
 // All writing is original to the game. Pure rules: no DOM. Save: save.lore.threads = { threadId: [dungeonId, ...] } (additive,
 // normalised by ensureThreadState).
-import { hashSeed } from "./random.js?v=r1059-3629aeded9d0";
-import { IDENTITY_FRAME, saveFrame } from "./journey-start.js?v=r1059-3629aeded9d0";
-import { READING_BANDS, READINGS, READING_ORDER, ARCANA_REGIONS, ARCANA_UNLOCKS, inArcanaHome, regionVersionOf, regionFrame, arcanaHint, readingRegionHint, readingKnown, arcanaHas, ensureArcanaState } from "./lore.js?v=r1059-3629aeded9d0";
-import { BELLS, bellsRung } from "./bells.js?v=r1059-3629aeded9d0";
-import { SURVEYOR, surveyorFound } from "./surveyor.js?v=r1059-3629aeded9d0";
-import { TORN_PAGES, pagesFound } from "./torn-pages.js?v=r1059-3629aeded9d0";
-import { FAR_REALMS, farDistance } from "./far-realms.js?v=r1059-3629aeded9d0";
-import { REWARD_CARRIERS, threadReward } from "./quests.js?v=r1059-3629aeded9d0"; // progression Phase 7: what finishing a thread (or the Second Wayfarer's trail) gives
+import { hashSeed } from "./random.js?v=r1076-4dec3446cb5b";
+import { IDENTITY_FRAME, saveFrame } from "./journey-start.js?v=r1076-4dec3446cb5b";
+import { READING_BANDS, READINGS, READING_ORDER, ARCANA_REGIONS, ARCANA_UNLOCKS, inArcanaHome, regionVersionOf, regionFrame, arcanaHint, readingRegionHint, readingKnown, arcanaHas, ensureArcanaState } from "./lore.js?v=r1076-4dec3446cb5b";
+import { BELLS, bellsRung } from "./bells.js?v=r1076-4dec3446cb5b";
+import { SURVEYOR, surveyorFound } from "./surveyor.js?v=r1076-4dec3446cb5b";
+import { TORN_PAGES, pagesFound } from "./torn-pages.js?v=r1076-4dec3446cb5b";
+import { FAR_REALMS, farDistance } from "./far-realms.js?v=r1076-4dec3446cb5b";
+import { REWARD_CARRIERS, threadReward } from "./quests.js?v=r1076-4dec3446cb5b"; // progression Phase 7: what finishing a thread (or the Second Wayfarer's trail) gives
 
 export const THREAD_RULES = { chance: .07, minDepth: 3, later: .025, third: .025, fourth: .04, fifth: .025 }; // third (release 707): the wave 3 roll, made only where the first two rolls found nothing; fourth (2026-11-04): the wave 4 roll, made only where the first three found nothing (a little likelier: the near band is small and its crossings are mostly spoken for); fifth (2026-11-05): the wave 5 roll, made only where the first four found nothing
 // later: threads written after release 627 (`wave` 2 and on) are rolled separately, only in crossings that hold none of the first
@@ -56,7 +56,10 @@ export const THREAD_RULES = { chance: .07, minDepth: 3, later: .025, third: .025
 // (`shared: { 6: ["middle", "far"] }`), splitting the slots of crossings first entered from then on and adding none; the budget
 // stays 0.12. Crossings pinned at version 0 to 5 roll exactly as before; at version 6 every crossing holds a piece exactly where
 // version 5 would, and only the shared slots of those two bands are re-split.
-export const STORY_BUDGET = { version: 6, perCrossing: .12, byVersion: { 1: .13, 2: .12, 3: .12, 4: .12, 5: .12, 6: .12 }, firstTenGivesWay: 4 };
+// Story version 7 (every offered goal can be completed): the budget stays 0.12 and every roll reads exactly as version 6. It marks
+// the crossings first entered from then on, the only ones where a begun thread's next piece may be certain (THREAD_CERTAIN below):
+// a thread that pays something needs all its pieces, and on some seeds the whole world held too few crossings with them.
+export const STORY_BUDGET = { version: 7, perCrossing: .12, byVersion: { 1: .13, 2: .12, 3: .12, 4: .12, 5: .12, 6: .12, 7: .12 }, firstTenGivesWay: 4 };
 // The budget of a crossing pinned to story version `version`: the latest entry at or before it (0 below version 1).
 export const budgetFor = (version) => { let p = 0; for (const [v, b] of Object.entries(STORY_BUDGET.byVersion)) if (Number(v) <= version) p = b; return p; };
 // beyond (story version 2): the far realms, measured straight-line from the Refuge as the realms are (far-realms.ts farDistance),
@@ -423,15 +426,72 @@ export function ensureThreadState(save) {
 export const threadFound = (save, id) => { const t = save?.lore?.threads?.[id]; return Array.isArray(t) ? t : []; };
 export const threadsDone = (save) => THREAD_ORDER.filter((id) => threadFound(save, id).length >= THREADS[id].pieces.length);
 export const threadsStarted = (save) => THREAD_ORDER.filter((id) => threadFound(save, id).length > 0);
-// Lays the crossing's piece on open floor away from the entry: the piece found here (read), or the next one not yet found
-// (waiting); nothing when the thread is complete and none was found here.
-export function addThreadRelic(map, save, dungeonId) {
+// Every offered goal can be completed (story version 7). A thread that pays something on this journey (threadPays: an ability,
+// a passive or a gift) needs all its pieces, yet a piece lies only where a crossing's roll puts its thread, and on some seeds the
+// whole world held fewer crossings with a rewarded thread than it has pieces (one seed held a single Lamplighter crossing in all).
+// So once such a thread is begun, at most `dry` eligible crossings in a row (ordinary crossings of its band or a band it shares,
+// pinned at `storyVersion` or later, first entered after the thread was begun) go without its next piece: the one after them holds
+// it for certain, in place of whatever it would have held, so a crossing still holds at most one piece. The count is per thread
+// (save.lore.threadDry = { threadId: n }; additive, normalised by ensureThreadTrails) and starts again whenever a crossing holds
+// its piece or a piece of it is read. The choice is made once, the first time the crossing is dressed (thread-trails.ts
+// settleCrossingThread), and kept in its history (`threadLot`: the thread made certain there, or "" for its own roll), so a
+// crossing never changes what it offered; crossings pinned before version 7 never read it.
+export const THREAD_CERTAIN = Object.freeze({ storyVersion: 7, dry: 5 });
+// Whether finishing thread `id` gives anything on this journey: an ability (quests.ts threadReward), a passive (lore.ts
+// ARCANA_UNLOCKS) or a gift (THREAD_GIFTS).
+export const threadPays = (save, id) => !!THREADS[id] && (!!THREAD_GIFTS[id] || Object.values(ARCANA_UNLOCKS).some((u) => u.from === id) || !!threadReward(save, id)); // the cheap answers first
+// Whether a crossing at (rx, ry), pinned at story version `version`, lies in thread `id`'s band or a band it shares there.
+export const threadEligible = (id, rx, ry, version) => { const T = THREADS[id]; if (!T || Math.abs(rx) + Math.abs(ry) < THREAD_RULES.minDepth) return false;
+  return inBand(T.band, rx, ry) || Object.entries(T.shared || {}).some(([v, bands]) => Number(v) <= version && bands.some((b) => inBand(b, rx, ry))); };
+const whole0 = (v) => Math.max(0, Math.floor(Number(v)) || 0);
+export const threadDry = (save, id) => whole0(save?.lore?.threadDry?.[id]);
+export function setThreadDry(save, id, n) { const lore = (save.lore ||= {}), d = lore.threadDry; lore.threadDry = { ...(d && typeof d === "object" && !Array.isArray(d) ? d : {}), [id]: whole0(n) }; }
+// Whether the next eligible crossing first entered is certain to hold thread `id`'s next piece.
+export const threadDue = (save, id) => threadDry(save, id) >= THREAD_CERTAIN.dry;
+// The threads awaiting a piece in a crossing at (rx, ry) pinned at `version`: begun, not finished, paying, and eligible there.
+export function threadsAwaiting(save, rx, ry, version) {
+  if (version < THREAD_CERTAIN.storyVersion) return [];
+  return THREAD_ORDER.filter((id) => { const n = threadFound(save, id).length; return n > 0 && n < THREADS[id].pieces.length && threadEligible(id, rx, ry, version) && threadPays(save, id); });
+}
+// The thread made certain in such a crossing, whose own roll holds `natural`, or null: none when its roll already holds a thread
+// awaiting a piece; else the one awaiting longest of those due (the earliest in THREAD_ORDER on a tie). Pure.
+export function certainThread(save, rx, ry, version, natural) {
+  const waiting = threadsAwaiting(save, rx, ry, version); if (!waiting.length || waiting.includes(natural)) return null;
+  let best = null; for (const id of waiting) if (threadDue(save, id) && (!best || threadDry(save, id) > threadDry(save, best))) best = id;
+  return best;
+}
+// The thread crossing `dungeonId` holds: the one made certain there (`threadLot`, story version 7 on), else its own roll.
+export function threadHeld(save, dungeonId) {
+  const version = storyVersionOf(save, dungeonId), lot = save?.consequences?.dungeons?.[dungeonId]?.threadLot;
+  if (version >= THREAD_CERTAIN.storyVersion && typeof lot === "string" && THREADS[lot]) return lot;
+  return threadIn(save?.seed, dungeonId, version, regionVersionOf(save, dungeonId));
+}
+// Decides, once, what a crossing pinned at version 7 or later holds, and counts it for every thread awaiting a piece there.
+// `quiet`: a crossing that takes no part (the Second Wayfarer's footprints lie there, where no piece may): its own roll, uncounted.
+// Returns the thread it holds, or null.
+export function settleThreadLot(save, dungeonId, quiet = false) {
+  const m = ORDINARY.exec(String(dungeonId || "")), h = save?.consequences?.dungeons?.[dungeonId], version = storyVersionOf(save, dungeonId);
+  if (!m || !h || version < THREAD_CERTAIN.storyVersion || h.threadLot !== undefined) return threadHeld(save, dungeonId);
+  const rx = Number(m[1]), ry = Number(m[2]), natural = threadIn(save?.seed, dungeonId, version, regionVersionOf(save, dungeonId));
+  const pick = quiet ? null : certainThread(save, rx, ry, version, natural), held = pick || natural;
+  h.threadLot = pick || "";
+  if (!quiet) for (const id of threadsAwaiting(save, rx, ry, version)) setThreadDry(save, id, id === held ? 0 : threadDry(save, id) + 1);
+  return held;
+}
+// The floor a piece may lie on in `map` (open floor away from the entry), or null when the map takes no piece at all.
+export function threadRelicFloor(map) {
   if (!map?.tiles?.length || map.multiLevel || map.arena || map.underwater || map.objects?.some((o) => o.kind === "threadRelic")) return null;
-  const id = threadIn(save?.seed, dungeonId, storyVersionOf(save, dungeonId), regionVersionOf(save, dungeonId)); if (!id) return null;
-  const T = THREADS[id], found = threadFound(save, id), here = found.indexOf(dungeonId), index = here >= 0 ? here : found.length; if (index >= T.pieces.length) return null;
   const w = map.width || 24, entry = map.entry || { x: 4, y: 5 }, taken = new Set((map.objects || []).map((o) => `${Math.round(o.x)},${Math.round(o.y)}`));
   const open = map.tiles.filter((t) => !t.blocked && !t.environment && !t.structure && !t.chasm && t.x > 1 && t.y > 1 && t.x < w - 2 && Math.hypot(t.x - entry.x, t.y - entry.y) >= 6 && !taken.has(`${t.x},${t.y}`) && !/water|lava|pit|chasm|canyon|void|Gate/i.test(String(t.kind)));
-  if (!open.length) return null;
+  return open.length ? open : null;
+}
+// Lays the crossing's piece on open floor away from the entry: the piece found here (read), or the next one not yet found
+// (waiting); nothing when the thread is complete and none was found here. The thread is the crossing's own (threadHeld: its
+// roll, or from story version 7 the begun thread made certain there, THREAD_CERTAIN).
+export function addThreadRelic(map, save, dungeonId) {
+  const open = threadRelicFloor(map); if (!open) return null;
+  const id = threadHeld(save, dungeonId); if (!id) return null;
+  const T = THREADS[id], found = threadFound(save, id), here = found.indexOf(dungeonId), index = here >= 0 ? here : found.length; if (index >= T.pieces.length) return null;
   const at = open[hashSeed(`${save.seed}:threads-at:v1:${dungeonId}`) % open.length], read = here >= 0;
   const o = { id: `thread-${id}`, kind: "threadRelic", thread: id, index, relic: T.relic, colour: T.colour, name: `${T.title}${read ? ", read" : ""}`, x: at.x, y: at.y, dungeonId, state: read ? "read" : "waiting", actions: ["read"] };
   (map.objects ||= []).push(o); return o;
@@ -441,7 +501,7 @@ export function readThreadRelic(save, o) {
   const T = THREADS[o?.thread]; if (!T) return { ok: false, message: "There is nothing here to read." };
   save.lore ||= {}; if (save.lore.threads === undefined) save.lore.threads = {}; ensureThreadState(save);
   const list = (save.lore.threads[o.thread] ||= []); let at = list.indexOf(o.dungeonId), first = false;
-  if (at < 0) { at = list.length; if (at >= T.pieces.length) return { ok: false, message: "The thread is complete." }; list.push(o.dungeonId || ""); first = true; }
+  if (at < 0) { at = list.length; if (at >= T.pieces.length) return { ok: false, message: "The thread is complete." }; list.push(o.dungeonId || ""); first = true; if (threadDry(save, o.thread)) setThreadDry(save, o.thread, 0); }
   o.state = "read"; o.index = at; o.name = `${T.title}, read`;
   const text = T.pieces[at], done = first && list.length >= T.pieces.length, n = list.length;
   return { ok: true, first, done, title: T.title, text, ending: T.ending, message: `${T.title}. ${text}${first ? (done ? ` ${T.ending}` : ` (${n} of ${T.pieces.length}.)`) : ""}` };
@@ -504,7 +564,7 @@ export const THREAD_TRAILS = Object.freeze({
   washing: Object.freeze({ radius: 40, notice: "DOWNSTREAM", unit: "bundles", lead: "Nell Ashby's washing, carried downstream" }),
 });
 const plainObject = (v) => !!v && typeof v === "object" && !Array.isArray(v);
-// Normalises save.lore.trails (thread-trails.ts) and save.lore.threadGifts when present, in place (types.ts freshSave and
+// Normalises save.lore.trails (thread-trails.ts), save.lore.threadDry (THREAD_CERTAIN) and save.lore.threadGifts when present, in place (types.ts freshSave and
 // migrateSave). Each is created on first use; unknown ids are kept as they were.
 export function ensureThreadTrails(save) {
   if (!save || typeof save !== "object" || !plainObject(save.lore)) return save;
@@ -520,6 +580,7 @@ export function ensureThreadTrails(save) {
     }
     lore.trails = out;
   }
+  if (lore.threadDry !== undefined) lore.threadDry = Object.fromEntries(Object.entries(plainObject(lore.threadDry) ? lore.threadDry : {}).map(([id, n]) => [id, Math.max(0, Math.floor(Number(n)) || 0)])); // story version 7 (THREAD_CERTAIN); unknown ids kept
   if (lore.threadGifts !== undefined) lore.threadGifts = Object.fromEntries(Object.entries(plainObject(lore.threadGifts) ? lore.threadGifts : {}).filter(([, v]) => v === true));
   return save;
 }

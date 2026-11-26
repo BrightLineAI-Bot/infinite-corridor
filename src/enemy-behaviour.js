@@ -16,9 +16,9 @@
 // and test world behaves exactly as before. Nothing here is saved: the runtime record `e.bhv` is not enumerable (a resumed
 // creature re-derives it; saves stay schema 14 and unchanged apart from the art's small numeric flags), all choices are hashed from stable ids (no Math.random), and the work
 // per frame is O(active creatures) plus a bounded kin check (BEHAVIOUR.spacing.scan).
-import { hashSeed } from "./random.js?v=r1059-3629aeded9d0";
-import { cowerRoll, WAYFARER_DREAD } from "./lore.js?v=r1059-3629aeded9d0"; // the Wayfarer's dread (Tim, 2026-11-15): a few lesser creatures cower
-import { createTactics, tacticsFrame, tacticsAllow, tacticsRing } from "./squad-tactics.js?v=r1059-3629aeded9d0"; // squad tactics (Tim, 2026-11-15): roles, places, the surround, punish windows
+import { hashSeed } from "./random.js?v=r1076-4dec3446cb5b";
+import { cowerRoll, WAYFARER_DREAD } from "./lore.js?v=r1076-4dec3446cb5b"; // the Wayfarer's dread (Tim, 2026-11-15): a few lesser creatures cower
+import { createTactics, tacticsFrame, tacticsAllow, tacticsRing } from "./squad-tactics.js?v=r1076-4dec3446cb5b"; // squad tactics (Tim, 2026-11-15): roles, places, the surround, punish windows
 
 export const BEHAVIOUR_VERSION = 1;
 

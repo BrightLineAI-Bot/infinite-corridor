@@ -1,64 +1,65 @@
-import { hatchlingDraw, drawHatchMama, drawHatchPen } from "./hatchling-render.js?v=r1059-3629aeded9d0"; // the Triceratops hatchling
-import { FOURFOLD_DAGGERS, isQuandrixStaff } from "./items.js?v=r1059-3629aeded9d0"; // the Fourfold Daggers' X of cuts; the Quandrix Staff in hand
-import { vulnerableUntil, glyphMinesOf, GLYPH_MINE, riftMinesOf, riftVoidOf, RIFT_MINE, encumberedLeft, pullMeterOf } from "./hit-cast-passives.js?v=r1059-3629aeded9d0"; // Tempo marks, Glyph Mine sigils, rift mines and their void, Encumbered (2026-11-19)
-import { ACTION_MOTION } from "./action-motion.js?v=r1059-3629aeded9d0"; // the Cinder Pike's standard-view thrust clock
-import { shadowTrailLive, cleaverRushLean, drawCleaverRushBlade } from "./brawler-spells.js?v=r1059-3629aeded9d0";
-import { aerialCastLead, AERIAL_CAST_POSE } from "./close-view-hero.js?v=r1059-3629aeded9d0"; // Aerial Step's cast, drawn in the standard view // a dodge's after-images replace the single dodge ghost
-import { swingIndicator, drawSwingSweep, PRIMARY_SWINGS } from "./melee-swing.js?v=r1059-3629aeded9d0"; // the weighted Cleaver swing (2026-11-14)
+import { wayfarerBody } from "./journey-start.js?v=r1076-4dec3446cb5b"; // the Wayfarer's body (Standard View: STD_FEMALE)
+import { hatchlingDraw, drawHatchMama, drawHatchPen } from "./hatchling-render.js?v=r1076-4dec3446cb5b"; // the Triceratops hatchling
+import { FOURFOLD_DAGGERS, isQuandrixStaff } from "./items.js?v=r1076-4dec3446cb5b"; // the Fourfold Daggers' X of cuts; the Quandrix Staff in hand
+import { vulnerableUntil, glyphMinesOf, GLYPH_MINE, riftMinesOf, riftVoidOf, RIFT_MINE, encumberedLeft, pullMeterOf } from "./hit-cast-passives.js?v=r1076-4dec3446cb5b"; // Tempo marks, Glyph Mine sigils, rift mines and their void, Encumbered (2026-11-19)
+import { ACTION_MOTION } from "./action-motion.js?v=r1076-4dec3446cb5b"; // the Cinder Pike's standard-view thrust clock
+import { shadowTrailLive, cleaverRushLean, drawCleaverRushBlade } from "./brawler-spells.js?v=r1076-4dec3446cb5b";
+import { aerialCastLead, AERIAL_CAST_POSE } from "./close-view-hero.js?v=r1076-4dec3446cb5b"; // Aerial Step's cast, drawn in the standard view // a dodge's after-images replace the single dodge ghost
+import { swingIndicator, drawSwingSweep, PRIMARY_SWINGS } from "./melee-swing.js?v=r1076-4dec3446cb5b"; // the weighted Cleaver swing (2026-11-14)
 const SWING_DRAW = {};
-import { drawQuandrixStaff } from "./quandrix-staff.js?v=r1059-3629aeded9d0";
-import { drawStegoTail, drawStegoBait } from "./stego-bait.js?v=r1059-3629aeded9d0"; // the Stego Bait (Tim, 2026-11-12)
-import { shakeOffset } from "./spino-rex.js?v=r1059-3629aeded9d0";
-import { drawBleedIcon } from "./bleed.js?v=r1059-3629aeded9d0";
-import { drawPoisonIcon } from "./apato-poison.js?v=r1059-3629aeded9d0";
-import { drawEarthResolveSigil } from "./apato-render.js?v=r1059-3629aeded9d0";
-import { insideResolve } from "./echoes.js?v=r1059-3629aeded9d0"; // the Earth Apatosaurus's root venom
-import { drawRealmTile, drawRealmCosmos, drawRealmObject } from "./seed-realm-render.js?v=r1059-3629aeded9d0"; // seed realms
-import { biomechanicalKeep } from "./close-view-room-routing.js?v=r1059-3629aeded9d0";
-import { PENTAGON_MURALS } from "./pentagon-halls.js?v=r1059-3629aeded9d0"; // release 795: the grand halls' murals, drawn small
-import { FAR_FOLK } from "./far-realms.js?v=r1059-3629aeded9d0";
-import { astralBeamAnchors } from "./astral-worm.js?v=r1059-3629aeded9d0";
-import { astralMountPresentation } from "./astral-worm-mount.js?v=r1059-3629aeded9d0";
-import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r1059-3629aeded9d0";
-import { playerFormPresentation, ordinaryFallPresentation, sampleFallPose, FALL_POSE } from './close-view-player-presentation.js?v=r1059-3629aeded9d0';
-import { enemyMeleeGeometry, MELEE_PATTERNS } from "./combat.js?v=r1059-3629aeded9d0";
-import { enemyPatternWindup } from "./enemy-patterns.js?v=r1059-3629aeded9d0";
-import { ruleRows } from "./elders.js?v=r1059-3629aeded9d0";
-import { SEA_CREATURES } from "./sea-creatures.js?v=r1059-3629aeded9d0";
-import { BOAT } from "./boats.js?v=r1059-3629aeded9d0";
-import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r1059-3629aeded9d0";
-import { isMarineTile } from "./world-beasts.js?v=r1059-3629aeded9d0";
-import { jumpLift, JUMP, STARFIELD_PLATFORMS, platformPos, PRIMARY_ECHO_VISUAL, FALL_RESCUE } from "./game.js?v=r1059-3629aeded9d0"; // 613: Starfield rafts
-import { lowHealthEdgeState, lowHealthEdgeFrames, drawLowHealthEdge } from "./combat-visuals.js?v=r1059-3629aeded9d0"; // the low-health edge: the death static, red, at the edges
-import { SEASONS, treeSeason } from "./seasons.js?v=r1059-3629aeded9d0";
-import { setTreeSeason, bizarroWash } from "./landscape-render.js?v=r1059-3629aeded9d0";
-import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r1059-3629aeded9d0";
-import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r1059-3629aeded9d0";
-import { interiorTerrain, interiorSurfaceLevel, liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r1059-3629aeded9d0";
-import { TREES } from "./trees.js?v=r1059-3629aeded9d0";
-import { AFFIXES, dronePos, affixNames, phaseShielded, PHASE_SHIELD } from "./affixes.js?v=r1059-3629aeded9d0";
-import { actorPresentation, playerDroneVisualAnchor } from "./actor-presentation.js?v=r1059-3629aeded9d0";
-import { KIT_MOVES } from "./boss-kit.js?v=r1059-3629aeded9d0";
-import { SKY_DISCS, SEEDS } from "./skylands.js?v=r1059-3629aeded9d0"; // release 587; travel seeds
-import { drawsBizarro, drawBizarroCreature, coreLimbPose, coreLimbAngle, drawBehaviourCues, behaviourCueOffset, behaviourJolt, drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed, drawNativePackEffects, drawNativePackFloor, hasNativePackEffects } from "./monster-render.js?v=r1059-3629aeded9d0";
-import { drawSpinoBiteOverlay } from "./spino-render.js?v=r1059-3629aeded9d0";
-import { TURTLE_SHELL } from "./turtle-shell.js?v=r1059-3629aeded9d0"; // the Mountain Turtle's shell
-import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r1059-3629aeded9d0"; // release 678
-import { drawStalkerCloseViewFloor } from "./close-view-beast-stalker.js?v=r1059-3629aeded9d0";
-import { CLOSE_VIEW_BEAST_SIGHT, closeViewSectionBeast } from "./close-view-beasts.js?v=r1059-3629aeded9d0"; // Close View: a beast in your section is captured wherever it stands in it
-import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r1059-3629aeded9d0"; // the Pentagon's finale arena, the Stillworks
-import { penSide } from "./building.js?v=r1059-3629aeded9d0"; // release 748: pens sized for the beast
-import { triceratopsHornPose, TRICERATOPS_HORN_POSE, triceratopsDrillPose, triceratopsDrillFacing, TRICERATOPS_DRILL_POSE, TRICERATOPS_COMPOSITE } from "./beast-mounts.js?v=r1059-3629aeded9d0";
-import { drawMount, drawMountFront, drawMountShadow } from "./beast-mounts-render.js?v=r1059-3629aeded9d0"; // release 748: the Wayfarer riding
-import { GATE_REVENANT, DANGER, BOSS_PACE, bossPaced, MONSTER_PACK } from "./monster-pack.js?v=r1059-3629aeded9d0";
-import { drawRelayNode } from "./relay-network.js?v=r1059-3629aeded9d0";
-import { structureOccupancy } from "./world.js?v=r1059-3629aeded9d0";
-import { roofDeckById } from "./roof-decks.js?v=r1059-3629aeded9d0"; // roof decks: the roof stood on keeps its roof drawn
-import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r1059-3629aeded9d0";
-import { LANTERN, LANTERN_STOPS, lanternShines, lanternLit as lanternIsLit } from "./spell-slots.js?v=r1059-3629aeded9d0"; // the Lantern: its light over the dark (below, marked LANTERN)
-import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow, creatureInSight, creatureSightLevel, drawSightSilhouette, sightFrame } from "./labyrinths.js?v=r1059-3629aeded9d0"; // sight lines (2026-11-18): creatures out of the Wayfarer's sight are faint neutral silhouettes
-import { closeViewFolkKind, folkLook, FOLK_MOTION } from "./close-view-folk.js?v=r1059-3629aeded9d0"; // Close View townsfolk: what a captured person's card keeps (folkCapture)
-import { closeViewFrame, closeViewCapturing, closeViewCreatureSight, closeViewSightFade, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition, drawCloseViewLightsStd, INTERIOR_LIGHT, roomLightField, outdoorNight, closeViewLeaving, AERIAL_RINGS, aerialRingState } from "./close-view.js?v=r1059-3629aeded9d0"; // Close View: three hooks below, marked CLOSE VIEW
+import { drawQuandrixStaff } from "./quandrix-staff.js?v=r1076-4dec3446cb5b";
+import { drawStegoTail, drawStegoBait } from "./stego-bait.js?v=r1076-4dec3446cb5b"; // the Stego Bait (Tim, 2026-11-12)
+import { shakeOffset } from "./spino-rex.js?v=r1076-4dec3446cb5b";
+import { drawBleedIcon } from "./bleed.js?v=r1076-4dec3446cb5b";
+import { drawPoisonIcon } from "./apato-poison.js?v=r1076-4dec3446cb5b";
+import { drawEarthResolveSigil } from "./apato-render.js?v=r1076-4dec3446cb5b";
+import { insideResolve } from "./echoes.js?v=r1076-4dec3446cb5b"; // the Earth Apatosaurus's root venom
+import { drawRealmTile, drawRealmCosmos, drawRealmObject } from "./seed-realm-render.js?v=r1076-4dec3446cb5b"; // seed realms
+import { biomechanicalKeep } from "./close-view-room-routing.js?v=r1076-4dec3446cb5b";
+import { PENTAGON_MURALS } from "./pentagon-halls.js?v=r1076-4dec3446cb5b"; // release 795: the grand halls' murals, drawn small
+import { FAR_FOLK } from "./far-realms.js?v=r1076-4dec3446cb5b";
+import { astralBeamAnchors } from "./astral-worm.js?v=r1076-4dec3446cb5b";
+import { astralMountPresentation } from "./astral-worm-mount.js?v=r1076-4dec3446cb5b";
+import { knockdownPose, drawShockSparks } from "./lightning-giant-render.js?v=r1076-4dec3446cb5b";
+import { playerFormPresentation, ordinaryFallPresentation, sampleFallPose, FALL_POSE } from './close-view-player-presentation.js?v=r1076-4dec3446cb5b';
+import { enemyMeleeGeometry, MELEE_PATTERNS } from "./combat.js?v=r1076-4dec3446cb5b";
+import { enemyPatternWindup } from "./enemy-patterns.js?v=r1076-4dec3446cb5b";
+import { ruleRows } from "./elders.js?v=r1076-4dec3446cb5b";
+import { SEA_CREATURES } from "./sea-creatures.js?v=r1076-4dec3446cb5b";
+import { BOAT } from "./boats.js?v=r1076-4dec3446cb5b";
+import { MECH, DRONE, DRONE_FIZZLE } from "./vehicle-gates.js?v=r1076-4dec3446cb5b";
+import { isMarineTile } from "./world-beasts.js?v=r1076-4dec3446cb5b";
+import { jumpLift, JUMP, STARFIELD_PLATFORMS, platformPos, PRIMARY_ECHO_VISUAL, FALL_RESCUE } from "./game.js?v=r1076-4dec3446cb5b"; // 613: Starfield rafts
+import { lowHealthEdgeState, lowHealthEdgeFrames, drawLowHealthEdge } from "./combat-visuals.js?v=r1076-4dec3446cb5b"; // the low-health edge: the death static, red, at the edges
+import { SEASONS, treeSeason } from "./seasons.js?v=r1076-4dec3446cb5b";
+import { setTreeSeason, bizarroWash } from "./landscape-render.js?v=r1076-4dec3446cb5b";
+import { drawLandscapeTile, setLandscapeClock, drawTraversalCues, drawHazardBrinks, levelName, setLandscapeStaticPass, landscapeTileAnimated, animateLandscapeTiles, landscapeTileLift, watcherSigil, drawCanopyBehindTrunk, drawCanopyAboveCrown } from "./landscape-render.js?v=r1076-4dec3446cb5b";
+import { elevationAt, LETHAL_KINDS } from "./landscape.js?v=r1076-4dec3446cb5b";
+import { interiorTerrain, interiorSurfaceLevel, liftAt, tileUnder, LIFT_PER_LEVEL, CANOPY_LIFT, tileLiftScale } from "./landscape.js?v=r1076-4dec3446cb5b";
+import { TREES } from "./trees.js?v=r1076-4dec3446cb5b";
+import { AFFIXES, dronePos, affixNames, phaseShielded, PHASE_SHIELD } from "./affixes.js?v=r1076-4dec3446cb5b";
+import { actorPresentation, playerDroneVisualAnchor } from "./actor-presentation.js?v=r1076-4dec3446cb5b";
+import { KIT_MOVES } from "./boss-kit.js?v=r1076-4dec3446cb5b";
+import { SKY_DISCS, SEEDS } from "./skylands.js?v=r1076-4dec3446cb5b"; // release 587; travel seeds
+import { drawsBizarro, drawBizarroCreature, coreLimbPose, coreLimbAngle, drawBehaviourCues, behaviourCueOffset, behaviourJolt, drawPackMonster, drawPackTelegraphs, drawPackEffects, crystalFlightLift, drawMorphEffects, drawTurtleShell, drawGloomDark, drawGloomVeiled, drawDazed, drawNativePackEffects, drawNativePackFloor, hasNativePackEffects } from "./monster-render.js?v=r1076-4dec3446cb5b";
+import { drawSpinoBiteOverlay } from "./spino-render.js?v=r1076-4dec3446cb5b";
+import { TURTLE_SHELL } from "./turtle-shell.js?v=r1076-4dec3446cb5b"; // the Mountain Turtle's shell
+import { drawStalker, drawStalkerMarks, drawStalkerMarker } from "./stalker-render.js?v=r1076-4dec3446cb5b"; // release 678
+import { drawStalkerCloseViewFloor } from "./close-view-beast-stalker.js?v=r1076-4dec3446cb5b";
+import { CLOSE_VIEW_BEAST_SIGHT, closeViewSectionBeast } from "./close-view-beasts.js?v=r1076-4dec3446cb5b"; // Close View: a beast in your section is captured wherever it stands in it
+import { drawStillworksTile, drawStillworksObject, drawStillworksBeyond, drawStillworksLight } from "./pentagon-arena-render.js?v=r1076-4dec3446cb5b"; // the Pentagon's finale arena, the Stillworks
+import { penSide } from "./building.js?v=r1076-4dec3446cb5b"; // release 748: pens sized for the beast
+import { triceratopsHornPose, TRICERATOPS_HORN_POSE, triceratopsDrillPose, triceratopsDrillFacing, TRICERATOPS_DRILL_POSE, TRICERATOPS_COMPOSITE } from "./beast-mounts.js?v=r1076-4dec3446cb5b";
+import { drawMount, drawMountFront, drawMountShadow } from "./beast-mounts-render.js?v=r1076-4dec3446cb5b"; // release 748: the Wayfarer riding
+import { GATE_REVENANT, DANGER, BOSS_PACE, bossPaced, MONSTER_PACK } from "./monster-pack.js?v=r1076-4dec3446cb5b";
+import { drawRelayNode } from "./relay-network.js?v=r1076-4dec3446cb5b";
+import { structureOccupancy } from "./world.js?v=r1076-4dec3446cb5b";
+import { roofDeckById } from "./roof-decks.js?v=r1076-4dec3446cb5b"; // roof decks: the roof stood on keeps its roof drawn
+import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } from "./dungeon-framework.js?v=r1076-4dec3446cb5b";
+import { LANTERN, LANTERN_STOPS, lanternShines, lanternLit as lanternIsLit } from "./spell-slots.js?v=r1076-4dec3446cb5b"; // the Lantern: its light over the dark (below, marked LANTERN)
+import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow, creatureInSight, creatureSightLevel, drawSightSilhouette, sightFrame } from "./labyrinths.js?v=r1076-4dec3446cb5b"; // sight lines (2026-11-18): creatures out of the Wayfarer's sight are faint neutral silhouettes
+import { closeViewFolkKind, folkLook, FOLK_MOTION } from "./close-view-folk.js?v=r1076-4dec3446cb5b"; // Close View townsfolk: what a captured person's card keeps (folkCapture)
+import { closeViewFrame, closeViewCapturing, closeViewCreatureSight, closeViewSightFade, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition, drawCloseViewLightsStd, INTERIOR_LIGHT, roomLightField, outdoorNight, closeViewLeaving, AERIAL_RINGS, aerialRingState } from "./close-view.js?v=r1076-4dec3446cb5b"; // Close View: three hooks below, marked CLOSE VIEW
 
 // Native bodies retain their semantic decorations. These callbacks are used only by the GPU capture;
 // the ordinary renderer's complete closure below is unchanged. Floor geometry never becomes a standing card.
@@ -120,6 +121,28 @@ function drawLowHealth(ctx, g, w, h, now, fallCue) {
   drawLowHealthEdge(ctx, st, w, h, LHE_ART.frames);
 }
 let STD_HANDS_FREE = false; // set around the Wayfarer's own sprite draw (actor reads it for "player")
+// The Salvage Blade in the Standard View sprite (Tim, 2026-11-26: the violin read as something rude at sprite size; "it should look
+// like that Japanese weapon police used to break swords", a jitte). A thin blue rod (`rod`: length, thickness) from the hand,
+// and beside it the hook (`hook`), a shorter parallel prong joined to the rod at the hand by the grip (`grip`) with a one-pixel
+// gap (`gap`) between them: the second "blade", snapped at about a third of the rod's length with a bright, jagged end (`jag`,
+// two staggered pixels). Body units from the hand outward; about 30 a body unit, so .034 is a sprite pixel. Colours as Close
+// View's (close-view-models.ts salvage.colors). Rects only, no allocation. Close View keeps the violin form.
+export const SALVAGE_BLADE_STD = Object.freeze({ blade: "#3f74d8", tine: "#5b8fe6", break: "#a9c6f2", y: -.5, from: .2, px: .034,
+  rod: Object.freeze([.34, .068]), grip: .034, gap: .034, hook: Object.freeze([.11, .068]), jag: .034 });
+const salvageX = (facing, from, len) => facing === "left" ? -from - len : from; // body units outward from the hand, either side
+let STD_SALVAGE = false; // set around the Wayfarer's own sprite draw when the Salvage Blade is her primary
+let STD_BODY = "male"; // the same: the Wayfarer's body (journey-start.ts WAYFARER_BODY)
+// The female Wayfarer in Standard View (Tim, 2026-11-25): a slimmer frame and smaller head, and a small white braid brought
+// forward over the shoulder that is not holding the weapon, hanging down the front to the chest. A few rects, no new cost.
+// Tim (2026-11-26): a gentle hip curve (`hips`, a pixel wider each side than the torso, from below the waist to its foot), the feet
+// a little fuller and closer (a small natural gap, not a wide one), and the braid starting from behind her head: a `lock` beside
+// the head's side, above the shoulder (drawn under the head), then the plaits from below the head's edge down the front.
+// From behind (`back`, for the right shoulder; mirrored for the left), it runs from the nape out over the shoulder.
+export const STD_FEMALE = Object.freeze({ torso: Object.freeze([-0.185, -0.57, 0.37, 0.5]), hips: Object.freeze([-0.215, -0.25, 0.43, 0.18]), head: Object.freeze([-0.165, -0.755, 0.33, 0.27]), visor: Object.freeze([-0.11, -0.685, 0.22, 0.13]), eyes: Object.freeze([-0.065, 0.035, -0.655, 0.035]), feet: Object.freeze([-0.18, 0.055, -0.08, 0.125, 0.12]),
+  braid: Object.freeze({ hair: "#e6e3da", shade: "#b9b5aa", tie: "#5a4632", x: 0.15, width: 0.06, top: -0.455, plaits: Object.freeze([0, 0.065, 0.13]), plait: 0.06, tieAt: 0.19, tieH: 0.025, tuft: 0.035,
+    lock: Object.freeze({ x: 0.15, width: 0.08, top: -0.66, height: 0.18 }), back: Object.freeze([Object.freeze([0.06, -0.56, 0.07, 0.07]), Object.freeze([0.11, -0.52, 0.08, 0.06])]) }) });
+// The off-hand side for a facing (the blade is drawn on the left when facing left, otherwise on the right): -1 left, 1 right.
+export const stdBraidSide = (facing) => facing === "left" ? 1 : -1;
 const AERIAL_STD_ARMS = Object.freeze({ lean: .16, back: .34, up: .1, hang: .26, spread: .17, arm: "#3b2e23", hand: "#e0b48c" });
 function drawAerialArmsStd(ctx, x, y, s, facing, k) {
   const A = AERIAL_STD_ARMS, cx = (x + .5) * s, cy = (y + .38) * s, side = facing === "right" ? 1 : facing === "left" ? -1 : 0, up = facing === "up";
@@ -1862,6 +1885,14 @@ function actor(
     }
   }
   if (kind === "player") {
+    if (STD_BODY === "female") { const F = STD_FEMALE, B = F.braid, side = stdBraidSide(facing), bx = side * B.x - B.width / 2;
+      rect(p[1], ...F.torso); rect(p[1], ...F.hips);
+      if (facing !== "up") { const L = B.lock, lx = side > 0 ? L.x : -L.x - L.width; rect(B.shade, lx, L.top, L.width, L.height * .45); rect(B.hair, lx, L.top + L.height * .45, L.width, L.height * .55); } // from behind her head, over the shoulder
+      rect(p[0], ...F.head); rect("#171817", ...F.visor); rect(p[2], F.eyes[0], F.eyes[2], F.eyes[3], F.eyes[3]); rect(p[2], F.eyes[1], F.eyes[2], F.eyes[3], F.eyes[3]);
+      rect("#24231f", F.feet[0], F.feet[2], F.feet[3], F.feet[4]); rect("#24231f", F.feet[1], F.feet[2], F.feet[3], F.feet[4]);
+      if (facing === "up") { for (const [x, y, w, h] of B.back) rect(B.hair, side > 0 ? x : -x - w, y, w, h); } // from behind: from the nape out over the shoulder
+      if (facing !== "up") { rect(B.hair, bx, B.top - B.plait * .5, B.width, B.plait * .5); B.plaits.forEach((y, i) => rect(i & 1 ? B.shade : B.hair, bx + (i & 1 ? B.width * .15 : 0), B.top + y, B.width * (i & 1 ? .7 : 1), B.plait)); rect(B.tie, bx + B.width * .1, B.top + B.tieAt, B.width * .8, B.tieH); rect(B.hair, bx + B.width * .2, B.top + B.tieAt + B.tieH, B.width * .6, B.tuft); }
+    } else {
     rect(p[1], -0.22, -0.57, 0.44, 0.5);
     rect(p[0], -0.18, -0.76, 0.36, 0.28);
     rect("#171817", -0.12, -0.69, 0.24, 0.14);
@@ -1869,7 +1900,16 @@ function actor(
     rect(p[2], 0.04, -0.66, 0.04, 0.04);
     rect("#24231f", -0.2, -0.08, 0.13, 0.12);
     rect("#24231f", 0.07, -0.08, 0.13, 0.12);
-    if (!STD_HANDS_FREE) rect(p[2], facing === "left" ? -0.38 : 0.2, -0.48, 0.18, 0.05); // the blade in hand (AERIAL_HANDS_FREE: put away for Aerial Step's cast)
+    }
+    if (STD_HANDS_FREE) { /* AERIAL_HANDS_FREE: the weapon put away for Aerial Step's cast */ }
+    else if (STD_SALVAGE) { // the Salvage Blade as a jitte, its hook snapped: rects only, no allocation
+      const B = SALVAGE_BLADE_STD, x0 = B.from + B.grip, hy = B.y + B.rod[1] + B.gap, H = B.rod[1] + B.gap + B.hook[1];
+      rect(B.blade, salvageX(facing, B.from, B.grip), B.y, B.grip, H); // the grip in the hand, rod and hook both in it
+      rect(B.tine, salvageX(facing, x0, B.rod[0]), B.y, B.rod[0], B.rod[1]); // the rod, whole to its blunt end
+      rect(B.blade, salvageX(facing, x0, B.hook[0]), hy, B.hook[0], B.hook[1]); // the hook beside it, a third as long
+      rect(B.break, salvageX(facing, x0 + B.hook[0] - B.jag, B.jag), hy, B.jag, B.hook[1] / 2); // its snapped end, bright and jagged
+      rect(B.break, salvageX(facing, x0 + B.hook[0], B.jag), hy + B.hook[1] / 2, B.jag, B.hook[1] / 2);
+    } else rect(p[2], facing === "left" ? -0.38 : 0.2, -0.48, 0.18, 0.05); // the blade in hand
   } else if(kind==='vesperwing'){rect(p[1],-.09,-.62,.18,.56);ctx.fillStyle=p[0];ctx.beginPath();ctx.moveTo(k-s*.08*sc,base-s*.5*sc);ctx.lineTo(k-s*.7*sc,base-s*.85*sc);ctx.lineTo(k-s*.48*sc,base-s*.22*sc);ctx.closePath();ctx.fill();ctx.beginPath();ctx.moveTo(k+s*.08*sc,base-s*.5*sc);ctx.lineTo(k+s*.7*sc,base-s*.85*sc);ctx.lineTo(k+s*.48*sc,base-s*.22*sc);ctx.closePath();ctx.fill();rect(p[2],-.07,-.55,.14,.18)}
   else if(kind==='gravitantBell'){ctx.fillStyle=p[0];ctx.beginPath();ctx.ellipse(k,base-s*.48*sc,s*.38*sc,s*.43*sc,0,0,7);ctx.fill();ctx.strokeStyle=p[2];ctx.stroke();for(let q=-2;q<=2;q++)rect(p[1],q*.12,-.18,.06,.28)}
   else if(kind==='mireApostle'){ctx.fillStyle=p[1];ctx.beginPath();ctx.ellipse(k,base-s*.25*sc,s*.48*sc,s*.32*sc,0,0,7);ctx.fill();rect(p[0],-.32,-.65,.64,.44);rect(p[2],-.08,-.53,.16,.16)}
@@ -3344,7 +3384,7 @@ export function render(ctx, g, w, h, now) {
       if (mech && !suited) drawSubmersible(ctx, p.x, p.y - (lift + mechLift) / s, s, p.facing, now, "back", 0, false, g.mechBoosting);
       const subHidden = g.area === "overworld" && g.save.boat?.aboard && g._subDive > 0; if (subHidden) { ctx.save(); ctx.globalAlpha = .12; } // release 311: under the surface
       const aerialK = kd || suited || mech || seatInfo ? 0 : aerialCastStd(g, now); // Aerial Step's cast: lean and arms swept back
-      const handsFree = !kd && !suited && !mech && aerialHandsFreeStd(g, now); STD_HANDS_FREE = handsFree; // AERIAL_HANDS_FREE: the weapon put away for the cast
+      const handsFree = !kd && !suited && !mech && aerialHandsFreeStd(g, now); STD_HANDS_FREE = handsFree; { const q = g.save.equipment?.primary; STD_SALVAGE = !!q && (q.id === "salvage-blade" || q.name === "Salvage Blade"); } STD_BODY = wayfarerBody(g.save); // items.ts primaryCarryKind's Salvage Blade test, without its per-call lookup // AERIAL_HANDS_FREE: the weapon put away for the cast
       const rushLean = (kd || suited || mech || seatInfo ? 0 : cleaverRushLean(g)) + (aerialK > 0 ? AERIAL_STD_ARMS.lean * aerialK * (p.facing === "right" ? 1 : p.facing === "left" ? -1 : 0) : 0); // the Verge Cleaver's Lava Slash rush (2026-11-14): tipped into the charge
       if (aerialK > 0 && p.facing === "down") drawAerialArmsStd(ctx, p.x, p.y - (lift + seat) / s, s, p.facing, aerialK); // facing the camera, the arms go behind the body
       if (rushLean) { const fx = (p.x + .5) * s, fy = (p.y + .9) * s - lift; ctx.save(); ctx.translate(fx, fy); ctx.rotate(rushLean); ctx.translate(-fx, -fy); }
@@ -3358,7 +3398,7 @@ export function render(ctx, g, w, h, now) {
         p.facing,
         Math.floor(p.walkPhase || 0),
         now < (p.attackUntil || 0) ? "attack" : "walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1,
-      ); STD_HANDS_FREE = false;
+      ); STD_HANDS_FREE = false; STD_SALVAGE = false; STD_BODY = "male";
       if (aerialK > 0 && p.facing !== "down") drawAerialArmsStd(ctx, p.x, p.y - (lift + seat) / s, s, p.facing, aerialK); // inside the lean
       if (rushLean) { ctx.restore(); if (cleaverRushLean(g)) drawCleaverRushBlade(ctx, g, s, lift); } // the blade carried low and trailing
       if (!suited && !mech) drawAerialRingsStd(ctx, g, (p.x + .5) * s, (p.y + .82) * s - lift - seat, s, now, 1); // Aerial Step: the near halves, over them

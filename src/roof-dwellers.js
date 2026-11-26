@@ -19,9 +19,10 @@
 //   roofAt(map, x, y)  -> is the tile (x, y) of this overworld section the Pentagon's roof (walkable roof the Wayfarer can stand on)?
 //   roofSpots(map)     -> the roof tiles of this section, [{ x, y }], in a stable order.
 // Until wired, a tile flagged `pentRoof` counts as roof (no tile has that flag today, so nothing spawns).
-import { hashSeed } from "./random.js?v=r1059-3629aeded9d0";
-import { LETHAL_KINDS } from "./landscape.js?v=r1059-3629aeded9d0";
-import { MONSTER_PACK, MOVEMENT_MODES, ATTACK_MODULES } from "./monster-pack.js?v=r1059-3629aeded9d0";
+import { reductionGuard } from "./stages.js?v=r1076-4dec3446cb5b"; // defence pack: the gear reduction ceiling (DAMAGE_REDUCTION.cap)
+import { hashSeed } from "./random.js?v=r1076-4dec3446cb5b";
+import { LETHAL_KINDS } from "./landscape.js?v=r1076-4dec3446cb5b";
+import { MONSTER_PACK, MOVEMENT_MODES, ATTACK_MODULES } from "./monster-pack.js?v=r1076-4dec3446cb5b";
 
 export const ROOF_DWELLERS = {
   version: 1, // the plan's hash namespace; a new plan takes a new version (Pentagons already walked keep theirs)
@@ -122,7 +123,7 @@ export function roofSpawns(map, pent, rx, ry, slain = []) {
 const strongest = (c) => Math.max(1, ...[...(c.packAttacks || MONSTER_PACK[c.kind]?.attacks || [])].map((id) => Number(ATTACK_MODULES[id]?.damage) || 0));
 export function tuneDweller(c, ref) {
   const T = ROOF_DWELLERS.tune, hits = T.hits[c?.kind], share = T.share[c?.kind]; if (!c || !ref || hits == null) return c;
-  const guard = Math.max(0, Math.min(.75, Number(ref.guard) || 0)), life = Math.max(1, Number(ref.maxHp) || 60) / (1 - guard), hp = Math.max(Number(c.maxHp) || 1, Math.round((Number(ref.perHit) || 1) * hits));
+  const guard = reductionGuard(ref.guard), life = Math.max(1, Number(ref.maxHp) || 60) / (1 - guard), hp = Math.max(Number(c.maxHp) || 1, Math.round((Number(ref.perHit) || 1) * hits));
   const damage = Math.min(Math.max(Number(c.damage) || 0, share * life), T.cap * life / strongest(c));
   c.maxHp = c.hp = hp; c.damage = Math.max(T.floor, Math.floor(damage)); if (c.baseDamage) c.baseDamage = c.damage; c.roofTuned = true;
   return c;

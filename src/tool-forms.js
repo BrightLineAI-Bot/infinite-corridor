@@ -1,6 +1,6 @@
-import { unharmablePerson } from "./townsfolk.js?v=r1059-3629aeded9d0"; // Tim (2026-11-20): no non-hostile person can be harmed
-import { stampAttackVisual } from "./action-motion.js?v=r1059-3629aeded9d0";
-import { hashSeed } from "./random.js?v=r1059-3629aeded9d0";
+import { unharmablePerson } from "./townsfolk.js?v=r1076-4dec3446cb5b"; // Tim (2026-11-20): no non-hostile person can be harmed
+import { stampAttackVisual } from "./action-motion.js?v=r1076-4dec3446cb5b";
+import { hashSeed } from "./random.js?v=r1076-4dec3446cb5b";
 // Tool forms (release 533; Tim, 2026-10-28: "passive abilities... one can turn the blunderbuss's 3 shot cone spread into an
 // arc... another can turn the great sweep... like 3 swords that float with you... they shoot at the nearest enemy... nanobot
 // daggers... with a yellow sigil, so we can show that they are... physical").
@@ -255,7 +255,7 @@ export const CARBINE = {
   charge: { grace: .2, full: 1.25, min: 1.3, max: 2.4, pierce: 2, rounds: 3, restampMs: 260 },
   poseMs: 600, // the raised-carbine visual each press (and charge restamp) holds
   trace: { life: .22, max: 6, width: .07 },
-  colors: { beam: "#7fe7ff", core: "#eafcff", glow: 0x7fe7ff },
+  colors: { beam: "#7fe7ff", core: "#eafcff", glow: 0x7fe7ff, breath: "#9fd9e6" /* glyphs.ts GLYPHS["gathered-breath"].color: the ring's beads */ },
   messages: { full: "The Carbine releases a full charge!", release: "The Carbine releases." },
 };
 // How full a charge held `held` s is: 0 below the grace, 1 at `full` and past it.
@@ -423,6 +423,13 @@ export function drawToolForms(ctx, game, toScreen, s, t, capture = null) {
 // lasers (CONTINUOUS_ASSAULT). One stroke per layer; no allocation. Reduced motion and safe mode keep the glow steady.
 // `capture` is set when Close View draws this onto its floor: the lasers' columns are then Close View's own (close-view.ts),
 // so only their rings and scorch go on the floor.
+// Gathered Breath (glyphs.ts CHARGE_GLYPH; 2026-11-25, Tim: "maybe it lowered the charge time; I couldn't tell"): one bead per
+// copy set, just outside the start of a charge ring, so a ring that fills sooner reads as quickened. No allocation.
+export function drawBreathBeads(ctx, x, y, R, n, color) {
+  const k = Math.min(6, Math.max(0, Math.floor(Number(n) || 0))); if (!k) return;
+  ctx.globalAlpha = .95; ctx.fillStyle = color; const r = Math.max(2, R * .08), o = R * 1.2;
+  for (let i = 0; i < k; i++) { const a = -Math.PI / 2 - .3 * (i + .5); ctx.beginPath(); ctx.arc(x + Math.cos(a) * o, y + Math.sin(a) * o, r, 0, 7); ctx.fill(); }
+}
 export function drawCarbine(ctx, game, toScreen, s, t, capture = null) {
   const C = CARBINE, K = game.carbine, still = !!(game.presentation?.reduceMotion || game.presentation?.safeMode); let any = false;
   ctx.save(); try {
@@ -439,7 +446,8 @@ export function drawCarbine(ctx, game, toScreen, s, t, capture = null) {
     const c = K?.charge; if (c && carbineCharged(c.held)) { const k = carbineFill(c.held), P = game.player, o = { x: P.x + .5 + c.dir.x * .42, y: P.y + .45 + c.dir.y * .42 }, [x, y] = toScreen(o), pulse = still ? 1 : 1 + .12 * Math.sin(t * 18), R = s * (.12 + .2 * k) * pulse;
       ctx.globalAlpha = .35 + .3 * k; ctx.fillStyle = C.colors.beam; ctx.beginPath(); ctx.arc(x, y, R * 1.8, 0, 7); ctx.fill();
       ctx.globalAlpha = 1; ctx.fillStyle = C.colors.core; ctx.beginPath(); ctx.arc(x, y, R * .6, 0, 7); ctx.fill();
-      const [px, py] = toScreen({ x: P.x + .5, y: P.y + .45 }); ctx.strokeStyle = k >= 1 ? C.colors.core : C.colors.beam; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, py, s * .58, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k); ctx.stroke(); }
+      const [px, py] = toScreen({ x: P.x + .5, y: P.y + .45 }); ctx.strokeStyle = k >= 1 ? C.colors.core : C.colors.beam; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(px, py, s * .58, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k); ctx.stroke();
+      drawBreathBeads(ctx, px, py, s * .58, game.chargeGlyphs?.() || 0, C.colors.breath); }
     // The Shadow Clone charging with her (CLONE_CARBINE): the same glow and ring at its muzzle, in its violet.
     const q = game.cloneCarbineGlow?.(); if (q) {
       const V = CLONE_CARBINE.colors, [x, y] = toScreen(q), pulse = still ? 1 : 1 + .12 * Math.sin(t * 18 + 1.3), R = s * (.12 + .2 * q.k) * pulse;

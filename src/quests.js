@@ -38,8 +38,8 @@
 // past 1,000 sections: Ember Mend and Wellspring (quests that open once the Wayfarer has stood 1,000 sections out), Mage's Hand
 // and Continuous Assault (far threads, Phase 7). Eligible directed quests open independently; an unfinished early quest never
 // prevents a later quest from being offered. The player still chooses one quest at a time for the compass to follow.
-import { hashSeed } from "./random.js?v=r1059-3629aeded9d0";
-import { exploring, progressionKept } from "./journey-start.js?v=r1059-3629aeded9d0";
+import { hashSeed } from "./random.js?v=r1076-4dec3446cb5b";
+import { exploring, progressionKept } from "./journey-start.js?v=r1076-4dec3446cb5b";
 
 export const STORY = Object.freeze({
   table: 5, // the progression table that withholds every b, d and V ability (journey-start.ts EXPLORATION.table); Phase 7's was 4
@@ -76,6 +76,11 @@ export const QUESTS = Object.freeze({
   // `cond` aegis (the creature's blow was turned by the Aegis) or force (Force Channel holds), `far` the least straight-line
   // distance from the Ember Refuge, `within` seconds from the first to the last (a time limit), `atPlace` only at the step's place
   // (`placeOf`: the place another step was given), `lay` a thing laid where the step happens (the metronome, on a Skyland).
+// Every offered goal can be completed (2026-11-25; a 60-hour run never finished either): `calls` (a step with `within`): while its
+// window runs, the creatures that come back to a floor where it is counted (fractured.ts RESPAWN) are its `kind`, so the rest can
+// be met in time (three Grave Lanterns in two minutes never happened in nine tries: a Pentagon floor holds two or three guards of
+// six sorts). A quest's `gift` is handed once when it opens (quest-places.ts questGift: { seed, n, step, label, line }), while
+// the step it is for still waits: Glyph Mine's first Pumice Seed came at about 45 hours.
   "corridor-golem": Object.freeze({
     id: "corridor-golem", ability: "field:corridor-golem", name: "Corridor Golem", title: "Five Hearts of Clay", visibility: "D",
     gate: Object.freeze({ tier: 3 }), giver: "quarry-keeper", giverName: "Shale", tier: "Under", from: Object.freeze({ rx: 0, ry: 0 }),
@@ -103,15 +108,16 @@ export const QUESTS = Object.freeze({
     id: "blade-stream", ability: "field:blade-stream", name: "Blade Stream", title: "Forty Lamps for the Heart", visibility: "D",
     gate: Object.freeze({ tier: 6 }), giver: "warden-oren", giverName: "Oren", tier: "Strange", from: Object.freeze({ rx: 0, ry: 0 }),
     steps: Object.freeze([
-      Object.freeze({ key: "lamps", verb: "defeat", on: "kill", kind: "graveLantern", where: "pentagon", need: 3, within: 120, text: "Find a Pentagon (the five-sided sigils cut in the ground point the way to one), and there defeat three Grave Lanterns before the first relights its lamp (two minutes from the first).", place: "pentagon" }),
+      Object.freeze({ key: "lamps", verb: "defeat", on: "kill", kind: "graveLantern", where: "pentagon", need: 3, within: 120, calls: true, text: "Find a Pentagon (the five-sided sigils cut in the ground point the way to one), and there defeat three Grave Lanterns before the first relights its lamp (two minutes from the first).", place: "pentagon" }),
     ]),
     offer: "The Pentagon's ledger asked for forty lamps for the Heart. Somebody carries them still. Put out three before the first one lights again, and come back with your blades singing. You'll find the place by its sigils: five sides, cut in the ground, one point drawn out long. Follow the long point.",
-    waiting: "Three lamps, and quick. The first one's patient. It'll wait two minutes, no more.",
+    waiting: "Three lamps, and quick. The first one's patient. It'll wait two minutes, no more. Put one out and the others come looking for it.",
     done: "The lamps go out one after another, too quick to relight, and their light stays in your blades as a storm.",
   }),
   "glyph-mine": Object.freeze({
     id: "glyph-mine", ability: "glyph-mine", name: "Glyph Mine", title: "Sigils from the Hollow Husk", visibility: "D",
     gate: Object.freeze({ tier: 8 }), giver: "keeper-sela", giverName: "Sela", tier: "Strange", from: Object.freeze({ rx: 0, ry: 0 }),
+    gift: Object.freeze({ seed: "pumice", n: 1, step: "wraiths", label: "a Pumice Seed", line: "Sela presses a Pumice Seed into your hand: \"Start with this one. I'd been keeping it for a rainy day; this is the day.\"" }),
     steps: Object.freeze([
       Object.freeze({ key: "wraiths", verb: "defeat", on: "kill", kind: "veinWraith", where: "husk", need: 5, token: "a vein sigil", text: "Plant a Pumice Seed (they turn up in chests and caches, and on open ground) at a Watcher's shrine; in the Hollow Husk defeat five Vein Wraiths and Act: collect their sigils." }),
       Object.freeze({ key: "sela", verb: "act", on: "speak", at: "keeper-sela", text: "Bring the five sigils to Sela in the Refuge.", needs: "wraiths" }),

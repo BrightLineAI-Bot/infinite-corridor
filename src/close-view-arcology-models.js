@@ -1,7 +1,7 @@
 // Five authored Arcology/Hive bodies. These are registry recipes only; presentation metadata controls admission.
 // Refinement pass (Tim, 2026-11-14): clearer anatomy at or under each body's earlier triangle count, and the attack joints of
 // CLOSE_VIEW_ARCOLOGY_LIMB_RIGS (below) on top of the shared creature root motion (close-view-models.ts creatureRootPose).
-import { MESH_FLOATS, prism, taper, ellipsoid, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r1059-3629aeded9d0';
+import { MESH_FLOATS, prism, taper, ellipsoid, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.js?v=r1076-4dec3446cb5b';
 
 // Palettes are the original renderer's primary, shadow and accent colors.
 const glass = 0x607c79, glassDark = 0x283b3b, glassEdge = 0xaab7aa;

@@ -7,13 +7,18 @@
 //
 // Everything balance-related is data in GLYPHS and RESONANCES. The Game calls hostLoadout() when it attacks and
 // glyphHit() after each hit lands; world-side effects go through a small adapter so this file stays testable.
-import { unharmablePerson } from "./townsfolk.js?v=r1059-3629aeded9d0"; // Tim (2026-11-20): no non-hostile person can be harmed
-import { hashSeed } from "./random.js?v=r1059-3629aeded9d0";
-import { tesseractBonus, TESSERACT_LINES } from "./tesseracts.js?v=r1059-3629aeded9d0";
+import { unharmablePerson } from "./townsfolk.js?v=r1076-4dec3446cb5b"; // Tim (2026-11-20): no non-hostile person can be harmed
+import { hashSeed } from "./random.js?v=r1076-4dec3446cb5b";
+import { tesseractBonus, TESSERACT_LINES } from "./tesseracts.js?v=r1076-4dec3446cb5b";
 
 export const GLYPH_VERSION = 1;
 export const HOSTS = ["melee", "tool", "spell"];
 export const SOCKETS_BY_TIER = { common: 1, rare: 2, epic: 2, relic: 3 };
+// Awakened sockets (Tim, 2026-11-25): an awakened weapon or tool (constellation.ts awaken) carries this many more, on top of its tier's
+// and the smith's (smithy.ts). Derived from the item (socketCount), so an item awakened before is opened on load (ensureGlyphState,
+// ensurePresetGear) with every glyph it holds kept. At most: a relic's 3 + the smith's 1 + this 1 = SOCKET_MAX.
+export const AWAKENED_SOCKETS = 1;
+export const SOCKET_MAX = SOCKETS_BY_TIER.relic + 1 + AWAKENED_SOCKETS;
 export const SPELL_SOCKETS = 2; // release 531: back to two (Tim); triads come from three-socket items (relic tier or a smith socket)
 export const DUST_PER_GLYPH = 6;
 
@@ -30,7 +35,7 @@ export const GLYPHS = {
   tether: { name: "Tether", sigil: "⊸", color: "#6fd0c4", text: { melee: "Hits slow foes by 40% for 2 s.", tool: "Hits slow foes by 40% for 1.5 s.", spell: "Pulses drag foes toward the centre." }, hit: { melee: 2, tool: 1.5, spell: .35 } },
   still: { name: "Still", sigil: "▢", color: "#cfd6e0", text: { melee: "Hits freeze foes for 0.5 s.", tool: "Hits freeze foes for 0.6 s.", spell: "Pulses freeze foes for 0.4 s." }, hit: { melee: .5, tool: .6, spell: .4 } },
   // 2026-11-14 (CHARGE_GLYPH below): the same rule in every gear host; nothing in a spell or skill.
-  "gathered-breath": { name: "Gathered Breath", sigil: "≋", color: "#9fd9e6", text: { melee: "Every charged attack you have fills 30% sooner; each copy in your weapon, tool or armor compounds (three: about a third of the time).", tool: "Every charged attack you have fills 30% sooner; each copy in your weapon, tool or armor compounds (three: about a third of the time).", spell: "Does nothing in a spell: set it in a weapon, tool or armor.", armor: "Every charged attack you have fills 30% sooner; each copy in your weapon, tool or armor compounds (three: about a third of the time)." } },
+  "gathered-breath": { name: "Gathered Breath", sigil: "≋", color: "#9fd9e6", text: { melee: "Every charged attack you have fills 30% sooner once the hold begins; each copy in your weapon, tool or armor compounds (two: about half the time; three: about a third). The charge ring shows a bead for each.", tool: "Every charged attack you have fills 30% sooner once the hold begins; each copy in your weapon, tool or armor compounds (two: about half the time; three: about a third). The charge ring shows a bead for each.", spell: "Does nothing in a spell: set it in a weapon, tool or armor.", armor: "Every charged attack you have fills 30% sooner once the hold begins; each copy in your weapon, tool or armor compounds (two: about half the time; three: about a third). The charge ring shows a bead for each." } },
 };
 export const GLYPH_IDS = Object.keys(GLYPHS);
 // The first ten glyphs: the pool ordinary drops have always drawn from (glyphDrop's v1 stream). Frozen, so a seed's drops
@@ -167,7 +172,8 @@ export function armorTriads(save) {
 }
 
 // ---------------------------------------------------------------- save state
-export function socketCount(item) { return item && (item.slot === "primary" || item.slot === "secondary" || item.slot === "armor") ? (SOCKETS_BY_TIER[item.tier] || 1) + (item.extraSockets === 1 ? 1 : 0) : 0; } // release 395: the town smith may add one socket // release 295: armor too
+export const awakenedHost = (item) => !!item && (item.slot === "primary" || item.slot === "secondary") && !!item.awakened && typeof item.awakened === "object";
+export function socketCount(item) { return item && (item.slot === "primary" || item.slot === "secondary" || item.slot === "armor") ? (SOCKETS_BY_TIER[item.tier] || 1) + (item.extraSockets === 1 ? 1 : 0) + (awakenedHost(item) ? AWAKENED_SOCKETS : 0) : 0; } // release 395: the town smith may add one socket // release 295: armor too
 export function normalizeSockets(item) {
   if (!item) return item;
   const n = socketCount(item);
@@ -176,6 +182,8 @@ export function normalizeSockets(item) {
   item.glyphs = Array.from({ length: n }, (_, i) => g[i] || null);
   return item;
 }
+// Opens sockets an item has gained (an awakening) and never closes one: for gear kept aside (build-presets.ts ensurePresetGear).
+export function growSockets(item) { if (item && typeof item === "object" && socketCount(item) > (Array.isArray(item.glyphs) ? item.glyphs.length : 0)) normalizeSockets(item); return item; }
 // Idempotent; runs in migrateSave and freshSave. One-time starter grant so the system is visible from the start.
 export function ensureGlyphState(save) {
   const counts = save.glyphs && typeof save.glyphs === "object" ? save.glyphs : {};
@@ -187,7 +195,7 @@ export function ensureGlyphState(save) {
   for (const item of [...Object.values(save.equipment || {}), ...(save.inventory || [])]) normalizeSockets(item);
   // Release 295: saved glyph layouts per gear host (additive): { melee: [id|null...], tool: [...], armor: [...] }.
   const lay = save.glyphLayouts && typeof save.glyphLayouts === "object" ? save.glyphLayouts : {};
-  save.glyphLayouts = Object.fromEntries(Object.entries(lay).filter(([h, v]) => !LAYOUT_HOSTS.includes(h) || Array.isArray(v)).map(([h, v]) => [h, LAYOUT_HOSTS.includes(h) ? v.slice(0, 4).map((q) => (GLYPHS[q] ? q : null)) : v])); // release 736 (review S7): a host a newer release added is kept as it is // release 397: 4, for a relic with the smith's extra socket
+  save.glyphLayouts = Object.fromEntries(Object.entries(lay).filter(([h, v]) => !LAYOUT_HOSTS.includes(h) || Array.isArray(v)).map(([h, v]) => [h, LAYOUT_HOSTS.includes(h) ? v.slice(0, SOCKET_MAX).map((q) => (GLYPHS[q] ? q : null)) : v])); // release 736 (review S7): a host a newer release added is kept as it is // release 397: 4, for a relic with the smith's extra socket; 2026-11-25: SOCKET_MAX (5), with an awakened item's
   if (!save.glyphGrant) { save.glyphGrant = GLYPH_VERSION; for (const id of ["ignite", "chain", "echo"]) { save.glyphs[id] += 1; save.glyphCodex.glyphs[id] = true; } }
   return save;
 }

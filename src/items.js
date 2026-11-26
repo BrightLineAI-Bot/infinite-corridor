@@ -1,9 +1,9 @@
-import{normalizeSockets}from'./glyphs.js?v=r1059-3629aeded9d0';
-import{rng,pick}from'./random.js?v=r1059-3629aeded9d0';
-import{CARBINE,TOOL_RANGE}from'./tool-forms.js?v=r1059-3629aeded9d0';
-import{FAR_REALMS,farDistance}from'./far-realms.js?v=r1059-3629aeded9d0';
-import{EXPLORATION,exploring}from'./journey-start.js?v=r1059-3629aeded9d0';
-import{storyWithheld}from'./quests.js?v=r1059-3629aeded9d0';/* progression Phase 7: a quest's or thread's spell waits until earned */
+import{normalizeSockets}from'./glyphs.js?v=r1076-4dec3446cb5b';
+import{rng,pick}from'./random.js?v=r1076-4dec3446cb5b';
+import{CARBINE,TOOL_RANGE}from'./tool-forms.js?v=r1076-4dec3446cb5b';
+import{FAR_REALMS,farDistance}from'./far-realms.js?v=r1076-4dec3446cb5b';
+import{EXPLORATION,exploring}from'./journey-start.js?v=r1076-4dec3446cb5b';
+import{storyWithheld}from'./quests.js?v=r1076-4dec3446cb5b';/* progression Phase 7: a quest's or thread's spell waits until earned */
 export const ITEM_TABLE={primary:[['Cinder Pike','reach'],['Verge Cleaver','impact']],secondary:[['Lumen Spindle','focus'],['Needle Caster','quick'],['Rift Bombard','blast']],armor:[['Kiln Mantle','guard'],['Glassweave Coat','stamina']],charm:[['Quiet Compass','discovery']]};
 export const ITEM_TIERS=['common','rare','epic','relic'];
 export const RANGED_WEAPONS={'spark-coil':{name:'Spark Coil',damage:8,speed:12,lifetime:1.6,damageType:'magic',path:'straight'},'secondary-lumen-spindle':{name:'Lumen Spindle',damage:11,speed:10,lifetime:TOOL_RANGE['lumen-spindle'].range/10,turnAfter:TOOL_RANGE['lumen-spindle'].range/10,legs:true,damageType:'magic',path:'boomerang'}/* 2026-11-14 (tool-forms.ts TOOL_RANGE): `lifetime` is one leg (was 1.8 s with a turn at .8 s); game.ts fireSecondary flies it in legs */,'secondary-needle-caster':{name:'Needle Caster',damage:10,speed:15,lifetime:1.25,damageType:'physical',path:'straight'},'secondary-hammerfall':{name:'Hammerfall',damage:12,speed:0,lifetime:0,damageType:'physical',path:'hammer',brawlerTool:'hammerfall'},'secondary-great-sweep':{name:'Great Sweep',damage:10,speed:0,lifetime:0,damageType:'physical',path:'sweep',brawlerTool:'great-sweep'},'secondary-rift-bombard':{name:'Rift Bombard',damage:16,speed:8,lifetime:TOOL_RANGE['rift-bombard'].range/8/* 2026-11-14 (tool-forms.ts TOOL_RANGE; was 1.4 s, 11.2 tiles): it lands and bursts at its range */,radius:2.15,damageType:'physical'/* release 533 (Tim: "a goblin bazooka"): physical, so Might */,path:'grenade'},
@@ -21,7 +21,10 @@ export const CARBINE_RANK=BLUNDERBUSS_RANK;
 // A Spark Coil: the starter's id, or a dropped one (generateItem's `secondary-<n>` id); other ids stay unknown, as before.
 const sparkCoilItem=(item)=>item.id==='spark-coil'||item.name==='Spark Coil'&&/^secondary-\d+$/.test(String(item.id));
 const sparkCoilRanked=(item)=>sparkCoilItem(item)&&(Number(item.upgradeRank)||0)>=CARBINE_RANK;
-export const PRIMARY_PROFILES={'primary-iron-fists':{shape:'cone',range:1.3,arc:90,damage:10,fist:true},'salvage-blade':{shape:'cone',range:1.7,arc:100,damage:7},'primary-cinder-pike':{shape:'thrust',range:2.45,arc:32,damage:8},'primary-verge-cleaver':{shape:'arc',range:1.75,arc:180,damage:9},'primary-fourfold-daggers':{shape:'daggers',range:1.6,arc:20,damage:8},'primary-quandrix-staff':{shape:'staff',range:4.84,arc:20,damage:8,staff:true}};
+// `share` (the Salvage Blade, Tim 2026-11-25: Focus weapons get the Quandrix Staff's boost): each cut's multiplier. At the same
+// weapon bonus the blade dealt about .77 of the Verge Cleaver's damage per second (his save, world beasts at ring 200); at 1.2,
+// about .92. A profile without it cuts at 1.
+export const PRIMARY_PROFILES={'primary-iron-fists':{shape:'cone',range:1.3,arc:90,damage:10,fist:true},'salvage-blade':{shape:'cone',range:1.7,arc:100,damage:7,share:1.2},'primary-cinder-pike':{shape:'thrust',range:2.45,arc:32,damage:8},'primary-verge-cleaver':{shape:'arc',range:1.75,arc:180,damage:9},'primary-fourfold-daggers':{shape:'daggers',range:1.6,arc:20,damage:8},'primary-quandrix-staff':{shape:'staff',range:4.84,arc:20,damage:8,staff:true}};
 // The Fourfold Daggers (Tim, 2026-11-12): a pair of daggers, one in each hand; every press makes two quick cuts ("//"), each a
 // narrow cone angled across the facing from its own hand, so the two cross just ahead like an X. A foe close in front is in
 // both cuts, one off at an angle in one, one straight ahead but further out in the gap between them: a skill weapon, good on
@@ -208,7 +211,9 @@ export const SPARK_COIL_LOOT={share:.25,secondary:[['Spark Coil','focus']]};
 // `band`, the Aperture band of the gift), so every other seed (vendor stock, relic stock, fixtures, every item already
 // generated) rolls byte for byte as before. It takes `share` of the secondary drops left after the brawler tools and the Spark
 // Coil (about .49 of tools), so about one tool drop in thirteen (tests/great-sweep-orrery.test.ts measures the band).
-export const ORRERY_LOOT=Object.freeze({version:1,stream:'aether-orrery-loot:v1',share:.16,band:13,secondary:Object.freeze([Object.freeze(['Aether Orrery','orrery'])])});
+// 2026-11-25 (Tim: "Make all weapons and tools available from the start. I want that freedom."): `band` 0, so it drops from the
+// start, in both modes, and vendor stock (game.ts rotatingShop, dungeonShop) asks for it too. Its band-13 gift is unchanged.
+export const ORRERY_LOOT=Object.freeze({version:1,stream:'aether-orrery-loot:v1',share:.16,band:0,secondary:Object.freeze([Object.freeze(['Aether Orrery','orrery'])])});
 export const ORDINARY_MONSTER_LOOT={salvageBladePrimaryShare:.5,primary:[['Salvage Blade','steady']]};
 export function generateItem(seed,level=1,source=null){const r=rng(seed),slot=pick(r,Object.keys(ITEM_TABLE)),pair=pick(r,ITEM_TABLE[slot]);let name=pair[0],property=pair[1];const tier=Math.min(3,Math.floor((Math.max(1,level)+r()*5)/5)),id=slot+'-'+Math.floor(r()*1e8),power=Math.max(1,level+Math.floor(r()*3)),affixes=rollAffixes(r,slot,tier);const b=rng(`${seed}:brawler-loot:v1`),list=BRAWLER_LOOT[slot];if(list&&b()<BRAWLER_LOOT.share)[name,property]=list[Math.floor(b()*list.length)];else if(source?.ordinaryMonster&&slot==='primary'&&rng(`${seed}:salvage-blade-loot:v1`)()<ORDINARY_MONSTER_LOOT.salvageBladePrimaryShare)[name,property]=['Salvage Blade','steady'];else if(slot==='primary'&&rng(`${seed}:fourfold-daggers-loot:v1`)()<FOURFOLD_DAGGERS.loot.share)[name,property]=[FOURFOLD_DAGGERS.name,FOURFOLD_DAGGERS.property];else if(slot==='primary'&&rng(`${seed}:${QUANDRIX_STAFF.loot.stream}`)()<QUANDRIX_STAFF.loot.share)[name,property]=[QUANDRIX_STAFF.name,QUANDRIX_STAFF.property]/* 2026-11-13: the Quandrix Staff, its own stream */;else if(slot==='secondary'&&rng(`${seed}:spark-coil-loot:v1`)()<SPARK_COIL_LOOT.share)[name,property]=SPARK_COIL_LOOT.secondary[0]/* 2026-11-12: the Spark Coil drops again, from its own stream */;else if(slot==='secondary'&&source?.orreryLoot===ORRERY_LOOT.version&&rng(`${seed}:${ORRERY_LOOT.stream}`)()<ORRERY_LOOT.share)[name,property]=ORRERY_LOOT.secondary[0]/* 2026-11-14: the Aether Orrery drops, from its own stream, only where the caller asks (ORRERY_LOOT) */;return normalizeSockets({id,name,slot,power,property,tier:ITEM_TIERS[tier],affixes})}
 export const GIFT_TOOLS=[['Aether Orrery','orrery']];/* given, never rolled as loot (tool-forms.ts ORRERY) */

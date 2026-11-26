@@ -7,10 +7,10 @@
 // Release 263: guardians and world beasts leave their creature's Echo by chance (ECHO_DROPS); ordinary kills do not.
 //
 // Data lives in ECHOES; the Game calls echoEvent() at its trigger points and tickEchoes() every frame.
-import { unharmablePerson } from "./townsfolk.js?v=r1059-3629aeded9d0"; // Tim (2026-11-20): no non-hostile person can be harmed
-import { rng } from "./random.js?v=r1059-3629aeded9d0";
-import { latticeEchoes, toggleLatticeSlot } from "./transit-lattice.js?v=r1059-3629aeded9d0";
-import { ENCUMBERED } from "./hit-cast-passives.js?v=r1059-3629aeded9d0"; // Maw's Hunger: a pull with no damage of its own (Tim, 2026-11-19)
+import { unharmablePerson } from "./townsfolk.js?v=r1076-4dec3446cb5b"; // Tim (2026-11-20): no non-hostile person can be harmed
+import { rng } from "./random.js?v=r1076-4dec3446cb5b";
+import { latticeEchoes, toggleLatticeSlot } from "./transit-lattice.js?v=r1076-4dec3446cb5b";
+import { ENCUMBERED } from "./hit-cast-passives.js?v=r1076-4dec3446cb5b"; // Maw's Hunger: a pull with no damage of its own (Tim, 2026-11-19)
 
 export const ECHO_VERSION = 1;
 export const NOTCHES = 3;
@@ -76,7 +76,7 @@ export const SPINO_ECHO = { delay: .32, share: .5, stunShare: 1 };
 // inside grows it by `grow` tiles (to `maxRadius`) and adds `extend` s to its time (from `seconds`, at most `cap` s after it was planted).
 // It stays where it was planted. When it ends, a new one can be planted `cooldown` ms later. Runtime only (game.earthResolve): a reload
 // drops the sigil; only its cooldown clock (player.echoResolveReadyAt) resumes, as the other Echo clocks do.
-export const APATO_ECHO = { still: .25, radius: 1.6, maxRadius: 4, grow: .2, seconds: 4, extend: .6, cap: 10, guard: .25, lifesteal: .1, cooldown: 4000 };
+export const APATO_ECHO = { still: .25, radius: 1.6, maxRadius: 4, grow: .2, seconds: 4, extend: .6, cap: 10, guard: .15, lifesteal: .08, cooldown: 4000 }; // Tim (2026-11-25): guard .25 → .15, lifesteal .1 → .08; the heal stays its own, outside the shared heal-on-hit cap
 export const ECHOES = {
   thunderhorn: { name: "Thunderhorn's Charge", cost: 2, trigger: "dodge", module: "ramCharge", text: "Your dodge becomes a charge: foes you pass through are trampled and staggered." },
   riftLynx: { name: "Lynx Pounce", cost: 2, trigger: "dodge", module: "blinkStrike", text: "Your first strike within 1.2 s of a dodge deals +60%." },

@@ -8,18 +8,18 @@
 //
 // Awakenings: a primary or tool at its upgrade cap whose sockets light a Resonance can be awakened at Sela's forge
 // for lumen dust. An awakened weapon keeps its Resonance name and gains a new attack shape.
-import { unharmablePerson } from "./townsfolk.js?v=r1059-3629aeded9d0"; // Tim (2026-11-20): no non-hostile person can be harmed
-import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade, APERTURE_BANDS, apertureBand, isQuandrixStaff, weaponKey, rangedWeapon, explorationGateOpen } from "./items.js?v=r1059-3629aeded9d0";
-import { HAMMER_CLAP } from "./brawler-spells.js?v=r1059-3629aeded9d0"; // the awakened Hammerfall's clap (2026-11-14)
-import { resonancesOf, RESONANCES, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.js?v=r1059-3629aeded9d0";
-import { pairingMods } from "./spell-slots.js?v=r1059-3629aeded9d0";
-import { latticePassives, toggleLatticeSlot } from "./transit-lattice.js?v=r1059-3629aeded9d0";
-import { fieldForm, FIELD_KEYS, TOOL_FORM_KEYS } from "./lattice-fields.js?v=r1059-3629aeded9d0";
-import { AWAKENED_ARTS, AWAKENED_IDS } from "./weapon-arts.js?v=r1059-3629aeded9d0"; // awakened arts: each primary's own move (2026-11-13)
-import { TESSERACTS } from "./tesseracts.js?v=r1059-3629aeded9d0";
-import { PASSIVE_TEXT } from "./hit-cast-passives.js?v=r1059-3629aeded9d0"; // the on-cast nodes (Tim, 2026-11-19)
-import { EXPLORATION, exploring } from "./journey-start.js?v=r1059-3629aeded9d0"; // progression Phase 3: Exploration's Aerial Step and Long Quickening
-import { formFound, formWithheld, worldWithheld } from "./world-routes.js?v=r1059-3629aeded9d0"; // progression Phase 6: milestones and reliquaries
+import { unharmablePerson } from "./townsfolk.js?v=r1076-4dec3446cb5b"; // Tim (2026-11-20): no non-hostile person can be harmed
+import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade, APERTURE_BANDS, apertureBand, isQuandrixStaff, weaponKey, rangedWeapon, explorationGateOpen } from "./items.js?v=r1076-4dec3446cb5b";
+import { HAMMER_CLAP } from "./brawler-spells.js?v=r1076-4dec3446cb5b"; // the awakened Hammerfall's clap (2026-11-14)
+import { resonancesOf, RESONANCES, normalizeSockets, AWAKENED_SOCKETS, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.js?v=r1076-4dec3446cb5b";
+import { pairingMods } from "./spell-slots.js?v=r1076-4dec3446cb5b";
+import { latticePassives, toggleLatticeSlot } from "./transit-lattice.js?v=r1076-4dec3446cb5b";
+import { fieldForm, FIELD_KEYS, TOOL_FORM_KEYS } from "./lattice-fields.js?v=r1076-4dec3446cb5b";
+import { AWAKENED_ARTS, AWAKENED_IDS } from "./weapon-arts.js?v=r1076-4dec3446cb5b"; // awakened arts: each primary's own move (2026-11-13)
+import { TESSERACTS } from "./tesseracts.js?v=r1076-4dec3446cb5b";
+import { PASSIVE_TEXT } from "./hit-cast-passives.js?v=r1076-4dec3446cb5b"; // the on-cast nodes (Tim, 2026-11-19)
+import { EXPLORATION, exploring } from "./journey-start.js?v=r1076-4dec3446cb5b"; // progression Phase 3: Exploration's Aerial Step and Long Quickening
+import { formFound, formWithheld, worldWithheld } from "./world-routes.js?v=r1076-4dec3446cb5b"; // progression Phase 6: milestones and reliquaries
 // Release 335: Rift Step recovers faster with the same reductions as every other skill (the pairing and armor Chain).
 const riftCooldown = (save, rank, gm) => (APERTURE_SKILLS["rift-step"].cooldown - rank) * gm.cooldown * (altOn(save, "fold") ? ALT_PASSIVES.fold.cooldown : 1) * (1 - pairingMods(save).cooldown) * (1 - armorGlyphBonus(save).spellCooldown);
 
@@ -45,7 +45,7 @@ export const skillReachBonus = (active, rank) => skillPart(active, rank, "reach"
 const pct = (v) => `${Math.round(v * 100)}%`;
 export const BRANCHES = {
   form: { name: "Form", active: "ember-form", mod: { id: "ember-skin", name: "Ember Skin", text: "While Ember Form holds, your melee hits (weapon swings and arts, the Iron Fists, Hammerfall, the Great Sweep and your Shadow Clone's swings) set foes burning." }, caps: [
-    { id: "colossus", name: "Colossus", text: "Ember Form lasts 50% longer, and while it holds you take less damage (15%, softened at high defence)." },
+    { id: "colossus", name: "Colossus", text: "Ember Form lasts 50% longer, and while it holds you take less damage (15% of what your gear lets through; your skill guards together take at most 50%)." },
     { id: "cinder-heart", name: "Cinder Heart", text: "When Ember Form runs out, it bursts, scorching everything around you. Another skill cutting it short skips the burst." }] },
   motion: { name: "Motion", active: "quickening", mod: { id: "light-feet", name: "Light Feet", text: "Dodges cost 3 less stamina." }, caps: [
     { id: "aerial-step", name: "Aerial Step", text: "Learn Aerial Step: briefly cross water, canyons and pits." },
@@ -100,9 +100,9 @@ export const ALT_PASSIVES = {
   slipstream: { name: "Afterimage", kind: "while", text: "While Quickening holds, each dodge leaves a burst where you started.", radius: 1.6, damage: 6, perLevel: 1 },
   "thorned-veil": { name: "Veil Pulse", kind: "while", text: "While Veil Guard holds, each blow you take pulses back at every foe within 2 tiles for 15% of it.", share: .15, reach: 2 },
   sanctuary: { name: "Long Veil", kind: "changes", text: "Veil Guard lasts 50% longer.", duration: 1.5 },
-  "mirror-veil": { name: "Stillwater", kind: "while", text: "During Veil Guard you take less damage (20%, softened at high defence).", guard: .2 },
+  "mirror-veil": { name: "Stillwater", kind: "while", text: "During Veil Guard you take less damage (20% of what your gear lets through; your skill guards together take at most 50%).", guard: .2 },
   overflow: { name: "Wellspring", kind: "while", text: "While Force Channel holds, your Aperture skills recover 25% faster.", rate: .25 },
-  amplifier: { name: "Bulwark Channel", kind: "while", text: "While Force Channel holds, you take less damage (15%, softened at high defence).", guard: .15 },
+  amplifier: { name: "Bulwark Channel", kind: "while", text: "While Force Channel holds, you take less damage (15% of what your gear lets through; your skill guards together take at most 50%).", guard: .15 },
   "resonant-force": { name: "Harvest", kind: "while", text: "Kills during Force Channel restore 4 health.", heal: 4 },
   "rift-wake": { name: "Rift Ward", kind: "changes", text: "After a Rift Step nothing can touch you for 0.6 s (instead of 0.15 s).", guardMs: 600 },
   fold: { name: "Quick Fold", kind: "changes", text: "Rift Step recovers 30% faster.", cooldown: .7 },
@@ -462,8 +462,8 @@ export function awaken(save, slot) {
   if ((save.materials.lumenDust || 0) < AWAKEN_COST) return { ok: false, message: `Awakening needs ${AWAKEN_COST} lumen dust.` };
   save.materials.lumenDust -= AWAKEN_COST;
   const item = save.equipment[slot];
-  item.awakened = { resonance: check.resonance, version: CONSTELLATION_VERSION };
-  return { ok: true, message: `${item.name} awakens in ${RESONANCES[check.resonance].name}. ${slot === "primary" ? isQuandrixStaff(item) ? "Hold Attack to slam your last hand down; let go in the ring's gold window for a perfect burst. Let go early and it stays, working, until its charge runs out." : `${awakenedMove(item).name}: ${awakenedMove(item).text}.` : awakenedToolText(item, true)}` };
+  item.awakened = { resonance: check.resonance, version: CONSTELLATION_VERSION }; normalizeSockets(item); // 2026-11-25: and opens AWAKENED_SOCKETS more glyph sockets (glyphs.ts socketCount)
+  return { ok: true, message: `${item.name} awakens in ${RESONANCES[check.resonance].name}, and opens ${AWAKENED_SOCKETS === 1 ? "a new glyph socket" : `${AWAKENED_SOCKETS} new glyph sockets`}. ${slot === "primary" ? isQuandrixStaff(item) ? "Hold Attack to slam your last hand down; let go in the ring's gold window for a perfect burst. Let go early and it stays, working, until its charge runs out." : `${awakenedMove(item).name}: ${awakenedMove(item).text}.` : awakenedToolText(item, true)}` };
 }
 // An awakened tool: the Hammerfall claps (brawler-spells.ts HAMMER_CLAP), the Great Sweep freezes what its blades touch (great-sweep.ts SWEEP_FREEZE); every other tool fans its shots.
 function awakenedToolText(item, sentence = false) {
@@ -477,4 +477,4 @@ function awakenedMove(item) {
   const key = weaponKey(item); for (const id of AWAKENED_IDS) if (AWAKENED_ARTS.moves[id].weapon === key) return AWAKENED_ARTS.moves[id];
   return { name: "Crescent", text: "every third swing releases a piercing crescent" };
 }
-export const awakenedText = (item) => item?.awakened ? `Awakened · ${RESONANCES[item.awakened.resonance]?.name || "Resonance"} · ${item.slot === "primary" ? isQuandrixStaff(item) ? "hold Attack to slam the last hand down; a perfect release bursts strongest" : `${awakenedMove(item).name}: ${awakenedMove(item).text}` : awakenedToolText(item)}` : "";
+export const awakenedText = (item) => item?.awakened ? `Awakened · ${RESONANCES[item.awakened.resonance]?.name || "Resonance"} · ${item.slot === "primary" ? isQuandrixStaff(item) ? "hold Attack to slam the last hand down, yanking foes in, while every other hand flies to your target and claps; a perfect release bursts strongest" : `${awakenedMove(item).name}: ${awakenedMove(item).text}` : awakenedToolText(item)}` : "";

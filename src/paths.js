@@ -21,21 +21,22 @@
 // quest-places.ts questPlace may resolve and save a new place, so a quest's place is read as it stands (stepPlace); the Far Array
 // is read raw (far-array.ts ensureFarArray normalises in place); thread and Bells progress are read per set (threads.ts
 // arcanaProgress normalises save.lore.surveyor). A test deep-compares the save before and after.
-import { APERTURE_BANDS, apertureBand, skillRank, APERTURE_SKILLS, weaponKey, toolKey } from "./items.js?v=r1059-3629aeded9d0";
-import { regionalThreat } from "./world.js?v=r1059-3629aeded9d0";
-import { tierCap, listenerKills, apertureCeiling, STAGES } from "./stages.js?v=r1059-3629aeded9d0";
-import { exploring, progressionKept, modeInfo, progressionMode } from "./journey-start.js?v=r1059-3629aeded9d0";
-import { PROGRESSION_ROWS, ROW_BY_ID, ROW_ALIASES, GROUPS, progressionState, gateV1 } from "./progression.js?v=r1059-3629aeded9d0";
-import { BRANCHES, BRANCH_IDS, ALT_PASSIVES, ALT_UNLOCK_TIER, altUnlocked, hasNode } from "./constellation.js?v=r1059-3629aeded9d0";
-import { latticeOpen, TRANSIT_LATTICE } from "./transit-lattice.js?v=r1059-3629aeded9d0";
-import { AWAKENED_ARTS } from "./weapon-arts.js?v=r1059-3629aeded9d0";
-import { ARCANA_UNLOCKS } from "./lore.js?v=r1059-3629aeded9d0";
-import { THREADS, ARCANA_SETS, arcanaWhere, threadFound } from "./threads.js?v=r1059-3629aeded9d0";
-import { RELAY_TARGET } from "./relay-network.js?v=r1059-3629aeded9d0";
-import { LISTENER_RETURN } from "./far-array.js?v=r1059-3629aeded9d0";
-import { rescueGuidance } from "./hatchling.js?v=r1059-3629aeded9d0";
-import { WORLD_ROUTE_OF, MILESTONES, MILESTONE_FOR, RELIQUARY, worldWithheld, earnedWorld, featCount, milestoneLine } from "./world-routes.js?v=r1059-3629aeded9d0";
-import { QUESTS, QUEST_IDS, QUEST_FOR, THREAD_REWARDS, SEEDED_REWARDS, SEEDED_IDS, STORY_ROUTE_OF, STORY_SEEN, VISCERA_SHOP, seededPick, questOpen, questStep, questState, stepCount, stepDone, stepPlace, questFollowId, storyWithheld, boughtRumour } from "./quests.js?v=r1059-3629aeded9d0";
+import { APERTURE_BANDS, apertureBand, skillRank, APERTURE_SKILLS, weaponKey, toolKey } from "./items.js?v=r1076-4dec3446cb5b";
+import { regionalThreat } from "./world.js?v=r1076-4dec3446cb5b";
+import { tierCap, listenerKills, apertureCeiling, STAGES } from "./stages.js?v=r1076-4dec3446cb5b";
+import { exploring, progressionKept, modeInfo, progressionMode } from "./journey-start.js?v=r1076-4dec3446cb5b";
+import { PROGRESSION_ROWS, ROW_BY_ID, ROW_ALIASES, GROUPS, progressionState, gateV1 } from "./progression.js?v=r1076-4dec3446cb5b";
+import { BRANCHES, BRANCH_IDS, ALT_PASSIVES, ALT_UNLOCK_TIER, altUnlocked, hasNode } from "./constellation.js?v=r1076-4dec3446cb5b";
+import { latticeOpen, TRANSIT_LATTICE } from "./transit-lattice.js?v=r1076-4dec3446cb5b";
+import { AWAKENED_ARTS } from "./weapon-arts.js?v=r1076-4dec3446cb5b";
+import { ARCANA_UNLOCKS } from "./lore.js?v=r1076-4dec3446cb5b";
+import { THREADS, ARCANA_SETS, arcanaWhere, threadFound } from "./threads.js?v=r1076-4dec3446cb5b";
+import { RELAY_TARGET } from "./relay-network.js?v=r1076-4dec3446cb5b";
+import { relaysAwayOf } from "./far-array.js?v=r1076-4dec3446cb5b";
+import { rescueGuidance } from "./hatchling.js?v=r1076-4dec3446cb5b";
+import { compassChoiceIs } from "./types.js?v=r1076-4dec3446cb5b";
+import { WORLD_ROUTE_OF, MILESTONES, MILESTONE_FOR, RELIQUARY, worldWithheld, earnedWorld, featCount, milestoneLine } from "./world-routes.js?v=r1076-4dec3446cb5b";
+import { QUESTS, QUEST_IDS, QUEST_FOR, THREAD_REWARDS, SEEDED_REWARDS, SEEDED_IDS, STORY_ROUTE_OF, STORY_SEEN, VISCERA_SHOP, seededPick, questOpen, questStep, questState, stepCount, stepDone, stepPlace, questFollowId, storyWithheld, boughtRumour } from "./quests.js?v=r1076-4dec3446cb5b";
 
 // ---------------------------------------------------------------- data
 export const PATHS = Object.freeze({
@@ -154,7 +155,7 @@ function placeChips(ctx, at, ring = null) {
   if (ring != null) { const threat = threatAt(ring, 0); return { at: null, away: null, heading: null, ring, threat, bold: threat > ctx.reach * PATHS.bold }; }
   return { at: null, away: null, heading: null, threat: null, bold: false };
 }
-const following = (ctx, c) => !!c && (c.follow ? !ctx.compass.pin && ctx.compass.follow?.kind === c.follow.kind && (ctx.compass.follow.id ?? null) === (c.follow.id ?? null) : !!c.pin && ctx.compass.pin?.rx === c.pin.rx && ctx.compass.pin?.ry === c.pin.ry);
+const following = (ctx, c) => compassChoiceIs(ctx.compass, c); // 2026-11-25: the one matcher the Journal's Leads and the quick menu use (types.ts)
 // `steps` is the ordered list behind `step` (a quest's every step, done or not; one step otherwise), so a family can later carry
 // ranked lines of steps without the entries changing shape; `step` and `progress` are always the current one's.
 function entry(ctx, row, state, step, extra = {}) {
@@ -310,8 +311,8 @@ function ladderOf(ctx, states) {
     const f = save?.farArray && typeof save.farArray === "object" ? save.farArray : {}, kills = listenerKills(save), want = killsFor(t), n = answeredRelays(save);
     chain.push({ id: "aperture", done: held, text: held ? `The Aperture holds at ${fmt(top)}, the top of ${bandName(cap)}.` : `Aperture ${fmt(top)}, the top of ${bandName(cap)} (you: ${fmt(ap)}).`, progress: { n: Math.min(ap, top), need: top } });
     chain.push({ id: "relays", done: known, text: known ? `Relays answered: the network gave a coordinate.` : `Answer relays: ${Math.min(n, RELAY_TARGET)} of ${RELAY_TARGET}. Restore or sever each, after its crossing's guardian falls.`, progress: { n: known ? RELAY_TARGET : Math.min(n, RELAY_TARGET), need: RELAY_TARGET } });
-    const away = f.quiet ? Math.max(0, num(f.relaysAt) + LISTENER_RETURN.returnRelays - n) : 0;
-    chain.push({ id: "mouth", done: known && !f.quiet, text: !known ? "The Listener's Mouth: not known yet." : f.quiet ? `The Listener is away from its Mouth at ${coord.rx}, ${coord.ry}: answer ${away} more relay${away === 1 ? "" : "s"} and one returns.` : `The Listener's Mouth: ${coord.rx}, ${coord.ry}.` });
+    const away = f.quiet ? relaysAwayOf(save, f) : 0, moving = f.cycle >= 3 && f.moves; // LISTENER_CYCLE v3: after a kill, the next Listener waits at the next Mouth
+    chain.push({ id: "mouth", done: known && !f.quiet, text: !known ? "The Listener's Mouth: not known yet." : f.quiet ? `The Listener is away from its Mouth at ${coord.rx}, ${coord.ry}: answer ${away} more relay${away === 1 ? "" : "s"} and ${moving ? "the Mouth moves, with a Listener waiting at the new one" : "one returns"}.` : `The Listener's Mouth: ${coord.rx}, ${coord.ry}.` });
     chain.push({ id: "listener", done: kills >= want, text: `Fell the Listener${want > 1 ? `: ${Math.min(kills, want)} of ${want}` : ""}.`, progress: { n: Math.min(kills, want), need: want } });
     const compass = known ? { pin: { rx: coord.rx, ry: coord.ry, name: "The Far Array" } } : null; // the Journal's Leads pin the same lead by its title
     return { tier, band: bandName(tier), next: { tier: t, band: bandName(t), aperture: need, need: Math.max(0, need - ap), listener: true }, held, chain, opens, ...placeChips(ctx, known ? coord : null), compass, following: following(ctx, compass) };

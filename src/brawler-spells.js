@@ -1,7 +1,7 @@
-import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from './vehicle-gates.js?v=r1059-3629aeded9d0';
-import { PRIMARY_PROFILES, primaryProfile } from './items.js?v=r1059-3629aeded9d0';
-import { sweepIndicator, drawSweepSwing } from './great-sweep.js?v=r1059-3629aeded9d0';
-import { sampleCycloneMotion } from './action-motion.js?v=r1059-3629aeded9d0'; // the Cyclone Heel's motion, shared with Close View
+import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from './vehicle-gates.js?v=r1076-4dec3446cb5b';
+import { PRIMARY_PROFILES, primaryProfile } from './items.js?v=r1076-4dec3446cb5b';
+import { sweepIndicator, drawSweepSwing } from './great-sweep.js?v=r1076-4dec3446cb5b';
+import { sampleCycloneMotion } from './action-motion.js?v=r1076-4dec3446cb5b'; // the Cyclone Heel's motion, shared with Close View
 const SWEEP_DRAW = {}; // reused each frame
 
 // Brawler spells (release 483; Tim, 2026-10-27: "we can even have like spell sword spells... like a giant hammer that comes
@@ -575,6 +575,10 @@ function drawEssenceWalk(ctx, game, toScreen, s, t, now, x, y) {
 // you feel in a combo without the charge turning into a tap. Gathered Breath glyphs (glyphs.ts CHARGE_GLYPH) shorten it
 // further: the charge records its multiplier as it starts (`scale`), and fistHeld turns the time held into charge time.
 export const IRON_FISTS = {
+  // `holdWait` (2026-11-25, Tim: "I can't just hit the button and hold it, then hit it and hold it"): a press made up to this
+  // many s before the next step may begin (the 90 ms contact, the gate) waits if its button stays held, then is thrown and
+  // charges; let go before then and it is dropped as before (game.ts attackBufferHoldOnly, fistPress `holdOnly`), so mashing is unchanged.
+  holdWait: .35, // the 90 ms contact plus the .21 s gate, with room; a waiting press still expires within gate + buffer + .2 s
   base: 10, perPower: 1.2, window: .9, gate: .21, buffer: .12, finisher: 1.5, finisherStun: .8, tapGrace: .12, chargeTime: .96, guardMs: 220,
   perfect: [.8, 1.04], perfectShare: 1.25,
   beat: [1, 1.3], beatShare: 1.25, rhythmBonus: 13, flashMs: 180,

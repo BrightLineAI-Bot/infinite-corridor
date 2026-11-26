@@ -1,8 +1,16 @@
-import { enemyBodyRadius } from "./combat.js?v=r1059-3629aeded9d0";
-import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r1059-3629aeded9d0";
-import { phaseShielded } from "./affixes.js?v=r1059-3629aeded9d0";
+import { enemyBodyRadius } from "./combat.js?v=r1076-4dec3446cb5b";
+import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r1076-4dec3446cb5b";
+import { phaseShielded } from "./affixes.js?v=r1076-4dec3446cb5b";
 
 export const ACTOR_CONTACT = Object.freeze({ playerRadius: .26, step: .16, maxSteps: 256, epsilon: 1e-7 });
+// Solid dodges (Tim, 2026-11-25: "Dodge should not take you through enemies. Like Elden Ring, you can get boxed in and you
+// just can't dodge through them, and that's just it."): a dodge meets bodies as walking does. Release 1061's pass-through
+// (the bodies noted at the dodge's start left out of its later steps) is gone. His one allowance: a minor foe (an ordinary
+// creature that is not an elite, a boss or anything stronger, not stagger-immune, with a body of at most `maxRadius`) that a
+// dodge step runs into is staggered (`stun` s of hit-stun) and nudged sideways off the dodge's line through the collision
+// mover, by at most `nudge` tiles (walls, bodies and lethal ground stop the nudge; a foe that cannot be moved aside stays in
+// the way). `reach` is how far past contact a body counts as run into; a dodge shoves each foe once and at most `most` foes.
+export const DODGE_SHOVE = Object.freeze({ maxRadius: .42, stun: .45, nudge: .75, clear: .02, reach: .02, most: 4 });
 // These controllers own teleportation, roaming, mounting or large-body movement outside ordinary AI.
 const SPECIAL = new Set(["voidWalker", "psychicCrystal", "astralWorm", "astralMirage", "lightningGiant", "mountainTurtle", "briarStag", "ashenMoth", "crimsonDragon", "doomChaser"]);
 const AIRBORNE_LEGACY = new Set(["cinderWisp"]);

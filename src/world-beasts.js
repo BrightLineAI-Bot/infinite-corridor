@@ -1,7 +1,7 @@
-import { mealLure } from "./meals.js?v=r1059-3629aeded9d0";
-import { ensureDragonLava } from "./crimson-dragon.js?v=r1059-3629aeded9d0";
-import { ensureFarQuests, farDistance, FAR_REALMS } from "./far-realms.js?v=r1059-3629aeded9d0";
-import { ASTRAL_PROFILE } from "./astral-worm.js?v=r1059-3629aeded9d0";
+import { mealLure } from "./meals.js?v=r1076-4dec3446cb5b";
+import { ensureDragonLava } from "./crimson-dragon.js?v=r1076-4dec3446cb5b";
+import { ensureFarQuests, farDistance, FAR_REALMS } from "./far-realms.js?v=r1076-4dec3446cb5b";
+import { ASTRAL_PROFILE } from "./astral-worm.js?v=r1076-4dec3446cb5b";
 // World beasts (release 235; Tim, 2026-10-19: "more monsters similar to the Questing Beast … strong … varied moves and
 // attacks … hyper-aggressive … crazy amounts of health … roaming world bosses … you still get three tries" (four since release 307: "4 tries... is fair"). Each one
 // works the way the Questing Beast does (src/questing-beast.ts, which is left as it was): now and then it claims a wild
@@ -9,10 +9,10 @@ import { ASTRAL_PROFILE } from "./astral-worm.js?v=r1059-3629aeded9d0";
 // cooldown counted in sections entered a new hunt can begin somewhere else. (2026-11-18, Tim: the 15-minute engagement window,
 // BEAST_ENGAGEMENT below, is now the only limit: deaths no longer end a hunt, and the per-beast `tries` are gone.) Its health and blows are tuned to the
 // Wayfarer's power. The creature itself (body, attacks, brain) is a Monster Pack entry; this module holds only the hunt.
-import { hashSeed, byHash } from "./random.js?v=r1059-3629aeded9d0";
-import { LETHAL_KINDS, canStep } from "./landscape.js?v=r1059-3629aeded9d0";
-import { sectionExits, apertureTier } from "./world.js?v=r1059-3629aeded9d0";
-import { stageOneBeastReference } from "./stages.js?v=r1059-3629aeded9d0";
+import { hashSeed, byHash } from "./random.js?v=r1076-4dec3446cb5b";
+import { LETHAL_KINDS, canStep } from "./landscape.js?v=r1076-4dec3446cb5b";
+import { sectionExits, apertureTier } from "./world.js?v=r1076-4dec3446cb5b";
+import { stageOneBeastReference, reductionGuard } from "./stages.js?v=r1076-4dec3446cb5b";
 
 // One row per beast. `kind` is its MONSTER_PACK id. Balance lives here.
 export const WORLD_BEASTS = {
@@ -590,7 +590,7 @@ function fleeSpawn(save, here, rx, ry) {
 // rollout... the void walker... at any level starting at aperture 3... and the crystal... at aperture 8, you can see the
 // questing beast"). The Aperture tier (items.ts APERTURE_BANDS; tier 3 is the Resonant band) a new meeting needs. A beast
 // already met (active, retreating or tracked) is never withdrawn by this.
-export const BEAST_APERTURE = { mountainTurtle: 3, voidWalker: 3, psychicCrystal: 3, morphingBlob: 4, lightningGiant: 5, astralWorm: 6, briarStag: 6, ashenMoth: 7, crimsonTyrant: 8, doomChaser: 8, nanobotKnight: 7, tremorWorm: 7, questingBeast: 8, wildStego: 5, spinoRex: 6, earthApato: 6 };
+export const BEAST_APERTURE = { mountainTurtle: 3, voidWalker: 3, psychicCrystal: 3, morphingBlob: 4, lightningGiant: 5, astralWorm: 6, briarStag: 6, ashenMoth: 7, crimsonTyrant: 8, doomChaser: 8, nanobotKnight: 7, tremorWorm: 7, questingBeast: 8, wildStego: 5, spinoRex: 6, earthApato: 14 /* Tim, 2026-11-25: Infinite IV (was 6); one already claiming a section keeps it */ };
 export const beastUnlocked = (save, id) => apertureTier(save?.perception?.aperture || 0) >= (BEAST_APERTURE[id] ?? 0);
 // Release 567 (Tim: "I have never... seen the tremor worm yet"): a beast held its section until it was killed or had beaten
 // the Wayfarer, so one that claimed a section the Wayfarer only passed through waited there for good, and never met them
@@ -670,7 +670,7 @@ export function passingSeen(save) { if (PASSING.once) ensureBeastGap(save).passe
 
 // Provisional follow-on balance: level is a strength floor, never a spawn gate.
 export const BEAST_BASELINE = { level: 8, starterHit: 16, starterHp: 102, starterGuard: .025, damageFloor: 60, questingDominance: 1.15 };
-export { BEAST_GUARD_HOLD } from "./stages.js?v=r1059-3629aeded9d0"; // balance pack: the held guard follows the live reduction above the old cap (stages.ts)
+export { BEAST_GUARD_HOLD } from "./stages.js?v=r1076-4dec3446cb5b"; // balance pack: the held guard follows the live reduction above the old cap (stages.ts)
 export function beastTuningReference(save, stats = {}) { return stageOneBeastReference(save, liveBeastReference(save, stats)); }
 // The Wayfarer as they stand, before any Stage 1 hold (release 331: also what a Listener kill catches the beasts up to).
 export function liveBeastReference(save, stats = {}) {
@@ -678,7 +678,7 @@ export function liveBeastReference(save, stats = {}) {
   const weapon = save.equipment?.[save.activeWeaponSlot], levelBonus = Math.floor((level - 1) * .6) - Math.floor((actualLevel - 1) * .6);
   return ({ level, perHit: Math.max(BEAST_BASELINE.starterHit, (Number(weapon?.power) || 6) + (Number(stats.weaponBonus ?? stats.meleeBonus) || 0) + levelBonus),
     maxHp: Math.max(BEAST_BASELINE.starterHp, (Number(save.maxHp) || 60) + (level - actualLevel) * 6),
-    guard: Math.max(BEAST_BASELINE.starterGuard, Math.min(.75, Number(stats.damageReduction) || 0)) }); // release 275: Stage 1 beasts are held from tier 13 until three Listeners
+    guard: Math.max(BEAST_BASELINE.starterGuard, reductionGuard(stats.damageReduction)) }); // release 275: Stage 1 beasts are held from tier 13 until three Listeners
 }
 // Release 307 (Tim: "everybody's health is too much... cut their health in half... decrease their overall damage output
 // by ten percent"): every world beast's vitals (and so the Questing Beast's and the Mire Heart's, derived from them) scale here.

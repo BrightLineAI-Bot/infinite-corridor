@@ -2,17 +2,19 @@
 // a worldview … zoom to region … see more of the map at large"). Pure helpers for main.ts: the zoom range, framing a
 // set of sections, and the places a player can jump to (the explored world, each region they have heard, and the
 // towns, districts and Wayglasses inside it), plus the shared optional route-panel renderer.
-import { secondWayfarerTarget } from "./second-wayfarer.js?v=r1059-3629aeded9d0";
-import { trailOfFollow, trailTarget } from "./thread-trails.js?v=r1059-3629aeded9d0"; // 2026-11-21: a followed thread (the Washing at Sallowby)
-import { nearestCrossing } from "./leads.js?v=r1059-3629aeded9d0"; // Progression Phase 4: the Cairn Keeper's errand on an Exploration journey
-import { exploring } from "./journey-start.js?v=r1059-3629aeded9d0";
-import { questOfFollow } from "./quests.js?v=r1059-3629aeded9d0"; import { questTarget } from "./quest-places.js?v=r1059-3629aeded9d0"; // progression Phase 7: a followed quest
-import { READINGS, READING_ORDER, readingAt, readingKnown } from "./lore.js?v=r1059-3629aeded9d0";
-import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.js?v=r1059-3629aeded9d0";
-import { PENTAGON, parsePentagonId, pentagonPlan, pentagonLinkKey } from "./pentagon.js?v=r1059-3629aeded9d0";
-import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r1059-3629aeded9d0";
-import { labFogOf, labFogState } from "./labyrinths.js?v=r1059-3629aeded9d0";
-import { TALL_TOWERS } from "./tall-towers.js?v=r1059-3629aeded9d0";
+import { secondWayfarerTarget } from "./second-wayfarer.js?v=r1076-4dec3446cb5b";
+import { trailOfFollow, trailTarget } from "./thread-trails.js?v=r1076-4dec3446cb5b"; // 2026-11-21: a followed thread (the Washing at Sallowby)
+import { nearestCrossing } from "./leads.js?v=r1076-4dec3446cb5b"; // Progression Phase 4: the Cairn Keeper's errand on an Exploration journey
+import { exploring } from "./journey-start.js?v=r1076-4dec3446cb5b";
+import { questOfFollow } from "./quests.js?v=r1076-4dec3446cb5b"; import { questTarget } from "./quest-places.js?v=r1076-4dec3446cb5b"; // progression Phase 7: a followed quest
+import { READINGS, READING_ORDER, readingAt, readingKnown } from "./lore.js?v=r1076-4dec3446cb5b";
+import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.js?v=r1076-4dec3446cb5b";
+import { PENTAGON, parsePentagonId, pentagonPlan, pentagonLinkKey, pentagonCentre } from "./pentagon.js?v=r1076-4dec3446cb5b";
+import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r1076-4dec3446cb5b";
+import { labFogOf, labFogState } from "./labyrinths.js?v=r1076-4dec3446cb5b";
+import { TALL_TOWERS } from "./tall-towers.js?v=r1076-4dec3446cb5b";
+import { sectionSignals } from "./world.js?v=r1076-4dec3446cb5b"; import { wonderAt } from "./wonders.js?v=r1076-4dec3446cb5b"; import { APERTURE_BANDS, apertureBand } from "./items.js?v=r1076-4dec3446cb5b"; // the compass's nearby places (2026-11-25; 2026-11-26: only the five kinds Tim named)
+import { worldBeastsHeld } from "./world-beasts.js?v=r1076-4dec3446cb5b"; import { guideHost } from "./waymark-guides.js?v=r1076-4dec3446cb5b";
 
 const DUNGEON_ROUTE_TAGS = { exit: "OUT", deepReturn: "RETURN", buildingStair: "STAIR", deepTransition: "PASSAGE", deepStair: "DEEP STAIR", annexStair: "DOWN", warpDais: "DAIS", deepPortal: "PORTAL", deepShortcut: "SHORTCUT", emberDoor: "EMBER DOOR", labGate: "DOOR" };
 export const DUNGEON_DOOR_WAYPOINTS = { max: 3 };
@@ -208,8 +210,13 @@ export function seedHuntObjectives(hunts, names = {}, rx = 0, ry = 0) {
   const far = (o) => Math.max(Math.abs(o.rx - rx), Math.abs(o.ry - ry));
   return out.sort((a, b) => far(a) - far(b) || (a.tower < b.tower ? -1 : a.tower > b.tower ? 1 : 0));
 }
+// 2026-11-25 (the compass, rebuilt): a pin on the Array Mouth (the Far Gate journal's "The Array Mouth", Paths' "The Far Array")
+// follows the live Mouth, so it is never left at a coordinate the Listener has moved from; a rumour's pin keeps its hint zone.
+export const MOUTH_PINS = Object.freeze(["The Array Mouth", "The Far Array"]);
+export const mouthPin = (pin) => !!pin && MOUTH_PINS.includes(pin.name);
 export function compassGuidance(save, { area = "overworld", pin = null, follow = null, pick = null, cues = [], rescue = null, here = null } = {}) {
-  if (pin) return { area: "overworld", rx: pin.rx, ry: pin.ry, kind: "guidance", name: pin.name };
+  if (pin) { const c = mouthPin(pin) ? save?.relayNetwork?.coordinate : null, live = c && Number.isInteger(c.rx) && Number.isInteger(c.ry);
+    return { area: "overworld", rx: live ? c.rx : pin.rx, ry: live ? c.ry : pin.ry, kind: "guidance", name: pin.name, ...(pin.zone && !live ? { zone: { ...pin.zone } } : {}) }; }
   if (follow) return compassFollowTarget(save, follow, { area, cues, rescue, here });
   if (area !== "overworld") return null;
   if (pick) return { area: "overworld", rx: pick.rx, ry: pick.ry, x: pick.x, y: pick.y, kind: "guidance", name: pick.name };
@@ -253,17 +260,21 @@ export const COMPASS_ARRIVAL = Object.freeze({ radius: .45, site: 1.5, banner: "
 // An overworld target `g` (navigationTargets' guidance) reached by a Wayfarer at (px, py) in section (rx, ry) of `area`. A site
 // is measured to the middle of its tile, as the needle aims.
 export function compassTargetArrived(g, area, rx, ry, px, py) {
-  if (!g || area !== g.area || g.rx !== rx || g.ry !== ry) return false;
+  if (!g || area !== g.area) return false;
+  // a hinted lead (2026-11-25): with a site, its section; without one, anywhere inside its zone (the warm glow)
+  const z = g.zone; if (z && !z.site) { const S = COMPASS_RIBBON.section, zx = (z.rx - rx) * S + S / 2 - px, zy = (z.ry - ry) * S + S / 2 - py; return Math.sqrt(zx * zx + zy * zy) / S <= Math.max(.5, Math.min(COMPASS_RIBBON.hint.maxRadius, Number(z.r) || 1)); }
+  if (g.rx !== rx || g.ry !== ry) return false;
   if (!Number.isFinite(g.x)) return true;
   return Math.hypot(g.x + .5 - px, g.y + .5 - py) < COMPASS_ARRIVAL.site;
 }
-export const compassArrivalState = () => ({ on: false, id: null, rx: NaN, ry: NaN, x: NaN, y: NaN });
+// `quiet` (2026-11-25): a journey resumed while standing at its target records the arrival without a second banner.
+export const compassArrivalState = (quiet = false) => ({ on: false, id: null, rx: NaN, ry: NaN, x: NaN, y: NaN, quiet, count: 0 }); // count: arrivals announced (the Ribbon's collapse and the haptic tick follow it)
 export function compassArrivalReset(s) { s.on = false; return s; }
 // One HUD frame: `on` whether the target is reached now. True only on the frame an arrival starts (show the banner then).
 export function compassArrivalStep(s, on, id = null, rx = NaN, ry = NaN, x = NaN, y = NaN) {
-  if (!on) { s.on = false; return false; }
+  if (!on) { s.on = false; s.quiet = false; return false; }
   if (s.on && s.id === id && Object.is(s.rx, rx) && Object.is(s.ry, ry) && Object.is(s.x, x) && Object.is(s.y, y)) return false;
-  s.on = true; s.id = id; s.rx = rx; s.ry = ry; s.x = x; s.y = y; return true;
+  s.on = true; s.id = id; s.rx = rx; s.ry = ry; s.x = x; s.y = y; if (s.quiet) { s.quiet = false; return false; } s.count = (s.count | 0) + 1; return true;
 }
 
 // A section is `base × zoom` pixels across. Below `detail` the Atlas switches to its world view: one coloured cell per
@@ -391,7 +402,7 @@ export function compassMenuModel({ area = "overworld", here = {}, quests = [], o
     for (const q of quests || []) {
       const f = q?.follow && typeof q.follow === "object" && q.follow.kind ? q.follow : null;
       if (f) groups.quests.push({ id: `follow:${f.kind}:${f.id ?? ""}`, label: String(q.title), hint: sectionOk(q.at) ? hint(q.at) : COMPASS_MENU.waymarksHint, tag: "", ...(sectionOk(q.at) ? { rx: q.at.rx, ry: q.at.ry } : {}), choose: { kind: "follow", follow: f, name: String(q.title) } });
-      else if (sectionOk(q?.at)) groups.quests.push({ id: `quest:${q.title}:${q.at.rx},${q.at.ry}`, label: String(q.title), hint: hint(q.at), tag: "", rx: q.at.rx, ry: q.at.ry, choose: { kind: "pin", rx: q.at.rx, ry: q.at.ry, name: String(q.title) } });
+      else if (sectionOk(q?.at)) groups.quests.push({ id: `quest:${q.title}:${q.at.rx},${q.at.ry}`, label: String(q.title), hint: q.zone && sectionOk(q.zone) ? `about ${hint(q.zone)}` : hint(q.at), tag: "", /* 2026-11-26: a rumour is an area: its middle, never its site */ rx: q.at.rx, ry: q.at.ry, choose: { kind: "pin", rx: q.at.rx, ry: q.at.ry, name: String(q.title), ...(q.zone ? { zone: q.zone } : {}) } });
     }
     for (const o of objectives || []) {
       if (!sectionOk(o)) continue;
@@ -410,4 +421,225 @@ export function compassMenuModel({ area = "overworld", here = {}, quests = [], o
   }
   const out = COMPASS_MENU.order.filter((id) => groups[id].length).map((id) => ({ id, title: COMPASS_MENU.groups[id], rows: groups[id] }));
   return { groups: out, count: out.reduce((n, g) => n + g.rows.length, 0), clearable: area === "overworld" && (sectionOk(pin) || !!follow?.kind || pickKey != null) };
+}
+
+// ================================================================ the compass, rebuilt (Tim, 2026-11-25)
+// "Fix the compass so it's consistent, shows all the things, and just works; it needs to be reliable." One target, resolved once
+// (main.ts navigationTargets → compassGuidance, or the dungeon's door point), and one readout of it per HUD frame (compassReadout,
+// a small object changed in place): the dial's needle, the Close View Ribbon's gold diamond, the standard view's edge arrow, the
+// arrival banner and the distance all read that readout, so no two views can disagree. The Journal's Leads, Paths and the quick
+// menu say which row is followed through one matcher (types.ts compassChoiceIs). Every kind of target and how it resolves:
+// COMPASS_TARGET_KINDS (also the field guide's table). Pure: no DOM, no allocation per frame (the readout and the marks are reused).
+export const COMPASS_TARGET_KINDS = Object.freeze([
+  Object.freeze({ id: "pick", choice: "pick 'rx,ry'", from: "tap cycle / menu row", resolves: "the objective in main.ts objectiveList (a far signal the list no longer holds is kept while its section is unexplored: objectiveList keeps it in `all`)", ends: "challenge cleared, signal section explored, story/danger gone" }),
+  Object.freeze({ id: "seedHunt", choice: "pick 'seed-hunt:<tower>'", from: "tap cycle / menu / a lookout", resolves: "seedHuntGuidance: the seed, or its crossing's door, in its section", ends: "hunt no longer active" }),
+  Object.freeze({ id: "pin", choice: "pin {rx,ry,name,zone?}", from: "Journal / Leads / Paths / menu quest row", resolves: "the section (a rumour's pin carries a hint zone: an uncertainty arc, warm inside)", ends: "only by another choice" }),
+  Object.freeze({ id: "mouth", choice: "pin named The Array Mouth / The Far Array", from: "Far Gate journal, Paths ladder", resolves: "the live Mouth (save.relayNetwork.coordinate), so it follows the Listener when it moves", ends: "no coordinate: the pin's own section" }),
+  Object.freeze({ id: "hunt", choice: "follow hunt", from: "Viewport accept / Guidance active", resolves: "the contract's target; a tracking hunt with none follows the relay waymarks", ends: "status not live" }),
+  Object.freeze({ id: "far", choice: "follow far", from: "a far quest opening", resolves: "the quest's centre", ends: "quest not open" }),
+  Object.freeze({ id: "rescue", choice: "follow rescue", from: "the hatchling's mother", resolves: "rescueGuidance: the rescue site", ends: "rescue done" }),
+  Object.freeze({ id: "quest", choice: "follow quest progress:<id>", from: "a quest taken / Leads / Paths", resolves: "quest-places.ts questTarget: the step's place", ends: "quest finished" }),
+  Object.freeze({ id: "thread", choice: "follow quest thread:<id>", from: "the first piece read / Leads", resolves: "thread-trails.ts trailTarget: the crossing holding the next piece (its door in that section); with none near, its home as a hint zone", ends: "thread finished" }),
+  Object.freeze({ id: "second", choice: "follow quest second", from: "the Second Wayfarer's footprints", resolves: "secondWayfarerTarget", ends: "trail done" }),
+  Object.freeze({ id: "errand", choice: "follow quest errand", from: "the Cairn Keeper", resolves: "Exploration: the nearest crossing (leads.ts nearestCrossing); Classic: the section's waymarks", ends: "first link found" }),
+  Object.freeze({ id: "leads", choice: "follow quest leads", from: "the relay leads", resolves: "the section's waymarks", ends: "leads complete" }),
+  Object.freeze({ id: "marker", choice: "follow marker waypoint|mark:<n>", from: "the quick menu", resolves: "the Atlas waypoint or coloured mark", ends: "marker removed" }),
+  Object.freeze({ id: "door", choice: "door (save.guidance.door)", from: "dungeon tap cycle / menu / Map", resolves: "the numbered door point on this floor (local map frame)", ends: "point cleared: the first point, else idle" }),
+]);
+export const COMPASS_RIBBON = Object.freeze({
+  spanDeg: 75, // the bar covers ±spanDeg of facing
+  widthPct: 56, // of the safe width (styles.css .compass-ribbon)
+  section: 32, // tiles a section
+  walk: 2.4, // tiles a second, the Wayfarer's base walk (game.ts), for "14 sec" across sections
+  metresPerTile: 1,
+  minuteAt: 100, // seconds: from here the distance reads in minutes
+  level: 1, // tile elevation levels (tile.elev) that make a ↑ or ↓
+  marksMax: 4, // nearby places on the bar
+  knownRadius: 2, // sections round the Wayfarer whose known places are marked
+  minDist: 6, // tiles: a place closer than this (the one being stood in) is not marked
+  sense: Object.freeze({ base: 1, perBand: 1, max: 4 }), // sections sensed: base + Aperture band index × perBand, at most max
+  hint: Object.freeze({ maxDeg: 70, minDeg: 12, fullAt: 10, maxRadius: 16, siteRadius: 2 }), // the uncertainty arc (sections)
+  edge: Object.freeze({ top: 92, bottom: 196, side: 16 }), // the standard view's edge arrow keeps clear of the HUD and the controls (px)
+  collapseMs: 480, haptic: 14, discovered: "DISCOVERED",
+});
+// Math.sqrt, not Math.hypot, in the per-frame helpers: V8's hypot allocates on every call.
+const TAU = Math.PI * 2, wrapRad = (a) => { a = (a + Math.PI) % TAU; return (a < 0 ? a + TAU : a) - Math.PI; };
+const SPAN = COMPASS_RIBBON.spanDeg * Math.PI / 180;
+// The readout's shape, made once by the caller and changed in place every frame.
+export const compassReadoutState = () => ({ on: false, dormant: false, local: false, dx: 0, dy: 0, dist: 0, sections: 0, bearing: 0, arrivedSection: false,
+  level: 0, hinted: false, warm: false, halfDeg: 0, zoneDist: 0, rel: 0, x: .5, behind: false, distKey: NaN });
+// One frame of the compass. `t`: the resolved target (overworld guidance { area, rx, ry, x?, y?, zone? } or a local door point
+// { local: true, x, y, level? }); `here`: { area, rx, ry, x, y, yaw, elev, targetElev }; `yaw`: Close View facing (world radians: 0
+// east, -PI/2 north) or NaN for north-up. The bearing is world: atan2(dy, dx); everything else follows from it.
+// The facing is `here.yaw` (NaN: north-up), read inside: a changing double passed as an argument (or a default parameter) is boxed by V8.
+export function compassReadout(out, t, here) {
+  const yaw = here.yaw; // no `here ? … : NaN`: a ternary of a field and a constant double is boxed by V8 (`here` is always given)
+  out.on = !!t; out.hinted = false; out.warm = false; out.halfDeg = 0; out.level = 0; out.behind = false;
+  if (!t) { out.dormant = false; out.distKey = NaN; out.x = .5; return out; }
+  const S = COMPASS_RIBBON.section, hx = here ? here.x : 0, hy = here ? here.y : 0, px = typeof hx === "number" && hx === hx ? hx : 0, py = typeof hy === "number" && hy === hy ? hy : 0;
+  out.local = !!t.local;
+  out.dormant = !out.local && t.area !== here?.area;
+  if (out.dormant) { out.dx = out.dy = out.dist = out.sections = 0; out.bearing = 0; out.arrivedSection = false; out.x = .5; out.rel = 0; out.distKey = -1; return out; }
+  if (out.local) { out.dx = t.x - px; out.dy = t.y - py; out.sections = 0; out.arrivedSection = false; out.level = t.level | 0; }
+  else {
+    out.dx = (t.rx - here.rx) * S + (Number.isFinite(t.x) ? t.x + .5 : S / 2) - px;
+    out.dy = (t.ry - here.ry) * S + (Number.isFinite(t.y) ? t.y + .5 : S / 2) - py;
+    out.sections = Math.max(Math.abs(t.rx - here.rx), Math.abs(t.ry - here.ry));
+    out.arrivedSection = out.sections === 0 && !Number.isFinite(t.x);
+    if (out.sections === 0 && Number.isFinite(here.elev) && Number.isFinite(here.targetElev)) { const d = here.targetElev - here.elev; out.level = d >= COMPASS_RIBBON.level ? 1 : d <= -COMPASS_RIBBON.level ? -1 : 0; }
+    const z = t.zone;
+    if (z && Number.isFinite(z.rx) && Number.isFinite(z.ry)) {
+      // a hinted lead: aim at the zone's centre; the arc narrows from maxDeg to minDeg as the zone's edge comes near; inside, warm
+      const zx = (z.rx - here.rx) * S + S / 2 - px, zy = (z.ry - here.ry) * S + S / 2 - py, H = COMPASS_RIBBON.hint;
+      out.hinted = true; out.dx = zx; out.dy = zy; out.zoneDist = Math.sqrt(zx * zx + zy * zy) / S; out.arrivedSection = false;
+      const r = Math.max(.5, Math.min(H.maxRadius, Number(z.r) || 1));
+      if (out.zoneDist <= r) out.warm = true;
+      else out.halfDeg = H.minDeg + (H.maxDeg - H.minDeg) * Math.min(1, Math.max(0, (out.zoneDist - r) / H.fullAt));
+    }
+  }
+  out.dist = Math.sqrt(out.dx * out.dx + out.dy * out.dy); out.bearing = Math.atan2(out.dy, out.dx);
+  // inline (no helper call returning a double, which V8 would box): the bearing relative to the facing, wrapped to ±PI, and its place
+  let rel = out.bearing - (yaw === yaw ? yaw : -Math.PI / 2); rel = (rel + Math.PI) % TAU; if (rel < 0) rel += TAU; rel -= Math.PI;
+  out.rel = rel; out.behind = rel > SPAN || rel < -SPAN; let bx = .5 + rel / (2 * SPAN); if (bx < 0) bx = 0; else if (bx > 1) bx = 1; out.x = bx;
+  out.distKey = compassDistanceKey(out);
+  return out;
+}
+// A hinted lead's zone on the Atlas (Tim, 2026-11-26: "show a rumour as an area, a region of sections where it will be found"):
+// the sections whose middle lies within the zone's radius of its middle, the radius clamped as compassReadout clamps it, so the
+// Atlas area is where the compass turns warm (standing at a section's middle: warm there exactly when it is in the area). Empty for no zone.
+export const zoneRadius = (z) => Math.max(.5, Math.min(COMPASS_RIBBON.hint.maxRadius, Number(z?.r) || 1));
+export function zoneSections(z) {
+  if (!z || !Number.isFinite(z.rx) || !Number.isFinite(z.ry)) return [];
+  const r = zoneRadius(z), n = Math.floor(r), out = [];
+  for (let dy = -n; dy <= n; dy++) for (let dx = -n; dx <= n; dx++) if (dx * dx + dy * dy <= r * r) out.push({ rx: z.rx + dx, ry: z.ry + dy });
+  return out;
+}
+// Where a relative bearing sits on the bar: 0 the left end, 1 the right, clamped (a target behind sits at the nearer edge).
+export function ribbonX(rel) { return Math.min(1, Math.max(0, .5 + rel / (2 * SPAN))); }
+// A small integer that changes exactly when the distance words would: main.ts builds the words only then (no string per frame).
+// kind × 1e7 + value × 3 + level (0 level, 1 up, 2 down); kinds: 0 metres, 1 seconds, 2 minutes, 3 hinted half-minutes, 4 warm;
+// -1 dormant. Integers only: a fractional key would make V8 box the return value every frame.
+export function compassDistanceKey(r) {
+  if (!r || !r.on) return NaN; if (r.dormant) return -1;
+  const lv = r.level > 0 ? 1 : r.level < 0 ? 2 : 0, W = COMPASS_RIBBON.walk;
+  if (r.warm) return 4e7 + lv;
+  if (r.hinted) return 3e7 + Math.min(3e6, Math.round(r.dist / W / 30)) * 3 + lv;
+  if (r.sections > 0) { const s = r.dist / W; return s < COMPASS_RIBBON.minuteAt ? 1e7 + Math.max(1, Math.round(s)) * 3 + lv : 2e7 + Math.min(3e6, Math.round(s / 60)) * 3 + lv; }
+  return Math.min(3e6, Math.round(r.dist * COMPASS_RIBBON.metresPerTile)) * 3 + lv;
+}
+export function compassDistanceText(r) {
+  const k = compassDistanceKey(r); if (!Number.isFinite(k)) return "";
+  if (k === -1) return "outside";
+  const arrow = r.level > 0 ? " ↑" : r.level < 0 ? " ↓" : "";
+  if (r.warm) return `close${arrow}`;
+  const s = r.dist / COMPASS_RIBBON.walk;
+  if (r.hinted) return `≈${Math.max(1, Math.round(s / 30) / 2)} min`;
+  if (r.sections > 0) return (s < COMPASS_RIBBON.minuteAt ? `${Math.max(1, Math.round(s))} sec` : `${Math.round(s / 60)} min`) + arrow;
+  return `${Math.max(0, Math.round(r.dist * COMPASS_RIBBON.metresPerTile))} m${arrow}`;
+}
+// The uncertainty arc on the bar: [x0, x1] (0..1, clamped), or null when not hinted or warm.
+export function ribbonArc(r, out = { x0: 0, x1: 0 }) {
+  if (!r?.hinted || r.warm || r.dormant) return null;
+  const h = r.halfDeg * Math.PI / 180, k = 2 * SPAN; let a = .5 + (r.rel - h) / k, b = .5 + (r.rel + h) / k; out.x0 = a < 0 ? 0 : a > 1 ? 1 : a; out.x1 = b < 0 ? 0 : b > 1 ? 1 : b; return out;
+}
+// The cardinal letters and the intercardinal ticks of the bar, by world bearing.
+export const RIBBON_CARDINALS = Object.freeze([["N", -Math.PI / 2], ["NE", -Math.PI / 4], ["E", 0], ["SE", Math.PI / 4], ["S", Math.PI / 2], ["SW", 3 * Math.PI / 4], ["W", Math.PI], ["NW", -3 * Math.PI / 4]].map(([label, bearing]) => Object.freeze({ label, bearing, major: label.length === 1 })));
+// A world bearing's place on the bar for a facing `yaw`, or NaN when it is outside the bar's span.
+export function ribbonPlace(bearing, yaw) { const rel = wrapRad(bearing - yaw); return Math.abs(rel) > SPAN ? NaN : .5 + rel / (2 * SPAN); }
+// One frame of the bar's layout, into `places` (a Float64Array the caller keeps; NaN = not drawn): the cardinals first
+// (RIBBON_CARDINALS order), then the nearby places `marks` (nearbyPlaces). Everything comes in objects (`here`: { area, rx, ry, x, y,
+// yaw }) and goes out in the typed array, so a turning Wayfarer allocates nothing.
+export const RIBBON_SLOTS = 8 + COMPASS_RIBBON.marksMax; // cardinals, then marks;
+export function ribbonLayout(places, here, marks) {
+  const yaw = here.yaw === here.yaw ? here.yaw : -Math.PI / 2, n = RIBBON_CARDINALS.length, S = COMPASS_RIBBON.section;
+  for (let i = 0; i < n; i++) places[i] = placeOf(RIBBON_CARDINALS[i].bearing - yaw);
+  for (let i = 0; i < COMPASS_RIBBON.marksMax; i++) {
+    const m = marks && i < marks.length ? marks[i] : null;
+    places[n + i] = m && here.area === "overworld" ? placeOf(Math.atan2((m.ry - here.ry) * S + m.y + .5 - here.y, (m.rx - here.rx) * S + m.x + .5 - here.x) - yaw) : NaN;
+  }
+  return places;
+}
+function placeOf(a) { a = (a + Math.PI) % TAU; if (a < 0) a += TAU; a -= Math.PI; return a > SPAN || a < -SPAN ? NaN : .5 + a / (2 * SPAN); }
+// The standard view's edge arrow: where the ray from the Wayfarer (the screen's centre) toward the target leaves the safe inner
+// rectangle. Hidden (on: false) while the target is on screen; a hinted target's glow is `spread` px wide (its arc), a warm one
+// none (main.ts shows a soft all-round glow instead). Changes `out` in place.
+export function compassEdge(out, r, w, h, tile) {
+  const E = COMPASS_RIBBON.edge; out.on = false; out.spread = 0;
+  if (!r?.on || r.dormant || r.warm || !(w > 0) || !(h > 0)) return out;
+  const sx = r.dx * tile, sy = r.dy * tile, cx = w / 2, cy = h / 2;
+  const left = cx - E.side, right = w - E.side - cx, up = cy - E.top, down = h - E.bottom - cy;
+  if (sx > -left && sx < right && sy > -up && sy < down && !r.hinted) return out; // on screen: the target itself is in view
+  // 1e9, not Infinity: a constant Infinity in a ternary with a division makes V8 box the result (a heap number a frame)
+  const kx = sx > 0 ? right / sx : sx < 0 ? -left / sx : 1e9, ky = sy > 0 ? down / sy : sy < 0 ? -up / sy : 1e9; let k = kx < ky ? kx : ky; if (!r.hinted && k > 1) k = 1;
+  if (k >= 1e9) return out;
+  out.on = true; out.x = Math.round(cx + sx * k); out.y = Math.round(cy + sy * k); out.deg = Math.round(Math.atan2(sy, sx) * 180 / Math.PI) + 90; // whole pixels and degrees (0: up)
+  out.spread = r.hinted ? Math.round(Math.min(w, h) * r.halfDeg / 180) : 0;
+  return out;
+}
+
+// ---------------------------------------------------------------- nearby places (the Ribbon's marks)
+// Tim (2026-11-26): "the compass may sense only Pentagons, Skyways (Sky Stairs), great trees, Waystations / teleport shrines /
+// Watcher shrines, and world bosses (a red mark). Nothing else." Known places within COMPASS_RIBBON.knownRadius sections or the
+// Aperture's reach are filled; places on ground not yet seen, within the reach, are hollow. Nothing is marked that would not be
+// there on arrival: a Sky Stair by the rule the game places it (wonders.ts wonderAt), a Wayglass the section's region lays
+// (world.ts sectionSignals; with a probe, `signals(x, y)`: the kept ones only, null while not generated), a Watcher's Shrine on a guided host (waymark-guides.ts guideHost: it always stands), a great tree
+// only once its terrain has been built and holds one, a Pentagon by its own rule (both through `probe`, from game.ts: { tree(x, y)
+// true / false / null while unbuilt, pentagon(cx, cy) }), and a world beast where it is now. Never a hamlet, a crossing, a Starfield,
+// loot, a cache or an ordinary monster. At most marksMax, nearest first. Built only when the section, the Atlas or the Aperture
+// band changes (main.ts), into `out`, which is reused; `out.pending` lists the sections not yet built (a great tree's terrain,
+// `kind` "tree") or generated (a region's Wayglass, "signals") that could still make the list: main.ts does them in idle time,
+// one at a time, and asks again.
+export const SENSED_PLACES = Object.freeze({
+  pentagon: Object.freeze({ known: "Pentagon", sensed: "a Pentagon" }),
+  skyway: Object.freeze({ known: "Sky Stair", sensed: "a Sky Stair" }),
+  tree: Object.freeze({ known: "Great tree", sensed: "a great tree" }),
+  wayglass: Object.freeze({ known: "Wayglass", sensed: "a Wayglass" }),
+  shrine: Object.freeze({ known: "Watcher's Shrine", sensed: "a Watcher's shrine" }),
+  boss: Object.freeze({ known: "World beast", sensed: "a world beast", red: true }),
+});
+// The Atlas site kinds a known section's marks come from, by sensed kind (everything else on the Atlas is never marked).
+export const NEARBY_KINDS = Object.freeze({ checkpoint: "wayglass", watcherTomb: "shrine", skyStair: "skyway" });
+export const senseRadius = (save) => { const S = COMPASS_RIBBON.sense, band = Math.max(0, APERTURE_BANDS.indexOf(apertureBand(Number(save?.perception?.aperture) || 0))); return Math.min(S.max, S.base + band * S.perBand); };
+export function nearbyPlaces(save, rx, ry, px = 16, py = 16, out = [], probe = null) {
+  out.length = 0; out.pending = []; if (!save) return out;
+  const R = COMPASS_RIBBON, S = R.section, atlas = save.atlas || {}, seed = save.seed, gen = Number(save.worldGeneration) || 1, pool = [], taken = new Set();
+  const push = (kind, key, known, x, y, sx, sy, name = null) => { if (taken.has(key)) return; taken.add(key); const P = SENSED_PLACES[kind];
+    pool.push({ key, kind, known, rx: x, ry: y, x: sx, y: sy, name: name || (known ? P.known : P.sensed), ...(P.red ? { boss: true } : {}), d: Math.hypot((x - rx) * S + sx + .5 - px, (y - ry) * S + sy + .5 - py) }); };
+  const K = R.knownRadius, sense = senseRadius(save), W = Math.max(K, sense), pent = new Set(), waits = [];
+  const reach = (x, y, known) => Math.abs(x - rx) + Math.abs(y - ry) <= sense || (known && Math.max(Math.abs(x - rx), Math.abs(y - ry)) <= K);
+  for (let y = ry - W; y <= ry + W; y++) for (let x = rx - W; x <= rx + W; x++) {
+    const k = `${x},${y}`, rec = atlas[k], known = !!rec; if (!reach(x, y, known)) continue;
+    if (known) {
+      for (const s of rec.sites || []) { const kind = NEARBY_KINDS[s?.kind]; if (!kind || !Number.isFinite(s.x) || !Number.isFinite(s.y)) continue;
+        push(kind, `${kind}:${k}`, true, x, y, s.x, s.y, kind === "wayglass" && s.name && s.name !== s.kind ? s.name : kind === "shrine" && s.name && s.name !== s.kind ? s.name : null); }
+      const c = save.checkpoints?.[k]; if (c && Number.isFinite(c.x) && Number.isFinite(c.y)) push("wayglass", `wayglass:${k}`, true, x, y, c.x, c.y, c.name || null); // a Crown Rest, a buoy: attuned, so known
+    } else if (x !== 0 || y !== 0) {
+      if (wonderAt(seed, x, y, "skyway")) push("skyway", `skyway:${k}`, false, x, y, 15.5, 15.5);
+      if (guideHost(seed, "shrine", x, y)) push("shrine", `shrine:${k}`, false, x, y, 15.5, 15.5);
+      const sig = probe?.signals ? probe.signals(x, y) : sectionSignals(seed, x, y, gen);
+      if (sig?.wayglass) push("wayglass", `wayglass:${k}`, false, x, y, 15.5, 15.5); else if (!sig) waits.push([x, y, "signals"]);
+    }
+    if (probe) {
+      const t = probe.tree?.(x, y); if (t === true) push("tree", `tree:${k}`, known, x, y, 15.5, 15.5); else if (t == null && probe.tree) waits.push([x, y, "tree"]);
+      const pc = pentagonCentre(x, y), pk = pc && `${pc.cx},${pc.cy}`;
+      if (pc && !pent.has(pk)) { pent.add(pk); if (reach(pc.cx, pc.cy, !!atlas[pk]) && probe.pentagon?.(pc.cx, pc.cy)) push("pentagon", `pentagon:${pk}`, !!atlas[pk], pc.cx, pc.cy, 15.5, 15.5); }
+    }
+  }
+  for (const b of worldBeastsHeld(save)) if (Number.isInteger(b.rx) && Number.isInteger(b.ry) && Math.abs(b.rx - rx) + Math.abs(b.ry - ry) <= W)
+    push("boss", `boss:${b.id}`, !!atlas[`${b.rx},${b.ry}`], b.rx, b.ry, Number.isFinite(b.x) ? b.x : 15.5, Number.isFinite(b.y) ? b.y : 15.5, b.name);
+  { const q = save.questingBeast?.active; if (q && Number.isInteger(q.rx) && Number.isInteger(q.ry) && Math.abs(q.rx - rx) + Math.abs(q.ry - ry) <= W) push("boss", "boss:questingBeast", !!atlas[`${q.rx},${q.ry}`], q.rx, q.ry, 15.5, 15.5, "the Questing Beast"); }
+  pool.sort((a, b) => a.d - b.d || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
+  for (let i = 0; i < pool.length && out.length < R.marksMax; i++) if (pool[i].d >= R.minDist) out.push(pool[i]); // a place the Wayfarer stands at needs no mark
+  // the sections still to build that could make the list: nearer than its last mark, or any while it has room
+  const last = out.length >= R.marksMax ? out[out.length - 1].d : Infinity;
+  for (const [x, y, kind] of waits) { const d = Math.hypot((x - rx) * S + 16 - px, (y - ry) * S + 16 - py); if (d < last && d >= R.minDist) out.pending.push({ rx: x, ry: y, d, kind }); }
+  out.pending.sort((a, b) => a.d - b.d);
+  return out;
+}
+// A hollow mark that became filled: the name to announce ("DISCOVERED · <place>"), or null. `prev` is the last marks list's
+// sensed keys (a Set the caller keeps), `next` the new list. A sensed place is discovered when its section enters the Atlas.
+export function compassDiscovery(save, prevSensed, next) {
+  for (const m of next) if (m.known && !m.boss && prevSensed.has(m.key)) return m.name;
+  for (const key of prevSensed) { const at = /^(pentagon|skyway|tree|wayglass|shrine):(-?\d+),(-?\d+)$/.exec(key); if (at && save?.atlas?.[`${at[2]},${at[3]}`]) return SENSED_PLACES[at[1]].known; }
+  return null;
 }

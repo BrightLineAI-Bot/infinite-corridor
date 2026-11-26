@@ -12,16 +12,16 @@
 // CAIRN_LINES.plain) and, taken, the compass follows it to the nearest crossing (nearestCrossing). Classic keeps today's lines and
 // the errand's waymarks; leads and rumours run in both modes, as extras (section 6), and a Classic rumour never points at an
 // ability its own rules already open (awakening, the hatchling).
-import { hashSeed } from "./random.js?v=r1059-3629aeded9d0";
-import { crossingRolled } from "./world.js?v=r1059-3629aeded9d0";
-import { nearestWonders, WONDERS, compassWords } from "./wonders.js?v=r1059-3629aeded9d0";
-import { arcanaHint, arcanaToward, arcanaHas, ARCANA_REGIONS, ARCANA_UNLOCKS } from "./lore.js?v=r1059-3629aeded9d0";
-import { ensureLeads, exploring, saveFrame, EXPLORATION, LEAD_RECORD } from "./journey-start.js?v=r1059-3629aeded9d0";
-import { APERTURE_BANDS, apertureBand } from "./items.js?v=r1059-3629aeded9d0";
-import { HORDE_RUMOUR, RELIQUARY, worldWithheld } from "./world-routes.js?v=r1059-3629aeded9d0"; // Phase 6: the horde rumour (2.7)
-import { nearestHorde, hordeLeadLive, pityLead, pityLive } from "./world-leads.js?v=r1059-3629aeded9d0"; // Phase 6: the strong lead (G3)
-import { QUEST_IDS, questOpen, boughtRumour, paidRumourView, storyWithheld } from "./quests.js?v=r1059-3629aeded9d0"; // Phase 7: quests count as leads; Phase 8: a bought rumour
-import { threadFound } from "./threads.js?v=r1059-3629aeded9d0"; import { TRAIL_IDS, trailBegun } from "./thread-trails.js?v=r1059-3629aeded9d0"; // 2026-11-21: the Washing at Sallowby (a rumour, then a quest the compass can follow)
+import { hashSeed } from "./random.js?v=r1076-4dec3446cb5b";
+import { crossingRolled } from "./world.js?v=r1076-4dec3446cb5b";
+import { nearestWonders, WONDERS, compassWords } from "./wonders.js?v=r1076-4dec3446cb5b";
+import { arcanaHint, arcanaToward, arcanaHas, ARCANA_REGIONS, ARCANA_UNLOCKS } from "./lore.js?v=r1076-4dec3446cb5b";
+import { ensureLeads, exploring, saveFrame, EXPLORATION, LEAD_RECORD } from "./journey-start.js?v=r1076-4dec3446cb5b";
+import { APERTURE_BANDS, apertureBand } from "./items.js?v=r1076-4dec3446cb5b";
+import { HORDE_RUMOUR, RELIQUARY, worldWithheld } from "./world-routes.js?v=r1076-4dec3446cb5b"; // Phase 6: the horde rumour (2.7)
+import { nearestHorde, hordeLeadLive, pityLead, pityLive } from "./world-leads.js?v=r1076-4dec3446cb5b"; // Phase 6: the strong lead (G3)
+import { QUEST_IDS, questOpen, boughtRumour, paidRumourView, storyWithheld } from "./quests.js?v=r1076-4dec3446cb5b"; // Phase 7: quests count as leads; Phase 8: a bought rumour
+import { threadFound } from "./threads.js?v=r1076-4dec3446cb5b"; import { TRAIL_IDS, trailBegun } from "./thread-trails.js?v=r1076-4dec3446cb5b"; // 2026-11-21: the Washing at Sallowby (a rumour, then a quest the compass can follow)
 
 export const LEADS = Object.freeze({
   floor: 2, // G2: at least this many leads the player can act on now
@@ -105,7 +105,10 @@ export const RUMOURS = Object.freeze({
     line: (where) => `Washing turns up in the crossings ${where}, they say: bundles tied in clean sheets, still damp, with a slip pinned on. Somebody's whole village, by the sound of it.` }),
   // Phase 6 (2.7): from Infinite II, the nearest Revenant horde crossing not yet entered, while the first horde's certain reliquary
   // waits and the pool still holds something to find. Found by the horde's own hash (world-finds.ts nearestHorde).
-  horde: Object.freeze({ modes: [1], tier: HORDE_RUMOUR.tier, title: "A Revenant horde",
+  // Every offered goal can be completed (2026-11-25): told floor or not (`always`), like the strong lead: the first horde's reliquary
+  // is certain and this is its only lead, yet a player with goals in hand never fell below the floor (a 60-hour run held 9 to 15
+  // leads throughout, while an unentered horde crossing lay 8 sections from the Refuge, and so never heard it).
+  horde: Object.freeze({ modes: [1], tier: HORDE_RUMOUR.tier, title: "A Revenant horde", always: true,
     open: (save) => !save?.feats?.reliquary?.firsts?.horde && RELIQUARY.pool.some((id) => worldWithheld(save, id)),
     line: (h) => `A crossing ${h.d} section${h.d === 1 ? "" : "s"} off is thick with Gate Revenants, they say. Whoever breaks a horde finds something at the bottom.` }),
   // Phase 8: a rumour bought with Divine Viscera (world-finds.ts buyVisceraRumour); never chosen by nextRumour.
@@ -163,11 +166,12 @@ function homeEdge(save, set) {
   const h = ARCANA_REGIONS.sets[set], deg = ARCANA_REGIONS.headings[arcanaToward(set, saveFrame(save))], a = (deg * Math.PI) / 180;
   return { rx: Math.round(Math.cos(a) * h.from) + 0, ry: Math.round(-Math.sin(a) * h.from) + 0 };
 }
-// The next rumour worth telling at (rx, ry), or null: the first eligible kind not already a live rumour.
-export function nextRumour(save, rx = 0, ry = 0) {
+// The next rumour worth telling at (rx, ry), or null: the first eligible kind not already a live rumour (`always`: only the
+// kinds told floor or not).
+export function nextRumour(save, rx = 0, ry = 0, always = false) {
   const live = liveRumours(save), mode = modeOf(save), tier = tierOf(save);
   for (const kind of RUMOUR_ORDER) {
-    const K = RUMOURS[kind]; if (!K.modes.includes(mode) || (K.tier != null && tier < K.tier)) continue;
+    const K = RUMOURS[kind]; if (!K.modes.includes(mode) || (K.tier != null && tier < K.tier) || (always && !K.always)) continue;
     if (kind === "wonder") {
       const list = nearestWonders(save, rx, ry).filter((w) => !live.some((r) => r.kind === "wonder" && r.rx === w.rx && r.ry === w.ry));
       const w = list[0]; if (!w) continue;
@@ -188,14 +192,14 @@ export function recordRumour(save, rumour, by = "", at = Number(save?.playSecond
   L.rumours = list.slice(-LEAD_RECORD.rumourMax);
   return { rumour: r, first };
 }
-// The lead floor (G2): a person's idle line becomes a rumour while fewer than LEADS.floor leads stand. Returns
+// The lead floor (G2): a person's idle line becomes a rumour while fewer than LEADS.floor leads stand (or, floor or not, one whose
+// kind is told `always`: the horde rumour). Returns
 // { text, rumour, first } or null (the idle line stands).
 // Phase 6 (G3): once the dry spell has run its course, the next person who tells rumours gives the strong lead, floor or not.
 export function rumourTurn(save, by, rx = 0, ry = 0) {
   const strong = pityLead(save, rx, ry);
   if (strong) { const out = recordRumour(save, strong, by); return { text: strong.text, strong: true, ...out }; }
-  if (!needsRumour(save)) return null;
-  const r = nextRumour(save, rx, ry); if (!r) return null;
+  const r = nextRumour(save, rx, ry, !needsRumour(save)); if (!r) return null; // above the floor, only a rumour told floor or not (`always`)
   const out = recordRumour(save, r, by); return { text: r.text, ...out };
 }
 // A traveller's wonder (release 674, wonders.ts wonderRumour) is kept as a lead too: the same wonder the traveller named.
@@ -204,9 +208,39 @@ export function noteWonderLead(save, rx, ry, who = "") {
   const w = list[hashSeed(`${save?.seed}:rumour:${who}`) % list.length];
   return recordRumour(save, { id: `wonder:${w.rx},${w.ry}`, kind: "wonder", text: RUMOURS.wonder.line(w, rx, ry), rx: w.rx, ry: w.ry, name: WONDERS.kinds[w.kind].atlas }, who);
 }
-// The Journal's rumour rows: live rumours, newest first, each with its compass point when it has one.
+// A rumour is a hint, not a pin (2026-11-25, the compass rebuilt): its compass point carries a zone the thing lies in, so the compass
+// shows an uncertainty arc that narrows as the Wayfarer nears and turns warm inside, never a needle at the exact spot. An Arcana
+// home: its middle and half its depth (capped by atlas-view.ts COMPASS_RIBBON.hint.maxRadius when shown). A wonder or a horde: the
+// site's section is real (`site`), the zone's centre a seeded step off it so the arc's middle never gives the spot away.
+// Tim (2026-11-26): "show a rumour as an AREA (a region of sections where it will be found)... the area's size varies with the
+// rumour's difficulty." Difficulty by what is told of (`difficulty`: a Sky Stair or a great tree stands tall and is seen from afar;
+// a Starfield is a crossing like any other until entered; a Revenant horde lies in a crossing well off the road), and the zone's
+// radius in sections by difficulty (`radius`). The Atlas draws the zone's sections (atlas-view.ts zoneSections) and the compass
+// turns warm inside it, so the two always agree. The site lies inside its zone: the zone's middle is a seeded step of at most
+// floor(r / √2) sections each way off it. Difficulty 1 keeps the earlier radius 2 and step, so those zones are as they were.
+export const RUMOUR_ZONE = Object.freeze({ siteRadius: 2, difficulty: Object.freeze({ skyway: 1, tree: 1, starfield: 2, horde: 3 }), radius: Object.freeze({ 1: 2, 2: 3, 3: 4 }) });
+// The difficulty of a rumour with a site: a wonder by its kind (the record's Atlas name, as heard), a horde by its own.
+export function rumourDifficulty(r) {
+  if (r?.kind === "horde") return RUMOUR_ZONE.difficulty.horde;
+  if (r?.kind === "wonder") { const kind = Object.keys(WONDERS.kinds).find((k) => WONDERS.kinds[k].atlas === r.name); return RUMOUR_ZONE.difficulty[kind] || 1; }
+  return 1;
+}
+export function rumourZone(save, r) {
+  if (!r || !Number.isInteger(r.rx) || !Number.isInteger(r.ry)) return null;
+  const set = RUMOURS[r.kind]?.set;
+  if (set && ARCANA_REGIONS.sets[set]) {
+    const h = ARCANA_REGIONS.sets[set], a = (ARCANA_REGIONS.headings[arcanaToward(set, saveFrame(save))] * Math.PI) / 180, mid = (h.from + h.to) / 2;
+    return { rx: Math.round(Math.cos(a) * mid) + 0, ry: Math.round(-Math.sin(a) * mid) + 0, r: Math.max(1, (h.to - h.from) / 2), site: false };
+  }
+  if (r.kind === "wonder" || r.kind === "horde") {
+    const radius = RUMOUR_ZONE.radius[rumourDifficulty(r)] || RUMOUR_ZONE.siteRadius, n = Math.floor(radius / Math.SQRT2), k = hashSeed(`${save?.seed}:compass-zone:${r.id}`), span = 2 * n + 1;
+    return { rx: r.rx + (k % span) - n, ry: r.ry + (Math.floor(k / span) % span) - n, r: radius, site: true };
+  }
+  return null;
+}
+// The Journal's rumour rows: live rumours, newest first, each with its compass point when it has one (and its hint zone).
 export function rumourLeads(save) {
-  return liveRumours(save).slice().reverse().map((r) => ({ id: r.id, title: r.name || RUMOURS[r.kind]?.title || "A rumour", detail: r.text, ...(Number.isInteger(r.rx) ? { at: { rx: r.rx, ry: r.ry } } : {}) }));
+  return liveRumours(save).slice().reverse().map((r) => { const zone = rumourZone(save, r); return { id: r.id, title: r.name || RUMOURS[r.kind]?.title || "A rumour", detail: r.text, ...(Number.isInteger(r.rx) ? { at: { rx: r.rx, ry: r.ry } } : {}), ...(zone ? { zone } : {}) }; });
 }
 
 // ---------------------------------------------------------------- the Journal dot (4.3)

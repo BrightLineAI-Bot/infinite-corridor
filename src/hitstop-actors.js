@@ -23,7 +23,7 @@
 // dt), saved with the journey's runtime as ms remaining (playerRuntime.hitStop, additive) so a reload mid-stop resumes the same
 // remainder, never longer. A struck foe's is `e.hitStop` (ms left), counted down by dt and saved with the area's foes the way
 // hitStun is. Pausing simply stops the update calls, so a pause or the app in the background holds both exactly.
-import { unharmablePerson } from "./townsfolk.js?v=r1059-3629aeded9d0"; // Tim (2026-11-20): no non-hostile person can be harmed
+import { unharmablePerson } from "./townsfolk.js?v=r1076-4dec3446cb5b"; // Tim (2026-11-20): no non-hostile person can be harmed
 export const HITSTOP_ACTORS = Object.freeze({
   version: 1,
   swing: Object.freeze({ maxMs: 110, reducedScale: 1 }),

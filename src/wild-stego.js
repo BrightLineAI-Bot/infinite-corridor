@@ -7,8 +7,8 @@
 // dungeon history as `stegoRooms` by game.ts generatePinnedDungeon) can hold one: a floor generated before keeps exactly what it had.
 // An eligible floor holds one, at `chance`, when it has a room big enough: an open square at least `side` tiles across, its centre at
 // least `fromEntry` from the way in. The beast is a spawn on the floor (`stegoRoom`), tuned to the Wayfarer like the roaming beast.
-import { hashSeed } from "./random.js?v=r1059-3629aeded9d0";
-import { LETHAL_KINDS } from "./landscape.js?v=r1059-3629aeded9d0";
+import { hashSeed } from "./random.js?v=r1076-4dec3446cb5b";
+import { LETHAL_KINDS } from "./landscape.js?v=r1076-4dec3446cb5b";
 
 export const STEGO_ROOMS = { version: 1, chance: .12, side: 9, fromEntry: 8, styles: ["keep", "apartment"] };
 // Whether a floor's building can hold one (the id's own kind is checked by the caller: a great building or a Pentagon chamber).

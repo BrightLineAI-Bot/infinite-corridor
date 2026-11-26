@@ -10,11 +10,11 @@
 // floor's return does not lead back: it lets you out at a random place in the world, `exit.near`–`exit.far` sections from
 // where you went in (open sea refused, unexplored ground preferred).
 // Save: additive at schema 14 (`history.deepAnnex` on each floor's dungeon history: { version, floor, base }).
-import { hashSeed } from "./random.js?v=r1059-3629aeded9d0";
+import { hashSeed } from "./random.js?v=r1076-4dec3446cb5b";
 
 export const DEEP_ANNEX = {
   version: 1,
-  chance: .25, // of the Starfield crossings never entered before (CHASM.chance .2 since release 672: about 5% of crossings)
+  chance: .25, // of the Starfield crossings never entered before (CHASM.chance: .1 on ground first seen from Starfield placement 2, about 2.5% of crossings; .2 on ground seen before, about 5%)
   floors: 3,
   name: "Starfield Deep Annex",
   scale: { hp: [1, 1.3, 1.6], damage: [1, 1.15, 1.3] }, // per floor

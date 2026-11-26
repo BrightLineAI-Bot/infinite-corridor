@@ -8,10 +8,10 @@
 // chosen home ("rx,ry"; Ember Refuge, "0,0", when unset). Home is where the Atlas's Return button goes, and where the farm,
 // the quarry and the regrowth ring sit (refuge-lands.ts, by `homeCenter`). A town becomes home from the Atlas once its
 // Wayglass is lit.
-import { hashSeed } from "./random.js?v=r1059-3629aeded9d0";
-import { hamletIdentity, hamletSection } from "./settlements.js?v=r1059-3629aeded9d0";
-import { openSeaSection } from "./landscape.js?v=r1059-3629aeded9d0";
-import { killsAtMouthFromJournal } from "./far-array.js?v=r1059-3629aeded9d0";
+import { hashSeed } from "./random.js?v=r1076-4dec3446cb5b";
+import { hamletIdentity, hamletSection } from "./settlements.js?v=r1076-4dec3446cb5b";
+import { openSeaSection } from "./landscape.js?v=r1076-4dec3446cb5b";
+import { killsAtMouthFromJournal } from "./far-array.js?v=r1076-4dec3446cb5b";
 
 // townWhen: "kill" raises a Mouth's town on the first Listener kill there (releases 373-756, and again from Tim's 2026-11-05
 // cycle: "after you beat the listener [at a Mouth] for the first time there's a town that springs up"); "unlock" only when its
@@ -55,10 +55,15 @@ export function grantTowns(save) {
   // or once its Gate is unlocked and the Listener has left it for good (`quiet` with `moves`; before v2, quiet with no piece held).
   const f = save.farArray || {}, toNext = Math.max(0, Math.floor(Number(f.toNext) || 0)), spent = !!f.quiet && (typeof f.moves === "boolean" ? f.moves : toNext === 0);
   const atMouth = f.atMouth != null && Number.isFinite(Number(f.atMouth)) ? Number(f.atMouth) : killsAtMouthFromJournal(save, Math.max(0, Math.floor(Number(f.mouth) || 0)));
+  // Release 1064 gave a Mouth formed by a v3 move its town at once (`formed` "move"). Tim, 2026-11-26: "the town must not appear when
+  // you reach the Mouth"; it rises only once a Listener falls there. A town a journey already has (`formed` "move" included) is
+  // kept: this only ever adds. A Mouth a v3 move left without a kill is recorded `felled: false` (far-array.ts moveMouthV3) and
+  // gets no town; an older entry without the field keeps the rule before it.
   const current = net.coordinate && (spent || (HOMETOWNS.townWhen === "kill" && atMouth > 0)) ? [net.coordinate] : [];
   for (const m of [...past, ...current]) {
     if (!Number.isInteger(m?.rx) || !Number.isInteger(m?.ry)) continue;
     const there = h.towns.find((q) => q.rx === m.rx && q.ry === m.ry); if (there) { there.mouth = true; continue; }
+    if (m.felled === false) continue;
     const t = { rx: m.rx, ry: m.ry, name: hamletIdentity(save.seed, m.rx, m.ry).name, listener: h.towns.filter((q) => q.mouth).length + 1, mouth: true }; h.towns.push(t); added.push(t);
   }
   return added;

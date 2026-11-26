@@ -4,16 +4,16 @@ function drawShadowBody(ctx,x,y,s){
     ctx.beginPath(); ctx.arc(x, y - s * .32, s * .15, 0, 7); ctx.fill(); // hood
     ctx.fillStyle = "#b48cff"; ctx.fillRect(x - s * .07, y - s * .34, s * .04, s * .03); ctx.fillRect(x + s * .03, y - s * .34, s * .04, s * .03); // eyes
 }
-import { drawHatchVisuals } from "./hatchling-render.js?v=r1059-3629aeded9d0"; // the Triceratops hatchling
-import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r1059-3629aeded9d0";
-import { projectileVisualPoint } from "./actor-presentation.js?v=r1059-3629aeded9d0";
-import { SHADOW_CLONE } from "./late-spells.js?v=r1059-3629aeded9d0";
-import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.js?v=r1059-3629aeded9d0";
-import { drawOrbit } from "./orbit-volley.js?v=r1059-3629aeded9d0";
-import { drawToolForms, drawOrrery, shotFade } from "./tool-forms.js?v=r1059-3629aeded9d0";
-import { drawQuandrix } from "./quandrix-staff.js?v=r1059-3629aeded9d0"; // the Quandrix Staff (2026-11-13)
-import { drawWeaponArts } from "./weapon-arts.js?v=r1059-3629aeded9d0"; // weapon arts (2026-11-13)
-import { drawAwakenedArts } from "./awakened-arts.js?v=r1059-3629aeded9d0"; // awakened arts (2026-11-13)
+import { drawHatchVisuals } from "./hatchling-render.js?v=r1076-4dec3446cb5b"; // the Triceratops hatchling
+import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r1076-4dec3446cb5b";
+import { projectileVisualPoint } from "./actor-presentation.js?v=r1076-4dec3446cb5b";
+import { SHADOW_CLONE } from "./late-spells.js?v=r1076-4dec3446cb5b";
+import { drawBrawler, drawBrawlerAuras } from "./brawler-spells.js?v=r1076-4dec3446cb5b";
+import { drawOrbit } from "./orbit-volley.js?v=r1076-4dec3446cb5b";
+import { drawToolForms, drawOrrery, shotFade } from "./tool-forms.js?v=r1076-4dec3446cb5b";
+import { drawQuandrix } from "./quandrix-staff.js?v=r1076-4dec3446cb5b"; // the Quandrix Staff (2026-11-13)
+import { drawWeaponArts } from "./weapon-arts.js?v=r1076-4dec3446cb5b"; // weapon arts (2026-11-13)
+import { drawAwakenedArts } from "./awakened-arts.js?v=r1076-4dec3446cb5b"; // awakened arts (2026-11-13)
 // Appearance only: both views share the same tapered horn dimensions in world tiles.
 export const TRICERATOPS_HORN_VISUAL = Object.freeze({ color: "#fff0bd", tip: .34, base: -.18, radius: .095 });
 export function triceratopsHornFrame(shot) {

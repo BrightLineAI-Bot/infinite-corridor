@@ -13,23 +13,23 @@
 // least that far from the Ember Refuge. A place found empty when the Wayfarer gets there (questArrive: no wreck, no crater, no
 // stair, no Revenant) is marked `miss`, and the next is resolved after it, so no step is ever stranded. And the events the
 // steps move on (questEvent: a kill, a salvage, a word with the giver, a token collected, a place cleared, a beast come home).
-import { rng, hashSeed } from "./random.js?v=r1059-3629aeded9d0";
-import { dungeonId, regionSettled, CROSSING_ROLLS } from "./world.js?v=r1059-3629aeded9d0";
-import { WONDERS } from "./wonders.js?v=r1059-3629aeded9d0";
-import { openSeaQuick, farSleepSection, SEA_FEATURES } from "./landscape.js?v=r1059-3629aeded9d0";
-import { canyonHere, canyonIdFor } from "./canyon.js?v=r1059-3629aeded9d0";
-import { skylandSection, SKY_PLACE } from "./skylands.js?v=r1059-3629aeded9d0";
-import { pentagonAt, PENTAGON } from "./pentagon.js?v=r1059-3629aeded9d0";
-import { hamletSection } from "./settlements.js?v=r1059-3629aeded9d0";
-import { HORDE } from "./revenant-horde.js?v=r1059-3629aeded9d0";
-import { GATE_REVENANT } from "./monster-pack.js?v=r1059-3629aeded9d0";
-import { ladderRoll } from "./dungeon-ladder.js?v=r1059-3629aeded9d0";
-import { farCivCentre, farCivAt, farDomainCentre } from "./far-realms.js?v=r1059-3629aeded9d0";
-import { APERTURE_BANDS, apertureBand } from "./items.js?v=r1059-3629aeded9d0";
-import { rollMireCrypt, dreamHallRoll } from "./underlands.js?v=r1059-3629aeded9d0";
-import { annexRecord } from "./deep-annex.js?v=r1059-3629aeded9d0";
-import { ensureQuests, QUEST_RECORD } from "./journey-start.js?v=r1059-3629aeded9d0";
-import { QUESTS, QUEST_IDS, questState, questOpen, questStep, stepDone, stepPlace, stepCount, mealFrom, questFollowId } from "./quests.js?v=r1059-3629aeded9d0";
+import { rng, hashSeed } from "./random.js?v=r1076-4dec3446cb5b";
+import { dungeonId, regionSettled, CROSSING_ROLLS } from "./world.js?v=r1076-4dec3446cb5b";
+import { starfieldRolls, starPlaceAt } from "./wonders.js?v=r1076-4dec3446cb5b";
+import { openSeaQuick, farSleepSection, SEA_FEATURES } from "./landscape.js?v=r1076-4dec3446cb5b";
+import { canyonHere, canyonIdFor } from "./canyon.js?v=r1076-4dec3446cb5b";
+import { skylandSection, SKY_PLACE, grantSeed } from "./skylands.js?v=r1076-4dec3446cb5b";
+import { pentagonAt, PENTAGON } from "./pentagon.js?v=r1076-4dec3446cb5b";
+import { hamletSection } from "./settlements.js?v=r1076-4dec3446cb5b";
+import { HORDE } from "./revenant-horde.js?v=r1076-4dec3446cb5b";
+import { GATE_REVENANT } from "./monster-pack.js?v=r1076-4dec3446cb5b";
+import { ladderRoll } from "./dungeon-ladder.js?v=r1076-4dec3446cb5b";
+import { farCivCentre, farCivAt, farDomainCentre } from "./far-realms.js?v=r1076-4dec3446cb5b";
+import { APERTURE_BANDS, apertureBand } from "./items.js?v=r1076-4dec3446cb5b";
+import { rollMireCrypt, dreamHallRoll } from "./underlands.js?v=r1076-4dec3446cb5b";
+import { annexRecord } from "./deep-annex.js?v=r1076-4dec3446cb5b";
+import { ensureQuests, QUEST_RECORD } from "./journey-start.js?v=r1076-4dec3446cb5b";
+import { QUESTS, QUEST_IDS, questState, questOpen, questStep, stepDone, stepPlace, stepCount, mealFrom, questFollowId } from "./quests.js?v=r1076-4dec3446cb5b";
 
 export const QUEST_PLACES = Object.freeze({
   radius: 24, // sections searched round a quest's `from` (Chebyshev rings), a few thousand hashes at most, once
@@ -41,7 +41,7 @@ export const QUEST_PLACES = Object.freeze({
   layoutPool: 5, // game.ts: the layout pool every crossing first generated from now on takes (the Poison Crypt roll reads it)
 });
 export const QUEST_WORDS = Object.freeze({
-  open: "A QUEST", done: "QUEST COMPLETE",
+  open: "A QUEST", done: "QUEST COMPLETE", gift: "A GIFT",
   any: (what) => `${what}: any one will do (none lies close enough to point the compass at).`,
   starfield: "a crossing that opens on stars",
   canyon: "a canyon crater", wreck: "a shipwreck out at sea (you will want a boat)", skyway: "a Sky Stair at least 50 sections out",
@@ -57,14 +57,14 @@ export const QUEST_WORDS = Object.freeze({
 
 // ---------------------------------------------------------------- places
 // A Starfield crossing at section (x, y) not yet entered, or null: the section's landmark crossing (world.ts addDungeonLandmark's
-// own draws), its Starfield roll (game.ts chasmRoll; wonders.ts keeps the chance equal), and nothing that would make it something
+// own draws), its Starfield roll (game.ts chasmRoll, at the section's placement: wonders.ts STARFIELD_ROLL), and nothing that would make it something
 // else on first entry (game.ts generateDungeonFor: a Poison Crypt, unless it is a Deep Annex's first floor; the Far Sleep's halls).
 export function starfieldAt(save, x, y) {
   const seed = save?.seed, gen = Number(save?.worldGeneration) || 1;
   if ((x === 0 && y === 0) || regionSettled(x, y, seed) || farSleepSection(x, y)) return null;
   const r = rng(`${seed}:${CROSSING_ROLLS[0].key}:g${gen}:${x}:${y}`); if (r() >= CROSSING_ROLLS[0].chance) return null; r(); // its spot
   const id = dungeonId(seed, gen, x, y, `dungeon-g${gen}-${x}-${y}-${Math.floor(r() * 1e6)}`);
-  if ((hashSeed(`${seed}:chasm-crossing:v1:${id}`) % 1000) / 1000 >= WONDERS.chasmChance) return null;
+  if (!starfieldRolls(seed, id, starPlaceAt(save, x, y))) return null; // the section's Starfield placement (wonders.ts STARFIELD_ROLL)
   if (!annexRecord(seed, id, true) && rollMireCrypt(seed, id, QUEST_PLACES.layoutPool)) return null; // it might be a Poison Crypt
   if (openSeaQuick(seed, x, y)) return null; // an island's crossing: no boat asked for
   const h = save?.consequences?.dungeons?.[id];
@@ -176,6 +176,24 @@ export function openQuest(save, id, { giverAt = null } = {}) {
   R.open[id] = { state: "open", at: nowOf(save), steps: {}, places: [], ...(giverAt && Number.isInteger(giverAt.rx) && Number.isInteger(giverAt.ry) ? { giverAt: { rx: giverAt.rx, ry: giverAt.ry } } : {}) };
   for (const s of Q.steps) if (s.place) questPlace(save, id, s.key);
   return R.open[id];
+}
+// A quest's gift (quests.ts `gift`), handed once while the quest is open and the step it is for still waits: the seed into the
+// pouch, recorded as the quest's `gifted`. A quest opened before gifts existed is handed its gift the first time this runs after
+// (game.ts settleQuests). Returns the gift, or null.
+export function questGift(save, id) {
+  const G = QUESTS[id]?.gift; if (!G || !questOpen(save, id)) return null;
+  const q = questState(save, id); if (q.gifted === true || stepDone(save, id, G.step)) return null;
+  if (!grantSeed(save, G.seed, G.n)) return null;
+  q.gifted = true; return G;
+}
+// While a counted step's window runs (quests.ts `calls`), the kind of creature it calls to a floor tagged `where` (game.ts
+// questWhere): the creatures that come back there are of that kind. Returns the kind, or null.
+export function questCalled(save, where = [], at = nowOf(save)) {
+  for (const id of QUEST_IDS) {
+    if (!questOpen(save, id)) continue; const step = questStep(save, id); if (!step?.calls || !step.within || !where.includes(step.where)) continue;
+    const w = questState(save, id).window; if (w && w.step === step.key && at - w.at <= step.within && w.n < step.need) return step.kind;
+  }
+  return null;
 }
 // Marks step `key` of quest `id` done; the quest is done when no step waits. Returns whether it is now complete.
 function mark(save, id, key) {
@@ -366,4 +384,4 @@ export function questLeads(save) {
   }
   return out;
 }
-export { openQuestCount } from "./quests.js?v=r1059-3629aeded9d0";
+export { openQuestCount } from "./quests.js?v=r1076-4dec3446cb5b";
