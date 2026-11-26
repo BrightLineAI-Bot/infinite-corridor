@@ -477,4 +477,4 @@ function awakenedMove(item) {
   const key = weaponKey(item); for (const id of AWAKENED_IDS) if (AWAKENED_ARTS.moves[id].weapon === key) return AWAKENED_ARTS.moves[id];
   return { name: "Crescent", text: "every third swing releases a piercing crescent" };
 }
-export const awakenedText = (item) => item?.awakened ? `Awakened · ${RESONANCES[item.awakened.resonance]?.name || "Resonance"} · ${item.slot === "primary" ? isQuandrixStaff(item) ? "hold Attack to slam the last hand down; a perfect release bursts strongest" : `${awakenedMove(item).name}: ${awakenedMove(item).text}` : awakenedToolText(item)}` : "";
+export const awakenedText = (item) => item?.awakened ? `Awakened · ${RESONANCES[item.awakened.resonance]?.name || "Resonance"} · ${item.slot === "primary" ? isQuandrixStaff(item) ? "hold Attack to slam the last hand down, yanking foes in, while every other hand flies to your target and claps; a perfect release bursts strongest" : `${awakenedMove(item).name}: ${awakenedMove(item).text}` : awakenedToolText(item)}` : "";
