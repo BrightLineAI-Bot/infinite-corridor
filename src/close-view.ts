@@ -445,10 +445,11 @@ export const CLOSE_VIEW = Object.freeze({
   // wait). Locked in target mode the view holds the foe harder: spring `rate`, at most `maxRate` degrees a second.
   // Strafe (every lock): with the stick mostly sideways (its toward/away share under `strafeForward`) the Wayfarer circles at
   // the distance held when the strafe began: `strafeGain` x the radial error (tiles) is mixed in, at most `strafePull`.
-  // Tim, 2026-11-26: every press of the Target button also puts the camera home: the default preset (`preset`, the release
-  // 1065 over-the-shoulder framing), the Wayfarer's own distance back to the preset's (`zoom`, save.closeViewZoom), no tilt
-  // and Look mode off, whatever a pinch, a drag or Look did before. A pinch stays free until the next press.
-  targetHome: Object.freeze({ preset: "overShoulder", zoom: 0 }),
+  // Tim, 2026-11-26 ("you just get to keep the camera, move it wherever you want; centre takes you to that angle at the distance
+  // you set"): every press of the Target button also puts the camera back to the default angle: behind the Wayfarer (the centered
+  // recentre), the preset's own height and pitch (the tilt set to `tilt`) and Look mode off (`lookOff`). The distance he pinched
+  // (save.closeViewZoom) and the preset chosen in Options are his and are kept.
+  targetHome: Object.freeze({ tilt: 0, lookOff: true }),
   targetButton: Object.freeze({ on: "#ff2d2d", locked: "#ff8a78", off: "#ddd5c4", glow: "drop-shadow(0 0 6px #ff2d2dcc)" }), // the Target button's ink: target mode on (red), a tap lock alone, off
   // Second pass (2026-11-11): one priority for every choice (the first lock, the next after a fall, a better foe while
   // locked): score = wDist x (distance / range) + wAngle x (angle off the view / 180) - wClose x (how far inside threatRange)
@@ -1518,28 +1519,20 @@ export function closeViewLockToggle(g) {
   const e = closeViewLockCandidate(g); if (!e) { g.message = "Nothing to lock on to in view."; return null; }
   g.lockTarget(e.id); CAM.lockId = e.id; CAM.lostFor = 0; return e;
 }
-// The camera's home (CLOSE_VIEW.targetHome): the preset and the Wayfarer's distance written to the save (HOME.dirty set when
-// either changed, so the host persists it), Look mode let go (eased back), the tilt and the quick turn cleared by the centered
-// recentre that follows. Returns true when the save changed.
+// The default angle (CLOSE_VIEW.targetHome): Look mode let go (eased back, Reduced Motion at once) and the tilt reset; the swing
+// behind the Wayfarer is the centered recentre that follows. Nothing in the save changes: the pinched distance and the preset stay.
 export function closeViewHome(g) {
-  const T = CLOSE_VIEW.targetHome, s = g?.save; let changed = false;
-  if (s && typeof s === "object") {
-    const preset = Object.hasOwn(CLOSE_VIEW.presets, T.preset) ? T.preset : CLOSE_VIEW.defaultPreset;
-    if (s.closeViewPreset !== preset) { s.closeViewPreset = preset; changed = true; }
-    if (s.closeViewZoom !== T.zoom) { s.closeViewZoom = T.zoom; changed = true; }
-    if (changed) { HOME.save = s; HOME.dirty = true; }
-  }
-  if (LOOK.on) closeViewLookSet(g, false, !!(g?.presentation?.reduceMotion || g?.presentation?.safeMode));
-  LOOK.want = 0; CAM.pitchUser = 0;
-  return changed;
+  const T = CLOSE_VIEW.targetHome;
+  if (T.lookOff) { if (LOOK.on) closeViewLookSet(g, false, !!(g?.presentation?.reduceMotion || g?.presentation?.safeMode)); LOOK.want = 0; }
+  CAM.pitchUser = T.tilt;
 }
 // The mounted Target command switches target mode (CLOSE_VIEW.targetMode) on or off, then requests an open-ground centered
 // rear view. On: a lock already made (a tap on a foe) is kept, else the best foe in front of the camera (the existing
 // pre-recenter acquisition), else the best one in sight anywhere round the Wayfarer. Off: the lock is released.
-// Every press first brings the camera home (closeViewHome).
+// Every press first puts the camera back to the default angle (closeViewHome), at the distance the player set.
 export function closeViewTargetActivate(g, now = 0) {
   if (!g || g.paused || !closeViewShowing(g)) return null;
-  closeViewHome(g); // Tim, 2026-11-26: the Target press always brings the camera home first
+  closeViewHome(g); // Tim, 2026-11-26: the Target press always returns to the default angle, keeping the distance
   let target = null;
   if (CAM.targetMode) { CAM.targetMode = false; if (g.lockedTarget?.()) g.lockTarget(null); CAM.lockId = null; CAM.lostFor = 0; g.message = "Auto-target off."; }
   else {
@@ -5341,7 +5334,7 @@ export function mountCloseViewControls(getGame, host = globalThis, opts = {}) {
   // version 4: `outer`, the wider band beyond the arc (never drawn), where it is clear of everything else
   outer.setAttribute("fill", "none"); outer.setAttribute("stroke", "transparent"); outer.setAttribute("stroke-width", String(K.reach)); outer.setAttribute("stroke-linecap", "butt"); outer.style.pointerEvents = "stroke"; outer.style.touchAction = "none"; outer.style.cursor = "ew-resize";
   svg.append(rail, hit, outer); actions.insertBefore(svg, cluster); // before the cluster: beneath its buttons
-  lock.type = "button"; lock.id = "closeViewLock"; lock.className = "close-lock"; lock.setAttribute("aria-label", "Target and recenter behind the Wayfarer at the default camera distance: auto-targets foe after foe while lit red; tap again to turn it off; swipe the camera left or right to switch"); lock.setAttribute("aria-pressed", "false"); lock.setAttribute("data-target-mode", "off");
+  lock.type = "button"; lock.id = "closeViewLock"; lock.className = "close-lock"; lock.setAttribute("aria-label", "Target and recenter behind the Wayfarer at the default camera angle: auto-targets foe after foe while lit red; tap again to turn it off; swipe the camera left or right to switch"); lock.setAttribute("aria-pressed", "false"); lock.setAttribute("data-target-mode", "off");
   // version 3 (Tim): a bullseye, concentric rings and a centre dot; locked, the inner ring fills (styles.css .close-lock)
   lock.innerHTML = '<svg class="bullseye" viewBox="0 0 24 24" width="52%" height="52%" aria-hidden="true" style="pointer-events:none;position:relative"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><circle class="bull-ring" cx="12" cy="12" r="6.2" fill="currentColor" fill-opacity="0" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="2.4" fill="currentColor"/></svg>';
   Object.assign(lock.style, { position: "absolute", width: `${K.lockSize}px`, height: `${K.lockSize}px`, padding: "0", borderRadius: "50%", border: "0", background: "none", color: "#ddd5c4", display: "none", placeItems: "center", pointerEvents: "auto", touchAction: "manipulation", zIndex: "2" });
@@ -5515,7 +5508,7 @@ export function mountCloseViewControls(getGame, host = globalThis, opts = {}) {
   }
   // the lock: a tap that starts on it (press, release within tapMove px); a pointer already panning the crescent never counts
   let lockId = null, lockX = 0, lockY = 0, lockMoved = false, lockPointerHandled = false;
-  const activateLock = () => { const g = getGame(); if (g) { PEND.dx = PEND.dy = 0; closeViewTargetActivate(g, now()); if (closeViewHomeZoomTake()) opts.persist?.(); } }; // the camera's home was written to the save: kept
+  const activateLock = () => { const g = getGame(); if (g) { PEND.dx = PEND.dy = 0; closeViewTargetActivate(g, now()); } };
   lock.addEventListener("pointerdown", (e) => {
     stop(e); lockPointerHandled = true;
     if (e.pointerId === id || lockId !== null) return;

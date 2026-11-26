@@ -289,7 +289,7 @@ test('no-target activation follows the actual idle body instead of neutral camer
 test('centered Target keeps the existing obstruction escape and camera safety', () => legacyRig(() => {
   const g = fixture('cellar'); g.player.x = 11; g.player.y = 5; g.save.lastAim = { x: 0, y: -1 }; CV.resetCloseViewCamera(); frame(g, 2);
   CV.closeViewTargetActivate(g, now); frame(g, 240); const c = CV.closeViewCamera(); assert.equal(c.centeredRear, true); clearEye(g);
-  assert.equal(g.save.closeViewPreset, CV.CLOSE_VIEW.targetHome.preset, "2026-11-26: Target brings the camera home"); assert.ok(c.distance > 0 && c.distance <= CV.closeViewPreset(g).distance + 1e-9); assert.ok(Math.abs(c.rigOffset) <= CV.closeViewPreset(g).shoulder + 1e-9, 'bounded existing lateral rig is retained under obstruction');
+  assert.ok(c.distance > 0 && c.distance <= CV.closeViewPreset(g).distance); assert.ok(Math.abs(c.rigOffset) <= CV.closeViewPreset(g).shoulder + 1e-9, 'bounded existing lateral rig is retained under obstruction');
 }));
 
 test('Target acquires from the pre-recenter view, recenters on acquire and unlock, and rejects hidden input', () => {

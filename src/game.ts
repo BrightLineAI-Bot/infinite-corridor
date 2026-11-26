@@ -999,11 +999,7 @@ const rankAndFileFoe = (e) => !!e && !e.boss && !e.elite && !e.eliteId && !e.uni
 // or the least-kept piece of a full pack) it pays `salvageShare` of its tier's salvage iron (rounded down, at least 1). Bosses,
 // guardians, world beasts, elites, champions and rares, Aperture encounters, chests, caches and every one-time reward are
 // unchanged, and so is the draught roll and its pity (game.ts defeatEnemy). Measured in tests/less-loot.test.ts.
-// Tim, 2026-11-26: about 1,000 cinder iron an hour instead of about 700, round and shot costs and elite drops unchanged. The rank
-// and file's drop salvaged on arrival pays its full salvage again (`salvageShare` .5 -> 1): mid game about 1.0 -> 1.9 iron a kill,
-// about 300 -> 560 an hour at the hunter's pace (late game 320 -> 590). Gear per kill (`gear`) and the drop's own iron (`dropIron`) are unchanged.
-// Measured in tests/cinder-iron-income.test.ts.
-export const RANK_AND_FILE_LOOT = Object.freeze({ version: 1, stream: "rank-and-file-gear:v1", gear: .5, dropIron: 0, salvageShare: 1,
+export const RANK_AND_FILE_LOOT = Object.freeze({ version: 1, stream: "rank-and-file-gear:v1", gear: .5, dropIron: 0, salvageShare: .5,
   guardianRoles: Object.freeze(["gateWarden", "objectiveGuardian", "wingMiniboss", "finalBoss", "skyland", "seedRealmHeart", "canyonWarden"]) });
 export const DROP_IRON = 1; // the cinder iron every other drop brings (as before)
 export function rankAndFileKill(e) {

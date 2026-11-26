@@ -3,10 +3,11 @@ import assert from 'node:assert/strict';
 import { createLabFixture } from '../src/proving-ground-labs.ts';
 import * as CV from '../src/close-view.ts';
 
-// Tim, 2026-11-26: "pinch-to-zoom stays free, but whenever I press the target / centre-camera button in Close View the camera
-// returns to the default over-the-shoulder position (the right distance, lets you see everything)." The Target button now also
-// puts the camera home (CLOSE_VIEW.targetHome): the release 1065 overShoulder preset, the Wayfarer's own distance back to the
-// preset's (save.closeViewZoom 0), no tilt and Look mode off. Lock-on is unchanged. Production camera and controls, no GPU.
+// Tim, 2026-11-26 (revised): "You just get to keep the camera, move it wherever you want; centre takes you to that angle at the
+// distance you set." The pinch sets the Wayfarer's distance (save.closeViewZoom) and it stays. Every press of the Target button
+// puts the camera back to the default angle (CLOSE_VIEW.targetHome): behind the Wayfarer, the preset's own height and pitch (tilt
+// 0) and Look mode off, keeping the pinched distance and the preset chosen in Options. Lock-on is unchanged. Production camera
+// and controls, no GPU.
 const ctx = new Proxy({ canvas: null, measureText: () => ({ width: 10 }), createRadialGradient: () => ({ addColorStop() {} }), createLinearGradient: () => ({ addColorStop() {} }), createPattern: () => ({}) }, {
   get: (o, k) => k in o ? o[k] : () => {},
   set: (o, k, v) => { o[k] = v; return true; },
@@ -46,57 +47,48 @@ function controls(g) {
   const tap = () => { const ev = { pointerId: 43, clientX: 0, clientY: 0, preventDefault() {}, stopPropagation() {} }; ui.lock.listeners.pointerdown[0](ev); ui.lock.listeners.pointerup[0](ev); ui.sync(); };
   return { ui, tap, saved };
 }
-// Tim's camera: an old "standard" save kept by release 1065 because of its pinched distance, tilted, in Look mode.
-function wanderedOff(g) {
-  g.save.closeViewPreset = 'standard'; g.save.closeViewZoom = .7; frame(g, 60);
-  CV.closeViewPan(0, 40, now); frame(g, 4);
-  CV.closeViewLookSet(g, true); frame(g, 20);
-  assert.notEqual(CV.closeViewCamera().pitchUser, 0, 'tilted'); assert.equal(CV.closeViewLookActive(), true);
-}
 const settled = (g) => { frame(g, 400); return CV.closeViewCamera(); };
+// A camera never moved: the same preset and distance, recentered behind.
+function reference(preset, zoom) { const r = fixture(); r.save.closeViewPreset = preset; r.save.closeViewZoom = zoom; CV.closeViewRecentre(r, now, { centered: true }); return settled(r); }
 
-test('the home is the release 1065 default: the overShoulder preset at its own distance', () => {
-  assert.ok(Object.isFrozen(CV.CLOSE_VIEW.targetHome));
-  assert.equal(CV.CLOSE_VIEW.targetHome.preset, CV.CLOSE_VIEW.defaultPreset); assert.equal(CV.CLOSE_VIEW.defaultPreset, 'overShoulder');
-  assert.equal(CV.CLOSE_VIEW.targetHome.zoom, 0); assert.equal(CV.closeViewZoomOf(CV.CLOSE_VIEW.targetHome.zoom), 0);
+test('the default angle: tilt 0 and Look off; nothing about distance or preset in the table', () => {
+  assert.ok(Object.isFrozen(CV.CLOSE_VIEW.targetHome)); assert.deepEqual(CV.CLOSE_VIEW.targetHome, { tilt: 0, lookOff: true });
 });
 
-test('a Target press brings the camera home whatever the pinch, tilt, Look mode or preset was, and the save keeps it', () => {
-  const ref = fixture(); ref.save.closeViewPreset = 'overShoulder'; ref.save.closeViewZoom = 0; CV.closeViewRecentre(ref, now, { centered: true }); const home = settled(ref);
-  const g = fixture(), { tap, saved } = controls(g); wanderedOff(g);
-  const off = CV.closeViewCamera(); assert.ok(Math.abs(off.orbitRadius - home.orbitRadius) > .3, `pinched away from home (${off.orbitRadius} vs ${home.orbitRadius})`);
+for (const preset of ['overShoulder', 'standard']) test(`a Target press returns to the default angle at the pinched distance (${preset})`, () => {
+  const g = fixture(), { tap, saved } = controls(g); g.save.closeViewPreset = preset;
+  const home = reference(preset, .7), plain = reference(preset, 0);
+  // Tim's camera: pinched in, tilted, in Look mode
+  CV.resetCloseViewCamera(); frame(g, 2); g.save.closeViewZoom = .7; CV.closeViewPan(0, 40, now); CV.closeViewLookSet(g, true); frame(g, 60); assert.notEqual(CV.closeViewCamera().pitchUser, 0);
   tap();
-  assert.equal(g.save.closeViewPreset, 'overShoulder'); assert.equal(g.save.closeViewZoom, 0); assert.equal(saved.n, 1, 'persisted once');
+  assert.equal(g.save.closeViewZoom, .7, 'the pinch is his'); assert.equal(g.save.closeViewPreset, preset, 'the Options preset is his'); assert.equal(saved.n, 0, 'nothing in the save changed');
   assert.equal(CV.closeViewLookActive(), false, 'Look mode let go'); assert.equal(CV.closeViewCamera().pitchUser, 0, 'tilt cleared');
   const c = settled(g);
-  assert.ok(Math.abs(c.orbitRadius - home.orbitRadius) < 1e-3, `distance home: ${c.orbitRadius} vs ${home.orbitRadius}`);
-  assert.ok(Math.abs(c.elevation - home.elevation) < 1e-3, `pitch home: ${c.elevation} vs ${home.elevation}`);
-  assert.ok(Math.abs(c.pitch - home.pitch) < 1e-3, `look pitch home: ${c.pitch} vs ${home.pitch}`);
-  assert.equal(c.zoomScale, home.zoomScale); assert.equal(c.centeredRear, true);
-  // a second press with the camera already home changes nothing in the save
-  tap(); assert.equal(saved.n, 1, 'nothing new to persist'); assert.equal(g.save.closeViewZoom, 0);
+  assert.ok(Math.abs(c.orbitRadius - home.orbitRadius) < 1e-3, `the pinched distance: ${c.orbitRadius} vs ${home.orbitRadius}`);
+  assert.ok(Math.abs(c.orbitRadius - plain.orbitRadius) > .3, 'not the unpinched distance');
+  assert.ok(Math.abs(c.elevation - home.elevation) < 1e-3 && Math.abs(c.elevation - plain.elevation) < 1e-3, `the default angle: ${c.elevation} vs ${home.elevation}`);
+  assert.ok(Math.abs(c.pitch - home.pitch) < 1e-3, `look pitch: ${c.pitch} vs ${home.pitch}`); assert.equal(c.centeredRear, true);
+  assert.ok(Math.abs(Math.atan2(Math.sin(c.yaw - c.bodyYaw), Math.cos(c.yaw - c.bodyYaw))) < .01, 'behind the Wayfarer');
 });
 
-test('the pinch stays free between presses: a new pinched distance holds until the next Target press', () => {
+test('the pinch stays free: outside Look mode the camera keeps the new distance, and a press keeps it too', () => {
   const g = fixture(), { tap } = controls(g); tap(); frame(g, 60);
   CV.closeViewLookSet(g, true); frame(g, 4); CV.closeViewLookZoomTo(.5); assert.equal(g.save.closeViewZoom, .5, 'the pinch writes her distance');
-  CV.closeViewLookSet(g, false); frame(g, 200); assert.equal(g.save.closeViewZoom, .5, 'kept after Look mode, no reset without a press');
-  const pinched = CV.closeViewCamera().orbitRadius; tap(); const back = settled(g).orbitRadius;
-  assert.equal(g.save.closeViewZoom, 0); assert.ok(back > pinched + .3, `the press pulls back out (${pinched} -> ${back})`);
+  CV.closeViewLookSet(g, false); frame(g, 200); assert.equal(g.save.closeViewZoom, .5, 'kept after Look mode');
+  const pinched = CV.closeViewCamera().orbitRadius; tap(); const after = settled(g).orbitRadius;
+  assert.equal(g.save.closeViewZoom, .5); assert.ok(Math.abs(after - pinched) < 1e-3, `the press keeps the distance (${pinched} -> ${after})`);
 });
 
-test('lock-on still works: a press locks the foe in front and comes home; the next releases it and comes home again', () => {
-  const g = fixture(), { tap } = controls(g); g.save.closeViewZoom = .8; g.save.closeViewPreset = 'close';
+test('lock-on still works: a press locks the foe in front at the default angle; the next releases it', () => {
+  const g = fixture(), { tap } = controls(g); g.save.closeViewZoom = .8; CV.closeViewPan(0, 30, now);
   const e = foe(g, 'home-foe', 2, 0); frame(g, 4);
-  tap(); assert.equal(CV.closeViewTargetMode(), true); assert.equal(g.lockedTarget()?.id, e.id, 'locked'); assert.equal(g.save.closeViewZoom, 0); assert.equal(g.save.closeViewPreset, 'overShoulder');
-  frame(g, 120); assert.equal(g.lockedTarget()?.id, e.id, 'the lock holds through the swing home');
-  g.save.closeViewZoom = .6; tap(); assert.equal(CV.closeViewTargetMode(), false); assert.equal(g.lockedTarget(), null, 'released'); assert.equal(g.save.closeViewZoom, 0, 'and home again');
+  tap(); assert.equal(CV.closeViewTargetMode(), true); assert.equal(g.lockedTarget()?.id, e.id, 'locked'); assert.equal(CV.closeViewCamera().pitchUser, 0); assert.equal(g.save.closeViewZoom, .8);
+  frame(g, 120); assert.equal(g.lockedTarget()?.id, e.id, 'the lock holds through the swing');
+  CV.closeViewPan(0, 30, now); tap(); assert.equal(CV.closeViewTargetMode(), false); assert.equal(g.lockedTarget(), null, 'released'); assert.equal(CV.closeViewCamera().pitchUser, 0, 'and the angle again');
 });
 
-test('a paused or hidden Close View ignores the press and leaves the camera and save alone', () => {
-  const g = fixture(); g.save.closeViewZoom = .4; g.save.closeViewPreset = 'wide';
-  g.paused = true; assert.equal(CV.closeViewTargetActivate(g, now), null); assert.equal(g.save.closeViewZoom, .4); assert.equal(g.save.closeViewPreset, 'wide'); g.paused = false;
-  g.save.closeView = false; assert.equal(CV.closeViewTargetActivate(g, now), null); assert.equal(g.save.closeViewZoom, .4); g.save.closeView = true;
-  // the double tap on the crescent still only swings the view behind (it is not the Target button)
-  CV.closeViewRecentre(g, now); assert.equal(g.save.closeViewZoom, .4); assert.equal(g.save.closeViewPreset, 'wide');
+test('a paused or hidden Close View ignores the press', () => {
+  const g = fixture(); CV.closeViewPan(0, 30, now); const tilt = CV.closeViewCamera().pitchUser; assert.notEqual(tilt, 0);
+  g.paused = true; assert.equal(CV.closeViewTargetActivate(g, now), null); assert.equal(CV.closeViewCamera().pitchUser, tilt); g.paused = false;
+  g.save.closeView = false; assert.equal(CV.closeViewTargetActivate(g, now), null); assert.equal(CV.closeViewCamera().pitchUser, tilt); g.save.closeView = true;
 });

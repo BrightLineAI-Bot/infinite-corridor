@@ -33,7 +33,7 @@ function kills(kind: string, n = 1500, seed?: string) {
 }
 
 test('the rank and file: ordinary creatures, dungeon encounter foes and respawns; not bosses, guardians, elites or champions', () => {
-  assert.ok(Object.isFrozen(RANK_AND_FILE_LOOT)); const { guardianRoles, ...rates } = RANK_AND_FILE_LOOT; assert.deepEqual(rates, { version: 1, stream: 'rank-and-file-gear:v1', gear: .5, dropIron: 0, salvageShare: 1 }); // 2026-11-26: salvageShare .5 -> 1 (Tim: about 1,000 cinder iron an hour) assert.equal(DROP_IRON, 1);
+  assert.ok(Object.isFrozen(RANK_AND_FILE_LOOT)); const { guardianRoles, ...rates } = RANK_AND_FILE_LOOT; assert.deepEqual(rates, { version: 1, stream: 'rank-and-file-gear:v1', gear: .5, dropIron: 0, salvageShare: .5 }); assert.equal(DROP_IRON, 1);
   const foe = { id: 'f', kind: 'rootBrute' };
   assert.equal(rankAndFileKill(foe), true); assert.equal(rankAndFileKill({ ...foe, dungeonRole: 'hunter', encounterSpawn: true }), true); assert.equal(rankAndFileKill({ ...foe, respawned: true }), true); assert.equal(rankAndFileKill({ ...foe, dungeonRole: 'keeper' }), true, 'a room resident');
   for (const extra of [{ boss: true }, { elite: true }, { eliteId: 'x' }, { worldBeast: 'x' }, { worldBoss: true }, { questingBeast: true }, { stalker: true }, { seaKind: 'x' }, { apertureEncounter: true }, { fracRank: 'rare' }, { fracReinforcement: true }, { summonedBy: 'x' }, { noRewards: true }, { dungeonRole: 'objectiveGuardian' }, { dungeonRole: 'gateWarden' }, { dungeonRole: 'wingMiniboss' }, { dungeonRole: 'canyonWarden' }, { dungeonRole: 'finalBoss', boss: true }])
@@ -43,15 +43,15 @@ test('the rank and file: ordinary creatures, dungeon encounter foes and respawns
   assert.equal(rankAndFileGear('S', 'a', 'f', 3), rankAndFileGear('S', 'a', 'f', 3), 'pure');
 });
 
-test('per hour: gear from the rank and file halves and their cinder iron falls by about three fifths (2026-11-26: was four fifths)', () => {
+test('per hour: gear from the rank and file halves and their cinder iron falls by about four fifths', () => {
   for (const kind of ['ordinary', 'dungeon']) {
     const r = kills(kind);
     const gearH = r.gearPerKill * PACE, ironH = r.ironPerKill * PACE, beforeGear = BEFORE.gearPerKill * PACE, beforeIron = BEFORE.ironPerKill * PACE;
     assert.ok(r.gearPerKill > .44 && r.gearPerKill < .56, `${kind}: ${r.gearPerKill} pieces a kill`);
     assert.ok(gearH <= beforeGear * .56 && gearH >= beforeGear * .44, `${kind}: ${gearH.toFixed(0)} pieces an hour (was ${beforeGear})`);
-    assert.ok(ironH <= 660 && ironH >= 480, `${kind}: ${ironH.toFixed(0)} cinder iron an hour (was ${beforeIron.toFixed(0)}; 2026-11-26: was 200-360)`);
-    assert.ok(ironH <= beforeIron * .45, `${kind}: at most about two fifths of the iron (2026-11-26: was a quarter)`);
-    // a drop salvaged on arrival pays its share of its salvage; only an older piece a kept drop pushes out of a full pack pays in full
+    assert.ok(ironH <= 360 && ironH >= 200, `${kind}: ${ironH.toFixed(0)} cinder iron an hour (was ${beforeIron.toFixed(0)})`);
+    assert.ok(ironH <= beforeIron * .25, `${kind}: at most a quarter of the iron`);
+    // a drop salvaged on arrival pays half its salvage; only an older piece a kept drop pushes out of a full pack pays in full
     const half = Math.max(1, Math.floor(SMITHY.salvage.iron.relic * RANK_AND_FILE_LOOT.salvageShare)) + RANK_AND_FILE_LOOT.dropIron, more = r.ironPerDrop.filter((q) => q > half).length;
     assert.ok(more / r.ironPerDrop.length < .2, `${kind}: ${more} of ${r.ironPerDrop.length} drops paid more than half a relic's salvage`);
   }
@@ -77,7 +77,7 @@ test('a chest piece pays DROP_IRON and its full salvage; only a rank-and-file dr
   const full = storeInventoryItem(a, { ...item }), half = storeInventoryItem(b, { ...item }, false, RANK_AND_FILE_LOOT.salvageShare);
   assert.equal(full.stored, false); assert.equal(half.stored, false);
   const tierIron = (SMITHY.salvage.iron as any)[item.tier];
-  assert.equal(full.iron, tierIron); assert.equal(half.iron, Math.max(1, Math.floor(tierIron * RANK_AND_FILE_LOOT.salvageShare))); // 2026-11-26: the share is read, not .5
+  assert.equal(full.iron, tierIron); assert.equal(half.iron, Math.max(1, Math.floor(tierIron * .5)));
   const s: any = midBuild(), g: any = new Game(s, 0); s.inventory = []; const i0 = s.materials.cinderIron || 0, n0 = s.dropCounter;
   g.obtainDrop('chest'); assert.equal(s.dropCounter, n0 + 1); assert.ok((s.materials.cinderIron || 0) - i0 >= DROP_IRON, 'a chest piece brings its cinder iron');
 });
