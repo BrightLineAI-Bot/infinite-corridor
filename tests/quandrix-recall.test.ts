@@ -37,9 +37,9 @@ function handsThenHold(g, dirs, t = 1000) {
 const recalled = (g) => [...g.quandrix.hands, ...g.quandrix.extras].filter((h) => h.on && h.mode === 'recall');
 const claps = (g, blows) => blows.filter((b) => Math.abs(b.amount - g.quandrixPower() * R.share) < 1e-6);
 
-test('the hands are back to their numbers from before release 1070 (2.2 tiles/s, 2.2 s, rehit .3, share .4)', () => {
+test('the hands are back to their speed from before release 1070 (2.2 tiles/s, 2.2 s, rehit .3), share .33', () => {
   const H = QUANDRIX.hand;
-  assert.deepEqual([H.speed, H.life, H.rehit, H.share], [2.2, 2.2, .3, .4]);
+  assert.deepEqual([H.speed, H.life, H.rehit, H.share], [2.2, 2.2, .3, .33]); // share .4, then .33: behind the Might build (Tim, 2026-11-26)
   assert.ok(Math.abs(H.speed * H.life - PRIMARY_PROFILES['primary-quandrix-staff'].range) < 1e-9, 'the reach is where a hand dissipates');
   assert.ok(H.step <= H.radius, 'still sub-stepped: no tunnelling');
   // The new tables: every number bounded and in data, the yank within the hold's grab pool.

@@ -53,11 +53,12 @@ export const QUANDRIX = Object.freeze({
   // `share` (Tim, 2026-11-25: "I just wasn't doing enough damage" with a Focus build against world bosses ~200 sections out): .32
   // before. Measured on the real Game at matched gear (tests/focus-damage.test.ts), the staff's hands dealt .67 to .83 of the
   // Verge Cleaver's damage per second at the same weapon bonus (the share varies with the beast's body); at .4, about .84 to 1.04.
-  // .36 with the faster hands (release 1070), back to .4 (Tim, 2026-11-26: the staff "isn't doing the job").
+  // .36 with the faster hands (release 1070), .4 again with the old hands (2026-11-26: .94 to 1.10 of the Cleaver), then .33
+  // (Tim, 2026-11-26: tap spam sits "behind the Might build"; Focus builds have spells to make up the difference): .79 to .92.
   // `speed`, `life`, `rehit` (Tim, 2026-11-26: back to the values before release 1070, which flew them at 3.025 tiles/s for
   // 1.6 s, rehit .218): the reach (speed x life, items.ts PRIMARY_PROFILES 4.84) and the blows per tile (speed x rehit .66)
   // are the same either way. `step`: the most a hand moves between wall and body checks (no tunnelling on a long frame).
-  hand: Object.freeze({ cadenceMs: 420, speed: 2.2, life: 2.2, radius: .35, rehit: .3, share: .4, maxLive: 5, lift: .45, stun: .08, step: .2 }),
+  hand: Object.freeze({ cadenceMs: 420, speed: 2.2, life: 2.2, radius: .35, rehit: .3, share: .33, maxLive: 5, lift: .45, stun: .08, step: .2 }),
   hold: Object.freeze({ grace: .2, feet: 0 }), // `feet`: how far ahead of the Wayfarer's centre a hold with no earlier hand is made (tiles)
   // Let go before the charge is done (Tim, 2026-11-14): the hand lingers, keeps working and bursts when its clock runs out.
   // `tapWhileLive`: while one lingers a held press is a plain hand (one hold at a time). `record`: its saved shape's version.
