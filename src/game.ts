@@ -10060,6 +10060,11 @@ export class Game {
     const H = QUANDRIX.hand, auto = selectRangedAim(p, this.enemies, this.map, mapWidth(this.map, this.area), H.speed * H.life * (1 + characterStats(this.save).attackReach));
     return auto ? projectileDirection(auto.x, auto.y, p.facing) : projectileDirection(this.save.lastAim?.x ?? 0, this.save.lastAim?.y ?? 0, p.facing);
   }
+  // The awakened recall's target (quandrix-staff.ts QUANDRIX.recall): the lock, else the foe auto aim picks within `reach`.
+  quandrixTarget() {
+    const t = this.lockedTarget(); if (t && !t.dead && !t.untargetable && !t.hidden) return t;
+    return pickMeleeTarget(this.player, this.enemies, this.map, mapWidth(this.map, this.area), QUANDRIX.recall.reach * (1 + characterStats(this.save).attackReach))?.e || null;
+  }
   // One blow of a hand, a slam tick or a burst: magic, carrying the weapon's glyphs, through the Wayfarer's damage scale.
   quandrixBlow(e, amount, now, stun = 0, x = e.x + .5, y = e.y + .45) {
     if (!e || e.dead || e.untargetable || !(amount > 0)) return 0;
