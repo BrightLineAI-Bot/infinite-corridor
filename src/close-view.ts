@@ -1505,7 +1505,7 @@ function lockOnScreen(g, e) {
 }
 export function closeViewLockCandidate(g, { yaw = CAM.yaw, cone = CLOSE_VIEW.lock.cone, range = CLOSE_VIEW.lock.range, ox = null, oy = null, skip = null, screen = true } = {}) {
   const L = CLOSE_VIEW.lock, p = g.player, px = footX(p), py = footY(p), cx = ox ?? px, cy = oy ?? py; let best = null, bestS = Infinity, bestVisible = false;
-  for (const e of g.enemies || []) { if (!lockable(e) || e.id === skip) continue; const ex = e.x + .5, ey = e.y + .75, d = Math.hypot(ex - cx, ey - cy); if (d > range) continue;
+  for (const e of g.enemies || []) { if (!lockable(e) || e.id === skip || e.farBelow && !g.reachesBelow?.()) continue; /* game.ts VERTICAL_SEPARATION: far below, only the Carbine locks */ const ex = e.x + .5, ey = e.y + .75, d = Math.hypot(ex - cx, ey - cy); if (d > range) continue;
     const a = Math.abs(wrap(Math.atan2(ey - py, ex - px) - yaw)) / DEG, visible = screen && lockOnScreen(g, e);
     if (a > (screen ? Math.max(cone, L.fallbackCone) : cone)) continue;
     if (screen && !visible && (a > L.fallbackCone || Math.hypot(ex - px, ey - py) > L.fallbackRange)) continue;
@@ -1557,7 +1557,7 @@ export function closeViewTargetScore(g, e) { const p = g.player, ex = e.x + .5, 
 function targetModeScan(g, skip) {
   const L = CLOSE_VIEW.lock, T = CLOSE_VIEW.targetMode, p = g.player, px = footX(p), py = footY(p), reduce = !!(g.presentation?.reduceMotion || g.presentation?.safeMode); let bestS = Infinity;
   TM_SCAN.best = TM_SCAN.near = null; TM_SCAN.nearD = TM_SCAN.bestS = Infinity;
-  for (const e of g.enemies || []) { if (!lockable(e) || e.id === skip) continue; const ex = e.x + .5, ey = e.y + .75, d = Math.hypot(ex - px, ey - py); if (d > L.range) continue;
+  for (const e of g.enemies || []) { if (!lockable(e) || e.id === skip || e.farBelow && !g.reachesBelow?.()) continue; /* game.ts VERTICAL_SEPARATION */ const ex = e.x + .5, ey = e.y + .75, d = Math.hypot(ex - px, ey - py); if (d > L.range) continue;
     const off = Math.abs(wrap(Math.atan2(ey - py, ex - px) - CAM.yaw)); if (reduce && off > L.cone * DEG) continue; // reduced motion: never an automatic swing round behind
     const sc = targetScore(e, d, off), beats = sc < bestS, nearer = d <= T.threatRange && d < TM_SCAN.nearD;
     if (!(beats || nearer) || !lockSees(g, e)) continue;
