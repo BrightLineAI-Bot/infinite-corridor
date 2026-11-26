@@ -3,7 +3,7 @@
 // ring 200), held still (the Great Sweep's freeze, which adds no damage) while a scripted Wayfarer at level 33 (Tim's save: every
 // stat at 1, weapon level 12, relic gear at +9) taps Attack as fast as it is taken. At the same weapon bonus the Quandrix Staff's
 // hands dealt .67 (Spinosaurus) to .83 (Crimson Tyrant) of the Verge Cleaver's damage per second at `hand.share` .32; at .4 they
-// deal about .84 to 1.04. The Cleaver, the tools and the spells are untouched.
+// deal about .84 to 1.04; at .33 (Tim, 2026-11-26: "behind the Might build") about .79 to .92, which Tim found too low; at .355 about .84 to .98 (about 90% of the Salvage Blade on the low beast). The Cleaver, the tools and the spells are untouched.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { freshSave } from '../src/types.ts';
@@ -32,15 +32,16 @@ function dps(primary, beast, ring = 200, secs = 6, dist = 2.2) {
   return (big - e.hp) / secs;
 }
 
-test('the Quandrix Staff\'s hands: .36 of the staff\'s power each (.32, then .4; .36 with the faster hands), a data-table number', () => {
-  assert.equal(QUANDRIX.hand.share, .36);
+test('the Quandrix Staff\'s hands: .33 of the staff\'s power each (.32, .4, .36 with release 1070\'s faster hands; .33 2026-11-26), a data-table number', () => {
+  assert.equal(QUANDRIX.hand.share, .355);
 });
 
 test('at the same weapon bonus the Quandrix Staff now deals close to the Verge Cleaver\'s damage to a world beast at ring 200', () => {
   for (const beast of ['spinoRex', 'crimsonTyrant']) {
     const cleaver = dps(weapon('Verge Cleaver', 'impact'), beast), staff = dps(weapon('Quandrix Staff', 'arcane'), beast), ratio = staff / cleaver;
     assert.ok(cleaver > 0 && staff > 0, `${beast}: both land (${cleaver}, ${staff})`);
-    // .67-.83 at share .32 and 2.2 tiles/s; .94-1.10 at .4; .87-1.09 at .36 with the faster hands (2026-11-25)
-    assert.ok(ratio >= .85 && ratio <= 1.1, `${beast}: near parity (${ratio.toFixed(2)})`);
+    // .67-.83 at share .32 and 2.2 tiles/s; .94-1.10 at .4; .87-1.09 at .36 with the faster hands (2026-11-25). Tim, 2026-11-26:
+    // tap spam sits "behind the Might build" (Focus builds have spells to make up the difference): .79-.92 at .33 was too low (Tim, 2026-11-26: "eighty percent is too low"); .355 aims at about 90% of the Salvage Blade on the low beast.
+    assert.ok(ratio >= .8 && ratio <= 1.0, `${beast}: behind the Cleaver, not far behind (${ratio.toFixed(2)})`);
   }
 });
