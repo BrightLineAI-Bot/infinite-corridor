@@ -83,8 +83,8 @@ test('a rounder backside (Tim, 2026-11-26): a bounded swell behind the hips; the
   const S = HERO_FEMALE.sculpt, flat = { ...S, glutes: { ...S.glutes, depth: 0 } }, o = [0, 0, 0];
   const at = (sc, x, y, z) => sculptHeroPoint(sc, x, y, z, o).slice();
   const swell = (x, y, z) => at(flat, x, y, z)[2] - at(S, x, y, z)[2];
-  // the back of the hips swells back (rounder), a little: about 5 cm at the fullest since the waist was drawn in (2.7 cm in
-  // release 1079), never more than the parameter
+  // the back of the hips swells back (rounder), a little: about 2.7 cm at the fullest (Tim reverted a 5 cm try, 2026-11-26),
+  // never more than the parameter
   assert.ok(swell(.1, .93, -.2) > .02 && swell(.1, .93, -.2) <= S.glutes.depth + 1e-9, `fullest ${swell(.1, .93, -.2).toFixed(4)}`);
   assert.ok(S.glutes.depth <= .06, 'natural, not exaggerated');
   assert.ok(swell(.1, .93, -.2) > swell(.1, .82, -.2) * 2 && swell(.1, .93, -.2) > swell(.1, 1.08, -.25) * 4, 'round: easing under into the thigh and up to the belt');
@@ -115,7 +115,7 @@ test('a slimmer waist front to back (Tim, 2026-11-26): the belly and the small o
   const back = (A, y0, y1) => band(A, y0, y1, Math.min, 1), front = (A, y0, y1) => band(A, y0, y1, Math.max, -1);
   // before (release 1079): small of the back -.293 (behind the backside's -.251), belly .118; his -.300 and .121
   assert.ok(back(P, 1.2, 1.4) > back(Q, 1.2, 1.4) + .03 && back(P, 1.2, 1.4) < back(Q, 1.2, 1.4) + .07, 'the small of the back drawn in a little');
-  assert.ok(back(P, .95, 1.0) < back(P, 1.2, 1.4) - .015, 'the backside rounds out below the waist');
+  assert.ok(back(P, .95, 1.0) < back(P, 1.2, 1.4), 'the backside still sits behind the drawn-in waist'); // Tim, 2026-11-26: the backside back to its first, smaller swell (.035); the waist stays slimmer
   assert.ok(back(P, 1.2, 1.4) < back(P, 1.45, 1.65) - .02, 'and the back curves gently up to the shoulder blades');
   assert.ok(front(P, 1.1, 1.45) < front(Q, 1.1, 1.45) - .005 && front(P, 1.1, 1.45) > front(Q, 1.1, 1.45) - .03, 'the belly drawn in a little');
   assert.ok(front(P, 1.7, 1.85) > front(P, 1.1, 1.45) + .08, 'the bust still reads clearly above the waist');

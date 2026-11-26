@@ -29,7 +29,7 @@ export const HERO_FEMALE = Object.freeze({
     // the thigh (`down`; deeper since the waist was drawn in, below); across each cheek about `x` (`sx`), so it eases toward the centre
     // and the outside of the hip; only behind `z` (fitted, easing in over `back`), so the front, the sides and the thigh
     // plates are untouched. The belt above sits where it reaches only a few millimetres.
-    glutes: Object.freeze({ y: .95, up: .07, down: .07, x: .10, sx: .13, z: -.08, back: .08, depth: .055 }),
+    glutes: Object.freeze({ y: .93, up: .09, down: .07, x: .10, sx: .12, z: -.08, back: .08, depth: .035 }), // Tim, 2026-11-26: back to the first rounder backside (the .055 version reverted); the slimmer waist stays
     // A slimmer waist front to back (Tim, 2026-11-26: the belly and the small of the back drawn in a little, so the side reads
     // as a gentle S from the bust in to the waist and out to the backside): about `y` (`sigma`) the back moves forward by
     // `back` behind `backZ` (across x by `backSx`) and the belly moves back by `front` ahead of `frontZ` (across x by
