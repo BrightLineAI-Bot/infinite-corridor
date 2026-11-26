@@ -24,7 +24,7 @@ import { closeViewSurfacePick } from "./close-view.ts"; // roof decks: the aimed
 import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, CLOSE_VIEW_PROPS, closeViewDrawsProps, closeViewPlaceAllowed, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewCompassRotation, closeViewBodyFacingYaw, compassFacingStep, closeViewScreenToWorld, mountCloseViewControls, closeViewLookActive, closeViewLookLabel, closeViewLookToggle, closeViewLookSet, closeViewLookActions, closeViewLookGuard, closeViewLookZoomBy, closeViewHomeZoomTake, createLookHold, closeViewPrewarmDue, prewarmCloseView, prewarmCloseViewGL } from "./close-view.ts"; // Close View (2026-11-06): interiors from behind the Wayfarer
 import { renderTimings } from "./renderer.ts";
 import { createProbe, createDodgeWatch, PROBE } from "./diagnostic-probe.ts";
-import { vendorShop, buyFromVendor, walkerCrossingMap, shiftClocks, currentDungeonDoors, sectionTerrainCacheStats } from "./game.ts";
+import { vendorShop, buyFromVendor, walkerCrossingMap, shiftClocks, currentDungeonDoors, sectionTerrainCacheStats, greatTreeKnown, greatTreeProbe, pentagonSensed } from "./game.ts";
 import { IMBUE, imbueAmount, ESSENCE_WALK, essenceExempt, FIST_CALLOUT, fistStatusLevel } from "./brawler-spells.ts"; // Imbue Weapon: the Arcanum shows what it adds now; Essence Walk its costs
 import { sectionAtlasColor } from "./atlas-colors.ts";
 import { sectionRegion, regionName, REGIONS, biomeFor } from "./landscape.ts"; // release 573; biomeFor: a section a tall tower's lookout charted
@@ -32,7 +32,6 @@ import { skylandLabel, SEEDS, seedCount, ALL_SEED_KINDS } from "./skylands.ts";
 import { TALL_TOWERS, nearestSeedHunt, activeSeedHunts } from "./tall-towers.ts";
 import { HATCHLING, rescueGuidance, formUnlocked, growthProgress } from "./hatchling.ts"; // the Triceratops hatchling: the Pack row, the Atlas marker and the compass // the seed hunts: the Atlas marker and the compass
 import { CREATURE_TRAITS, wayfarerDamage } from "./combat.ts";
-import { nearestWonders, WONDERS } from "./wonders.ts"; // release 674
 import { PACK_KINDS, MONSTER_PACK, ATTACK_MODULES, MOVEMENT_MODES, BRAINS, isPackKind, staggerClass, FRENZY, STEGO } from "./monster-pack.ts";
 import { STEGO_BAIT } from "./stego-bait.ts"; // the Stego Bait (Pack → Supplies)
 import { ROOF_KINDS, ROOF_DWELLERS } from "./roof-dwellers.ts";
@@ -56,7 +55,7 @@ import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKn
 import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.ts";
 import { linksKnown } from "./linked-dungeons.ts";
 import { DIG } from "./digging.ts";
-import { ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces, MAP_MARKS, mapMarkAt, toggleMapMark, dungeonWayfinding, dungeonNavigationDoors, renderDungeonWayfindingPanel, compassGuidance, compassQuest, seedHuntGuidance, seedHuntObjectives, objectiveKey, compassMenuModel, COMPASS_ARRIVAL, compassTargetArrived, compassArrivalState, compassArrivalReset, compassArrivalStep, COMPASS_RIBBON, RIBBON_CARDINALS, RIBBON_SLOTS, ribbonLayout, compassReadoutState, compassReadout, compassDistanceText, ribbonArc, compassEdge, nearbyPlaces, compassDiscovery, senseRadius } from "./atlas-view.ts";
+import { zoneSections, ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces, MAP_MARKS, mapMarkAt, toggleMapMark, dungeonWayfinding, dungeonNavigationDoors, renderDungeonWayfindingPanel, compassGuidance, compassQuest, seedHuntGuidance, seedHuntObjectives, objectiveKey, compassMenuModel, COMPASS_ARRIVAL, compassTargetArrived, compassArrivalState, compassArrivalReset, compassArrivalStep, COMPASS_RIBBON, RIBBON_CARDINALS, RIBBON_SLOTS, ribbonLayout, compassReadoutState, compassReadout, compassDistanceText, ribbonArc, compassEdge, nearbyPlaces, compassDiscovery, senseRadius } from "./atlas-view.ts";
 import { GLIMPSES, GLIMPSE_ORDER, glimpseFor, witnessGlimpse, witnessedGlimpses, glimpseAllowed } from "./glimpses.ts";
 import { startGlimpse, paintRule } from "./glimpse-render.ts";
 import { eldersHeard, elderProgress, ruleRows } from "./elders.ts";
@@ -262,7 +261,7 @@ import {
   wayfindingTargets, sectionSignals,
   wayfindingCues,
 } from "./world.ts";
-import { warmWayfindingSignals } from "./world.ts";
+import { warmWayfindingSignals, keptSectionSignals } from "./world.ts";
 import { bellsRung, BELLS, BELL_GLIMPSES, BELL_FINAL } from "./bells.ts"; // release 431
 import { pagesFound, PAGE_TEXT, PAGES_FINAL, TORN_PAGES } from "./torn-pages.ts"; // release 595
 import { THREADS, THREAD_ORDER, threadsStarted, threadFound, arcanaProgress, arcanaUnlockFrom } from "./threads.ts"; // release 627; arcana regions (2026-11-11)
@@ -865,9 +864,25 @@ let compassDistKey=NaN,compassArrivals=compassArrival.count,compassCollapseUntil
 function refreshCompassMarks(now){
   if(game.area!=="overworld"){if(compassMarks.length)compassMarks=[];compassMarksMap=game.map;return}
   if(compassMarksMap===game.map&&now<compassMarksCheck)return;compassMarksCheck=now+1000;const sense=senseRadius(save);if(compassMarksMap===game.map&&sense===compassMarksSense)return;
-  compassMarksMap=game.map;compassMarksSense=sense;compassMarks=nearbyPlaces(save,game.rx,game.ry,game.player.x,game.player.y,[]);
+  compassMarksMap=game.map;compassMarksSense=sense;compassMarks=nearbyPlaces(save,game.rx,game.ry,game.player.x,game.player.y,[],compassSenseProbe);
+  if(compassMarks.pending.length)probeCompassTrees(); // 2026-11-26: a great tree is marked only once its section's terrain is built and holds one; a Wayglass once its region is generated (never inside the frame)
   const found=compassDiscovery(save,compassSensed,compassMarks);if(found&&now>=compassCollapseUntil)showEventBanner(COMPASS_RIBBON.discovered,found,"discovery"); // a hollow mark filled: DISCOVERED · <place>
   compassSensed=new Set(compassMarks.filter((m)=>!m.known).map((m)=>m.key));
+}
+// The compass's sensing probe (atlas-view.ts nearbyPlaces): kept answers only, never a build inside the frame.
+const compassSenseProbe={tree:(x,y)=>greatTreeKnown(save,x,y),pentagon:(cx,cy)=>pentagonSensed(save,cx,cy),signals:(x,y)=>keptSectionSignals(save.seed,x,y,save.worldGeneration||1)};
+// The sections that could still make the marks, one per idle slice: a great tree's terrain (game.ts greatTreeProbe keeps the answer)
+// or a region's signals (world.ts sectionSignals, for its Wayglass); then the marks are built again. Stops when the Wayfarer moves on (the next list asks for its own).
+let compassTreeProbing=false;
+function probeCompassTrees(){
+  if(compassTreeProbing)return;compassTreeProbing=true;const map=game.map;
+  whenIdle(function step(){
+    try{const next=compassMarks.pending?.[0];if(game.map!==map||!next){compassTreeProbing=false;return}
+      if(next.kind==="tree")greatTreeProbe(save,next.rx,next.ry);else sectionSignals(save.seed,next.rx,next.ry,save.worldGeneration||1);compassMarks.pending.shift();
+      if(!compassMarks.pending.length){compassTreeProbing=false;compassMarksMap=null;return} // built: the marks are made again on the next frame
+      whenIdle(step)}
+    catch(error){compassTreeProbing=false;console.warn("Compass tree probe failed",error)}
+  });
 }
 function renderCompassViews(now){
   const r=compassNow,close=closeViewShowing(game),R=compassRibbon,P=compassPlaces;
@@ -878,7 +893,7 @@ function renderCompassViews(now){
   if(close){
     refreshCompassMarks(now);ribbonLayout(P,compassHere,compassMarks); // the cardinals, then the nearby places (atlas-view.ts)
     for(let i=0;i<R.cards.length;i++){const el=R.cards[i],on=P[i]===P[i];hudSet(el,"class:off",!on);if(on)compassPct(el,Math.round(P[i]*1000))}
-    for(let i=0;i<R.marks.length;i++){const el=R.marks[i],j=R.cards.length+i,on=P[j]===P[j];hudSet(el,"class:off",!on);if(on){compassPct(el,Math.round(P[j]*1000));hudSet(el,"class:sensed",!compassMarks[i].known)}}
+    for(let i=0;i<R.marks.length;i++){const el=R.marks[i],j=R.cards.length+i,on=P[j]===P[j];hudSet(el,"class:off",!on);if(on){compassPct(el,Math.round(P[j]*1000));hudSet(el,"class:sensed",!compassMarks[i].known);hudSet(el,"class:boss",!!compassMarks[i].boss)}}
     const collapsing=now<compassCollapseUntil,reached=compassArrival.on&&!collapsing,show=r.on&&!reached;
     hudSet(R.target,"class:off",!show);hudSet(R.target,"class:dormant",r.dormant);hudSet(R.target,"class:collapse",collapsing);hudSet(R.target,"class:behind",r.behind&&!collapsing);hudSet(R.target,"class:hinted",r.hinted);
     if(show){const q=collapsing||r.dormant||r.warm?500:Math.round(r.x*1000);compassPct(R.target,q);hudSet(R.target,"class:at-left",q<160);hudSet(R.target,"class:at-right",q>840)}
@@ -928,7 +943,7 @@ function threadLeads(){
 // (leads.ts rumourLeads), each with "Point compass here" when it has a place (a hinted home's nearest edge, a wonder's section).
 function renderQuests(out){
   const h=document.createElement("h3");h.textContent="Leads";out.append(h);
-  const row=(title,detail,at,name,follow=null,zone=null)=>{const card=document.createElement("div"),t=document.createElement("strong"),d=document.createElement("p");card.className="item";t.textContent=title;const away=at?Math.max(Math.abs(at.rx-game.rx),Math.abs(at.ry-game.ry)):0;d.textContent=detail+(at?` · section ${at.rx},${at.ry} · ${away?`${away} section${away===1?"":"s"} ${compassHeading(at.rx-game.rx,at.ry-game.ry)}`:"in this section"}`:"");card.append(t,d);
+  const row=(title,detail,at,name,follow=null,zone=null)=>{const card=document.createElement("div"),t=document.createElement("strong"),d=document.createElement("p");card.className="item";t.textContent=title;const near=zone&&Number.isFinite(zone.rx)?zone:at,away=near?Math.max(Math.abs(near.rx-game.rx),Math.abs(near.ry-game.ry)):0;d.textContent=detail+(near?` · ${zone?`somewhere within ${Math.round(zone.r)} sections of ${near.rx},${near.ry}`:`section ${near.rx},${near.ry}`} · ${away?`${away} section${away===1?"":"s"} ${compassHeading(near.rx-game.rx,near.ry-game.ry)}`:zone?"around here":"in this section"}`:""); /* 2026-11-26: a rumour is an area, never its section */card.append(t,d);
     if(follow){const followed=compassChoiceIs(save.guidance,{follow});/* 2026-11-25: the one matcher (types.ts) */card.append(uiButton(followed?"Compass points here":"Point compass here",()=>{chooseGuidance({follow});openJournal("quests")}))}
     else if(at){const pinned=compassChoiceIs(save.guidance,{pin:{rx:at.rx,ry:at.ry,name}});card.append(uiButton(pinned?"Compass points here":"Point compass here",()=>{compassPin={rx:at.rx,ry:at.ry,name,...(zone?{zone}:{})};rememberGuidance();openJournal("quests")}))}out.append(card)};
   const quests=activeQuests(),rumours=rumourLeads(save);if(!quests.length&&!rumours.length){const p=document.createElement("p");p.className="options-note";p.textContent="No leads yet. Talk to the people of the Refuge: Maud by the cairn has work. Viewport posts hunts; Old Quillon gives errands on the road.";out.append(p)}
@@ -1967,7 +1982,7 @@ function drawMap() {
     rows = Math.ceil(h / (2 * cell)) + 1;
   if(worldView(mapView.zoom)){drawAtlasWorld(w,h,cell,signals);return} // release 205
   // Release 153: the compass target gets a gold frame and unfinished challenges a dashed violet one.
-  const openSections=atlasLayers.objectives?openChallengeSections():new Map(),compassTarget=atlasLayers.objectives?navigationTargets().guidance:null,targetKey=compassTarget?.area==="overworld"?`${compassTarget.rx},${compassTarget.ry}`:null;
+  const openSections=atlasLayers.objectives?openChallengeSections():new Map(),compassTarget=atlasLayers.objectives?navigationTargets().guidance:null,targetKey=compassTarget?.area==="overworld"&&!atlasTargetZone(compassTarget)?`${compassTarget.rx},${compassTarget.ry}`:null; // a rumour's area, not its section (drawAtlasPins)
   for (let j = -rows; j <= rows; j++)
     for (let i = -cols; i <= cols; i++) {
       const rx = mapView.x + i,
@@ -2101,6 +2116,23 @@ function drawLinkedDungeons(w,h,cell){
 // everything. Off the map's edge, an arrow at the edge points to each with its distance in sections, so zooming out to
 // find the quest marker always finds it.
 const ATLAS_PIN={size:9,edge:18};
+// 2026-11-26 (Tim: "show a rumour as an area, a region of sections where it will be found"): a compass target with a hint zone
+// (a rumour, a thread's home) is drawn on the Atlas as the zone's sections (atlas-view.ts zoneSections: where the compass turns
+// warm), its size the zone's radius (leads.ts rumourZone, by the rumour's difficulty), outlined in the compass target's gold.
+const ATLAS_ZONE={fill:"rgba(255,211,77,.16)",line:"#ffd34d",width:2,dash:[6,4]};
+const atlasTargetZone=(g)=>g?.area==="overworld"&&g.zone&&Number.isFinite(g.zone.rx)&&Number.isFinite(g.zone.ry)?g.zone:null;
+let atlasZoneCache={key:null,set:null,list:null};
+function drawAtlasZone(w,h,cell,zone){
+  const key=`${zone.rx},${zone.ry},${zone.r}`;if(atlasZoneCache.key!==key){const list=zoneSections(zone);atlasZoneCache={key,list,set:new Set(list.map(q=>`${q.rx},${q.ry}`))}}
+  const{list,set}=atlasZoneCache,x0=w/2-cell/2+mapView.panX,y0=h/2-cell/2+mapView.panY;
+  mctx.save();mctx.fillStyle=ATLAS_ZONE.fill;
+  for(const q of list){const x=x0+(q.rx-mapView.x)*cell,y=y0+(q.ry-mapView.y)*cell;if(x>w||y>h||x+cell<0||y+cell<0)continue;mctx.fillRect(x,y,cell,cell)}
+  mctx.strokeStyle=ATLAS_ZONE.line;mctx.lineWidth=ATLAS_ZONE.width;mctx.setLineDash(ATLAS_ZONE.dash);mctx.beginPath();
+  for(const q of list){const x=x0+(q.rx-mapView.x)*cell,y=y0+(q.ry-mapView.y)*cell;if(x>w||y>h||x+cell<0||y+cell<0)continue; // the outline: each edge with no zone section beyond it
+    if(!set.has(`${q.rx},${q.ry-1}`)){mctx.moveTo(x,y);mctx.lineTo(x+cell,y)}if(!set.has(`${q.rx},${q.ry+1}`)){mctx.moveTo(x,y+cell);mctx.lineTo(x+cell,y+cell)}
+    if(!set.has(`${q.rx-1},${q.ry}`)){mctx.moveTo(x,y);mctx.lineTo(x,y+cell)}if(!set.has(`${q.rx+1},${q.ry}`)){mctx.moveTo(x+cell,y);mctx.lineTo(x+cell,y+cell)}}
+  mctx.stroke();mctx.restore();
+}
 function drawAtlasPins(w,h,cell){
   const at=(rx,ry)=>[w/2+(rx-mapView.x)*cell+mapView.panX,h/2+(ry-mapView.y)*cell+mapView.panY],pins=[];
   const t=navigationTargets();
@@ -2109,15 +2141,18 @@ function drawAtlasPins(w,h,cell){
   for(const m of save.mapMarks||[])pins.push({rx:m.rx,ry:m.ry,color:MAP_MARKS.colors[m.color],label:`${MAP_MARKS.names[m.color]} mark`,mark:true}); // release 355: drawn under the waypoint and the quest
   {const r=rescueGuidance(save.mounts?.hatchling);if(r)pins.push({rx:r.rx,ry:r.ry,color:"#f2cf35",label:r.name,mark:true})} // the hatchling's rescue (hatchling.ts): a Triceratops-yellow flag
   for(const q of activeSeedHunts(save))pins.push({rx:q.rx,ry:q.ry,color:TALL_TOWERS.seedHunt.marker,inner:SEEDS[q.kind]?.color||"#ffffff",label:`Seed hunt: ${SEEDS[q.kind]?.name||"a seed"}`,seed:true}); // tall towers: each live seed hunt, a glinting seed-shaped marker
-  for(const q of nearestWonders(save,game.rx,game.ry)){const K=WONDERS.kinds[q.kind];pins.push({rx:q.rx,ry:q.ry,color:K.color,label:K.atlas})} // release 674: the nearest unexplored skyway, great tree and Starfield crossing
+  // 2026-11-26 (Tim: "nothing should be pointed at or pinned unless the player chose it or it belongs to a quest the player accepted"):
+  // release 674's automatic pins for the nearest unexplored skyway (blue), great tree (green) and Starfield crossing (violet) are gone.
   {const lair=game.stalkerLairPin?.();if(lair)pins.push({rx:lair.rx,ry:lair.ry,color:"#d8e2ee",label:"The Stalker"})} // release 699: where the Stalker is, while it hunts
   for(const r of retreatsUnderWay(save))pins.push({rx:r.rx,ry:r.ry,color:"#ff8f4a",label:`${WORLD_BEASTS[r.id].name}, retreating`}); // release 605: a retreat can be followed on the Atlas
   if(save.manualWaypoint&&Number.isInteger(save.manualWaypoint.rx))pins.push({rx:save.manualWaypoint.rx,ry:save.manualWaypoint.ry,color:"#5fe7ee",label:save.manualWaypoint.label||"Waypoint"});
-  if(t.guidance?.area==="overworld"&&!(save.manualWaypoint&&t.guidance.rx===save.manualWaypoint.rx&&t.guidance.ry===save.manualWaypoint.ry))pins.push({rx:t.guidance.rx,ry:t.guidance.ry,color:ATLAS_FRAMES.compassTarget,label:t.guidance.name||"Quest"});
+  const zone=atlasTargetZone(t.guidance);if(zone){drawAtlasZone(w,h,cell,zone);pins.push({rx:zone.rx,ry:zone.ry,color:ATLAS_FRAMES.compassTarget,label:t.guidance.name||"Rumour",zone:true})} // a rumour: its area, never its section (off the map: the arrow points at the area)
+  else if(t.guidance?.area==="overworld"&&!(save.manualWaypoint&&t.guidance.rx===save.manualWaypoint.rx&&t.guidance.ry===save.manualWaypoint.ry))pins.push({rx:t.guidance.rx,ry:t.guidance.ry,color:ATLAS_FRAMES.compassTarget,label:t.guidance.name||"Quest"});
   const S=ATLAS_PIN.size,E=ATLAS_PIN.edge;
   for(const p of pins){
     const[x,y]=at(p.rx,p.ry);mctx.save();mctx.lineJoin="round";
     if(x>=E&&y>=E&&x<=w-E&&y<=h-E){ // on the map: a pin standing on its section
+      if(p.zone){mctx.restore();continue} // a rumour's area is drawn instead (drawAtlasZone)
       mctx.fillStyle="rgba(0,0,0,.35)";mctx.beginPath();mctx.ellipse(x,y,S*.55,S*.22,0,0,7);mctx.fill();
       if(p.mark){mctx.strokeStyle="#091018";mctx.lineWidth=2;mctx.beginPath();mctx.moveTo(x,y);mctx.lineTo(x,y-S*2.6);mctx.stroke();mctx.beginPath();mctx.moveTo(x,y-S*2.6);mctx.lineTo(x+S*1.6,y-S*2.1);mctx.lineTo(x,y-S*1.6);mctx.closePath();mctx.fillStyle=p.color;mctx.fill();mctx.stroke();mctx.restore();continue} // release 355: a map mark is a small flag
       if(p.seed){const cy=y-S*1.5;mctx.beginPath();mctx.moveTo(x,cy-S*1.3);mctx.quadraticCurveTo(x+S*.95,cy,x,cy+S*1.1);mctx.quadraticCurveTo(x-S*.95,cy,x,cy-S*1.3);mctx.closePath();mctx.fillStyle=p.color;mctx.strokeStyle="#091018";mctx.lineWidth=2;mctx.fill();mctx.stroke();mctx.fillStyle=p.inner;mctx.beginPath();mctx.ellipse(x,cy+S*.1,S*.32,S*.55,0,0,7);mctx.fill();mctx.restore();continue} // tall towers: a seed hunt is a seed-shaped marker, the seed's own colour at its heart
@@ -2188,7 +2223,7 @@ function atlasMark(kind){const canvas=document.createElement("canvas");canvas.wi
 function deathMark(){const canvas=document.createElement("canvas");canvas.width=canvas.height=44;canvas.className="atlas-symbol";canvas.setAttribute("role","img");canvas.setAttribute("aria-label","Last death");drawDeathGlyph(canvas.getContext("2d"),22,22,13);return canvas}function frameMark(color,dashed){const canvas=document.createElement("canvas");canvas.width=canvas.height=44;canvas.className="atlas-symbol";const c=canvas.getContext("2d");if(c){c.strokeStyle=color;c.lineWidth=dashed?3:5;if(dashed)c.setLineDash([7,4]);c.strokeRect(8,8,28,28)}return canvas}
 function linkMark(){const canvas=document.createElement("canvas");canvas.width=canvas.height=44;canvas.className="atlas-symbol";canvas.setAttribute("role","img");canvas.setAttribute("aria-label","Linked crossing");const c=canvas.getContext("2d");if(c){c.strokeStyle=LINKED_COLOR;c.lineWidth=2.5;c.setLineDash([4,3]);c.beginPath();c.moveTo(11,33);c.lineTo(33,11);c.stroke();c.setLineDash([]);for(const[x,y]of[[11,33],[33,11]]){c.beginPath();c.arc(x,y,7,0,7);c.stroke()}}return canvas}
 function renderAtlasLegend(){const legend=$("#mapLegend");legend.replaceChildren();for(const symbol of ATLAS_SYMBOLS){const item=document.createElement("span");item.className="atlas-legend-item";item.append(symbol.kind==="lastDeath"?deathMark():symbol.kind==="linkedDungeon"?linkMark():atlasMark(symbol.kind),document.createTextNode(symbol.label));legend.append(item)}
-  for(const[color,dashed,label]of[[ATLAS_FRAMES.compassTarget,false,"Compass target (tap the compass for the next)"],[ATLAS_FRAMES.openChallenge,true,"Unfinished challenge"]]){const item=document.createElement("span");item.className="atlas-legend-item";item.append(frameMark(color,dashed),document.createTextNode(label));legend.append(item)}}
+  for(const[color,dashed,label]of[[ATLAS_FRAMES.compassTarget,false,"Compass target (tap the compass for the next)"],[ATLAS_ZONE.line,true,"A rumour: somewhere in this area"],[ATLAS_FRAMES.openChallenge,true,"Unfinished challenge"]]){const item=document.createElement("span");item.className="atlas-legend-item";item.append(frameMark(color,dashed),document.createTextNode(label));legend.append(item)}}
 function refreshWayglassDestinations(){
   const select=$("#mapWayglassSelect"),prior=select.value,entries=Object.entries(save.checkpoints||{}).sort((a,b)=>(a[1].rx-b[1].rx)||(a[1].ry-b[1].ry)||(a[1].name||a[0]).localeCompare(b[1].name||b[0])); // release 443 (Tim: "arranged numerically, so I can just scroll down"): by section, east-west then north-south
   select.replaceChildren(...entries.map(([key,c])=>{const option=document.createElement("option");option.value=key;option.textContent=`${c.rx}, ${c.ry} · ${c.name||"Wayglass"}`;return option}));

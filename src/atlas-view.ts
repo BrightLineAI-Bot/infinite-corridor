@@ -9,11 +9,12 @@ import { exploring } from "./journey-start.ts";
 import { questOfFollow } from "./quests.ts"; import { questTarget } from "./quest-places.ts"; // progression Phase 7: a followed quest
 import { READINGS, READING_ORDER, readingAt, readingKnown } from "./lore.ts";
 import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.ts";
-import { PENTAGON, parsePentagonId, pentagonPlan, pentagonLinkKey } from "./pentagon.ts";
+import { PENTAGON, parsePentagonId, pentagonPlan, pentagonLinkKey, pentagonCentre } from "./pentagon.ts";
 import { dungeonPointDiscovered } from "./dungeon-framework.ts";
 import { labFogOf, labFogState } from "./labyrinths.ts";
 import { TALL_TOWERS } from "./tall-towers.ts";
-import { crossingRolled } from "./world.ts"; import { nearestWonders, WONDERS } from "./wonders.ts"; import { APERTURE_BANDS, apertureBand } from "./items.ts"; // the compass's nearby places (2026-11-25)
+import { sectionSignals } from "./world.ts"; import { wonderAt } from "./wonders.ts"; import { APERTURE_BANDS, apertureBand } from "./items.ts"; // the compass's nearby places (2026-11-25; 2026-11-26: only the five kinds Tim named)
+import { worldBeastsHeld } from "./world-beasts.ts"; import { guideHost } from "./waymark-guides.ts";
 
 const DUNGEON_ROUTE_TAGS = { exit: "OUT", deepReturn: "RETURN", buildingStair: "STAIR", deepTransition: "PASSAGE", deepStair: "DEEP STAIR", annexStair: "DOWN", warpDais: "DAIS", deepPortal: "PORTAL", deepShortcut: "SHORTCUT", emberDoor: "EMBER DOOR", labGate: "DOOR" };
 export const DUNGEON_DOOR_WAYPOINTS = { max: 3 };
@@ -401,7 +402,7 @@ export function compassMenuModel({ area = "overworld", here = {}, quests = [], o
     for (const q of quests || []) {
       const f = q?.follow && typeof q.follow === "object" && q.follow.kind ? q.follow : null;
       if (f) groups.quests.push({ id: `follow:${f.kind}:${f.id ?? ""}`, label: String(q.title), hint: sectionOk(q.at) ? hint(q.at) : COMPASS_MENU.waymarksHint, tag: "", ...(sectionOk(q.at) ? { rx: q.at.rx, ry: q.at.ry } : {}), choose: { kind: "follow", follow: f, name: String(q.title) } });
-      else if (sectionOk(q?.at)) groups.quests.push({ id: `quest:${q.title}:${q.at.rx},${q.at.ry}`, label: String(q.title), hint: hint(q.at), tag: "", rx: q.at.rx, ry: q.at.ry, choose: { kind: "pin", rx: q.at.rx, ry: q.at.ry, name: String(q.title), ...(q.zone ? { zone: q.zone } : {}) } });
+      else if (sectionOk(q?.at)) groups.quests.push({ id: `quest:${q.title}:${q.at.rx},${q.at.ry}`, label: String(q.title), hint: q.zone && sectionOk(q.zone) ? `about ${hint(q.zone)}` : hint(q.at), tag: "", /* 2026-11-26: a rumour is an area: its middle, never its site */ rx: q.at.rx, ry: q.at.ry, choose: { kind: "pin", rx: q.at.rx, ry: q.at.ry, name: String(q.title), ...(q.zone ? { zone: q.zone } : {}) } });
     }
     for (const o of objectives || []) {
       if (!sectionOk(o)) continue;
@@ -503,6 +504,16 @@ export function compassReadout(out, t, here) {
   out.distKey = compassDistanceKey(out);
   return out;
 }
+// A hinted lead's zone on the Atlas (Tim, 2026-11-26: "show a rumour as an area, a region of sections where it will be found"):
+// the sections whose middle lies within the zone's radius of its middle, the radius clamped as compassReadout clamps it, so the
+// Atlas area is where the compass turns warm (standing at a section's middle: warm there exactly when it is in the area). Empty for no zone.
+export const zoneRadius = (z) => Math.max(.5, Math.min(COMPASS_RIBBON.hint.maxRadius, Number(z?.r) || 1));
+export function zoneSections(z) {
+  if (!z || !Number.isFinite(z.rx) || !Number.isFinite(z.ry)) return [];
+  const r = zoneRadius(z), n = Math.floor(r), out = [];
+  for (let dy = -n; dy <= n; dy++) for (let dx = -n; dx <= n; dx++) if (dx * dx + dy * dy <= r * r) out.push({ rx: z.rx + dx, ry: z.ry + dy });
+  return out;
+}
 // Where a relative bearing sits on the bar: 0 the left end, 1 the right, clamped (a target behind sits at the nearer edge).
 export function ribbonX(rel) { return Math.min(1, Math.max(0, .5 + rel / (2 * SPAN))); }
 // A small integer that changes exactly when the distance words would: main.ts builds the words only then (no string per frame).
@@ -567,39 +578,68 @@ export function compassEdge(out, r, w, h, tile) {
 }
 
 // ---------------------------------------------------------------- nearby places (the Ribbon's marks)
-// Known places within COMPASS_RIBBON.knownRadius sections (filled), and places only sensed within the Aperture's reach (hollow):
-// hamlets, crossings and the travellers' wonders on ground not yet seen. Never monsters, loot or hidden things (a supply cache,
-// a boss cue, a secret door, a sealed vault is never listed). At most marksMax, nearest first. Built only when the section, the
-// Atlas or the Aperture band changes (main.ts), into `out`, which is reused.
-export const NEARBY_KINDS = Object.freeze({ checkpoint: "Wayglass", dungeon: "Crossing", arenaEntrance: "Arena", architecturalDistrict: "District", watcherTomb: "Watcher's Shrine", skyStair: "Sky Stair", shrine: "Shrine", ruinMarker: "Ruin", shipwright: "Shipwright", diveSite: "Dive site" });
+// Tim (2026-11-26): "the compass may sense only Pentagons, Skyways (Sky Stairs), great trees, Waystations / teleport shrines /
+// Watcher shrines, and world bosses (a red mark). Nothing else." Known places within COMPASS_RIBBON.knownRadius sections or the
+// Aperture's reach are filled; places on ground not yet seen, within the reach, are hollow. Nothing is marked that would not be
+// there on arrival: a Sky Stair by the rule the game places it (wonders.ts wonderAt), a Wayglass the section's region lays
+// (world.ts sectionSignals; with a probe, `signals(x, y)`: the kept ones only, null while not generated), a Watcher's Shrine on a guided host (waymark-guides.ts guideHost: it always stands), a great tree
+// only once its terrain has been built and holds one, a Pentagon by its own rule (both through `probe`, from game.ts: { tree(x, y)
+// true / false / null while unbuilt, pentagon(cx, cy) }), and a world beast where it is now. Never a hamlet, a crossing, a Starfield,
+// loot, a cache or an ordinary monster. At most marksMax, nearest first. Built only when the section, the Atlas or the Aperture
+// band changes (main.ts), into `out`, which is reused; `out.pending` lists the sections not yet built (a great tree's terrain,
+// `kind` "tree") or generated (a region's Wayglass, "signals") that could still make the list: main.ts does them in idle time,
+// one at a time, and asks again.
+export const SENSED_PLACES = Object.freeze({
+  pentagon: Object.freeze({ known: "Pentagon", sensed: "a Pentagon" }),
+  skyway: Object.freeze({ known: "Sky Stair", sensed: "a Sky Stair" }),
+  tree: Object.freeze({ known: "Great tree", sensed: "a great tree" }),
+  wayglass: Object.freeze({ known: "Wayglass", sensed: "a Wayglass" }),
+  shrine: Object.freeze({ known: "Watcher's Shrine", sensed: "a Watcher's shrine" }),
+  boss: Object.freeze({ known: "World beast", sensed: "a world beast", red: true }),
+});
+// The Atlas site kinds a known section's marks come from, by sensed kind (everything else on the Atlas is never marked).
+export const NEARBY_KINDS = Object.freeze({ checkpoint: "wayglass", watcherTomb: "shrine", skyStair: "skyway" });
 export const senseRadius = (save) => { const S = COMPASS_RIBBON.sense, band = Math.max(0, APERTURE_BANDS.indexOf(apertureBand(Number(save?.perception?.aperture) || 0))); return Math.min(S.max, S.base + band * S.perBand); };
-export function nearbyPlaces(save, rx, ry, px = 16, py = 16, out = []) {
-  out.length = 0; if (!save) return out;
-  const R = COMPASS_RIBBON, S = R.section, atlas = save.atlas || {}, seed = save.seed, gen = Number(save.worldGeneration) || 1, pool = [];
-  const push = (key, known, x, y, sx, sy, name) => pool.push({ key, known, rx: x, ry: y, x: sx, y: sy, name, d: Math.hypot((x - rx) * S + sx + .5 - px, (y - ry) * S + sy + .5 - py) });
-  const K = R.knownRadius;
-  for (let y = ry - K; y <= ry + K; y++) for (let x = rx - K; x <= rx + K; x++) {
-    const rec = atlas[`${x},${y}`]; if (!rec) continue;
-    if (x === 0 && y === 0) push("refuge:0,0", true, 0, 0, 15.5, 15.5, "Ember Refuge");
-    else if (rec.hamletVersion && hamletSection(seed, x, y)) push(`hamlet:${x},${y}`, true, x, y, 15.5, 15.5, hamletIdentity(seed, x, y).name);
-    for (const s of rec.sites || []) { const label = NEARBY_KINDS[s?.kind]; if (!label || !Number.isFinite(s.x) || !Number.isFinite(s.y)) continue;
-      push(s.kind === "dungeon" ? `crossing:${x},${y}` : `${s.kind}:${x},${y}:${s.x},${s.y}`, true, x, y, s.x, s.y, s.name && s.name !== s.kind ? s.name : label); }
+export function nearbyPlaces(save, rx, ry, px = 16, py = 16, out = [], probe = null) {
+  out.length = 0; out.pending = []; if (!save) return out;
+  const R = COMPASS_RIBBON, S = R.section, atlas = save.atlas || {}, seed = save.seed, gen = Number(save.worldGeneration) || 1, pool = [], taken = new Set();
+  const push = (kind, key, known, x, y, sx, sy, name = null) => { if (taken.has(key)) return; taken.add(key); const P = SENSED_PLACES[kind];
+    pool.push({ key, kind, known, rx: x, ry: y, x: sx, y: sy, name: name || (known ? P.known : P.sensed), ...(P.red ? { boss: true } : {}), d: Math.hypot((x - rx) * S + sx + .5 - px, (y - ry) * S + sy + .5 - py) }); };
+  const K = R.knownRadius, sense = senseRadius(save), W = Math.max(K, sense), pent = new Set(), waits = [];
+  const reach = (x, y, known) => Math.abs(x - rx) + Math.abs(y - ry) <= sense || (known && Math.max(Math.abs(x - rx), Math.abs(y - ry)) <= K);
+  for (let y = ry - W; y <= ry + W; y++) for (let x = rx - W; x <= rx + W; x++) {
+    const k = `${x},${y}`, rec = atlas[k], known = !!rec; if (!reach(x, y, known)) continue;
+    if (known) {
+      for (const s of rec.sites || []) { const kind = NEARBY_KINDS[s?.kind]; if (!kind || !Number.isFinite(s.x) || !Number.isFinite(s.y)) continue;
+        push(kind, `${kind}:${k}`, true, x, y, s.x, s.y, kind === "wayglass" && s.name && s.name !== s.kind ? s.name : kind === "shrine" && s.name && s.name !== s.kind ? s.name : null); }
+      const c = save.checkpoints?.[k]; if (c && Number.isFinite(c.x) && Number.isFinite(c.y)) push("wayglass", `wayglass:${k}`, true, x, y, c.x, c.y, c.name || null); // a Crown Rest, a buoy: attuned, so known
+    } else if (x !== 0 || y !== 0) {
+      if (wonderAt(seed, x, y, "skyway")) push("skyway", `skyway:${k}`, false, x, y, 15.5, 15.5);
+      if (guideHost(seed, "shrine", x, y)) push("shrine", `shrine:${k}`, false, x, y, 15.5, 15.5);
+      const sig = probe?.signals ? probe.signals(x, y) : sectionSignals(seed, x, y, gen);
+      if (sig?.wayglass) push("wayglass", `wayglass:${k}`, false, x, y, 15.5, 15.5); else if (!sig) waits.push([x, y, "signals"]);
+    }
+    if (probe) {
+      const t = probe.tree?.(x, y); if (t === true) push("tree", `tree:${k}`, known, x, y, 15.5, 15.5); else if (t == null && probe.tree) waits.push([x, y, "tree"]);
+      const pc = pentagonCentre(x, y), pk = pc && `${pc.cx},${pc.cy}`;
+      if (pc && !pent.has(pk)) { pent.add(pk); if (reach(pc.cx, pc.cy, !!atlas[pk]) && probe.pentagon?.(pc.cx, pc.cy)) push("pentagon", `pentagon:${pk}`, !!atlas[pk], pc.cx, pc.cy, 15.5, 15.5); }
+    }
   }
-  const sense = senseRadius(save), taken = new Set();
-  for (const w of nearestWonders(save, rx, ry)) if (w.d <= sense && !atlas[`${w.rx},${w.ry}`]) { taken.add(`${w.rx},${w.ry}`); push(`${w.kind}:${w.rx},${w.ry}`, false, w.rx, w.ry, 15.5, 15.5, WONDERS.kinds[w.kind].name); }
-  for (let y = ry - sense; y <= ry + sense; y++) for (let x = rx - sense; x <= rx + sense; x++) {
-    const k = `${x},${y}`; if (atlas[k] || taken.has(k) || Math.abs(x - rx) + Math.abs(y - ry) > sense) continue;
-    if (hamletSection(seed, x, y)) push(`hamlet:${k}`, false, x, y, 15.5, 15.5, "a hamlet");
-    else if (crossingRolled(seed, x, y, gen)) push(`crossing:${k}`, false, x, y, 15.5, 15.5, "a crossing");
-  }
+  for (const b of worldBeastsHeld(save)) if (Number.isInteger(b.rx) && Number.isInteger(b.ry) && Math.abs(b.rx - rx) + Math.abs(b.ry - ry) <= W)
+    push("boss", `boss:${b.id}`, !!atlas[`${b.rx},${b.ry}`], b.rx, b.ry, Number.isFinite(b.x) ? b.x : 15.5, Number.isFinite(b.y) ? b.y : 15.5, b.name);
+  { const q = save.questingBeast?.active; if (q && Number.isInteger(q.rx) && Number.isInteger(q.ry) && Math.abs(q.rx - rx) + Math.abs(q.ry - ry) <= W) push("boss", "boss:questingBeast", !!atlas[`${q.rx},${q.ry}`], q.rx, q.ry, 15.5, 15.5, "the Questing Beast"); }
   pool.sort((a, b) => a.d - b.d || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
   for (let i = 0; i < pool.length && out.length < R.marksMax; i++) if (pool[i].d >= R.minDist) out.push(pool[i]); // a place the Wayfarer stands at needs no mark
+  // the sections still to build that could make the list: nearer than its last mark, or any while it has room
+  const last = out.length >= R.marksMax ? out[out.length - 1].d : Infinity;
+  for (const [x, y, kind] of waits) { const d = Math.hypot((x - rx) * S + 16 - px, (y - ry) * S + 16 - py); if (d < last && d >= R.minDist) out.pending.push({ rx: x, ry: y, d, kind }); }
+  out.pending.sort((a, b) => a.d - b.d);
   return out;
 }
 // A hollow mark that became filled: the name to announce ("DISCOVERED · <place>"), or null. `prev` is the last marks list's
-// sensed keys (a Set the caller keeps), `next` the new list. A sensed wonder is discovered when its section enters the Atlas.
+// sensed keys (a Set the caller keeps), `next` the new list. A sensed place is discovered when its section enters the Atlas.
 export function compassDiscovery(save, prevSensed, next) {
-  for (const m of next) if (m.known && prevSensed.has(m.key)) return m.name;
-  for (const key of prevSensed) { const at = /:(-?\d+),(-?\d+)$/.exec(key); if (at && /^(skyway|tree|starfield):/.test(key) && save?.atlas?.[`${at[1]},${at[2]}`]) { const kind = key.slice(0, key.indexOf(":")); const n = WONDERS.kinds[kind].name; return n.charAt(0).toUpperCase() + n.slice(1); } }
+  for (const m of next) if (m.known && !m.boss && prevSensed.has(m.key)) return m.name;
+  for (const key of prevSensed) { const at = /^(pentagon|skyway|tree|wayglass|shrine):(-?\d+),(-?\d+)$/.exec(key); if (at && save?.atlas?.[`${at[2]},${at[3]}`]) return SENSED_PLACES[at[1]].known; }
   return null;
 }

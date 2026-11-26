@@ -1,9 +1,11 @@
 // Wonders worth the walk (release 674; Tim, 2026-11-01: "I haven't seen any tall trees or skyways, or chasm (Starfield)
-// explorations"). The Atlas pins the nearest unexplored Sky Stair, great tree and Starfield crossing, and a traveller who has
-// heard of one says which way it lies. Everything here is a hash of the seed and the section, read without building the
+// explorations"). A traveller who has heard of the nearest unexplored Sky Stair, great tree or Starfield crossing says which way
+// it lies (the Atlas no longer pins them by itself: Tim, 2026-11-26, "nothing should be pointed at or pinned unless the player
+// chose it or it belongs to a quest the player accepted"). Everything here is a hash of the seed and the section, read without building the
 // section (a few thousand cheap checks, kept per section): a Sky Stair exactly as the game places it on new ground
 // (placement 2); a great tree where the section's centre lies in a tree region and the version 14 roll grows one (a tree may
-// still find no room, so the Atlas says "said to stand"); a Starfield crossing where the section's ordinary crossing would roll
+// still find no room: from 2026-11-26 a tree is named only once game.ts greatTreeProbe has built its section's terrain and found
+// one, `treeChecks` candidates at most, nearest first); a Starfield crossing where the section's ordinary crossing would roll
 // one on first entry. Only sections with no Atlas entry are named, so all of this is new ground (placement 2, landscape 14).
 import { hashSeed, rng } from "./random.ts";
 import { dungeonId } from "./world.ts";
@@ -29,6 +31,7 @@ export function starPlaceOfId(save, id) { const m = String(id || "").match(SECTI
 
 export const WONDERS = {
   radius: 24, // sections searched round the Wayfarer (Manhattan)
+  treeChecks: 3, // great-tree candidates (nearest first) whose terrain may be built to find one that really stands (each about a section's build)
   chasmChance: starfieldChance(), // game.ts CHASM.chance on new ground (kept equal by a test; not imported, so this module stays free of the game)
   kinds: {
     skyway: { name: "a skyway", atlas: "Skyway (rumoured)", color: "#9fd8ff" },
@@ -51,16 +54,23 @@ export function wonderAt(seed, rx, ry, kind, generation = 1, starPlace = STARFIE
   return false;
 }
 const memo = new Map();
+// game.ts installs the great-tree probe (greatTreeProbe) once it loads; with none, no tree is named (an unbuilt one may not stand).
+let treeProbe = null;
+export function setWonderTreeProbe(probe) { treeProbe = typeof probe === "function" ? probe : null; memo.clear(); }
 // The nearest unexplored section of each kind within `radius`, nearest first: [{ kind, rx, ry, d }].
 export function nearestWonders(save, rx, ry) {
   const seed = save?.seed, gen = Number(save?.worldGeneration) || 1, atlas = save?.atlas || {}, key = `${seed}:${gen}:${rx}:${ry}:${Object.keys(atlas).length}`;
   if (memo.has(key)) return memo.get(key);
-  const found = {};
-  for (let d = 1; d <= WONDERS.radius && Object.keys(found).length < WONDER_KINDS.length; d++)
+  const found = {}; let treeChecks = 0;
+  for (let d = 1; d <= WONDERS.radius && Object.keys(found).length + (!found.tree && treeChecks >= WONDERS.treeChecks ? 1 : 0) < WONDER_KINDS.length; d++)
     for (let i = 0; i < 4 * d; i++) {
       const k = i % d, side = Math.floor(i / d), x = rx + [d - k, -k, -d + k, k][side], y = ry + [k, d - k, -k, -d + k][side];
       if (atlas[`${x},${y}`]) continue;
-      for (const kind of WONDER_KINDS) if (!found[kind] && wonderAt(seed, x, y, kind, gen, starPlaceAt(save, x, y))) found[kind] = { kind, rx: x, ry: y, d };
+      for (const kind of WONDER_KINDS) {
+        if (found[kind] || (kind === "tree" && treeChecks >= WONDERS.treeChecks) || !wonderAt(seed, x, y, kind, gen, starPlaceAt(save, x, y))) continue;
+        if (kind === "tree") { treeChecks++; if (!treeProbe || treeProbe(save, x, y) !== true) continue; } // the same candidates every time, whatever is already built
+        found[kind] = { kind, rx: x, ry: y, d };
+      }
     }
   const out = Object.values(found).sort((a, b) => a.d - b.d);
   if (memo.size > 64) memo.clear(); memo.set(key, out);

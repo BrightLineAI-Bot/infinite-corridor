@@ -212,7 +212,19 @@ export function noteWonderLead(save, rx, ry, who = "") {
 // shows an uncertainty arc that narrows as the Wayfarer nears and turns warm inside, never a needle at the exact spot. An Arcana
 // home: its middle and half its depth (capped by atlas-view.ts COMPASS_RIBBON.hint.maxRadius when shown). A wonder or a horde: the
 // site's section is real (`site`), the zone's centre a seeded step off it so the arc's middle never gives the spot away.
-export const RUMOUR_ZONE = Object.freeze({ siteRadius: 2 });
+// Tim (2026-11-26): "show a rumour as an AREA (a region of sections where it will be found)... the area's size varies with the
+// rumour's difficulty." Difficulty by what is told of (`difficulty`: a Sky Stair or a great tree stands tall and is seen from afar;
+// a Starfield is a crossing like any other until entered; a Revenant horde lies in a crossing well off the road), and the zone's
+// radius in sections by difficulty (`radius`). The Atlas draws the zone's sections (atlas-view.ts zoneSections) and the compass
+// turns warm inside it, so the two always agree. The site lies inside its zone: the zone's middle is a seeded step of at most
+// floor(r / √2) sections each way off it. Difficulty 1 keeps the earlier radius 2 and step, so those zones are as they were.
+export const RUMOUR_ZONE = Object.freeze({ siteRadius: 2, difficulty: Object.freeze({ skyway: 1, tree: 1, starfield: 2, horde: 3 }), radius: Object.freeze({ 1: 2, 2: 3, 3: 4 }) });
+// The difficulty of a rumour with a site: a wonder by its kind (the record's Atlas name, as heard), a horde by its own.
+export function rumourDifficulty(r) {
+  if (r?.kind === "horde") return RUMOUR_ZONE.difficulty.horde;
+  if (r?.kind === "wonder") { const kind = Object.keys(WONDERS.kinds).find((k) => WONDERS.kinds[k].atlas === r.name); return RUMOUR_ZONE.difficulty[kind] || 1; }
+  return 1;
+}
 export function rumourZone(save, r) {
   if (!r || !Number.isInteger(r.rx) || !Number.isInteger(r.ry)) return null;
   const set = RUMOURS[r.kind]?.set;
@@ -221,8 +233,8 @@ export function rumourZone(save, r) {
     return { rx: Math.round(Math.cos(a) * mid) + 0, ry: Math.round(-Math.sin(a) * mid) + 0, r: Math.max(1, (h.to - h.from) / 2), site: false };
   }
   if (r.kind === "wonder" || r.kind === "horde") {
-    const n = RUMOUR_ZONE.siteRadius - 1, k = hashSeed(`${save?.seed}:compass-zone:${r.id}`), span = 2 * n + 1;
-    return { rx: r.rx + (k % span) - n, ry: r.ry + (Math.floor(k / span) % span) - n, r: RUMOUR_ZONE.siteRadius, site: true };
+    const radius = RUMOUR_ZONE.radius[rumourDifficulty(r)] || RUMOUR_ZONE.siteRadius, n = Math.floor(radius / Math.SQRT2), k = hashSeed(`${save?.seed}:compass-zone:${r.id}`), span = 2 * n + 1;
+    return { rx: r.rx + (k % span) - n, ry: r.ry + (Math.floor(k / span) % span) - n, r: radius, site: true };
   }
   return null;
 }
