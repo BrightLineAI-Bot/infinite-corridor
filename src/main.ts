@@ -188,6 +188,9 @@ import {
   gearReadout,
   compareReadouts,
   forgePreview,
+  toughness,
+  THREAT_SIGIL,
+  threatStep,
 } from "./game.ts";
 import { createInput } from "./input.ts";
 import { render as baseRender, renderScaleForViewport } from "./renderer.ts";
@@ -2218,6 +2221,12 @@ function updateMapTravelButton() {
   { let b = $("#mapSetHome"); if (!b) { b = document.createElement("button"); b.id = "mapSetHome"; b.type = "button"; $("#mapHome").after(b); b.onclick = () => { const k = homeTarget(), r = setHome(save, k); game.message = r.message; const d = $("#mapDetail"); if (d) d.textContent = r.message; persist(); updateMapTravelButton(); drawMap(); }; }
     const k = homeTarget(), can = !!k;
     b.hidden = !can; if (can) { const [x, y] = k.split(",").map(Number), t = townAt(save, x, y); b.disabled = !save.checkpoints?.[k]; b.textContent = `Make ${t ? t.name : "Ember Refuge"} my home${b.disabled ? " (light its Wayglass first)" : ""}`; b.title = b.disabled ? "Light its Wayglass first." : ""; } }
+  // The Threat Sigil (game.ts THREAT_SIGIL): its step, and − / + while you stand at a Wayglass (Game.setThreatSigil).
+  { let row = $("#mapThreat"); if (!row) { row = document.createElement("div"); row.id = "mapThreat"; row.className = "threat-sigil"; const label = document.createElement("span"), down = document.createElement("button"), up = document.createElement("button"); label.id = "mapThreatLabel"; down.id = "mapThreatDown"; up.id = "mapThreatUp"; down.type = up.type = "button"; down.textContent = "−"; up.textContent = "+"; down.setAttribute("aria-label", "Lower the Threat Sigil"); up.setAttribute("aria-label", "Raise the Threat Sigil");
+      const dial = (dir) => { const r = game.setThreatSigil(dir); persist(); const d = $("#mapDetail"); if (d) d.textContent = r.message; updateMapTravelButton(); }; down.onclick = () => dial(-1); up.onclick = () => dial(1); row.append(label, down, up); $("#mapTravel").after(row); }
+    const step = threatStep(save), at = !!game.threatSigilGlass?.();
+    $("#mapThreatLabel").textContent = `Threat Sigil ${step} of ${THREAT_SIGIL.max}${at ? "" : " · set it at a Wayglass"}`;
+    $("#mapThreatDown").disabled = !at || step <= 0; $("#mapThreatUp").disabled = !at || step >= THREAT_SIGIL.max; }
   { let n = $("#mapTowns"); if (!n) { n = document.createElement("p"); n.id = "mapTowns"; n.className = "arc-hint"; $("#mapSetHome").after(n); } // release 541: where your Listener towns are
     const towns = save.hometowns?.towns || []; n.hidden = !towns.length; n.textContent = towns.length ? `Listener towns: ${towns.map((t) => `${t.name} (${t.rx}, ${t.ry})${homeKey(save) === `${t.rx},${t.ry}` ? " · home" : save.checkpoints?.[`${t.rx},${t.ry}`] ? "" : " · Wayglass unlit"}`).join("; ")}. Tap one on the map to make it home.` : ""; }
 }
@@ -2331,7 +2340,8 @@ function openPack(tab) {
   for (const text of [
     `${save.maxHp} maximum health`,
     `${save.maxStamina} maximum stamina`,
-    `${Math.round(derived.damageReduction * 100)}% damage resistance`,
+    `${Math.round(derived.damageReduction * 100)}% damage resistance · toughness ${toughness(save.maxHp, derived.damageReduction)}`, // defence pack: health ÷ damage taken
+    `Threat Sigil ${threatStep(save)} of ${THREAT_SIGIL.max}${threatStep(save) ? ` · foes +${Math.round(THREAT_SIGIL.damage * threatStep(save) * 100)}% damage, +${Math.round(THREAT_SIGIL.health * threatStep(save) * 100)}% health` : " (set at a Wayglass)"}`,
     `+${wayfarerDamage(derived.meleeBonus)} melee bonus`, // Tim 2026-11-11: damage text shows what lands (WAYFARER_DAMAGE), in whole numbers
     `+${wayfarerDamage(derived.magicBonus)} spell/projectile bonus`,
     `+${wayfarerDamage(derived.weaponBonus)} ${save.equipment?.primary?.name || "weapon"} bonus (scales with ${SCALING_LABELS[scalingOf(save.equipment?.primary)] || "Might"})`, // Tim 2026-11-12

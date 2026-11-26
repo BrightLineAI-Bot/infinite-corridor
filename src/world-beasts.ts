@@ -12,7 +12,7 @@ import { ASTRAL_PROFILE } from "./astral-worm.ts";
 import { hashSeed, byHash } from "./random.ts";
 import { LETHAL_KINDS, canStep } from "./landscape.ts";
 import { sectionExits, apertureTier } from "./world.ts";
-import { stageOneBeastReference } from "./stages.ts";
+import { stageOneBeastReference, reductionGuard } from "./stages.ts";
 
 // One row per beast. `kind` is its MONSTER_PACK id. Balance lives here.
 export const WORLD_BEASTS = {
@@ -678,7 +678,7 @@ export function liveBeastReference(save, stats = {}) {
   const weapon = save.equipment?.[save.activeWeaponSlot], levelBonus = Math.floor((level - 1) * .6) - Math.floor((actualLevel - 1) * .6);
   return ({ level, perHit: Math.max(BEAST_BASELINE.starterHit, (Number(weapon?.power) || 6) + (Number(stats.weaponBonus ?? stats.meleeBonus) || 0) + levelBonus),
     maxHp: Math.max(BEAST_BASELINE.starterHp, (Number(save.maxHp) || 60) + (level - actualLevel) * 6),
-    guard: Math.max(BEAST_BASELINE.starterGuard, Math.min(.75, Number(stats.damageReduction) || 0)) }); // release 275: Stage 1 beasts are held from tier 13 until three Listeners
+    guard: Math.max(BEAST_BASELINE.starterGuard, reductionGuard(stats.damageReduction)) }); // release 275: Stage 1 beasts are held from tier 13 until three Listeners
 }
 // Release 307 (Tim: "everybody's health is too much... cut their health in half... decrease their overall damage output
 // by ten percent"): every world beast's vitals (and so the Questing Beast's and the Mire Heart's, derived from them) scale here.

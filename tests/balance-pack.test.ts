@@ -22,7 +22,7 @@ const close = (a, b, eps = 1e-9) => Math.abs(a - b) <= eps;
 test('the balance numbers live in data tables', () => {
   assert.deepEqual(BEAST_REGION_RAMP, { from: 100, full: 150 });
   assert.equal(ORDINARY_THREAT.rows[0][0], 15); assert.deepEqual(ORDINARY_THREAT.rows[0].slice(1), [1, 1]); assert.equal(ORDINARY_THREAT.farStart, FAR_REALMS.start);
-  assert.deepEqual(DAMAGE_REDUCTION, { soft: .45, cap: .75, knee: .6 });
+  assert.deepEqual(DAMAGE_REDUCTION, { soft: .45, cap: .8, knee: 1 }); // defence pack (Tim, 2026-11-26): cap .75 → .80, knee .6 → 1.0
   assert.ok(SPELL_POWER.scale >= 1 && SPELL_POWER.focus > 0 && SPELL_POWER.base >= 1);
   assert.equal(APERTURE_RELIC_STAT.points, .8);
 });

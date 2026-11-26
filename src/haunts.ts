@@ -11,6 +11,7 @@
 // Where (`places`): keeps, arcologies and the courts of the Great Castles on the overworld (`keep`), the floors inside the great buildings, castles and the Pentagon
 // (`interior`), and now and then the fog moors and the Far Sleep (`wild`). Spawns are hashed from the seed and the area, so a
 // haunted place is haunted every visit.
+import { reductionGuard } from "./stages.ts"; // defence pack: the gear reduction ceiling (DAMAGE_REDUCTION.cap)
 import { hashSeed } from "./random.ts";
 import { LETHAL_KINDS } from "./landscape.ts";
 
@@ -164,7 +165,7 @@ export function gloomFinaleSpawn(id, x, y, opts = {}) {
 }
 // Its vitals for a tuning reference { level, perHit, maxHp, guard } (world-beasts.ts liveBeastReference).
 export function gloomVitals(ref, opts = {}) {
-  const V = GLOOM_FINALE.vitals, guard = Math.max(0, Math.min(.75, Number(ref?.guard) || 0));
+  const V = GLOOM_FINALE.vitals, guard = reductionGuard(ref?.guard);
   return {
     hp: Math.max(V.hpFloor, Math.round(((Number(ref?.perHit) || 0) * V.hitsToKill + V.hpPerLevel * (Number(ref?.level) || 1)) * (opts.hpScale || 1))),
     damage: Math.max(V.damageFloor, Math.round((Number(ref?.maxHp) || 60) * V.damageShare / (1 - guard) * (opts.damageScale || 1))),

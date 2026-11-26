@@ -50,7 +50,8 @@ function applyFallenTreeCrossings(map) {
 import { ensureSlots, slotted, pairingMods, slotReadiness, slotLabel, frameForm, slotTool, CASTABLES, availableCastables, SLOTS, SLOT_ACTIONS, toggleLantern } from "./spell-slots.ts";
 import { pressOculusButton, tickOculus } from "./oculus.ts"; // release 874: the Oculus; 2026-11-15: its own button
 import { generateGrotto, DIVE_GENERATOR, GROTTO } from "./grottoes.ts";
-import { beastCatchUp } from "./stages.ts";
+import { beastCatchUp, DAMAGE_REDUCTION, reductionGuard, THREAT_SIGIL, threatStep, ensureThreatSigil } from "./stages.ts";
+export { DAMAGE_REDUCTION, reductionGuard, THREAT_SIGIL, threatStep, ensureThreatSigil } from "./stages.ts"; // defence pack: the curve lives beside the beast references (stages.ts)
 import { POTIONS, potionToDrink, potionHeal, potionsReady, craftPotion, notePotion } from "./potions.ts";
 import { CACHE_PICKUP_VISUAL_MS, CHEST_OPEN_VISUAL_MS, SHOVEL_DIG_VISUAL_MS, STONE_PLACE_VISUAL_MS, CONSUME_VISUAL_MS, cancelCachePickupVisual, cancelConsumeVisual, normalizePersistentCachePickupVisual, normalizeConsumeVisual, normalizeHurtVisual, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from "./consume-visual.ts";
 import { DUNGEON_LADDER, ladderTier, ladderRoll, crossingLadder, ladderGuardian, entranceKind } from "./dungeon-ladder.ts";
@@ -1275,7 +1276,9 @@ function storeInPack(save, item, keep = false, share = 1) {
   return { stored: true, salvaged: salvaged.item, iron: salvaged.iron, lumenDust: salvaged.lumenDust };
 }
 // Aperture Resonance: the number of Aperture bands reached beyond Resonant (tier 3), and what each one grants.
-export const APERTURE_RESONANCE = { hp: 6, melee: 2, magic: 2 };
+// Defence pack (Tim, 2026-11-26): health is the endless defence axis, so each band also adds `hpShare` of maximum health
+// (+3% a band, on top of the flat `hp`; it multiplies the whole sum, as the armor glyphs' health does).
+export const APERTURE_RESONANCE = { hp: 6, hpShare: .03, melee: 2, magic: 2 };
 // Balance pack (Tim, 2026-11-04: "slightly less, -20%"): each Aperture relic attuned from now on leaves APERTURE_RELIC_STAT.points
 // of a permanent stat point, not a whole one. The fraction is carried in save.perception.relicCarry (additive, normalised in
 // ensurePerception) and whole points are paid as soon as they gather, in tenths so the sum never drifts. Points already given stay.
@@ -1296,11 +1299,36 @@ export const BEAST_REGION_RAMP = { from: 100, full: 150 };
 //    (the far realms keep their own tuning). Applied with regional threat, to fresh spawns only.
 export const ORDINARY_THREAT = { rows: [[15, 1, 1], [45, 1.4, 1.3], [100, 1.6, 1.7], [190, 1.7, 2]], farStart: FAR_REALMS.start };
 // 3. Damage reduction: the old curve up to `soft`, then diminishing returns toward `cap` (x / (x + knee) of the room left).
-export const DAMAGE_REDUCTION = { soft: .45, cap: .75, knee: .6 };
+//    The table is DAMAGE_REDUCTION in stages.ts (re-exported above).
 // 4. Spells: each hit is (spell base × base + magic bonus + focus × (Focus − 1)) × scale.
 export const SPELL_POWER = { base: 1.5, focus: 1, scale: 1.15 };
 // Presentation only: one bounded cue rides the existing glyph-visual stream. It never owns a hit or timer.
 export const PRIMARY_ECHO_VISUAL = Object.freeze({ life:.28, cap:6, actualAlpha:.88, memoryAlpha:.18, thrustWidth:.13, sweepWidth:.10, sweepSegments:7 });
+// Defence pack (Tim, 2026-11-26). What a blow takes off the Wayfarer, in layers that multiply:
+//   taken = blow × max(floor, (1 − gear) × (1 − skill) × guard × hurtScale) × Threat Sigil
+// gear: characterStats.damageReduction (Resolve, armor, charm, ward affixes, armor glyphs, spell-slot pairings, Far Gate
+//   boons), through reductionCurve; skill: skillReduction (the Aperture skills and their passives while they hold: Veil Guard,
+//   Colossus, Stillwater, Bulwark Channel), summed and capped at `skillCap`; guard: `guard` while a ward guard holds
+//   (game.guardRemaining); hurtScale: the multipliers that already stood apart (a Tesseract's damage taken, the hatchling's
+//   buff, the Transpose seal, Earth Resolve). At least `floor` of the blow always lands. The Threat Sigil (THREAT_SIGIL)
+//   multiplies what the foe deals, outside the floor.
+export const DAMAGE_LAYERS = Object.freeze({ guard: .65, skillCap: .35, floor: .1 });
+// Veil Guard's own guard while it holds: base + perRank × its rank (was added to the gear reduction before the clamp).
+export const VEIL_GUARD = Object.freeze({ base: .12, perRank: .08 });
+// Toughness: maximum health over what a blow takes after the gear layer, shown beside the total damage cut.
+export const toughness = (maxHp, reduction) => Math.round((Number(maxHp) || 0) / (1 - reductionGuard(reduction)));
+// The Threat Sigil (Tim, 2026-11-26): the table, the step and its save record live in stages.ts (THREAT_SIGIL; re-exported above).
+export const threatHealth = (step) => 1 + THREAT_SIGIL.health * Math.max(0, step);
+// The skill layer: every Aperture skill guard holding now, summed, capped at DAMAGE_LAYERS.skillCap.
+export function skillReduction(save) {
+  const veil = save?.magicSkills?.active?.id === "veil-guard" ? VEIL_GUARD.base + VEIL_GUARD.perRank * skillRank(save, "veil-guard") : 0;
+  return Math.max(0, Math.min(DAMAGE_LAYERS.skillCap, extraReduction(save) + veil));
+}
+// The share of a foe's blow that lands (see DAMAGE_LAYERS). `guarded`: a ward guard holds and this blow is one it takes.
+export function damageTakenScale(save, guarded = false, stats = characterStats(save)) {
+  const L = DAMAGE_LAYERS, layers = (1 - reductionGuard(stats.damageReduction)) * (1 - skillReduction(save)) * (guarded ? L.guard : 1) * hurtScale(save);
+  return Math.max(L.floor, layers) * (1 + THREAT_SIGIL.damage * threatStep(save));
+}
 export function reductionCurve(raw) { const D = DAMAGE_REDUCTION, r = Math.max(0, Number(raw) || 0); if (r <= D.soft) return r; const x = r - D.soft; return D.soft + (D.cap - D.soft) * x / (x + D.knee); }
 export function beastRegionalThreat(q) {
   const R = BEAST_REGION_RAMP, t = Math.max(0, Math.min(1, ((Number(q?.ring) || 0) - R.from) / (R.full - R.from))), lerp = (m) => t >= 1 ? m : 1 + ((Number(m) || 1) - 1) * t;
@@ -1382,11 +1410,12 @@ export function characterStats(save) {
     boons=boonTotals(save), // Far Gate boons (release 138)
     ag=armorGlyphBonus(save); // release 295: glyphs set in the armor
   return {
-    maxHp: Math.round((60 + (level - 1) * 6 + (vigor - 1) * 8 + resonance * APERTURE_RESONANCE.hp + boons.hp) * (1 + ag.hp)),
+    maxHp: Math.round((60 + (level - 1) * 6 + (vigor - 1) * 8 + resonance * APERTURE_RESONANCE.hp + boons.hp) * (1 + ag.hp) * (1 + resonance * APERTURE_RESONANCE.hpShare)), // defence pack: +3% a band past Resonant
     maxStamina: 50 + (level - 1) + (finesse - 1) * 3 + boons.stamina,
+    // The gear layer (defence pack: the Aperture skills' guards are their own layer now, skillReduction / damageTakenScale).
     damageReduction: reductionCurve( // balance pack: diminishing returns past DAMAGE_REDUCTION.soft, toward its cap
       (resolve - 1) * 0.02 + armorPower * 0.025 + charmPower * 0.01 +
-        affixValue(armor, "ward") + affixValue(charm, "ward") + extraReduction(save) + pairingMods(save).guard + boons.guard + ag.defense,
+        affixValue(armor, "ward") + affixValue(charm, "ward") + pairingMods(save).guard + boons.guard + ag.defense,
     ),
     meleeBonus: Math.round(( // release 335: armor Volatile now scales the whole melee hit (meleeHit), not this bonus
       might * SCALING_STRENGTH.melee + // items.ts SCALING_STRENGTH (2 a rank)
@@ -1461,7 +1490,7 @@ export function gearReadout(save, slot, item = save?.equipment?.[slot]) {
     row("guard", slot === "armor" ? "Armor resistance" : "Charm resistance", own, `${r2(own)}%`);
   }
   for (const [id, label] of [["attack", "Attack"], ["reach", "Reach bonus"], ["movement", "Move speed"], ["ward", "Ward"]]) { const v = affixValue(item, id); if (v) row(`affix-${id}`, label, v, id === "attack" ? `+${v}` : `+${Math.round(v * 100)}%`); }
-  if (slot === "armor" || slot === "charm") row("reduction", "Total damage cut", d.damageReduction * 100, `${Math.round(d.damageReduction * 100)}%`);
+  if (slot === "armor" || slot === "charm") { row("reduction", "Total damage cut", d.damageReduction * 100, `${Math.round(d.damageReduction * 100)}%`); const t = toughness(d.maxHp, d.damageReduction); row("toughness", "Toughness", t, `${t} (health ÷ damage taken)`); } // defence pack: gear gains stay visible when the cut barely moves
   if (slot !== "charm") row("sockets", "Sockets", socketCount(item));
   const cap = upgradeLimit(item, save); // refinement (items.ts REFINEMENT): +20 once it is open
   row("rank", "Rank", rank, `+${rank}`);
@@ -3550,6 +3579,7 @@ export class Game {
       if (!this.save.session.areas[currentId] && !this.map?.skyland) scaleFresh(); // release 688: no regional threat in the sky (the Skylands scale from the Wayfarer)
     };
     decorate();
+    this.applyThreatSigil(); // the Threat Sigil's health on the first ground's foes
     const load = this.loadArea.bind(this);
     this.loadArea = (area, capture = true) => {
       const id =
@@ -3598,6 +3628,7 @@ export class Game {
             : tier,
         );
       this.applyBeastWounds();
+      this.applyThreatSigil(); // the Threat Sigil's health on every foe here (stamped, so once)
       this.stegoBaitArrive(); // the Stego Bait: tails lying here, and a bait laid elsewhere ends
     };
     const transition = this.transitionSection.bind(this);
@@ -5900,6 +5931,7 @@ export class Game {
         message: (this.message = "Nothing nearby responds."),
       };
     this.talkVisual = { id: o.id, at: this.lastUpdateNow || 0 }; // presentation only: Close View townsfolk gesture as they are spoken to (close-view-folk.ts)
+    if (o.kind === "checkpoint" && (action === "threatUp" || action === "threatDown")) return this.setThreatSigil(action === "threatUp" ? 1 : -1); // the Threat Sigil, at any Wayglass
     if (o.kind === "reliquary") return this.openReliquaryHere(o); // progression Phase 6
     if (o.kind === "beastHotelBed") return this.beastHotelVisit(o.mountId);
     if (o.kind === "hatchMama") return this.hatchMamaTalk(o); // the Triceratops hatchling's rescue (hatchling.ts)
@@ -7460,11 +7492,10 @@ export class Game {
     if (source && isBodyBlow(options.source) && !this.bodyReach(source)) return false; // Tim (2026-11-04): a body blow does not carry five levels up or down (ELEVATION_REACH)
     if (source && enclosureShields(this, { x: source.x + .5, y: source.y + .6 })) return false; // release 696: the enclosure's walls turn it
     { const b = source && buildBetween(this, source); if (b) { const melee = (ATTACK_MODULES[source.pack?.attack]?.tags || []).includes("melee"); strikeBuild(this, b, melee && !!(source.worldBeast || source.questingBeast)); return false; } } // release 265: a build takes the blow
-    const veil = this.save.magicSkills?.active?.id === 'veil-guard' ? .12 + .08 * skillRank(this.save, 'veil-guard') : 0;
     if (bossPaced(source) && options.source !== "astralDrain") amount *= BOSS_PACE.damage; // release 421 (the Astral Worm's drain keeps its release-307 size: it is also its heal)
     if (this.frenzy?.active) amount *= 1 + FRENZY.extra; // release 710: the frenzy takes more out of you
     amount *= weakenScale(source, now) * foeDealtScale(source); // Arcane Edge's Dusk: a weakened foe's blows take less; an Encumbered one's too (ENCUMBERED.dealtMul)
-    p.hp -= Math.max(1, Math.ceil((this.guardRemaining > 0 ? amount * .65 : amount) * (1 - Math.min(.75, characterStats(this.save).damageReduction + veil)) * hurtScale(this.save)));
+    p.hp -= Math.max(1, Math.ceil(amount * damageTakenScale(this.save, this.guardRemaining > 0))); // defence pack: DAMAGE_LAYERS
     this.parryBlow(source, now, amount, null, options.source || null, PARRY_PACK); // Power Aegis: `amount` is what the blow carried
     if (options.source === "ramCharge" || options.source === "phaseCharge" ||
         options.source === "leapSlam" || options.source === "orb") this.noteHurtVisualImpact();
@@ -9034,7 +9065,32 @@ export class Game {
   }
   // Balance pack (tim.md findings 1 and 2): a foe made after its ground loaded (a Fractured wave, a Warden's call, a refill, a
   // new density pack in known ground, a haunt's split or its Gloomgorge) takes the regional scaling a fresh load gives, once.
-  scaleToRegion(e) { if (!e || e.threatRing != null || this.map?.skyland) return e; return regionalScale(e, regionalThreat(this.rx, this.ry)); }
+  scaleToRegion(e) { if (!e || e.threatRing != null || this.map?.skyland) return e; return this.applyThreatSigil(regionalScale(e, regionalThreat(this.rx, this.ry))); }
+  // The Threat Sigil's health (stages.ts THREAT_SIGIL): every foe here carries threatHealth(step) of its own health, stamped
+  // `sigilHp` with the step it was given, so a load, a later foe or a change at a Wayglass rescales by the ratio once (its wounds
+  // kept as a share). Allies, townsfolk and harmless creatures are left as they are. With no `e`, every foe present.
+  applyThreatSigil(e = null) {
+    const step = threatStep(this.save), one = (q) => {
+      if (!q || q.dead || !(q.maxHp > 0) || q.ambient || q.passiveBehavior || q.kind === "npc" || q.astralCompanionOf || q.astralAllyOf || q.friendly || q.illusion || unharmablePerson(q)) return q;
+      const was = Math.max(0, Number(q.sigilHp) || 0); if (was === step) return q;
+      const k = threatHealth(step) / threatHealth(was);
+      q.maxHp = Math.max(1, Math.round(q.maxHp * k)); if (q.hp > 0) q.hp = Math.max(1, Math.min(q.maxHp, Math.round(q.hp * k)));
+      if (step) q.sigilHp = step; else delete q.sigilHp; return q;
+    };
+    if (e) return one(e); for (const q of this.enemies || []) one(q); return null;
+  }
+  // The Wayglass the Threat Sigil can be set at: one within WAYGLASS_ZONE.reach, lit or not (the Atlas reads it), or null.
+  threatSigilGlass() { const o = this.wayglassNear(false); return o?.kind === "checkpoint" ? o : null; }
+  // Raise or lower the Threat Sigil by one step at a Wayglass (`dir` +1 or -1); it holds for the whole world from now.
+  setThreatSigil(dir) {
+    const T = THREAT_SIGIL;
+    if (!this.threatSigilGlass()) return { ok: false, message: (this.message = T.messages.away), threatSigil: threatStep(this.save) };
+    const t = ensureThreatSigil(this.save), next = Math.max(0, Math.min(T.max, t.step + (dir > 0 ? 1 : -1)));
+    if (next === t.step) return { ok: false, message: (this.message = next ? T.messages.top : T.messages.off), threatSigil: next };
+    const up = next > t.step; t.step = next; this.applyThreatSigil();
+    this.message = `${up ? T.messages.up : T.messages.down}: step ${next} of ${T.max}. Foes deal ${Math.round(T.damage * next * 100)}% more and have ${Math.round(T.health * next * 100)}% more health; gear drops and Aperture +${Math.round(T.loot * next * 100)}%.`;
+    return { ok: true, message: this.message, threatSigil: next };
+  }
   // Release 709: the Crimson Tyrant's claim. Its clock runs in seconds of play while its hunt holds this section, here or not.
   dragonHere() { const q = this.save.worldBeasts?.crimsonTyrant?.active; return !!q && !q.retreat && !q.dungeon && q.rx === this.rx && q.ry === this.ry && this.area === "overworld"; }
   dragonClock() { const r = dragonRecord(this.save, this.rx, this.ry); if (r.nextAt == null) r.nextAt = (Number(this.save.playSeconds) || 0) + DRAGON.colonize.first; return r; }
@@ -9361,7 +9417,7 @@ export class Game {
     if (!d || p.hp <= 0) { this.frenzy = null; return; }
     f.left -= dt; // balance pack (C10): only the Wayfarer's own blows count toward the cure (frenzyBlow), not any drop in health
     if (f.cure >= FRENZY.cure) { this.frenzy = null; this.message = "You throw the frenzy off."; return; }
-    if (f.left <= 0) { this.frenzy = null; p.hp = Math.max(0, p.hp - Math.max(1, Math.ceil((this.save.maxHp || p.maxHp || 100) * FRENZY.burst * (1 - Math.min(.75, characterStats(this.save).damageReduction)) * hurtScale(this.save)))); this.message = "The frenzy bursts inside you!"; }
+    if (f.left <= 0) { this.frenzy = null; p.hp = Math.max(0, p.hp - Math.max(1, Math.ceil((this.save.maxHp || p.maxHp || 100) * FRENZY.burst * damageTakenScale(this.save)))); this.message = "The frenzy bursts inside you!"; }
   }
   // Release 708: the chrysalis falls and the Ashen Moth hatches where it hung; its hunt starts in this section.
   hatchMoth(e) {
@@ -9520,6 +9576,7 @@ export class Game {
     const ranks = rankAndFileKill(e); // RANK_AND_FILE_LOOT (2026-11-25): the rank and file drop less
     if ((!e.fracReinforcement || hashSeed(`${this.save.seed}:frac-drop:${this.save.dropCounter}:${e.id}`) % 100 < FRACTURED.trashDrop * 100) && (!ranks || rankAndFileGear(this.save.seed, this.areaId(), e.id, this.save.dropCounter))) this.obtainDrop(e.kind, ordinaryMonsterGearDrop(e), ranks); // release 651: a reinforcement seldom drops
     if (e.fracRank) for (let i = 0; i < (e.fracRank === "rare" ? 2 : 1); i++) this.obtainDrop(e.kind); // champions and rares drop more
+    { const step = threatStep(this.save); if (step && !e.summonedBy && !e.noRewards && hashSeed(`${this.save.seed}:${THREAT_SIGIL.stream}:${this.areaId()}:${e.id}:${this.save.dropCounter}`) % 1000 < THREAT_SIGIL.loot * step * 1000) this.obtainDrop(e.kind, ordinaryMonsterGearDrop(e), ranks); } // the Threat Sigil: +10% gear drops a step, on its own seeded roll
     if (!e.summonedBy && !e.noRewards) { const g = glyphDrop(this.save, `${this.areaId()}:${e.id}`, this.save.dropCounter, e.boss || isCrossingGuardian(e)); if (g) this.glyphNotice = `${GLYPHS[g].name} glyph recovered.`; }
     echoEvent(this, "kill", this.lastUpdateNow || 0, { enemy: e });
     onConstellationKill(this);
@@ -11777,7 +11834,7 @@ export class Game {
     if (alive >= W.cap) return;
     const kinds = [...new Set(this.enemies.filter((e) => !e.dead && !e.ambient && !e.passiveBehavior && !e.worldBeast && !e.questingBeast && !e.stalker && e.kind !== "npc" && (e.fractured || fracturedOrdinary(e) || e.riteFoe)).map((e) => e.kind))];
     const h = hashSeed(`${this.save.seed}:rite-wave:${R.key}:${R.n}`), packs = W.packs[0] + h % (W.packs[1] - W.packs[0] + 1) + Math.round(W.packsUp * f); let left = W.cap - alive;
-    const ramp = riteRamp(f), stats = characterStats(this.save), guard = Math.max(0, Math.min(.75, Number(stats.damageReduction) || 0)), perHit = liveBeastReference(this.save, stats).perHit;
+    const ramp = riteRamp(f), stats = characterStats(this.save), guard = reductionGuard(stats.damageReduction), perHit = liveBeastReference(this.save, stats).perHit;
     for (let k = 0; k < packs && left >= 2; k++) {
       const hk = hashSeed(`${this.save.seed}:rite-wave:${R.key}:${R.n}:p${k}`), base = (h >>> 4) % 628 / 100 + k * 6.283 / packs; let at = null;
       for (let i = 0; i < 24 && !at; i++) { const a = base + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * .3, r = W.distance[0] + ((hk >>> 12) + i * 7) % (W.distance[1] - W.distance[0] + 1), x = Math.round(p.x + Math.cos(a) * r), y = Math.round(p.y + Math.sin(a) * r); if (x > 1 && y > 1 && x < w - 2 && y < w - 2 && this.fracturedOpen(x, y, w)) at = { x, y }; }
@@ -12843,8 +12900,8 @@ export class Game {
     this.gloomTick(now); // the Gloomvast: a fallen one's Dark ends, spent decoys go
     this.phaseShieldStep(); // a linked-invulnerable creature the Wayfarer walked into turns solid again: ease them apart
     if (this.affixHazards?.length || this.enemies.some((e) => !e.dead && (e.affixes || e.auraBy || e.wardBy))) { const p = this.player, es = eliteStateInPlace(this.save).status; // release 657: affixes, auras, shamans
-      tickAffixes(this, dt, now, (n, kind) => { if (p.hp <= 0 || now < (p.invulnerableUntil || 0) || now < (p.dodgeUntil || 0)) return; p.hp -= Math.max(1, Math.ceil(n * (1 - Math.min(.75, characterStats(this.save).damageReduction)) * hurtScale(this.save))); p.invulnerableUntil = now + 350; if (kind === BURNS.affix) this.burnNote(now); }, (d, dps) => { if (now >= (p.dodgeUntil || 0)) applyPoison(es, d, dps); }); }
-    if (this.playerFire) { const f = this.playerFire, p = this.player; f.left -= dt; f.tick -= dt; if (f.tick <= 0 && f.left > -dt && p.hp > 0) { f.tick += 1; p.hp = Math.max(0, p.hp - Math.max(1, Math.ceil(f.dps * (1 - Math.min(.75, characterStats(this.save).damageReduction)) * hurtScale(this.save)))); } if (f.left <= 0 || this.swimming) { this.playerFire = null; if (p.hp > 0) this.burnNote(now); } } // release 708: burning (water puts it out); the burn counts once it has passed (burnTick)
+      tickAffixes(this, dt, now, (n, kind) => { if (p.hp <= 0 || now < (p.invulnerableUntil || 0) || now < (p.dodgeUntil || 0)) return; p.hp -= Math.max(1, Math.ceil(n * damageTakenScale(this.save))); p.invulnerableUntil = now + 350; if (kind === BURNS.affix) this.burnNote(now); }, (d, dps) => { if (now >= (p.dodgeUntil || 0)) applyPoison(es, d, dps); }); }
+    if (this.playerFire) { const f = this.playerFire, p = this.player; f.left -= dt; f.tick -= dt; if (f.tick <= 0 && f.left > -dt && p.hp > 0) { f.tick += 1; p.hp = Math.max(0, p.hp - Math.max(1, Math.ceil(f.dps * damageTakenScale(this.save)))); } if (f.left <= 0 || this.swimming) { this.playerFire = null; if (p.hp > 0) this.burnNote(now); } } // release 708: burning (water puts it out); the burn counts once it has passed (burnTick)
     this.burnTick(now); // world-routes.ts BURNS: a burn lived through
     if (this.enemies.some((e) => e.kitRole && !e.dead) || this.enemies.some((e) => e.kitAddOf && !e.dead)) tickBossKit(this, dt, now, (e, n) => this.spawnKitAdds(e, n, now)); // release 668
     if (this.golem) this.tickGolem(now); // release 535: Corridor Golem
@@ -13233,7 +13290,7 @@ export class Game {
         if(safe||now<=(p.invulnerableUntil||0))return;
         if(enclosureShields(this,{x:shot.x-(Number(shot.dx)||0)*.8,y:shot.y-(Number(shot.dy)||0)*.8}))return; // release 696: the enclosure's walls stop it
         const enc=encumberedAny(this)?foeDealtScale(this.shotOwner(shot)):1; // Encumbered: its shooter's shots deal less too
-        p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?shot.damage*.65:shot.damage)*enc*(1-Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0)))*hurtScale(this.save)));
+        p.hp-=Math.max(1,Math.ceil(shot.damage*enc*damageTakenScale(this.save,this.guardRemaining>0)));
         if (shot.hostile) this.noteHurtVisualImpact(); this.parryBlow(null, now, shot.damage, shot); // Power Aegis: a shot parried turns round (turnShot)
         p.invulnerableUntil=now+700;
       },
@@ -13245,7 +13302,7 @@ export class Game {
       wayfarerDamage, // Tim 2026-11-11: the Wayfarer's shots land at WAYFARER_DAMAGE.scale (hostile shots never reach foes)
       this.shotOccluder(), // Close View only: raised ground stops the Wayfarer's shots (tool-forms.ts RANGED_OCCLUSION)
     );
-    for(const fx of this.effects)if(fx.hostile&&!fx.hitPlayer&&Math.hypot(p.x+.5-fx.x,p.y+.52-fx.y)<=fx.radius){fx.hitPlayer=true;const safe=sanctuary&&Math.hypot(p.x-sanctuary.x,p.y-sanctuary.y)<sanctuary.radius;if(!safe&&now>(p.invulnerableUntil||0)){p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?fx.damage*.65:fx.damage)*(1-Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0)))*hurtScale(this.save)));this.noteHurtVisualImpact();this.parryBlow(fx.ownerId?this.enemies.find(q=>q.id===fx.ownerId)||null:null,now,fx.damage);p.invulnerableUntil=now+700}} // Power Aegis: a blast goes back to whoever loosed it
+    for(const fx of this.effects)if(fx.hostile&&!fx.hitPlayer&&Math.hypot(p.x+.5-fx.x,p.y+.52-fx.y)<=fx.radius){fx.hitPlayer=true;const safe=sanctuary&&Math.hypot(p.x-sanctuary.x,p.y-sanctuary.y)<sanctuary.radius;if(!safe&&now>(p.invulnerableUntil||0)){p.hp-=Math.max(1,Math.ceil(fx.damage*damageTakenScale(this.save,this.guardRemaining>0)));this.noteHurtVisualImpact();this.parryBlow(fx.ownerId?this.enemies.find(q=>q.id===fx.ownerId)||null:null,now,fx.damage);p.invulnerableUntil=now+700}} // Power Aegis: a blast goes back to whoever loosed it
     const hammerState=this.resolveHammerfallStartup(),hammerObserved=hammerState.status==='pending'?hammerState.effect:null;this._hammerfallObserved=hammerObserved;
     if(this.effects.length)this.tickHammerClaps(dt); // the awakened Hammerfall's clap: its closing lines draw foes in (brawler-spells.ts HAMMER_CLAP.pull)
     if(this.effects.length)tickSpellFields(this.effects,this.enemies,this.projectiles,dt,now,(x,y)=>{const t=this.map.tiles[Math.floor(y+.6)*width+Math.floor(x+.5)];return !!t&&!t.blocked&&!t.environment});/* release 365: Gravity Well, Stillpoint */
@@ -13330,7 +13387,7 @@ export class Game {
     // World adapter for sea creatures: habitat water under a footprint, a telegraphed hit, and the Bog Lurker's drag.
     const seaWorld={player:p,
       water:(hab,x,y)=>SEA_HABITATS[hab].includes(tileUnder(this.map,width,x,y)?.kind),
-      hurt:(n,e)=>{if(now<=(p.invulnerableUntil||0))return;n*=foeDealtScale(e);/* Encumbered */p.hp-=Math.max(1,Math.ceil((this.guardRemaining>0?n*.65:n)*(1-Math.min(.75,characterStats(this.save).damageReduction))*hurtScale(this.save)));p.invulnerableUntil=now+700;e.recoil=.2;this.parryBlow(e,now,n,null,null,PARRY_STRIKE)},
+      hurt:(n,e)=>{if(now<=(p.invulnerableUntil||0))return;n*=foeDealtScale(e);/* Encumbered */p.hp-=Math.max(1,Math.ceil(n*damageTakenScale(this.save,this.guardRemaining>0)));p.invulnerableUntil=now+700;e.recoil=.2;this.parryBlow(e,now,n,null,null,PARRY_STRIKE)},
       pull:(e,k)=>{const m=Math.hypot(e.x-p.x,e.y-p.y)||1,nx=p.x+(e.x-p.x)/m*Math.min(k,m),ny=p.y+(e.y-p.y)/m*Math.min(k,m);if(footprintOpen(this.map,width,nx,ny,true)){p.x=nx;p.y=ny}},
       // Leviathans (W4): krakens raise bounded tentacles (summoned, no rewards) and the Stormkraken inks the sea.
       tentacles:(o)=>this.enemies.filter(q=>!q.dead&&q.summonedBy===o.id).length+seaSummons.filter(q=>q.summonedBy===o.id).length,
@@ -13392,8 +13449,8 @@ export class Game {
         p.hp -= Math.max(
           1,
           Math.ceil(
-            (this.guardRemaining > 0 ? e.damage * 0.65 : e.damage) * (Number(e.strikeScale) || 1) * (bossPaced(e) ? BOSS_PACE.damage : 1) * foeDealtScale(e) * /* Encumbered; release 421; strikeScale: a heavy blow or a combo follow-up (enemy-behaviour.ts) */
-              (1 - Math.min(.75,characterStats(this.save).damageReduction+(this.save.magicSkills?.active?.id==='veil-guard'?.12+.08*skillRank(this.save,'veil-guard'):0))) * hurtScale(this.save), // a Tesseract's damageTaken
+            e.damage * (Number(e.strikeScale) || 1) * (bossPaced(e) ? BOSS_PACE.damage : 1) * foeDealtScale(e) * /* Encumbered; release 421; strikeScale: a heavy blow or a combo follow-up (enemy-behaviour.ts) */
+              damageTakenScale(this.save, this.guardRemaining > 0), // defence pack: gear × skill × guard × hurtScale (a Tesseract's damageTaken), the floor, the Threat Sigil
           ),
         );
         this.noteHurtVisualImpact(); this.parryBlow(e, now, (Number(e.damage) || 0) * (Number(e.strikeScale) || 1) * (bossPaced(e) ? BOSS_PACE.damage : 1), null, null, PARRY_STRIKE); // Power Aegis: what the blow carried
