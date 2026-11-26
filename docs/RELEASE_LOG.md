@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1072 (this merge, #744); production serves `r1059-3629aeded9d0` (Publish run 195, 45646565675, succeeded 2026-11-25; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1073 (this merge, #745); production serves `r1059-3629aeded9d0` (Publish run 195, 45646565675, succeeded 2026-11-25; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 1073 | Claude | claude/recenter-camera-iron / #745 | Target recenters to the default angle | Merged (#745); preview follows. |
 | 1072 | Claude | claude/quandrix-recall / #744 | The Quandrix recall | Merged (#744); preview follows. |
 | 1071 | Claude | claude/listener-town-after-defeat / #743 | The Listener's town comes after the fight | Merged (#743); preview follows. |
 | 1070 | Claude | claude/dodge-quandrix-salvage / #742 | Solid dodges, the Quandrix penultimate slam, faster hands, the Salvage Blade | Merged (#742); preview follows. |
