@@ -59,7 +59,11 @@ export const THREAD_RULES = { chance: .07, minDepth: 3, later: .025, third: .025
 // Story version 7 (every offered goal can be completed): the budget stays 0.12 and every roll reads exactly as version 6. It marks
 // the crossings first entered from then on, the only ones where a begun thread's next piece may be certain (THREAD_CERTAIN below):
 // a thread that pays something needs all its pieces, and on some seeds the whole world held too few crossings with them.
-export const STORY_BUDGET = { version: 7, perCrossing: .12, byVersion: { 1: .13, 2: .12, 3: .12, 4: .12, 5: .12, 6: .12, 7: .12 }, firstTenGivesWay: 4 };
+// Story version 8 (2026-11-26, the daily narrative pass): the Turves of Scarrow Moss joins the shared roll of the far band only
+// (`shared: { 8: ["far"] }`, 19 to 70 walked; never the deep band, so nothing past 70 or 1000 changes), splitting the slots of
+// crossings first entered from then on and adding none; the budget stays 0.12. Crossings pinned at version 0 to 7 roll exactly as
+// before; at version 8 a crossing holds a piece exactly where version 7 would, and only the far band's shared slots are re-split.
+export const STORY_BUDGET = { version: 8, perCrossing: .12, byVersion: { 1: .13, 2: .12, 3: .12, 4: .12, 5: .12, 6: .12, 7: .12, 8: .12 }, firstTenGivesWay: 4 };
 // The budget of a crossing pinned to story version `version`: the latest entry at or before it (0 below version 1).
 export const budgetFor = (version) => { let p = 0; for (const [v, b] of Object.entries(STORY_BUDGET.byVersion)) if (Number(v) <= version) p = b; return p; };
 // beyond (story version 2): the far realms, measured straight-line from the Refuge as the realms are (far-realms.ts farDistance),
@@ -262,6 +266,20 @@ export const THREADS = {
       "The last bundle is only a sheet folded square, the tape tied over nothing. \"Left on the post in the night, a farthing on top: one cloak, green going grey, bronze at the clasp. I washed it twice and nothing came out. There was nothing on it to come out. While I worked, the thing at the eddy came up and stood at my shoulder, looking at it. Then it went back down, and did not drink.\"",
     ],
     ending: "At Sallowby, below the stepping-stones, the water ran thin enough to take out any stain, and Nell Ashby took in washing there. What came out went down to the eddy under the alders, and whatever the stain had kept went with it: a barn on fire, a fall in the lane, a husband's face. She took in no more grief after that, and never washed her own apron, and whatever came down at dusk to drink from the eddy she never looked at. The bundles that went off her bank in the night fetched up a long way downstream, in places she never walked, still damp. On a post by a ford a cloak hangs folded, a farthing on it. Nothing in the eddy is the colour of it." },
+  // The daily narrative pass (2026-11-26, story version 8; docs/narrative-bible.md section 6 item 5): the Turves of Scarrow Moss.
+  // A far-band thread in the shared roll, home north-west: a peat-cutter on a moss under the cloud (the Cloudfells' peat hags)
+  // finds that the moss keeps whatever falls in it, and that her village sleeps warm on burning what it kept. Section 1's "made of
+  // what is remembered" and "density, not matter" (the deep banks never dry), and the river's eddies (2026-11-07), none of it said.
+  turves: { title: "The Turves of Scarrow Moss", band: "far", relic: "turf", colour: "#6b5640", shared: { 8: ["far"] },
+    pieces: [
+      "A slab of black peat cut square by a narrow spade, dry as a biscuit, set on a stone out of the damp. Pressed into one face is a hazel leaf, still green. Under it, a strip of birch bark scratched with a nail: \"Scarrow Moss, the top bank. Kept back from the stack because of the leaf. The rest went to the fires. H. Mayne.\"",
+      "A second turf, darker, from lower in the bank, and in it the lid of a wooden butter-dish, whole. The bark: \"Second bank. Old Pell burned one of these at Candlemas and his house smelled all night of new hay, and of a dairy he never kept. He slept like a boy, he says. Now everybody wants second-bank turves.\"",
+      "A third turf, heavy, with a child's shoe set in it, laced with plaited grass. \"Third bank. The deeper I cut, the warmer they burn and the longer. A handful lasts the night, and the room fills with other people's kitchens: bacon, wet wool, a name called up a stair. Nobody asks whose. I keep back the ones with something showing.\"",
+      "A fourth turf, with nothing in it you can see. \"The moss is lower than it was. Where we cut, it does not grow again; it took longer than anyone can count to lay down what we burn in a winter. My mother said the moss keeps whatever falls in it. She never said what for. I have stopped selling from the fourth bank.\"",
+      "A fifth turf, black and heavy as a stone, wet at the heart though the bark with it is a year old. \"Fifth bank. These will not dry. I set them on the stack and by morning they are wetter, as if the moss were still in them and wanted them back. I carry them off the moss now, out along the drove road, and leave them in dry places where nobody will make a fire.\"",
+      "The last is not peat but grey clay, from under the bottom bank, and set in it are footprints: a child's bare feet, and a dog's beside them, sharp-edged, as if made this morning. The bark: \"Under all of it. Somebody walked out here before there was any moss, and the moss began over them and kept it. I have cut no more. Let the rest lie.\"",
+    ],
+    ending: "On Scarrow Moss, under the cloud, the peat lay in banks, each laid down over the one before, and whatever fell in it was kept: a leaf, a lid, a child's shoe, a summer nobody living had seen. The village burned it, and slept warm in rooms that smelled of other lives, and the moss went down a little every winter and did not come back. Hester Mayne cut down through it to the clay and found where it began: a child and a dog, walking out together. She cut no more. Out along the drove road the turves she would not burn still lie in dry places, a long way from any fire." },
   // The far threads (story version 2, 2026-11-05; Tim: "Yes, you should write them for out past 1000"). Written for the far realms
   // (far-realms.ts): the Giants' Reach and the Tall Country, the great mushrooms, the Ink Wastes. Never a wave: they share the
   // budget's slots past FAR_REALMS.start (band `beyond`, straight-line), at `weight` 2 against the deep band's shared threads (3
@@ -327,6 +345,7 @@ export const THREADS = {
 // additive, normalised by thread-trails.ts ensureThreadTrails). `marks` is save.currency.
 export const THREAD_GIFTS = Object.freeze({
   washing: Object.freeze({ marks: 40, label: "40 marks, left on the post by the steps" }),
+  turves: Object.freeze({ marks: 40, label: "40 marks, the price of a winter's peat, left under the last turf" }), // story version 8: the Washing's gift, no ability
 });
 export const THREAD_ORDER = Object.keys(THREADS);
 const FIRST_THREADS = THREAD_ORDER.filter((id) => !THREADS[id].wave && !THREADS[id].shared); // the first ten (release 627): what a crossing offered then, it still offers
@@ -562,6 +581,7 @@ export const arcanaUnlockFrom = (from) => Object.entries(ARCANA_UNLOCKS).find(([
 // the one holding the next (Chebyshev rings, once per piece); `notice` the banner on taking it up; `unit` and `lead` the Journal's words.
 export const THREAD_TRAILS = Object.freeze({
   washing: Object.freeze({ radius: 40, notice: "DOWNSTREAM", unit: "bundles", lead: "Nell Ashby's washing, carried downstream" }),
+  turves: Object.freeze({ radius: 40, notice: "OFF THE MOSS", unit: "turves", lead: "Hester Mayne's turves, carried off the moss" }), // story version 8
 });
 const plainObject = (v) => !!v && typeof v === "object" && !Array.isArray(v);
 // Normalises save.lore.trails (thread-trails.ts), save.lore.threadDry (THREAD_CERTAIN) and save.lore.threadGifts when present, in place (types.ts freshSave and
