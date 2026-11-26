@@ -1312,7 +1312,7 @@ export const PRIMARY_ECHO_VISUAL = Object.freeze({ life:.28, cap:6, actualAlpha:
 //   (game.guardRemaining); hurtScale: the multipliers that already stood apart (a Tesseract's damage taken, the hatchling's
 //   buff, the Transpose seal, Earth Resolve). At least `floor` of the blow always lands. The Threat Sigil (THREAT_SIGIL)
 //   multiplies what the foe deals, outside the floor.
-export const DAMAGE_LAYERS = Object.freeze({ guard: .65, skillCap: .35, floor: .1 });
+export const DAMAGE_LAYERS = Object.freeze({ guard: .65, skillCap: .5, floor: .1 }); // skillCap .35 → .5 (Tim, 2026-11-26): Veil Guard rank 3 (.36) is not cut
 // Veil Guard's own guard while it holds: base + perRank × its rank (was added to the gear reduction before the clamp).
 export const VEIL_GUARD = Object.freeze({ base: .12, perRank: .08 });
 // Toughness: maximum health over what a blow takes after the gear layer, shown beside the total damage cut.

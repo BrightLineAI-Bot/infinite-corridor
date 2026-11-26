@@ -68,7 +68,11 @@ test('the skill layer multiplies the gear layer, capped; the gear reduction no l
   assert.equal(characterStats(s).damageReduction, gear, 'Veil Guard is not gear');
   assert.ok(close(skillReduction(s), veil)); assert.ok(close(damageTakenScale(s), (1 - gear) * (1 - veil)));
   assert.ok(close(damageTakenScale(s, true), (1 - gear) * (1 - veil) * DAMAGE_LAYERS.guard), 'a ward guard multiplies too');
-  s.magicSkills.learned['veil-guard'] = 3; assert.equal(skillReduction(s), DAMAGE_LAYERS.skillCap, 'rank 3 (.36) is held at the cap');
+  s.magicSkills.learned['veil-guard'] = 3; assert.ok(close(skillReduction(s), .36), 'rank 3 (.36) counts in full under the .5 cap');
+  assert.equal(DAMAGE_LAYERS.skillCap, .5);
+  // Stillwater (Mirror Veil's secondary form, open from Infinite III) on top: .36 + .2 is held at the cap.
+  s.perception.aperture = APERTURE_BANDS[13].threshold; s.constellation.mods['mirror-veil'] = true; s.constellation.alt = { 'mirror-veil': true };
+  assert.equal(skillReduction(s), DAMAGE_LAYERS.skillCap, 'Veil Guard and Stillwater together are held at the cap');
   // Colossus (Ember Form) and the secondary passives were added to the gear sum; now they are the skill layer.
   const e = build('late35'); e.constellation.mods.colossus = true; e.magicSkills.active = { id: 'ember-form', remaining: 5 };
   assert.equal(characterStats(e).damageReduction, gear); assert.ok(close(skillReduction(e), .15));
@@ -79,7 +83,7 @@ test('the skill layer multiplies the gear layer, capped; the gear reduction no l
 
 test('the floor: at least 10% of a blow always lands', () => {
   const s = build('strong90'); s.equipment.armor = item('armor', 5000, .5); s.magicSkills.learned['veil-guard'] = 3; s.magicSkills.active = { id: 'veil-guard', remaining: 5 };
-  const raw = (1 - characterStats(s).damageReduction) * (1 - DAMAGE_LAYERS.skillCap) * DAMAGE_LAYERS.guard;
+  const raw = (1 - characterStats(s).damageReduction) * (1 - skillReduction(s)) * DAMAGE_LAYERS.guard;
   assert.ok(raw < DAMAGE_LAYERS.floor, `${raw}`); assert.equal(damageTakenScale(s, true), DAMAGE_LAYERS.floor);
   assert.ok(damageTakenScale(s) > DAMAGE_LAYERS.floor, 'unguarded it is above the floor');
 });
