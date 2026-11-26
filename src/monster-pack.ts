@@ -8,7 +8,7 @@ import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.ts";
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { stageOneBeastReference } from "./stages.ts";
+import { stageOneBeastReference, reductionGuard } from "./stages.ts";
 import { hashSeed, byHash } from "./random.ts";
 import { updateAstralActor } from "./astral-worm.ts";
 import { WORLD_BOSS_PACE } from "./boss-kit.ts"; // world-boss pacing (Tim, 2026-11-18)
@@ -5384,7 +5384,7 @@ export function tuneGatePredator(e, save, stats = {}) {
   if (!e.gatePredator || e.gateTuningVersion === 1) return e;
   const t = GATE_REVENANT, level = Math.max(1, Number(save.level) || 1), weapon = save.equipment?.[save.activeWeaponSlot];
   // Release 275: the Gate Revenant is held with the Stage 1 world beasts (stages.ts), from tier 13 until three Listeners.
-  const ref = stageOneBeastReference(save, { level, perHit: Math.max(6, (Number(weapon?.power) || 6) + (Number(stats.weaponBonus ?? stats.meleeBonus) || 0)), maxHp: Number(save.maxHp) || 60, guard: Math.max(0, Math.min(.75, Number(stats.damageReduction) || 0)) });
+  const ref = stageOneBeastReference(save, { level, perHit: Math.max(6, (Number(weapon?.power) || 6) + (Number(stats.weaponBonus ?? stats.meleeBonus) || 0)), maxHp: Number(save.maxHp) || 60, guard: reductionGuard(stats.damageReduction) });
   const hit = ref.perHit, guard = ref.guard;
   const oldMax = Math.max(1, Number(e.maxHp) || 1), missing = Math.max(0, oldMax - (Number.isFinite(e.hp) ? e.hp : oldMax));
   e.maxHp = Math.max(oldMax, t.hpFloor, Math.round((hit * t.referenceHits + ref.level * t.referenceLevelHp) * t.beastShare));

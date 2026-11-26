@@ -45,7 +45,7 @@ export const skillReachBonus = (active, rank) => skillPart(active, rank, "reach"
 const pct = (v) => `${Math.round(v * 100)}%`;
 export const BRANCHES = {
   form: { name: "Form", active: "ember-form", mod: { id: "ember-skin", name: "Ember Skin", text: "While Ember Form holds, your melee hits (weapon swings and arts, the Iron Fists, Hammerfall, the Great Sweep and your Shadow Clone's swings) set foes burning." }, caps: [
-    { id: "colossus", name: "Colossus", text: "Ember Form lasts 50% longer, and while it holds you take less damage (15%, softened at high defence)." },
+    { id: "colossus", name: "Colossus", text: "Ember Form lasts 50% longer, and while it holds you take less damage (15% of what your gear lets through; your skill guards together take at most 50%)." },
     { id: "cinder-heart", name: "Cinder Heart", text: "When Ember Form runs out, it bursts, scorching everything around you. Another skill cutting it short skips the burst." }] },
   motion: { name: "Motion", active: "quickening", mod: { id: "light-feet", name: "Light Feet", text: "Dodges cost 3 less stamina." }, caps: [
     { id: "aerial-step", name: "Aerial Step", text: "Learn Aerial Step: briefly cross water, canyons and pits." },
@@ -100,9 +100,9 @@ export const ALT_PASSIVES = {
   slipstream: { name: "Afterimage", kind: "while", text: "While Quickening holds, each dodge leaves a burst where you started.", radius: 1.6, damage: 6, perLevel: 1 },
   "thorned-veil": { name: "Veil Pulse", kind: "while", text: "While Veil Guard holds, each blow you take pulses back at every foe within 2 tiles for 15% of it.", share: .15, reach: 2 },
   sanctuary: { name: "Long Veil", kind: "changes", text: "Veil Guard lasts 50% longer.", duration: 1.5 },
-  "mirror-veil": { name: "Stillwater", kind: "while", text: "During Veil Guard you take less damage (20%, softened at high defence).", guard: .2 },
+  "mirror-veil": { name: "Stillwater", kind: "while", text: "During Veil Guard you take less damage (20% of what your gear lets through; your skill guards together take at most 50%).", guard: .2 },
   overflow: { name: "Wellspring", kind: "while", text: "While Force Channel holds, your Aperture skills recover 25% faster.", rate: .25 },
-  amplifier: { name: "Bulwark Channel", kind: "while", text: "While Force Channel holds, you take less damage (15%, softened at high defence).", guard: .15 },
+  amplifier: { name: "Bulwark Channel", kind: "while", text: "While Force Channel holds, you take less damage (15% of what your gear lets through; your skill guards together take at most 50%).", guard: .15 },
   "resonant-force": { name: "Harvest", kind: "while", text: "Kills during Force Channel restore 4 health.", heal: 4 },
   "rift-wake": { name: "Rift Ward", kind: "changes", text: "After a Rift Step nothing can touch you for 0.6 s (instead of 0.15 s).", guardMs: 600 },
   fold: { name: "Quick Fold", kind: "changes", text: "Rift Step recovers 30% faster.", cooldown: .7 },

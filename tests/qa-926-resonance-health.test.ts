@@ -20,9 +20,10 @@ test('a Resonance tier gained mid-session raises maximum and current health at o
   gainAperture(g.save, 5, 'qa-926-test');
   assert.equal(apertureResonance(g.save), 1);
   g.update(1 / 60, inp(), t += 16); g.enemies = [];
-  assert.equal(g.save.maxHp, max0 + APERTURE_RESONANCE.hp, 'save.maxHp follows the new tier');
+  const gain = Math.round((max0 + APERTURE_RESONANCE.hp) * (1 + APERTURE_RESONANCE.hpShare)) - max0; // defence pack (Tim, 2026-11-26): +3% a band too
+  assert.equal(g.save.maxHp, max0 + gain, 'save.maxHp follows the new tier');
   assert.equal(g.save.maxHp, characterStats(g.save).maxHp, 'and matches the derived maximum');
-  assert.equal(g.player.hp, hp0 + APERTURE_RESONANCE.hp, 'current health rises by the same amount, as on a level-up');
+  assert.equal(g.player.hp, hp0 + gain, 'current health rises by the same amount, as on a level-up');
   const b: any = new Game(structuredClone(g.exportSnapshot(t)), t);
   assert.equal(b.save.maxHp, g.save.maxHp, 'the reload keeps the maximum');
   assert.equal(b.player.hp, g.player.hp, 'the reload does not heal');
@@ -32,9 +33,10 @@ test('a tier gained just before a save (no frame between) is applied in the snap
   const s: any = freshSave(); s.seed = 'HPSYNC'; Object.assign(s.session, { area: 'overworld', rx: 3, ry: 0, x: 16, y: 16 });
   s.perception.aperture = threshold() - 1;
   const g: any = new Game(s, 0); g.enemies = []; g.update(1 / 60, inp(), 1000); g.player.hp = 30;
+  const max0 = g.save.maxHp, gain = Math.round((max0 + APERTURE_RESONANCE.hp) * (1 + APERTURE_RESONANCE.hpShare)) - max0; // defence pack: +3% a band too
   gainAperture(g.save, 5, 'qa-926-test-2');
   const snap = structuredClone(g.exportSnapshot(1016));
   assert.equal(snap.maxHp, characterStats(snap).maxHp);
-  assert.equal(snap.session.playerRuntime.hp, 30 + APERTURE_RESONANCE.hp);
-  const b: any = new Game(snap, 1016); assert.equal(b.player.hp, 30 + APERTURE_RESONANCE.hp);
+  assert.equal(snap.session.playerRuntime.hp, 30 + gain);
+  const b: any = new Game(snap, 1016); assert.equal(b.player.hp, 30 + gain);
 });

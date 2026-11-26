@@ -54,12 +54,34 @@ const measure = (ref, kills) => ({ ...Object.fromEntries(FIELDS.map((k) => [k, r
 // Wayfarer's live reduction above it (beasts, the Questing Beast, the Stalker, the Gate Revenant and the Wardens made from
 // it all read this), so what they deal after reduction is unchanged; below the old cap the hold is as before.
 export const BEAST_GUARD_HOLD = { oldCap: .45 };
+// The gear damage-reduction curve (game.ts reductionCurve reads it; kept here, a leaf every beast reference already imports,
+// so the references clamp to the same ceiling without importing game.ts). Balance pack (Tim, 2026-11-04): linear to `soft`,
+// then diminishing returns toward `cap` (x / (x + knee) of the room left). Defence pack (Tim, 2026-11-26): cap .75 → .80 and
+// knee .6 → 1.0, a higher ceiling that is never reached (raw 3.1 still gives about .70; raw 6 .74; raw 12 .77).
+export const DAMAGE_REDUCTION = { soft: .45, cap: .8, knee: 1 };
+// A gear reduction as every reference and hit reads it: never below 0, never past DAMAGE_REDUCTION.cap.
+export const reductionGuard = (r) => Math.max(0, Math.min(DAMAGE_REDUCTION.cap, Number(r) || 0));
+// The Threat Sigil (Tim, 2026-11-26: "you can just make the whole world a threat"): an opt-in difficulty dial set at any
+// Wayglass, steps 0 to `max`, 0 by default. Each step: foes deal `damage` more (game.ts damageTakenScale) and carry `health`
+// more (Game.applyThreatSigil), for `loot` more gear drops (a second roll on its own seeded `stream`) and `aperture` more
+// Aperture (interactions.ts gainAperture). It holds for the whole world while set and can be changed at any Wayglass;
+// difficulty otherwise stays tied to distance, and Aperture never drives it. save.threatSigil { step, carry } (additive,
+// normalised by ensureThreatSigil in freshSave and migrateSave; `carry` holds the part of an Aperture point not yet paid).
+export const THREAT_SIGIL = Object.freeze({ max: 10, damage: .1, health: .15, loot: .1, aperture: .1, stream: "threat-sigil:loot:v1",
+  messages: Object.freeze({ up: "The Threat Sigil burns brighter", down: "The Threat Sigil dims", top: "The Threat Sigil burns as bright as it can.", off: "The Threat Sigil is dark.", away: "The Threat Sigil is set at a Wayglass: stand beside one." }) });
+export const threatStep = (save) => Math.max(0, Math.min(THREAT_SIGIL.max, Math.floor(Number(save?.threatSigil?.step) || 0)));
+export function ensureThreatSigil(save) {
+  const t = save.threatSigil && typeof save.threatSigil === "object" && !Array.isArray(save.threatSigil) ? save.threatSigil : (save.threatSigil = {});
+  t.step = threatStep(save); const c = Number(t.carry); t.carry = Number.isFinite(c) && c > 0 ? Math.min(.999, c) : 0;
+  return t;
+}
 export function stageOneBeastReference(save, ref) {
   if (apertureTier(save?.perception?.aperture || 0) < STAGES.freezeTier) return ref;
   const k = listenerKills(save); let c = ensureBeastCeiling(save);
   if (!c || (k >= STAGES.thawKills && (c.kills ?? -1) < k)) c = save.beastCeiling = measure(ref, k);
   const held = { ...ref, ...Object.fromEntries(FIELDS.map((f) => [f, Math.min(ref[f], c[f])])) }, live = Number(ref.guard) || 0;
   if (c.guard >= BEAST_GUARD_HOLD.oldCap && live > held.guard) held.guard = live;
+  held.guard = reductionGuard(held.guard); // defence pack: the same ceiling as every hit (DAMAGE_REDUCTION.cap)
   return held;
 }
 // A Listener just fell (game.ts): from the `thawKills`-th kill, the beasts catch up to the Wayfarer as they stand now.

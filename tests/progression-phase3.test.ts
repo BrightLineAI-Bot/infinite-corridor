@@ -134,7 +134,7 @@ test('weapons are never gated: the Iron Fists, Hammerfall and Great Sweep drop i
 });
 
 test('Classic is unchanged: today\'s tables byte for byte, every gate as before, and a Classic journey reads only today\'s rules', () => {
-  assert.equal(hash([SPELLS, APERTURE_SKILLS, BRANCHES, ALT_PASSIVES]), '61cb90dc06bbd8f1', 'the spell, discipline and constellation tables');
+  assert.equal(hash([SPELLS, APERTURE_SKILLS, BRANCHES, ALT_PASSIVES]), 'd6458019f1708283', 'the spell, discipline and constellation tables');
   for (const s of [freshSave(), classicSave(), migrateSave(JSON.parse(JSON.stringify(freshSave())))]) {
     assert.ok(!exploring(s));
     for (const id of ['cinder-dart', ...LATER]) assert.ok(spellOpen(s, id), id);
