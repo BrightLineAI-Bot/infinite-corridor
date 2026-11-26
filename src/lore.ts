@@ -190,6 +190,7 @@ export const ARCANA_REGIONS = {
     weaver: { toward: "w", from: 36, to: 80 },
     mirror: { toward: "e", from: 36, to: 80 },
     washing: { toward: "se", from: 12, to: 30 }, // the Washing at Sallowby (story version 6, 2026-11-21): between the Fevered Stairs and the Clear Country
+    turves: { toward: "nw", from: 22, to: 48 }, // the Turves of Scarrow Moss (story version 8, 2026-11-26): between the Long Table and the Ash Orchards; to 48 straight-line so the whole home lies inside the far band (70 walked) even on the diagonal
   },
 };
 // Whether section (rx, ry) lies in set `id`'s home (false for a set with none).

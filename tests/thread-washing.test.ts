@@ -37,7 +37,7 @@ test('written in full, never a wave: six bundles in order, an ending, its own re
   const bible = readFileSync(new URL('../docs/narrative-bible.md', import.meta.url), 'utf8'); assert.ok(bible.includes(T.title)); assert.match(bible, /Story version 6/);
   assert.deepEqual(ARCANA_REGIONS.sets[ID], { toward: 'se', from: 12, to: 30 });
   assert.ok(THREAD_ORDER.indexOf(ID) < THREAD_ORDER.indexOf('tallSlates'), 'listed before the far threads');
-  assert.deepEqual(TRAIL_IDS, [ID]); assert.equal(THREAD_TRAILS[ID].radius, 40); assert.deepEqual(THREAD_GIFTS[ID].marks, 40);
+  assert.ok(TRAIL_IDS.includes(ID) && TRAIL_IDS[0] === ID, 'the first trail'); // story version 8 adds the Turves of Scarrow Moss assert.equal(THREAD_TRAILS[ID].radius, 40); assert.deepEqual(THREAD_GIFTS[ID].marks, 40);
 });
 
 test('story version 6 is the gate: the budget stays 0.12, and crossings pinned at 0 to 5 roll exactly as with the Washing never written', () => {
@@ -112,13 +112,13 @@ for (const mode of ['classic', 'exploration']) test(`in the game (${mode}): the 
 
 test('the needle moves only when the crossing pointed at is entered without the bundle, or a bundle is read; with none near it points home', () => {
   const s = freshSave(); s.seed = 'SALLOWBY-STALE'; startJourney(s, { mode: 0 }); useJourneyFrame(s);
-  const p = firstCrossing(s); s.consequences.dungeons[p.dungeon] = { storyVersion: V, regionVersion: regionVersionFor(false, true, saveStart(s)) };
+  const p = firstCrossing(s); s.consequences.dungeons[p.dungeon] = { storyVersion: STORY_BUDGET.version, regionVersion: regionVersionFor(false, true, saveStart(s)) };
   readThreadRelic(s, addThreadRelic(dmap(), s, p.dungeon)); assert.equal(trailBegun(s, ID), true);
   const a = trailPlace(s, ID); assert.ok(a.dungeon); assert.deepEqual(trailPlace(s, ID), a, 'kept');
   // nothing else moves it: other crossings entered, time passing
   s.consequences.dungeons['dungeon:SALLOWBY-STALE:g1:1:1:elsewhere'] = { visits: 2 }; assert.deepEqual(trailPlace(s, ID), a);
   // entered without it (its map had no room): the next is found, never the same
-  s.consequences.dungeons[a.dungeon] = { storyVersion: V, visits: 1, generatorVersion: 5 }; const b = trailPlace(s, ID); assert.ok(b.dungeon && b.dungeon !== a.dungeon);
+  s.consequences.dungeons[a.dungeon] = { storyVersion: STORY_BUDGET.version, visits: 1, generatorVersion: 5 }; const b = trailPlace(s, ID); assert.ok(b.dungeon && b.dungeon !== a.dungeon);
   // the stored record is checked, not trusted: a damaged one is searched again
   s.lore.trails[ID] = { n: 99, rx: 0, ry: 0, dungeon: a.dungeon }; assert.deepEqual(trailPlace(s, ID), b);
   // no crossing inside the window: the home's nearest edge, in the journey's frame
@@ -127,7 +127,7 @@ test('the needle moves only when the crossing pointed at is entered without the 
   assert.match(trailLeads(s)[0].detail, new RegExp(arcanaHint(ID, saveFrame(s))));
   // the search is bounded and deterministic, and only ever names a crossing that holds the thread when first entered
   for (const [cx, cy] of [[14, 10], [-20, 4], [5, 25], [30, -2]]) { const q = nearestTrailCrossing(s, ID, cx, cy); assert.deepEqual(nearestTrailCrossing(s, ID, cx, cy), q);
-    if (q) { assert.ok(Math.max(Math.abs(q.rx - cx), Math.abs(q.ry - cy)) <= THREAD_TRAILS[ID].radius); assert.equal(threadIn(s.seed, q.dungeon, V, regionVersionFor(false, true, saveStart(s))), ID); } }
+    if (q) { assert.ok(Math.max(Math.abs(q.rx - cx), Math.abs(q.ry - cy)) <= THREAD_TRAILS[ID].radius); assert.equal(threadIn(s.seed, q.dungeon, STORY_BUDGET.version, regionVersionFor(false, true, saveStart(s))), ID); } }
   // standing in the section: the crossing's own door
   const here = { rx: b.rx, ry: b.ry, objects: [{ kind: 'dungeon', landmark: true, id: b.dungeon.split(':').pop(), x: 9, y: 21 }] };
   s.lore.trails[ID] = { n: 1, rx: b.rx, ry: b.ry, dungeon: b.dungeon }; assert.deepEqual(trailTarget(s, ID, here), { area: 'overworld', rx: b.rx, ry: b.ry, kind: 'guidance', name: T.title, x: 9, y: 21 });
@@ -155,7 +155,7 @@ test('leads: travellers name it and its home until its first bundle is found, in
     let r = null; for (let i = 0; i < 6 && (!r || r.kind !== 'washing'); i++) { r = nextRumour(s); assert.ok(r, 'a rumour to tell'); if (r.kind !== 'washing') recordRumour(s, r, 'test'); }
     assert.equal(r.kind, 'washing'); assert.equal(r.id, 'arcana:washing'); assert.ok(r.text.includes(arcanaHint(ID, saveFrame(s))), r.text); assert.equal(r.name, 'Washing in the crossings');
     assert.ok(Number.isInteger(r.rx) && Number.isInteger(r.ry)); recordRumour(s, r, 'test'); assert.ok(rumourLive(s, r));
-    const p = firstCrossing(s); s.consequences.dungeons[p.dungeon] = { storyVersion: V, regionVersion: regionVersionFor(false, true, saveStart(s)) };
+    const p = firstCrossing(s); s.consequences.dungeons[p.dungeon] = { storyVersion: STORY_BUDGET.version, regionVersion: regionVersionFor(false, true, saveStart(s)) };
     const o = addThreadRelic(dmap(), s, p.dungeon); assert.equal(o?.thread, ID); readThreadRelic(s, o);
     assert.equal(rumourLive(s, r), false, 'heard and found: the rumour gives way to the quest'); assert.equal(trailLeads(s).length, 1);
     assert.notEqual(nextRumour(s)?.kind, 'washing', 'not told again');
