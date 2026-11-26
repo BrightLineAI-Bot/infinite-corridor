@@ -13,9 +13,9 @@ import { QUANDRIX, castHand, latestHand, tickQuandrix } from '../src/quandrix-st
 import { CLOSE_VIEW_HERO_WEAPON_FORM, MODEL_FLOATS, writeCloseViewHeroGear } from '../src/close-view-models.ts';
 import { SALVAGE_BLADE_STD } from '../src/renderer.ts';
 
-test('the hands fly about a third faster with the same reach and the same blows per tile', () => {
+test('the hands fly at 2.2 tiles/s again (Tim, 2026-11-26; 3.025 in release 1070) with the same reach and the same blows per tile', () => {
   const H = QUANDRIX.hand;
-  assert.ok(H.speed / 2.2 >= 1.3 && H.speed / 2.2 <= 1.4, `${H.speed} tiles/s`);
+  assert.equal(H.speed, 2.2, `${H.speed} tiles/s`); assert.equal(H.life, 2.2); assert.equal(H.rehit, .3);
   assert.ok(Math.abs(H.speed * H.life - PRIMARY_PROFILES['primary-quandrix-staff'].range) < .01, 'reach unchanged');
   assert.ok(Math.abs(H.speed * H.rehit - 2.2 * .3) < .01);
   assert.ok(H.step <= H.radius, 'a hand moves no further than its own radius between body checks');
@@ -26,7 +26,7 @@ test('a long frame cannot carry a hand past a foe: bodies are checked at every s
   const g = new Game(s, 0); g.area = 'dungeon';
   g.map = { ...g.map, width: 32, height: 32, exits: null, objects: [], enemySpawns: [], tiles: Array.from({ length: 1024 }, (_, i) => ({ x: i % 32, y: Math.floor(i / 32), kind: 'ash', blocked: false })) };
   Object.assign(g.player, { x: 10, y: 10, facing: 'right', invulnerableUntil: 1e15 });
-  const h = castHand(g, 1000, 1, 0); g.quandrix.where = g.orreryWhere(); const x0 = h.x, dt = .6, end = x0 + QUANDRIX.hand.speed * dt, reach = QUANDRIX.hand.radius + .38;
+  const h = castHand(g, 1000, 1, 0); g.quandrix.where = g.orreryWhere(); const x0 = h.x, dt = 1, end = x0 + QUANDRIX.hand.speed * dt, reach = QUANDRIX.hand.radius + .38;
   const e = Object.assign(createCombatant('ashling', 0, 0), { id: 'foe', hp: 1e6, maxHp: 1e6 }); e.x = (x0 + end) / 2 - .5; e.y = h.y - .45; g.enemies = [e];
   assert.ok(Math.abs(e.x + .5 - x0) > reach && Math.abs(e.x + .5 - end) > reach, 'neither the start nor the end touches the foe');
   tickQuandrix(g, dt, 1600, false);

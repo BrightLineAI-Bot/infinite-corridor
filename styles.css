@@ -1251,6 +1251,8 @@ body.training-yard #provingGroundPanel,body.training-yard #pgIdentity{display:no
 @keyframes cr-warm { 50% { opacity: .55; } }
 .cr-mark { position: absolute; top: 11px; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: #cfe6ff; box-shadow: 0 0 2px #000; }
 .cr-mark.sensed { background: transparent; box-shadow: inset 0 0 0 1.2px #cfe6ffcc, 0 0 2px #000; }
+.cr-mark.boss { background: #ff4b4b; } /* 2026-11-26: a world beast is a red mark */
+.cr-mark.boss.sensed { background: transparent; box-shadow: inset 0 0 0 1.2px #ff4b4bdd, 0 0 2px #000; }
 .cr-target { position: absolute; top: 0; width: 0; height: 100%; }
 .cr-diamond { position: absolute; left: -5px; top: 3px; width: 10px; height: 10px; transform: rotate(45deg); background: #ffd34d; border: 1px solid #6b4a10; box-shadow: 0 0 6px #ffd34daa; transition: transform .48s ease-in, opacity .48s; }
 .cr-target.hinted .cr-diamond, .cr-target.dormant .cr-diamond { background: transparent; border: 1.5px solid #ffd34d; box-shadow: none; }
