@@ -103,6 +103,10 @@ export const RUMOURS = Object.freeze({
   washing: Object.freeze({ modes: [0, 1], set: "washing", title: "Washing in the crossings",
     open: (save) => !threadFound(save, "washing").length,
     line: (where) => `Washing turns up in the crossings ${where}, they say: bundles tied in clean sheets, still damp, with a slip pinned on. Somebody's whole village, by the sound of it.` }),
+  // 2026-11-26 (story version 8): the Turves of Scarrow Moss, told by name and home until its first turf is found (then it is a quest).
+  turves: Object.freeze({ modes: [0, 1], set: "turves", title: "Peat in the crossings",
+    open: (save) => !threadFound(save, "turves").length,
+    line: (where) => `Somebody's been leaving cut peat in the crossings ${where}, they say: good turves, set up out of the wet, and not one of them burned. Nobody will put them on a fire. Nobody can say why not.` }),
   // Phase 6 (2.7): from Infinite II, the nearest Revenant horde crossing not yet entered, while the first horde's certain reliquary
   // waits and the pool still holds something to find. Found by the horde's own hash (world-finds.ts nearestHorde).
   // Every offered goal can be completed (2026-11-25): told floor or not (`always`), like the strong lead: the first horde's reliquary
@@ -118,7 +122,7 @@ export const RUMOURS = Object.freeze({
   wonder: Object.freeze({ modes: [0, 1], title: "A wonder",
     line: (w, rx, ry) => `People speak of ${WONDERS.kinds[w.kind].name} ${compassWords(w.rx - rx, w.ry - ry)}, about ${w.d} section${w.d === 1 ? "" : "s"} off.` }),
 });
-export const RUMOUR_ORDER = Object.freeze(["hatchling", "awakening", "horde", "lamplighter", "bells", "washing", "wonder"]);
+export const RUMOUR_ORDER = Object.freeze(["hatchling", "awakening", "horde", "lamplighter", "bells", "washing", "turves", "wonder"]);
 // The people whose idle words may become a rumour (by object id; the hamlets' folk and the Listener towns' cooks by kind, in
 // game.ts). Hollis is not one: his talk points the way to the Refuge's farm and quarry (refuge-lands.ts), which a rumour must not hide.
 export const RUMOUR_SPEAKERS = Object.freeze(["vendor-vela", "warden-oren", "keeper-sela", "cairn-keeper", "vendor-iona", "resident-tarn", "vendor-mora", "resident-esh"]);
