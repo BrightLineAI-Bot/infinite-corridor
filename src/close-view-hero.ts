@@ -21,8 +21,15 @@ export const HERO_FEMALE = Object.freeze({
     limb: .80, armY: 1.863, armZ: -.03, wristX: .90, legX: .16, legZ: -.02, ankleY: .24, legTop: 1.0,
     // Her legs (Tim, 2026-11-26: "more shapely and naturally filled out", a slight gap between the thighs, not a wide one):
     // about each leg's own axis the calf keeps `calf` of the male girth, rising past the knee (`kneeY` to `thighY`) to `thigh`
-    // (a little fuller than his); a gentle hip curve swells the outside of the hip and upper thigh (`hips`, outward only).
-    thigh: 1.12, calf: .86, kneeY: .56, thighY: .82, hips: Object.freeze({ y: .98, sigma: .13, out: .026, edge: .06 }),
+    // (about his; 1.12 in release 1075, a little slimmer since Tim's 2026-11-26 follow-up); a gentle hip curve swells the
+    // outside of the hip and upper thigh (`hips`, outward only).
+    thigh: 1.05, calf: .86, kneeY: .56, thighY: .82, hips: Object.freeze({ y: .98, sigma: .13, out: .026, edge: .06 }),
+    // A rounder backside (Tim, 2026-11-26: "a little rounder and more shapely"; tasteful, she's an armoured adventurer): the
+    // back of the hips and upper thighs swells back by `depth`, peaking at `y`, with a longer slope up to the belt (`up`) and a
+    // shorter, rounder underside into the thigh (`down`); across each cheek about `x` (`sx`), so it eases toward the centre
+    // and the outside of the hip; only behind `z` (fitted, easing in over `back`), so the front, the sides and the thigh
+    // plates are untouched. The belt above sits where it reaches only a few millimetres.
+    glutes: Object.freeze({ y: .93, up: .09, down: .07, x: .10, sx: .12, z: -.08, back: .08, depth: .035 }),
     // The bust (Tim, 2026-11-26: "slightly fuller... easy to tell she's a woman just by looking at her, but not exaggerated"):
     // the front of the upper chest swells forward by `depth`, fully from `from` to `to` (fitted y) and across the chest to
     // `x`, easing out over `edge` toward the armpits, with a long gentle upper slope (`up`) and a shorter, rounder underside
@@ -48,6 +55,7 @@ export function sculptHeroPoint(S, x, y, z, out) {
     nx = c + (nx - c) * f; nz = S.legZ + (z - S.legZ) * f;
   }
   { const H = S.hips, c = S.legX * s; if (y < S.shoulderY && nx > c) nx += H.out * gauss((y - H.y) / H.sigma) * smoothstep((nx - c) / H.edge); } // the hip curve, outside only
+  { const G = S.glutes; if (z < G.z && y > G.y - 3 * G.down && y < G.y + 3 * G.up) nz -= G.depth * gauss((y - G.y) / (y < G.y ? G.down : G.up)) * gauss((nx - G.x) / G.sx) * smoothstep((G.z - z) / G.back); } // the backside, behind only
   const B = S.bust;
   if (z > 0 && y > B.from - 3 * B.down && y < B.to + 3 * B.up) nz += B.depth * (1 - smoothstep((nx - B.x) / B.edge)) * (y < B.from ? gauss((y - B.from) / B.down) : y > B.to ? gauss((y - B.to) / B.up) : 1) * smoothstep(z / B.front);
   if (z > 0 && Math.abs(y - B.tuckY) < 3 * B.tuckSigma) nz -= B.tuck * gauss(nx / B.tuckSx) * gauss((y - B.tuckY) / B.tuckSigma) * smoothstep(z / B.front);

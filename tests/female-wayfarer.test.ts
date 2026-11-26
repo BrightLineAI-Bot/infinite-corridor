@@ -67,7 +67,8 @@ test('the female body is slimmer, with a smaller head, the same world height and
   assert.ok(extent(f, 1.05, 1.35) < extent(m, 1.05, 1.35) * .95, 'waist and hips');
   // Tim (2026-11-26): fuller, shapelier thighs and a gentle hip curve, with a small natural gap between the thighs (not closed)
   const S = HERO_FEMALE.sculpt, o = [0, 0, 0], at = (x, y) => sculptHeroPoint(S, x, y, 0, o)[0];
-  assert.ok(at(.23, .75) - at(.09, .75) > .14, 'the thigh a little fuller than his');
+  // Tim (2026-11-26, later): the thighs a little slimmer (release 1075's thigh was .141 here, his .14), the gap still open
+  assert.ok(at(.23, .75) - at(.09, .75) > .125 && at(.23, .75) - at(.09, .75) < .138, 'the thigh a little slimmer than release 1075, about his');
   assert.ok(at(.23, .4) - at(.09, .4) < .14 * .9, 'the calf still slim');
   assert.ok(at(.07, .75) > .04 && at(.07, .75) < .07, 'a small gap between the thighs, never closed');
   assert.ok(at(.25, 1.0) > .25 && at(.25, 1.0) > at(.25, 1.25), 'the hip curves out below the waist');
@@ -76,6 +77,24 @@ test('the female body is slimmer, with a smaller head, the same world height and
   const top = (fr, n) => { let z = -Infinity; for (let v = 0; v < n; v++) z = Math.max(z, fr.positionsNormals[v * 6 + 2]); return z; };
   assert.ok(Math.abs(top(ff, female.braid.firstVertex) - top(fm, male.vertexCount)) < .002, 'world height is the same');
   for (const k of [12, 13, 14]) { assert.ok(Number.isFinite(ff.leftSocket[k])); assert.ok(Number.isFinite(ff.rightSocket[k])); }
+});
+
+test('a rounder backside (Tim, 2026-11-26): a bounded swell behind the hips; the front, sides, belt line and thigh gap kept', () => {
+  const S = HERO_FEMALE.sculpt, flat = { ...S, glutes: { ...S.glutes, depth: 0 } }, o = [0, 0, 0];
+  const at = (sc, x, y, z) => sculptHeroPoint(sc, x, y, z, o).slice();
+  const swell = (x, y, z) => at(flat, x, y, z)[2] - at(S, x, y, z)[2];
+  // the back of the hips swells back (rounder), a little: about 2.5 cm at the fullest, never more than the parameter
+  assert.ok(swell(.1, .93, -.2) > .02 && swell(.1, .93, -.2) <= S.glutes.depth + 1e-9, `fullest ${swell(.1, .93, -.2).toFixed(4)}`);
+  assert.ok(S.glutes.depth <= .04, 'a little, not exaggerated');
+  assert.ok(swell(.1, .93, -.2) > swell(.1, .82, -.2) * 2 && swell(.1, .93, -.2) > swell(.1, 1.08, -.25) * 4, 'round: easing under into the thigh and up to the belt');
+  assert.ok(swell(.1, 1.1, -.26) < .002, 'the belt line barely moves, so the belt neither clips nor floats');
+  assert.ok(swell(0, .93, -.22) > 0 && swell(0, .93, -.22) < swell(.1, .93, -.2), 'eased toward the centre');
+  // only behind: the front, the outside of the hip and the thigh plates (in front of z -.06) are untouched; x and y never move
+  for (const [x, y, z] of [[.1, .93, .1], [.25, .93, -.03], [.2, 1.0, -.055], [.1, 1.7, -.2], [.1, .5, -.2]]) assert.equal(swell(x, y, z), 0, `${x} ${y} ${z}`);
+  for (const [x, y, z] of [[.1, .93, -.2], [0, .9, -.25]]) { const a = at(S, x, y, z), b = at(flat, x, y, z); assert.equal(a[0], b[0]); assert.equal(a[1], b[1]); }
+  // slimmer thighs, still with the slight natural gap
+  assert.ok(S.thigh < 1.12 && S.thigh >= 1, 'thighs slimmer than release 1075, not thin');
+  const gap = at(S, .07, .75, 0)[0]; assert.ok(gap > .04 && gap < .07, `gap ${gap.toFixed(4)}`);
 });
 
 const ACTIONS = [null, { kind: 'melee', profile: 'melee', phase: .4, durationMs: 300 }, { kind: 'melee', profile: 'hammer', phase: .5, durationMs: 400 }, { kind: 'melee', profile: 'fist', phase: .3, durationMs: 380, fistStep: 2 },
