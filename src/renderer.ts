@@ -121,16 +121,14 @@ function drawLowHealth(ctx, g, w, h, now, fallCue) {
   drawLowHealthEdge(ctx, st, w, h, LHE_ART.frames);
 }
 let STD_HANDS_FREE = false; // set around the Wayfarer's own sprite draw (actor reads it for "player")
-// The Salvage Blade in the Standard View sprite (Tim, 2026-11-26): two curved blades side by side whose outline together is the
-// body of a violin (out at the lower bout, in at the waist, out again at the upper bout, closing to one point), one of them
-// snapped about a third of the way up with a bright, jagged end. Body units from the hand outward, one column every `step`
-// (about a sprite pixel): `outline` is the violin's half-width at each column about the centre line `y`; the upper blade
-// (lighter, `tine`) fills from the line up to the outline, the lower (`blade`) from the line down, and stops after `broken`
-// columns, its break `jag` ([column, from, to] as shares of that column's half-width, bright). The hilt (`hilt`: length,
-// height) holds both at the hand. Colours as Close View's (close-view-models.ts salvage.colors). Rects only, no allocation.
-export const SALVAGE_BLADE_STD = Object.freeze({ blade: "#3f74d8", tine: "#5b8fe6", break: "#a9c6f2", y: -.46, from: .2, step: .034,
-  hilt: Object.freeze([.05, .1]), outline: Object.freeze([.05, .085, .105, .105, .09, .065, .06, .075, .085, .08, .065, .04, .02]), broken: 4,
-  jag: Object.freeze([Object.freeze([3, .5, 1]), Object.freeze([4, 0, .5])]) });
+// The Salvage Blade in the Standard View sprite (Tim, 2026-11-26: the violin read as something rude at sprite size; "it should look
+// like that Japanese weapon police used to break swords", a jitte). A thin blue rod (`rod`: length, thickness) from the hand,
+// and beside it the hook (`hook`), a shorter parallel prong joined to the rod at the hand by the grip (`grip`) with a one-pixel
+// gap (`gap`) between them: the second "blade", snapped at about a third of the rod's length with a bright, jagged end (`jag`,
+// two staggered pixels). Body units from the hand outward; about 30 a body unit, so .034 is a sprite pixel. Colours as Close
+// View's (close-view-models.ts salvage.colors). Rects only, no allocation. Close View keeps the violin form.
+export const SALVAGE_BLADE_STD = Object.freeze({ blade: "#3f74d8", tine: "#5b8fe6", break: "#a9c6f2", y: -.5, from: .2, px: .034,
+  rod: Object.freeze([.34, .068]), grip: .034, gap: .034, hook: Object.freeze([.11, .068]), jag: .034 });
 const salvageX = (facing, from, len) => facing === "left" ? -from - len : from; // body units outward from the hand, either side
 let STD_SALVAGE = false; // set around the Wayfarer's own sprite draw when the Salvage Blade is her primary
 let STD_BODY = "male"; // the same: the Wayfarer's body (journey-start.ts WAYFARER_BODY)
@@ -1904,13 +1902,13 @@ function actor(
     rect("#24231f", 0.07, -0.08, 0.13, 0.12);
     }
     if (STD_HANDS_FREE) { /* AERIAL_HANDS_FREE: the weapon put away for Aerial Step's cast */ }
-    else if (STD_SALVAGE) { // the violin Salvage Blade, one blade snapped: rects only, no allocation
-      const B = SALVAGE_BLADE_STD, O = B.outline, f = B.from + B.hilt[0];
-      rect(B.blade, salvageX(facing, B.from, B.hilt[0]), B.y - B.hilt[1] / 2, B.hilt[0], B.hilt[1]); // the hilt, both blades in it
-      for (let i = 0; i < O.length; i++) { const x = salvageX(facing, f + i * B.step, B.step);
-        rect(B.tine, x, B.y - O[i], B.step, O[i]); // the whole blade, out to the violin's outline and on to the point
-        if (i < B.broken) rect(B.blade, x, B.y, B.step, O[i]); } // the snapped one, its mirror
-      for (const [i, a, b] of B.jag) rect(B.break, salvageX(facing, f + i * B.step, B.step), B.y + O[i] * a, B.step, O[i] * (b - a)); // the jagged break, bright
+    else if (STD_SALVAGE) { // the Salvage Blade as a jitte, its hook snapped: rects only, no allocation
+      const B = SALVAGE_BLADE_STD, x0 = B.from + B.grip, hy = B.y + B.rod[1] + B.gap, H = B.rod[1] + B.gap + B.hook[1];
+      rect(B.blade, salvageX(facing, B.from, B.grip), B.y, B.grip, H); // the grip in the hand, rod and hook both in it
+      rect(B.tine, salvageX(facing, x0, B.rod[0]), B.y, B.rod[0], B.rod[1]); // the rod, whole to its blunt end
+      rect(B.blade, salvageX(facing, x0, B.hook[0]), hy, B.hook[0], B.hook[1]); // the hook beside it, a third as long
+      rect(B.break, salvageX(facing, x0 + B.hook[0] - B.jag, B.jag), hy, B.jag, B.hook[1] / 2); // its snapped end, bright and jagged
+      rect(B.break, salvageX(facing, x0 + B.hook[0], B.jag), hy + B.hook[1] / 2, B.jag, B.hook[1] / 2);
     } else rect(p[2], facing === "left" ? -0.38 : 0.2, -0.48, 0.18, 0.05); // the blade in hand
   } else if(kind==='vesperwing'){rect(p[1],-.09,-.62,.18,.56);ctx.fillStyle=p[0];ctx.beginPath();ctx.moveTo(k-s*.08*sc,base-s*.5*sc);ctx.lineTo(k-s*.7*sc,base-s*.85*sc);ctx.lineTo(k-s*.48*sc,base-s*.22*sc);ctx.closePath();ctx.fill();ctx.beginPath();ctx.moveTo(k+s*.08*sc,base-s*.5*sc);ctx.lineTo(k+s*.7*sc,base-s*.85*sc);ctx.lineTo(k+s*.48*sc,base-s*.22*sc);ctx.closePath();ctx.fill();rect(p[2],-.07,-.55,.14,.18)}
   else if(kind==='gravitantBell'){ctx.fillStyle=p[0];ctx.beginPath();ctx.ellipse(k,base-s*.48*sc,s*.38*sc,s*.43*sc,0,0,7);ctx.fill();ctx.strokeStyle=p[2];ctx.stroke();for(let q=-2;q<=2;q++)rect(p[1],q*.12,-.18,.06,.28)}

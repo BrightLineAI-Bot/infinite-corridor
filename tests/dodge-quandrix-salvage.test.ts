@@ -89,11 +89,12 @@ test('the Salvage Blade\'s look: blue, two curved blades in a violin\'s outline,
   assert.ok(g(.28) > g(.45) && g(.62) > g(.45) && g(.28) > g(.62) && g(1) === 0 && g(0) < g(.28), 'lower bout, waist, upper bout, point');
   const mid = (b) => (bins[b][0] + bins[b][1]) / 2;
   assert.ok(mid(2) > mid(4) && mid(6) > mid(4) && mid(9) < mid(6), `the drawn blade follows it (${[2, 4, 6, 9].map(b => mid(b).toFixed(3))})`);
-  // Standard View: the same blues, the same outline (out, in, out, to a point), the broken blade about a third as long.
-  const S = SALVAGE_BLADE_STD, O = S.outline, turns = [];
-  for (let i = 1; i < O.length; i++) { const d = Math.sign(O[i] - O[i - 1]); if (d && d !== turns[turns.length - 1]) turns.push(d); }
-  assert.deepEqual(turns, [1, -1, 1, -1], `violin outline: out, in, out, to the point (${O})`); assert.equal(O[O.length - 1], Math.min(...O));
-  assert.ok(S.broken / O.length > .25 && S.broken / O.length < .42, 'snapped about a third of the way');
+  // Standard View (Tim, 2026-11-26): a jitte, not the violin, which read badly at sprite size: a thin rod, a hook beside it
+  // with a one-pixel gap, joined at the grip, snapped at about a third of the rod with a bright end; no thick block at the hand.
+  const S = SALVAGE_BLADE_STD;
+  assert.ok(S.rod[1] <= 2 * S.px + 1e-9 && S.hook[1] <= 2 * S.px + 1e-9, 'rod and hook thin (two sprite pixels at most)');
+  assert.ok(S.gap > 0 && S.grip <= S.px + 1e-9, 'a gap between rod and hook; a one-pixel grip');
+  assert.ok(S.hook[0] / S.rod[0] > .25 && S.hook[0] / S.rod[0] < .42, 'the hook snapped about a third of the rod');
   for (const c of [S.blade, S.tine, S.break]) assert.ok(Object.values(F.colors).includes(parseInt(c.slice(1), 16)));
 });
 
