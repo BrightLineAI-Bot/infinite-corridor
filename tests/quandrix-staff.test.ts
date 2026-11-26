@@ -53,7 +53,7 @@ test('the staff: one data table, a magic primary scaling with Focus', () => {
   assert.ok(isQuandrixStaff(staff()) && isValidItem(staff()) && !isQuandrixStaff({ name: 'Salvage Blade' }));
   assert.ok(Math.abs(P.range - H.speed * H.life) < .01, 'the profile reach is where a hand dissipates');
   assert.equal(QUANDRIX.damageType, 'magic'); assert.equal(weaponScaling(staff()), 'magic'); assert.ok(scaledGearNames('magic').includes('Quandrix Staff'));
-  assert.ok(H.speed >= 2.2 * 1.3 && H.speed <= 2.2 * 1.4, 'faster than the first 2.2 tiles/s by about a third (Tim, 2026-11-25)'); assert.ok(Math.abs(H.speed * H.rehit - 2.2 * .3) < .01, 'the same blows per tile'); assert.ok(H.maxLive >= 4 && H.maxLive <= 5); assert.ok(S.perfect[0] < S.perfect[1] && S.perfect[1] < S.max);
+  assert.equal(H.speed, 2.2, 'back to the first 2.2 tiles/s (Tim, 2026-11-26; 3.025 in release 1070)'); assert.ok(Math.abs(H.speed * H.rehit - 2.2 * .3) < .01, 'the same blows per tile'); assert.ok(H.maxLive >= 4 && H.maxLive <= 5); assert.ok(S.perfect[0] < S.perfect[1] && S.perfect[1] < S.max);
   assert.ok(F.time >= 1.2 && F.time <= 1.6, 'the fist holds 1.2-1.6 s');
   // Focus, not Might: the matched build's bonus is +2 a rank, as every primary's own stat gives.
   const hit = (stats) => { const { g } = arena([[3, 0]], { stats }); press(g, 1000, null); run(g, 1000, 3800, undefined, pinned(g)); return { dealt: taken(g.enemies[0]), power: g.quandrixPower() }; };
@@ -238,7 +238,7 @@ test('the Shadow Clone casts its own hand from where it stands; the extra cap ho
   for (const [mageHand, awakened] of [[true, false], [false, true], [true, true]]) {
     const { g } = arena([], { clone: true, echo: true, mageHand, awakened }); let t = 1000; press(g, t, null); const own = latestHand(g); t = run(g, t, t + 400);
     assert.ok(g.quandrix.extras.some((h) => h.on && h.seq > own.seq), 'an extra hand newer than her own'); g.player.attackReadyAt = 0; press(g, t); run(g, t, t + 300, () => true);
-    assert.equal(g.quandrix.hold.hand, own, 'the hold takes her own last hand'); assert.ok(g.quandrix.extras.every((h) => !h.on || h.mode === 'drift'));
+    assert.equal(g.quandrix.hold.hand, own, 'the hold takes her own last hand'); assert.ok(g.quandrix.extras.every((h) => !h.on || h.mode === 'drift' || (awakened && h.mode === 'recall')), 'never held: extras drift on (awakened, recalled to clap, 2026-11-26)');
   }
 });
 

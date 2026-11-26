@@ -15,12 +15,17 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1070 (this merge, #742); production serves `r1059-3629aeded9d0` (Publish run 195, 45646565675, succeeded 2026-11-25; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1075 (this merge, #747); production serves `r1059-3629aeded9d0` (Publish run 195, 45646565675, succeeded 2026-11-25; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 1075 | Claude | claude/wayfarer-blade-looks / #747 | The female Wayfarer's shape and braid; the Salvage Blade's violin look | Merged (#747); preview follows. |
+| 1074 | Claude | claude/compass-sense-atlas-areas / #746 | The compass senses only landmarks; rumours become areas | Merged (#746); preview follows. |
+| 1073 | Claude | claude/recenter-camera-iron / #745 | Target recenters to the default angle | Merged (#745); preview follows. |
+| 1072 | Claude | claude/quandrix-recall / #744 | The Quandrix recall | Merged (#744); preview follows. |
+| 1071 | Claude | claude/listener-town-after-defeat / #743 | The Listener's town comes after the fight | Merged (#743); preview follows. |
 | 1070 | Claude | claude/dodge-quandrix-salvage / #742 | Solid dodges, the Quandrix penultimate slam, faster hands, the Salvage Blade | Merged (#742); preview follows. |
 | 1069 | Claude | claude/female-wayfarer / #741 | Choose a male or female Wayfarer | Merged (#741); preview follows. |
 | 1068 | Claude | claude/compass-ribbon / #740 | The compass, rebuilt: Ribbon, edge arrow, hint arcs, nearby places, one target everywhere | Merged (#740); preview follows. |

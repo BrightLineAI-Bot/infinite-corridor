@@ -85,7 +85,7 @@ import { FRACTURED, fracturedMode, densityPacks, packSpawns, applyFracturedRank,
 import { tickAffixes, rollAffixes, phaseShielded, PHASE_SHIELD } from "./affixes.ts";
 import { stalkerCaught, stalkerTrapAttempt, cancelStalkerAct, STALKER, ensureStalker, stalkerUnlocked, stalkerTrack, stalkerWarning, stalkerNewSection, stalkerEngaged, stalkerLost, stalkerWaitAtDoor, stalkerDoorHere, stalkerPlayerFell, stalkerSlain, stalkerVitals, stalkerLair, stalkerEscaped, ambushSpots, updateStalker } from "./stalker.ts"; // release 678: the Stalker
 import { applyBossKit, tickBossKit } from "./boss-kit.ts";
-import { wonderRumour, wonderAt, STARFIELD_ROLL, starfieldChance, starfieldRolls, starPlaceAt, starPlaceOfId } from "./wonders.ts";
+import { wonderRumour, wonderAt, STARFIELD_ROLL, starfieldChance, starfieldRolls, starPlaceAt, starPlaceOfId, setWonderTreeProbe } from "./wonders.ts";
 import { firstJourneyLine, rumourTurn, noteWonderLead, RUMOUR_SPEAKERS } from "./leads.ts"; // progression Phase 4: first-journey lines, rumours and the lead floor
 import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
 import { sectionAtlasColor } from "./atlas-colors.ts";
@@ -853,7 +853,7 @@ function addRoofExit(save, id, map, history) {
 }
 // Release 363: a fallen Listener pays its Gate in Transit Coordinates (its pieces + 1).
 // Release 371: a fallen Listener raises a town near its Mouth.
-function townNote(save) { const had = save.hometowns?.towns?.length ?? 0; if (save.hometowns) grantTowns(save); else ensureHometowns(save); const t = save.hometowns.towns.slice(had).find((q) => q.mouth) || null; if (!t) return ""; /* 2026-11-05: ensureHometowns grants first, so the old grantTowns(save)[0] after it never named the town */ journalOnce(save, `listener-town:${t.listener}`, `Where the Listener fell, people have come to live: ${t.name}, at ${t.rx}, ${t.ry}. Light its Wayglass and it can be home (Atlas).`, "The Far Gate"); return ` A town springs up near the Mouth: ${t.name} (${t.rx}, ${t.ry}).`; }
+function townNote(save) { const had = save.hometowns?.towns?.length ?? 0; if (save.hometowns) grantTowns(save); else ensureHometowns(save); const t = save.hometowns.towns.slice(had).find((q) => q.mouth) || null; if (!t) return ""; /* 2026-11-05: ensureHometowns grants first, so the old grantTowns(save)[0] after it never named the town */ journalOnce(save, `listener-town:${t.listener}`, `Where the Listener fell, people have come to live: ${t.name}, at ${t.rx}, ${t.ry}. Light its Wayglass and it can be home (Atlas).`, "The Far Gate"); return ` A town springs up near the Mouth: ${t.name} (${t.rx}, ${t.ry}), and the Mouth opens into the Deep (the Listener's Descent).`; }
 function latticeNote(save) { const before = save.lattice ? save.lattice.coordinates : 0; if (save.lattice) grantCoordinates(save); else ensureLattice(save); const n = save.lattice.coordinates - before; return n ? ` ${n} Transit Coordinates resolve in you (${save.lattice.coordinates} held${latticeOpen(save) ? "; spend them in the Arcanum's Transit Lattice" : ""}).` : ""; }
 // LISTENER_CYCLE v3 (Tim, 2026-11-25): the relay that moves the Mouth names the town gathering there (and any older Mouth's town).
 export function mouthTownNote(save) { const had = save.hometowns?.towns?.length ?? 0; if (save.hometowns) grantTowns(save); else ensureHometowns(save); const fresh = save.hometowns.towns.slice(had).filter((q) => q.mouth); if (!fresh.length) return ""; for (const t of fresh) journalOnce(save, `listener-town:${t.listener}`, t.formed === "move" ? `People have come to the Listener's new Mouth and made a town of it: ${t.name}, at ${t.rx}, ${t.ry}. Light its Wayglass and it can be home (Atlas).` : `People have come to live at the Listener's old Mouth: ${t.name}, at ${t.rx}, ${t.ry}. Light its Wayglass and it can be home (Atlas).`, "The Far Gate"); return ` ${fresh.map((t) => `${t.name} gathers at ${t.formed === "move" ? "the new Mouth" : "the old Mouth"} (${t.rx}, ${t.ry})`).join("; ")}.`; }
@@ -2026,6 +2026,43 @@ export function worldLeadPhysical(save, rx, ry, kind, dungeon) {
   return !!deepShaftSpot(map);
 }
 setWorldLeadProbe(worldLeadPhysical);
+// The compass's sensed places (Tim, 2026-11-26: "the great tree marker often isn't actually a great tree when he arrives").
+// wonders.ts wonderAt("tree") is a hash of the section's centre region and its grow roll: about one in five such sections grows
+// no tree (the section's own tree region differs, no spot takes one, or a castle or Pentagon is built over it). A great tree is
+// only ever sensed once the section's terrain, built as arrival builds it (no visit, nothing discovered, the save untouched),
+// shows one. `greatTreeKnown` answers from the hash and the kept answers (true, false, or null: not built yet, so not shown);
+// `greatTreeProbe` builds one section (the cost of a section's terrain: main.ts runs it in idle time, one at a time).
+export const GREAT_TREE_SENSE = Object.freeze({ keep: 256 });
+const greatTreeMemo = new Map();
+// The cheap test treeCrownHop and planFossilHop use: could this section's terrain hold a great tree at all?
+export function greatTreeCandidate(save, x, y) {
+  const seed = save?.seed, seen = save?.atlas?.[`${x},${y}`], version = seen?.landscapeVersion || LANDSCAPE_VERSION;
+  if (seen && !seen.landscapeVersion) return false;
+  return version >= 14 ? wonderAt(seed, x, y, "tree") : version >= 12 && sectionRegion(seed, x, y, version).type === "jungle" && (hashSeed(`${seed}:canopy-grow:v1:${y * 7919 + x}`) % 1000) / 1000 < SKY_TREE.chance;
+}
+const greatTreeKey = (save, ctx, rx, ry) => JSON.stringify([save.seed, save.worldGeneration ?? 1, rx, ry, ctx.sectionTerrainSteps(rx, ry)]);
+const senseCtx = (save, rx, ry) => Object.assign(Object.create(Game.prototype), { save, rx, ry, area: "overworld" });
+export function greatTreeKnown(save, rx, ry) {
+  if (!save || (rx === 0 && ry === 0) || !greatTreeCandidate(save, rx, ry)) return false;
+  const key = greatTreeKey(save, senseCtx(save, rx, ry), rx, ry); return greatTreeMemo.has(key) ? greatTreeMemo.get(key) : null;
+}
+export function greatTreeProbe(save, rx, ry) {
+  const known = greatTreeKnown(save, rx, ry); if (known !== null) return known;
+  const ctx = senseCtx(save, rx, ry), key = greatTreeKey(save, ctx, rx, ry), seen = save.atlas?.[`${rx},${ry}`], enabled = (pin, current) => seen ? seen[pin] : current;
+  const map = buildSectionTerrain(save.seed, rx, ry, save.worldGeneration ?? 1, ctx.sectionTerrainSteps(rx, ry)), open = !map.settlement && !map.hamlet && !map.farDomain;
+  if (map.canopy && open) { // a castle or a Pentagon built over the tree takes it whole (loadArea's order and pins; the scratch map only)
+    const pc = pentagonCentre(rx, ry), cc = castleCorner(rx, ry);
+    if (enabled("pentVersion", PENTAGON.version) && pc && ctx.pentagonHere(pc.cx, pc.cy)) placePentagonSection(map, save.seed, pc.cx, pc.cy, rx, ry, ctx.pentagonVersion(pc.cx, pc.cy));
+    if (enabled("castleVersion", CASTLES.version) && cc && ctx.castleHere(cc.X, cc.Y)) placeCastleQuarter(map, save.seed, cc.X, cc.Y, cc.q, castleVersionOf(save.atlas, cc.X, cc.Y));
+    if (coherenceOf(seen) && (map.pentagon || map.greatBuilding?.castle)) dropOverwritten(map);
+  }
+  const ok = !!map.canopy && !map.farDomain; // a hamlet may stand among great trees
+  if (greatTreeMemo.size >= GREAT_TREE_SENSE.keep) greatTreeMemo.delete(greatTreeMemo.keys().next().value);
+  greatTreeMemo.set(key, ok); return ok;
+}
+// A Pentagon whose centre section is (cx, cy), by the rule loadArea places it with (Game.pentagonHere). Cheap: hashes and the Atlas.
+setWonderTreeProbe(greatTreeProbe); // wonders.ts names a great tree (a traveller's rumour) only where one really stands
+export function pentagonSensed(save, cx, cy) { const c = pentagonCentre(cx, cy); return !!save && !!c && c.cx === cx && c.cy === cy && senseCtx(save, cx, cy).pentagonHere(cx, cy); }
 export const terrainCached = (seed, rx, ry, generation, steps) => terrainCache.has(JSON.stringify([seed, rx, ry, generation, steps]));
 // The terrain steps a Walker preview (walkerCrossingMap) runs for a section.
 export function walkerTerrainSteps(save, rx, ry) {
@@ -10116,6 +10153,11 @@ export class Game {
     if (direction && Math.hypot(direction.x, direction.y) > .01) return projectileDirection(direction.x, direction.y, p.facing);
     const H = QUANDRIX.hand, auto = selectRangedAim(p, this.enemies, this.map, mapWidth(this.map, this.area), H.speed * H.life * (1 + characterStats(this.save).attackReach));
     return auto ? projectileDirection(auto.x, auto.y, p.facing) : projectileDirection(this.save.lastAim?.x ?? 0, this.save.lastAim?.y ?? 0, p.facing);
+  }
+  // The awakened recall's target (quandrix-staff.ts QUANDRIX.recall): the lock, else the foe auto aim picks within `reach`.
+  quandrixTarget() {
+    const t = this.lockedTarget(); if (t && !t.dead && !t.untargetable && !t.hidden) return t;
+    return pickMeleeTarget(this.player, this.enemies, this.map, mapWidth(this.map, this.area), QUANDRIX.recall.reach * (1 + characterStats(this.save).attackReach))?.e || null;
   }
   // One blow of a hand, a slam tick or a burst: magic, carrying the weapon's glyphs, through the Wayfarer's damage scale.
   quandrixBlow(e, amount, now, stun = 0, x = e.x + .5, y = e.y + .45) {

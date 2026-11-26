@@ -37,8 +37,27 @@ export function journalOnce(s,id,text,title='Consequences'){if(s.narrative.journ
 // now: only those whose crossing held a relay (its history's relayNode); the rest fold into one count line where the first of them
 // stood. Display only: every record stays in the save as it was.
 export const JOURNAL_CROSSINGS=Object.freeze({prefix:'resolved:',title:'Crossings',foldedId:'crossings-cleared-folded'});
+// Tim (2026-11-26, the 1065 follow-up): the Journal's other repeated status lines fold the same way, each kind into one count line
+// where the first of them stood: crossings left unresolved, expeditions cleared, the Threefold Deep's wing guardians, the Mislaid
+// Threshold's doors, a world beast or the Questing Beast holding its ground, and skirmishes seen. `latest`: the line also gives the
+// newest entry's own words (a beast's tries left, a crossing's way back). A kind with fewer than `min` entries is shown as it is.
+// Stories, kills, relays, the Far Gate, finds and every one-time line stand. Display only: every record stays in the save as it was.
+export const JOURNAL_FOLDS=Object.freeze([
+  Object.freeze({id:'crossings-left-folded',prefixes:['abandon:'],title:'Crossings',min:2,latest:true,line:(n)=>`Crossings left unresolved: ${n} times.`}),
+  Object.freeze({id:'expeditions-cleared-folded',prefixes:['expedition-cleared:'],title:'Expeditions',min:2,latest:false,line:(n)=>`Expeditions cleared, every required guardian fallen: ${n}.`}),
+  Object.freeze({id:'deep-wings-folded',prefixes:['deep-wing:'],title:'The Threefold Deep',min:2,latest:false,line:(n)=>`Wing guardians felled in the Threefold Deep: ${n}.`}),
+  Object.freeze({id:'threshold-doors-folded',prefixes:['threshold-door:'],title:'The Mislaid Threshold',min:2,latest:false,line:(n)=>`Mislaid Threshold guardians felled, each opening a door out: ${n}.`}),
+  Object.freeze({id:'beast-tries-folded',prefixes:['world-beast-try:','questing-beast-try:'],title:'World beasts',min:2,latest:true,line:(n)=>`Times a world beast held its ground against you: ${n}.`}),
+  Object.freeze({id:'skirmishes-folded',prefixes:['skirmish:'],title:'Skirmishes',min:2,latest:false,line:(n)=>`Skirmishes witnessed: ${n}.`}),
+]);
 export function journalDisplayEntries(s,entries=s?.narrative?.journal||[]){const C=JOURNAL_CROSSINGS,out=[];let folded=0,at=-1;
-  for(const j of entries){const id=String(j?.recordId||'');if(id.startsWith(C.prefix)&&s?.consequences?.dungeons?.[id.slice(C.prefix.length)]?.relayNode!==true){if(at<0)at=out.length;folded++;continue;}out.push(j);}
+  const F=JOURNAL_FOLDS,held=F.map(()=>[]),slot=F.map(()=>-1);
+  for(const j of entries){const id=String(j?.recordId||'');if(id.startsWith(C.prefix)&&s?.consequences?.dungeons?.[id.slice(C.prefix.length)]?.relayNode!==true){if(at<0)at=out.length;folded++;continue;}
+    const f=F.findIndex(q=>q.prefixes.some(p=>id.startsWith(p)));if(f>=0){if(slot[f]<0){slot[f]=out.length;out.push(null)}held[f].push(j);continue;}out.push(j);}
+  // each fold's place: its slot (a placeholder), the entry itself when there are too few to fold
+  for(let f=0;f<F.length;f++){if(slot[f]<0)continue;const q=F[f],list=held[f];
+    out.splice(slot[f],1,...(list.length<q.min?list:[{recordId:q.id,title:q.title,text:q.line(list.length)+(q.latest?` Latest: ${list[list.length-1].text}`:''),folded:list.length,provenance:'original'}]));
+    const grew=(list.length<q.min?list.length:1)-1;if(grew)for(let g=0;g<F.length;g++)if(slot[g]>slot[f])slot[g]+=grew;if(at>slot[f])at+=grew;}
   if(folded)out.splice(at,0,{recordId:C.foldedId,title:C.title,text:`Buried crossings cleared without a relay: ${folded}.`,folded,provenance:'original'});
   return out;}
 export function resolveThread(s,id,ending){const prior=s.consequences.threads[id];if(prior?.status==='resolved')return prior.ending===ending;s.consequences.threads[id]={status:'resolved',ending};return true;}

@@ -168,39 +168,42 @@ test('rumours carry their hint zone through the Journal, the quick menu and the 
 });
 
 // ---------------------------------------------------------------- nearby places
-test('nearby places: known filled, sensed hollow (reach grows with the Aperture), at most four, nearest first, never loot or monsters', () => {
+test('nearby places: known filled, sensed hollow (reach grows with the Aperture), at most four, nearest first, only the kinds Tim named', () => {
+  // 2026-11-26 (Tim): only Pentagons, Sky Stairs, great trees, Wayglasses and Watcher's shrines, and world beasts (red). The town, the
+  // crossing and the supply cache below are no longer marked (tests/compass-sense-atlas-areas.test.ts covers the rest).
   const s = journey('NEARBY');
-  s.atlas = { '0,0': { sites: [] }, '1,0': { sites: [{ kind: 'checkpoint', name: 'Wayglass', x: 4, y: 5 }, { kind: 'supplyCache', name: 'Supply Cache', x: 9, y: 9 }, { kind: 'bossCue', x: 3, y: 3 }] }, '0,1': { sites: [{ kind: 'dungeon', name: 'The Kiln', x: 20, y: 12 }] } };
+  s.atlas = { '0,0': { sites: [] }, '1,0': { sites: [{ kind: 'checkpoint', name: 'Wayglass', x: 4, y: 5 }, { kind: 'supplyCache', name: 'Supply Cache', x: 9, y: 9 }, { kind: 'bossCue', x: 3, y: 3 }] }, '0,1': { sites: [{ kind: 'dungeon', name: 'The Kiln', x: 20, y: 12 }, { kind: 'skyStair', name: 'skyStair', x: 8, y: 8 }] } };
   s.explored = { '0,0': 1, '1,0': 1, '0,1': 1 };
   const out = nearbyPlaces(s, 0, 0, 16, 16);
   assert.ok(out.length <= COMPASS_RIBBON.marksMax && out.length >= 2);
   for (let i = 1; i < out.length; i++) assert.ok(out[i].d >= out[i - 1].d, 'nearest first');
-  assert.ok(!out.some((m) => /Supply|boss/i.test(m.name) || /supplyCache|bossCue/.test(m.key)), 'no loot, no monsters');
-  assert.ok(!out.some((m) => m.key === 'refuge:0,0'), 'the place the Wayfarer stands in needs no mark'); assert.ok(out.find((m) => m.name === 'The Kiln')?.known); assert.ok(out.every((m) => m.d >= COMPASS_RIBBON.minDist));
-  assert.ok(nearbyPlaces(s, 1, 0, 16, 16).find((m) => m.key === 'refuge:0,0')?.known, 'from the next section the Refuge is a filled mark');
-  assert.ok(!('supplyCache' in NEARBY_KINDS) && !('bossCue' in NEARBY_KINDS) && !('storyEcho' in NEARBY_KINDS));
+  assert.ok(!out.some((m) => /Supply|boss|Kiln/i.test(m.name) || /supplyCache|bossCue|crossing|hamlet|refuge/.test(m.key)), 'no loot, no crossing, no town');
+  assert.ok(out.find((m) => m.key === 'wayglass:1,0')?.known); assert.equal(out.find((m) => m.key === 'skyway:0,1')?.name, 'Sky Stair'); assert.ok(out.every((m) => m.d >= COMPASS_RIBBON.minDist));
+  assert.ok(!nearbyPlaces(s, 1, 0, 16, 16).some((m) => m.key === 'refuge:0,0'), 'the Refuge is no longer a mark');
+  assert.ok(!('supplyCache' in NEARBY_KINDS) && !('bossCue' in NEARBY_KINDS) && !('storyEcho' in NEARBY_KINDS) && !('dungeon' in NEARBY_KINDS));
   // sensed: only on ground not yet seen, within the Aperture's reach
   const far = journey('NEARBY'); far.atlas = {}; far.explored = {};
   const reach = (ap) => { far.perception.aperture = ap; return senseRadius(far); };
   assert.equal(reach(0), COMPASS_RIBBON.sense.base); assert.ok(reach(APERTURE_BANDS[APERTURE_BANDS.length - 1].threshold) > reach(0), 'the Aperture widens it');
   assert.ok(reach(1e9) <= COMPASS_RIBBON.sense.max);
   let found = null;
-  for (let rx = 30; rx < 200 && !found; rx += 3) { far.perception.aperture = 0; const list = nearbyPlaces(far, rx, 0, 16, 16); if (list.length) found = { rx, list }; }
+  for (let rx = 30; rx < 400 && !found; rx += 3) { far.perception.aperture = 1e9; const list = nearbyPlaces(far, rx, 0, 16, 16); if (list.length) found = { rx, list }; }
   assert.ok(found, 'some sensed place within reach somewhere');
   for (const m of found.list) {
-    assert.equal(m.known, false, 'unseen ground is only sensed'); assert.ok(Math.abs(m.rx - found.rx) + Math.abs(m.ry) <= COMPASS_RIBBON.sense.base + 0 || /^(skyway|tree|starfield):/.test(m.key));
-    if (m.key.startsWith('hamlet:')) assert.ok(hamletSection(far.seed, m.rx, m.ry)); else if (m.key.startsWith('crossing:')) assert.ok(crossingRolled(far.seed, m.rx, m.ry, 1));
+    assert.equal(m.known, false, 'unseen ground is only sensed'); assert.ok(Math.abs(m.rx - found.rx) + Math.abs(m.ry) <= COMPASS_RIBBON.sense.max);
+    assert.match(m.key, /^(skyway|wayglass|shrine):/, 'without the game\'s probe: Sky Stairs, Wayglasses and guided shrines only');
   }
-  far.perception.aperture = 1e9; assert.ok(nearbyPlaces(far, found.rx, 0).length <= 4, 'the cap holds at the widest reach');
+  assert.ok(nearbyPlaces(far, found.rx, 0).length <= 4, 'the cap holds at the widest reach');
 });
 
 test('a hollow mark that fills announces DISCOVERED · <place>; a known one does not again', () => {
   const s = journey('DISC'); s.atlas = {};
-  const sensed = [{ key: 'hamlet:3,1', known: false, name: 'a hamlet' }];
-  s.atlas['3,1'] = { hamletVersion: 1, sites: [] };
-  assert.equal(compassDiscovery(s, new Set(sensed.map((m) => m.key)), [{ key: 'hamlet:3,1', known: true, name: 'Ashby' }]), 'Ashby');
-  assert.equal(compassDiscovery(s, new Set(), [{ key: 'hamlet:3,1', known: true, name: 'Ashby' }]), null, 'known before: nothing');
-  assert.equal(compassDiscovery(s, new Set(['skyway:3,1']), []), 'A skyway', 'a sensed wonder whose section is now on the Atlas');
+  const sensed = [{ key: 'skyway:3,1', known: false, name: 'a Sky Stair' }];
+  assert.equal(compassDiscovery(s, new Set(sensed.map((m) => m.key)), [{ key: 'skyway:3,1', known: true, name: 'Sky Stair' }]), 'Sky Stair');
+  assert.equal(compassDiscovery(s, new Set(), [{ key: 'skyway:3,1', known: true, name: 'Sky Stair' }]), null, 'known before: nothing');
+  s.atlas['3,1'] = { sites: [] };
+  assert.equal(compassDiscovery(s, new Set(['tree:3,1']), []), 'Great tree', 'a sensed place whose section is now on the Atlas');
+  assert.equal(compassDiscovery(s, new Set(['boss:tremorWorm']), [{ key: 'boss:tremorWorm', known: true, boss: true, name: 'x' }]), null, 'a world beast is never "discovered"');
   assert.equal(COMPASS_RIBBON.discovered, 'DISCOVERED');
   assert.match(MAIN, /const found=compassDiscovery\(save,compassSensed,compassMarks\);if\(found&&now>=compassCollapseUntil\)showEventBanner\(COMPASS_RIBBON\.discovered,found,"discovery"\)/);
   assert.match(lift('refreshCompassMarks'), /if\(compassMarksMap===game\.map&&now<compassMarksCheck\)return;/, 'rebuilt on a new section (a new map), checked for a new Aperture band once a second, never per frame');

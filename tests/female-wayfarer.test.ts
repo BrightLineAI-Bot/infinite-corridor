@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { ensureWayfarerBody, wayfarerBody, setWayfarerBody, WAYFARER_BODY } from '../src/journey-start.ts';
 import { namedFresh } from '../src/persistence.ts';
-import { decodeCloseViewHero, closeViewHeroBodyAsset, createHeroPoseState, createHeroFrame, sampleCloseViewHero, HERO_BODY_TRIANGLES, HERO_BRAID, HERO_FEMALE, HERO_PROPORTIONS } from '../src/close-view-hero.ts';
+import { decodeCloseViewHero, closeViewHeroBodyAsset, createHeroPoseState, createHeroFrame, sampleCloseViewHero, HERO_BODY_TRIANGLES, HERO_BRAID, HERO_FEMALE, HERO_PROPORTIONS, sculptHeroPoint } from '../src/close-view-hero.ts';
 import { STD_FEMALE, stdBraidSide } from '../src/renderer.ts';
 
 const meta = JSON.parse(fs.readFileSync(new URL('../assets/wayfarer/rogue-v2.json', import.meta.url), 'utf8'));
@@ -63,8 +63,14 @@ test('the female body is slimmer, with a smaller head, the same world height and
   assert.deepEqual(m.proportions, HERO_PROPORTIONS);
   assert.equal(f.headScale, HERO_FEMALE.proportions.head);
   const extent = (s, y0, y1) => { let x = 0; for (let v = 0; v < 972; v++) { const y = s.vertices[v * 6 + 1]; if (y > y0 && y < y1) x = Math.max(x, Math.abs(s.vertices[v * 6])); } return x; };
-  assert.ok(extent(f, .3, .9) < extent(m, .3, .9) * .92, 'legs');
+  assert.ok(extent(f, .3, .9) < extent(m, .3, .9) * .96, 'legs (fuller thighs since 2026-11-26, still slimmer than his)');
   assert.ok(extent(f, 1.05, 1.35) < extent(m, 1.05, 1.35) * .95, 'waist and hips');
+  // Tim (2026-11-26): fuller, shapelier thighs and a gentle hip curve, with a small natural gap between the thighs (not closed)
+  const S = HERO_FEMALE.sculpt, o = [0, 0, 0], at = (x, y) => sculptHeroPoint(S, x, y, 0, o)[0];
+  assert.ok(at(.23, .75) - at(.09, .75) > .14, 'the thigh a little fuller than his');
+  assert.ok(at(.23, .4) - at(.09, .4) < .14 * .9, 'the calf still slim');
+  assert.ok(at(.07, .75) > .04 && at(.07, .75) < .07, 'a small gap between the thighs, never closed');
+  assert.ok(at(.25, 1.0) > .25 && at(.25, 1.0) > at(.25, 1.25), 'the hip curves out below the waist');
   const fm = createHeroFrame(male), ff = createHeroFrame(female);
   assert.equal(sampleCloseViewHero(male, m, input(), fm), true); assert.equal(sampleCloseViewHero(female, f, input(), ff), true);
   const top = (fr, n) => { let z = -Infinity; for (let v = 0; v < n; v++) z = Math.max(z, fr.positionsNormals[v * 6 + 2]); return z; };
@@ -96,13 +102,16 @@ test('Close View builds both bodies with every action, held weapon and form, kit
   }
 });
 
-test('the braid hangs behind, sways with travel and turning, and stays bounded, finite and attached', () => {
+test('the braid comes from behind the head over the off-hand shoulder and rests down the front; it sways, bounded, finite and attached', () => {
   const s = createHeroPoseState(female), f = createHeroFrame(female), B = HERO_BRAID, first = female.braid.firstVertex;
   const braidTip = () => { const o = (first + female.braid.vertexCount - 1) * 6; return [f.positionsNormals[o], f.positionsNormals[o + 1], f.positionsNormals[o + 2]]; };
   assert.equal(sampleCloseViewHero(female, s, input({ reducedMotion: true }), f), true);
-  const rest = braidTip(), points = s.braid.points;
-  assert.ok(rest[0] < 3 - .1, 'facing +x (yaw 0), the braid hangs behind the Wayfarer');
-  assert.ok(rest[2] > .3 + .4 && rest[2] < .3 + 1.1, 'about the middle of the back');
+  const rest = braidTip(), points = s.braid.points, root = [f.positionsNormals[first * 6], f.positionsNormals[first * 6 + 1], f.positionsNormals[first * 6 + 2]];
+  // Tim (2026-11-26): forward over the shoulder of the hand that does not hold the blade (the rightSocket, her left), down her front
+  assert.ok(root[0] < 3, 'it starts behind the head');
+  assert.ok(rest[0] > 3 + .08, 'facing +x (yaw 0), it rests in front of the Wayfarer');
+  assert.ok((rest[1] - 4) * (f.rightSocket[13] - 4) < 0 && (root[1] - 4) * (f.rightSocket[13] - 4) < 0, 'on the side away from the blade hand');
+  assert.ok(rest[2] > .3 + .75 && rest[2] < .3 + 1.15, 'down the chest, above the hips');
   // run forward, turn hard, stop: the tip moves, the chain never stretches or leaves its root
   let t = 200000, x = 3, yaw = 0, moved = 0; const length = B.length * 1.3776 / s.referenceHeight;
   for (let i = 0; i < 600; i++) {
@@ -138,7 +147,13 @@ test('Standard View: a slimmer frame and a small braid over the off-hand shoulde
   assert.ok(STD_FEMALE.torso[2] < .44 && STD_FEMALE.head[2] < .36);
   assert.equal(stdBraidSide('left'), 1); // the blade is drawn on the left when facing left
   for (const f of ['right', 'down', 'up']) assert.equal(stdBraidSide(f), -1);
-  const B = STD_FEMALE.braid; assert.ok(B.top + B.tieAt + B.tieH + B.tuft < -.33, 'it ends at about chest height');
+  const B = STD_FEMALE.braid; assert.ok(B.top + B.tieAt + B.tieH + B.tuft < -.2, 'it ends at about chest height');
+  // Tim (2026-11-26): it starts from behind the head (a lock beside the head, above the shoulder, drawn under the head), and the
+  // plaits begin below the head's edge, never at the visor
+  const H = STD_FEMALE.head, L = B.lock; assert.ok(L.x + L.width > H[0] + H[2] && L.x < H[0] + H[2], 'the lock shows beside the head');
+  assert.ok(L.top + L.height >= H[1] + H[3] - .01 && L.top > STD_FEMALE.visor[1], 'it reaches the shoulder from behind the head');
+  assert.ok(B.top - B.plait * .5 >= H[1] + H[3] - .035 && B.top > STD_FEMALE.visor[1] + STD_FEMALE.visor[3], 'the plaits begin below the head');
+  assert.ok(STD_FEMALE.hips[2] > STD_FEMALE.torso[2] && STD_FEMALE.hips[1] > STD_FEMALE.torso[1] + .2, 'a gentle hip curve below the waist');
   const src = fs.readFileSync(new URL('../src/renderer.ts', import.meta.url), 'utf8');
   assert.match(src, /STD_BODY = wayfarerBody\(g\.save\)/);
 });

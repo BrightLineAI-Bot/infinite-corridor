@@ -19,6 +19,10 @@ export const HERO_FEMALE = Object.freeze({
   // past it (the arms) the same inward shift applies rigidly. Limbs thin radially about their own axes.
   sculpt: Object.freeze({ core: .26, shoulderY: 1.62, shoulder: .84, hipY: 1.08, hip: .93, waistY: 1.31, waistSigma: .12, pinch: .12,
     limb: .80, armY: 1.863, armZ: -.03, wristX: .90, legX: .16, legZ: -.02, ankleY: .24, legTop: 1.0,
+    // Her legs (Tim, 2026-11-26: "more shapely and naturally filled out", a slight gap between the thighs, not a wide one):
+    // about each leg's own axis the calf keeps `calf` of the male girth, rising past the knee (`kneeY` to `thighY`) to `thigh`
+    // (a little fuller than his); a gentle hip curve swells the outside of the hip and upper thigh (`hips`, outward only).
+    thigh: 1.12, calf: .86, kneeY: .56, thighY: .82, hips: Object.freeze({ y: .98, sigma: .13, out: .026, edge: .06 }),
     // A modest bust: two soft forward swells on the chest, front surface only.
     bust: Object.freeze({ y: 1.72, x: .088, sx: .065, sy: .085, depth: .05, front: .06 }) }),
 });
@@ -33,10 +37,12 @@ export function sculptHeroPoint(S, x, y, z, out) {
   if (y > 1.55 && ax > S.core) { // the arm (T-pose): thinner about its axis, the hand left to HERO proportions
     const k = smoothstep((ax - S.core) / .06) * (1 - smoothstep((ax - S.wristX + .06) / .06)), f = 1 - (1 - S.limb) * k;
     ny = S.armY + (y - S.armY) * f; nz = S.armZ + (z - S.armZ) * f;
-  } else if (y < S.legTop) { // the leg: thinner about its own (narrowed) axis; boots and hip join unchanged
-    const k = smoothstep((y - S.ankleY) / .1) * (1 - smoothstep((y - S.legTop + .12) / .12)), f = 1 - (1 - S.limb) * k, c = S.legX * s;
+  } else if (y < S.legTop) { // the leg: a slim calf and a fuller thigh about its own (narrowed) axis; boots and hip join unchanged
+    const girth = S.calf + (S.thigh - S.calf) * smoothstep((y - S.kneeY) / (S.thighY - S.kneeY));
+    const k = smoothstep((y - S.ankleY) / .1) * (1 - smoothstep((y - S.legTop + .12) / .12)), f = 1 - (1 - girth) * k, c = S.legX * s;
     nx = c + (nx - c) * f; nz = S.legZ + (z - S.legZ) * f;
   }
+  { const H = S.hips, c = S.legX * s; if (y < S.shoulderY && nx > c) nx += H.out * gauss((y - H.y) / H.sigma) * smoothstep((nx - c) / H.edge); } // the hip curve, outside only
   const B = S.bust;
   if (z > 0 && y > B.y - 3 * B.sy && y < B.y + 3 * B.sy) nz += B.depth * Math.max(gauss((nx - B.x) / B.sx), 0) * gauss((y - B.y) / B.sy) * smoothstep(z / B.front);
   out[0] = sg * nx; out[1] = ny; out[2] = nz; return out;
@@ -792,20 +798,31 @@ export function createHeroFrame(asset) { return { asset, positionsNormals: new F
   ghosts: new Float32Array(CLOSE_VIEW_SHADOW_FORMS.trail.max * 4), ghostCount: 0, ghostTint: new Float32Array(CLOSE_VIEW_SHADOW_FORMS.trail.tint), ready: false }; }
 
 // ---------------------------------------------------------------- the female body and her braid
-// The braid: a short chain of points hung from the back of the head (head-local `root`, source Cleric units), drawn as
-// a flattened, plaited tube of `sides` facets with a leather tie and a small tuft, in the hero's own indexed draw (no new
-// buffer, texture, pass or draw call). Each frame the chain takes one damped Verlet step in model space with gravity, a
-// little drag from the Wayfarer's own travel and lag from turning, then follow-the-leader lengths, a pull toward the hang
-// of the torso, the back (and pack) surface and the floor. Fixed size: `segments` + 1 points, at most `maxDt` per step.
+// The braid: a short chain of points hung from behind the head (head-local `root`, source Cleric units), drawn as a
+// flattened, plaited tube of `sides` facets with a leather tie and a small tuft, in the hero's own indexed draw (no new
+// buffer, texture, pass or draw call). Tim (2026-11-26): it no longer runs down her back over the pack; it comes from behind
+// her head over the shoulder of the off hand and rests down her front, as in Standard View. Her blades are held in the
+// source-right hand (anatomical left; the `rightSocket`), so the braid lies on torso-local +X (`side`), her right shoulder.
+// Each frame the chain takes one damped Verlet step in model space with gravity, a little drag from the Wayfarer's own
+// travel and lag from turning, then follow-the-leader lengths, a pull toward its rest `path` (torso-local, strongest where
+// it crosses the shoulder: `hold` per segment), the front of the chest (and kit) and the floor. Fixed size: `segments` + 1
+// points, at most `maxDt` per step.
 export const HERO_BRAID = Object.freeze({
   segments: 8, length: .80, sides: 6, ringsPerSegment: 2,
-  root: Object.freeze([0, -.30, -.34]), // head-local, below where the source bun sat
+  side: 1, // torso-local +X: the source-left arm, her anatomical right (the hand that does not hold the blade)
+  root: Object.freeze([.26, -.22, -.13]), // head-local: behind the ear on that side, where the hair is gathered
+  // The rest path, torso-local (x on `side`): from behind the head, over the top of the shoulder, down the front of the chest.
+  // Only its directions are used (each segment's rest direction); the root itself follows the head.
+  path: Object.freeze([[.10, .56, -.14], [.15, .48, -.08], [.165, .47, .02], [.15, .42, .11], [.14, .33, .17], [.135, .23, .20], [.13, .13, .19], [.13, .03, .18], [.13, -.07, .18]].map(Object.freeze)),
+  hold: Object.freeze([.9, .9, .85, .6, .35, .22, .16, .16]), // per segment: the pull toward the path (over the shoulder it barely moves)
   radius: .046, tipRadius: .030, flat: .72, crease: .74, // plaits: every other ring narrower and turned half a facet
   tie: Object.freeze({ from: .86, to: .90, radius: 1.06 }), tuft: Object.freeze({ at: .95, flare: 1.2, tip: 1.0 }),
   hair: Object.freeze([Object.freeze([.47, .22]), Object.freeze([.44, .21])]), leather: Object.freeze([.40, .70]), // cleric-head.png texels
-  gravity: 9, damping: .88, stiffness: .16, drag: .10, dragMax: .03, turnLag: .85, gap: .006,
-  hang: .55, // the rest direction: this much of the torso's own down, the rest straight down
-  profile: Object.freeze({ from: -.8, step: .05, bins: 32, halfWidth: .12 }), maxDt: .05, resetDt: .25, teleport: 2,
+  gravity: 9, damping: .88, drag: .10, dragMax: .03, turnLag: .85, gap: .006,
+  // The front surface under the braid: torso-local rays along +Z at `x` (on `side`) and `spread` either side, one per height
+  // bin from `from` up to `top` (the shoulder; above it nothing is cast, so the root's run behind the neck is never pushed).
+  profile: Object.freeze({ from: -.8, step: .05, bins: 25, x: .13, spread: .02 }), maxDt: .05, resetDt: .25, teleport: 2,
+  frame: .6, // the tube's flat face turns toward the torso's up blended with this much of its forward (shoulder top, then chest)
 });
 // Source Cleric hair locks that form the small bun at the back of the head (connected pieces lying wholly behind it).
 const BUN = Object.freeze({ behind: -.05, reach: -.40, locks: 4 });
@@ -871,16 +888,16 @@ function sculptOverlays(S, depthRatio, headRatio) {
   return map;
 }
 function torsoLocal(g, o, x, y, z, out) { const dx = x - g[o + 12], dy = y - g[o + 13], dz = z - g[o + 14]; out[0] = g[o] * dx + g[o + 1] * dy + g[o + 2] * dz; out[1] = g[o + 4] * dx + g[o + 5] * dy + g[o + 6] * dz; out[2] = g[o + 8] * dx + g[o + 9] * dy + g[o + 10] * dz; return out; }
-// Once per pose state: the back surface behind the spine (body, and every pack the kit may draw) as the torso sees it.
+// Once per pose state: the front surface under the braid (body, and every strap or plate the kit may draw) as the torso sees it.
 function initBraid(asset, s) {
-  const B = HERO_BRAID, F = B.profile, back = new Float64Array(F.bins).fill(Infinity), g = s.global, t = 24 * 16, tri = new Float64Array(9), q = new Float64Array(3);
-  // Rays along torso-local -Z at the spine and either side of it, one per height bin, against every rendered triangle.
+  const B = HERO_BRAID, F = B.profile, front = new Float64Array(F.bins).fill(-Infinity), g = s.global, t = 24 * 16, tri = new Float64Array(9), q = new Float64Array(3);
+  // Rays along torso-local +Z at the braid's line and either side of it, one per height bin, against every rendered triangle.
   const hit = () => {
     const x0 = tri[0], y0 = tri[1], x1 = tri[3], y1 = tri[4], x2 = tri[6], y2 = tri[7], den = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2); if (Math.abs(den) < 1e-12) return;
     const lo = Math.max(0, Math.floor((Math.min(y0, y1, y2) - F.from) / F.step)), hi = Math.min(F.bins - 1, Math.floor((Math.max(y0, y1, y2) - F.from) / F.step) + 1);
     for (let bin = lo; bin <= hi; bin++) for (let r = -1; r <= 1; r++) {
-      const x = r * F.halfWidth * .5, y = F.from + (bin + .5) * F.step, l0 = ((y1 - y2) * (x - x2) + (x2 - x1) * (y - y2)) / den, l1 = ((y2 - y0) * (x - x2) + (x0 - x2) * (y - y2)) / den, l2 = 1 - l0 - l1;
-      if (l0 >= 0 && l1 >= 0 && l2 >= 0) back[bin] = Math.min(back[bin], l0 * tri[2] + l1 * tri[5] + l2 * tri[8]);
+      const x = B.side * F.x + r * F.spread, y = F.from + (bin + .5) * F.step, l0 = ((y1 - y2) * (x - x2) + (x2 - x1) * (y - y2)) / den, l1 = ((y2 - y0) * (x - x2) + (x0 - x2) * (y - y2)) / den, l2 = 1 - l0 - l1;
+      if (l0 >= 0 && l1 >= 0 && l2 >= 0) front[bin] = Math.max(front[bin], l0 * tri[2] + l1 * tri[5] + l2 * tri[8]);
     }
   };
   const braidFrom = asset.braid.firstVertex, I = asset.arrays.indices;
@@ -891,9 +908,10 @@ function initBraid(asset, s) {
     for (let i = 0; i + 2 < verts.length; i += 3) { for (let c = 0; c < 3; c++) { const v = verts[i + c]; torsoLocal(g, t, m[k] * v[0] + m[k + 4] * v[1] + m[k + 8] * v[2] + m[k + 12], m[k + 1] * v[0] + m[k + 5] * v[1] + m[k + 9] * v[2] + m[k + 13], m[k + 2] * v[0] + m[k + 6] * v[1] + m[k + 10] * v[2] + m[k + 14], q); tri.set(q, c * 3); } hit(); }
   }
   // Each bin answers for its neighbours too, so a sloping surface never lets a point slip under it between bins.
-  const wide = Float64Array.from(back); for (let i = 0; i < F.bins; i++) for (const n of [i - 1, i + 1]) if (n >= 0 && n < F.bins) wide[i] = Math.min(wide[i], back[n]);
-  const n = B.segments + 1;
-  s.braid = { back: wide, points: new Float64Array(n * 3), prev: new Float64Array(n * 3), scratch: new Float64Array(3), local: new Float64Array(3), ready: false, lastMs: 0, lastX: 0, lastY: 0, lastYaw: 0, segment: B.length / B.segments };
+  const wide = Float64Array.from(front); for (let i = 0; i < F.bins; i++) for (const n of [i - 1, i + 1]) if (n >= 0 && n < F.bins) wide[i] = Math.max(wide[i], front[n]);
+  const n = B.segments + 1, rest = new Float64Array(B.segments * 3); // each segment's rest direction, torso-local
+  for (let i = 0; i < B.segments; i++) { const a = B.path[i], b = B.path[i + 1], d = [(b[0] - a[0]) * B.side, b[1] - a[1], b[2] - a[2]], l = Math.hypot(...d); for (let k = 0; k < 3; k++) rest[i * 3 + k] = d[k] / l; }
+  s.braid = { front: wide, rest, dir: new Float64Array(3), points: new Float64Array(n * 3), prev: new Float64Array(n * 3), scratch: new Float64Array(3), local: new Float64Array(3), ready: false, lastMs: 0, lastX: 0, lastY: 0, lastYaw: 0, segment: B.length / B.segments };
   braidStep(asset, s, null, 0, 1); writeBraid(asset, s);
 }
 function braidRoot(s, out) {
@@ -903,13 +921,13 @@ function braidRoot(s, out) {
 // One step of the chain. `input` null (or reduced motion, a long gap, a teleport) hangs it at rest from the current pose.
 function braidStep(asset, s, input, yaw, scale) {
   const B = HERO_BRAID, F = B.profile, b = s.braid, P = b.points, Q = b.prev, g = s.global, t = 24 * 16, q = b.scratch, n = B.segments + 1, L = b.segment;
-  const radius = B.radius * B.flat + B.gap;
+  const radius = B.radius * B.flat + B.gap, R = b.rest, d = b.dir;
   braidRoot(s, q);
-  // rest direction: the torso's down blended with straight down
-  let rx = -g[t + 4] * B.hang, ry = -g[t + 5] * B.hang - (1 - B.hang), rz = -g[t + 6] * B.hang; { const l = Math.hypot(rx, ry, rz) || 1; rx /= l; ry /= l; rz /= l; }
+  // segment i's rest direction in model space (the torso's own frame turns its path)
+  const restDir = (i) => { const o = i * 3, x = R[o], y = R[o + 1], z = R[o + 2]; d[0] = g[t] * x + g[t + 4] * y + g[t + 8] * z; d[1] = g[t + 1] * x + g[t + 5] * y + g[t + 9] * z; d[2] = g[t + 2] * x + g[t + 6] * y + g[t + 10] * z; const l = Math.hypot(d[0], d[1], d[2]) || 1; d[0] /= l; d[1] /= l; d[2] /= l; return d; };
   const dt = input ? (input.nowMs - b.lastMs) / 1000 : NaN, moved = input ? Math.hypot(input.x - b.lastX, input.y - b.lastY) : 0;
   const rest = !input || input.reducedMotion || !b.ready || !(dt >= 0) || dt > B.resetDt || moved > B.teleport;
-  if (rest) { P[0] = q[0]; P[1] = q[1]; P[2] = q[2]; for (let i = 1; i < n; i++) { P[i * 3] = P[i * 3 - 3] + rx * L; P[i * 3 + 1] = P[i * 3 - 2] + ry * L; P[i * 3 + 2] = P[i * 3 - 1] + rz * L; } }
+  if (rest) { P[0] = q[0]; P[1] = q[1]; P[2] = q[2]; for (let i = 1; i < n; i++) { restDir(i - 1); P[i * 3] = P[i * 3 - 3] + d[0] * L; P[i * 3 + 1] = P[i * 3 - 2] + d[1] * L; P[i * 3 + 2] = P[i * 3 - 1] + d[2] * L; } }
   else if (dt > 0) {
     const h = Math.min(dt, B.maxDt), damp = Math.pow(B.damping, h * 60), cy = Math.cos(yaw), sy = Math.sin(yaw);
     // travel and turning: the world-fixed air the braid hangs in, seen from the body
@@ -919,16 +937,15 @@ function braidStep(asset, s, input, yaw, scale) {
     for (let i = 1; i < n; i++) { const o = i * 3; for (let k = 0; k < 3; k++) { const v = (P[o + k] - Q[o + k]) * damp; Q[o + k] = P[o + k]; P[o + k] += v + (k === 1 ? -B.gravity * h * h : 0); } }
     P[0] = q[0]; P[1] = q[1]; P[2] = q[2];
   } else return; // the same clock (a pause, a second draw of one frame): the braid is held exactly where it was
-  // constraints: length with a pull toward the hang, then the back surface and the floor
-  // One follow-the-leader pass from the root: the length (with a pull toward the hang), the back and pack surface (pushed
-  // out along the torso's back, then set back on the segment's length) and the floor.
+  // One follow-the-leader pass from the root: the length (with a pull toward the rest path), the front of the chest and kit
+  // (pushed out along the torso's forward, then set back on the segment's length) and the floor.
   for (let i = 1; i < n; i++) {
-    const o = i * 3; let dx = P[o] - P[o - 3], dy = P[o + 1] - P[o - 2], dz = P[o + 2] - P[o - 1], l = Math.hypot(dx, dy, dz) || 1;
-    dx = dx / l * (1 - B.stiffness) + rx * B.stiffness; dy = dy / l * (1 - B.stiffness) + ry * B.stiffness; dz = dz / l * (1 - B.stiffness) + rz * B.stiffness; l = Math.hypot(dx, dy, dz) || 1;
+    const o = i * 3, k = B.hold[i - 1]; let dx = P[o] - P[o - 3], dy = P[o + 1] - P[o - 2], dz = P[o + 2] - P[o - 1], l = Math.hypot(dx, dy, dz) || 1;
+    restDir(i - 1); dx = dx / l * (1 - k) + d[0] * k; dy = dy / l * (1 - k) + d[1] * k; dz = dz / l * (1 - k) + d[2] * k; l = Math.hypot(dx, dy, dz) || 1;
     P[o] = P[o - 3] + dx / l * L; P[o + 1] = P[o - 2] + dy / l * L; P[o + 2] = P[o - 1] + dz / l * L;
-    const c = torsoLocal(g, t, P[o], P[o + 1], P[o + 2], b.local), bin = Math.floor((c[1] - F.from) / F.step), surface = bin >= 0 && bin < F.bins ? b.back[bin] - radius : Infinity;
-    if (c[2] > surface) {
-      const push = c[2] - surface; dx = P[o] - g[t + 8] * push - P[o - 3]; dy = P[o + 1] - g[t + 9] * push - P[o - 2]; dz = P[o + 2] - g[t + 10] * push - P[o - 1]; l = Math.hypot(dx, dy, dz) || 1;
+    const c = torsoLocal(g, t, P[o], P[o + 1], P[o + 2], b.local), bin = Math.floor((c[1] - F.from) / F.step), surface = bin >= 0 && bin < F.bins ? b.front[bin] + radius : -Infinity;
+    if (c[2] < surface) {
+      const push = surface - c[2]; dx = P[o] + g[t + 8] * push - P[o - 3]; dy = P[o + 1] + g[t + 9] * push - P[o - 2]; dz = P[o + 2] + g[t + 10] * push - P[o - 1]; l = Math.hypot(dx, dy, dz) || 1;
       P[o] = P[o - 3] + dx / l * L; P[o + 1] = P[o - 2] + dy / l * L; P[o + 2] = P[o - 1] + dz / l * L;
     }
     const floor = s.minY + B.radius; if (P[o + 1] < floor) P[o + 1] = floor;
@@ -943,9 +960,12 @@ function writeBraid(asset, s) {
     const f = clamp(u) * (n - 1), i = Math.min(n - 2, Math.floor(f)), w = f - i, o = i * 3;
     const px = P[o] + (P[o + 3] - P[o]) * w, py = P[o + 1] + (P[o + 4] - P[o + 1]) * w, pz = P[o + 2] + (P[o + 5] - P[o + 2]) * w;
     let tx = P[o + 3] - P[o], ty = P[o + 4] - P[o + 1], tz = P[o + 5] - P[o + 2]; { const l = Math.hypot(tx, ty, tz) || 1; tx /= l; ty /= l; tz /= l; }
-    // lateral axis: the torso's side, kept square to the tangent; depth axis completes the frame (flattened against the back)
-    let ax = g[t], ay = g[t + 1], az = g[t + 2]; const d = ax * tx + ay * ty + az * tz; ax -= d * tx; ay -= d * ty; az -= d * tz; { const l = Math.hypot(ax, ay, az) || 1; ax /= l; ay /= l; az /= l; }
-    const bx = ty * az - tz * ay, by = tz * ax - tx * az, bz = tx * ay - ty * ax;
+    // depth axis: the torso's up blended with its forward, kept square to the tangent (the flat face lies on the shoulder's
+    // top, then on the chest); the lateral axis completes the frame (depth = tangent x lateral, as the winding expects)
+    let bx = g[t + 4] + g[t + 8] * B.frame, by = g[t + 5] + g[t + 9] * B.frame, bz = g[t + 6] + g[t + 10] * B.frame; let d = bx * tx + by * ty + bz * tz; bx -= d * tx; by -= d * ty; bz -= d * tz;
+    let l = Math.hypot(bx, by, bz); if (l < .2) { bx = g[t]; by = g[t + 1]; bz = g[t + 2]; d = bx * tx + by * ty + bz * tz; bx -= d * tx; by -= d * ty; bz -= d * tz; l = Math.hypot(bx, by, bz); } // (a tangent along it: the side instead)
+    l = l || 1; bx /= l; by /= l; bz /= l;
+    const ax = by * tz - bz * ty, ay = bz * tx - bx * tz, az = bx * ty - by * tx;
     if (r < 0) { const o2 = (first + (A.hairRings + 4) * sides) * 6; v[o2] = px; v[o2 + 1] = py; v[o2 + 2] = pz; v[o2 + 3] = tx; v[o2 + 4] = ty; v[o2 + 5] = tz; return; }
     for (let k = 0; k < sides; k++) {
       const a = k * step + twist, c = Math.cos(a), sn = Math.sin(a), o2 = (first + r * sides + k) * 6;

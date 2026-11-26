@@ -67,7 +67,10 @@ export const LISTENER_RETURN = { returnRelays: 5, near: 40, spread: 23 };
 // Tim, 2026-11-25 (LISTENER_CYCLE v3, reversing the 2026-11-05 rule that the Mouth stays until its Gate unlocks): "I do want the
 // Listener's Mouth to move every five [relays], with a new town each time. It makes you engage with the game." Every `moveRelays`
 // relays answered (restored or severed) the Mouth moves to a new far place (mouthCoordinateV3) and a Listener waits there; the
-// Mouth it left keeps its town, and the new one gathers its own at once (hometowns.ts grantTowns). Gate pieces, the Gate's tier
+// Mouth it left keeps its town if it has one. Tim, 2026-11-26: "the town must not appear when you reach the Mouth"; it is made
+// only once you defeat the Listener there, and then the Mouth opens the Deep (game.ts raiseMouthTown, the Listener's Descent);
+// until then it is just the Listener's Mouth (hometowns.ts grantTowns; a Mouth left unfelled is `felled: false` in pastMouths,
+// and a town a journey already has is never taken away). Gate pieces, the Gate's tier
 // and Listener kills belong to the journey, not to a Mouth, so a move never takes any away: every Mouth offers one Listener to
 // fell (one piece), Gate Revenant hordes lock pieces anywhere, and five unlock the Gate wherever the Wayfarer stands.
 // The cycle is pinned per journey (`farArray.cycle`): a journey without one takes the current version on load, and its first
@@ -276,7 +279,7 @@ export function listenerFelled(save) {
   const lock = lockGatePiece(save, "listener", f);
   if (f.cycle >= 3) { // v3: the Listener leaves; the next move gives a new Mouth with a Listener waiting
     f.quiet = true; f.moves = true; f.relaysAt = answeredRelays(save); const k = relaysUntilMoveOf(save, f) ?? LISTENER_CYCLE.moveRelays;
-    return `The Listener falls silent. ${lock.text} Choose a boon in the Journal's Far Gate. The Listener leaves this Mouth. Answer ${k} more relay${k === 1 ? "" : "s"} (restore or sever) and the Mouth moves; a Listener will wait at the new one, and a town will gather there. This Mouth stays, a town and a way into the Deep.`;
+    return `The Listener falls silent. ${lock.text} Choose a boon in the Journal's Far Gate. The Listener leaves this Mouth. Answer ${k} more relay${k === 1 ? "" : "s"} (restore or sever) and the Mouth moves; a Listener will wait at the new one, and where you fell it a town will gather. This Mouth stays, a town and a way into the Deep.`;
   }
   if (!lock.unlocked && LISTENER_CYCLE.leavesAfterKill) { f.quiet = true; f.moves = false; f.relaysAt = answeredRelays(save); }
   const R = LISTENER_RETURN.returnRelays;
@@ -317,7 +320,9 @@ export function mouthCoordinateV3(seed, mouth, previous = null, avoid = []) {
 }
 // v3: the Mouth moves. The old Mouth joins pastMouths (it keeps its town); a compass or a pick set on it follows to the new one.
 function moveMouthV3(save, f, net) {
-  const old = { rx: net.coordinate.rx, ry: net.coordinate.ry }, past = Array.isArray(net.pastMouths) ? net.pastMouths : [];
+  // `felled` (2026-11-26): whether a Listener fell at the Mouth it leaves; hometowns.ts grantTowns raises no town at a Mouth
+  // recorded `felled: false` (an entry without the field, from before, keeps the old rule).
+  const felled = int0(f.atMouth) > 0 || (!!f.quiet && !!f.moves), old = { rx: net.coordinate.rx, ry: net.coordinate.ry, felled }, past = Array.isArray(net.pastMouths) ? net.pastMouths : [];
   const avoid = [...past, old, ...(Array.isArray(save.hometowns?.towns) ? save.hometowns.towns : [])];
   f.mouth++; f.quiet = false; f.moves = false; f.atMouth = 0; f.returns = int0(f.returns) + 1; f.relaysAt = answeredRelays(save);
   net.pastMouths = [...past, old].slice(-8); // (towns keep every older Mouth: silentMouthAt)
@@ -326,7 +331,7 @@ function moveMouthV3(save, f, net) {
   const g = save.guidance && typeof save.guidance === "object" ? save.guidance : null, at = (q) => q && q.rx === old.rx && q.ry === old.ry;
   if (g && ((at(g.pin) && MOUTH_PINS.includes(g.pin.name)) || g.pick === `${old.rx},${old.ry}`)) // a new object, so main.ts syncGuidance picks it up
     save.guidance = { ...g, ...(at(g.pin) ? { pin: { ...g.pin, rx: net.coordinate.rx, ry: net.coordinate.ry } } : {}), ...(g.pick === `${old.rx},${old.ry}` ? { pick: `${net.coordinate.rx},${net.coordinate.ry}` } : {}) };
-  return { rx: net.coordinate.rx, ry: net.coordinate.ry, moved: true, from: old };
+  return { rx: net.coordinate.rx, ry: net.coordinate.ry, moved: true, from: { rx: old.rx, ry: old.ry, felled, town: felled || (Array.isArray(save.hometowns?.towns) && save.hometowns.towns.some((t) => t.rx === old.rx && t.ry === old.ry)) } };
 }
 export const MOUTH_PINS = ["The Array Mouth", "The Far Array"]; // the names the Journal and Paths pin the Mouth by
 // Called after a relay answers: once enough have since the Listener left, a Listener enters the corridor again: at the same
