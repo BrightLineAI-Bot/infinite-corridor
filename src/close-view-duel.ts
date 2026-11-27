@@ -19,8 +19,11 @@ export const DUEL_STAGE = Object.freeze({ margin: .1, maxSep: 3.5, ease: 5, pass
 export const DUEL_STRIKES = Object.freeze({
   spinoBite: ['head', 'neck'], spinoGrab: ['head', 'neck'], spinoBodySlam: ['head', 'neck'], spinoLeapSlam: ['head', 'neck'], spinoRoar: ['head'], spinoClaw: ['arms', 'head'], spinoTailSwipe: ['tail'], spinoRibSpears: ['arms'],
   apatoNeckSlam: ['head', 'neck'], apatoLash: ['head', 'neck'], apatoWrap: ['head', 'neck'], apatoStomp: ['legs'], apatoLeaves: ['head'],
+  pachyHeadSlam: ['head', 'neck'], pachyCharge: ['head', 'neck'], pachyDomeRam: ['head', 'neck'], pachyClash: ['head', 'neck'], pachyBicycle: ['legs'], pachyJumpSlam: ['legs'],
+  trikeGore: ['head', 'neck'], trikeHornSweep: ['head', 'neck'], trikeFrillBash: ['head', 'neck'],
   stegoBite: ['head', 'neck'], stegoJaws: ['head', 'neck'], stegoClaw: ['legs', 'head'], stegoRearSwipe: ['legs', 'head', 'neck'], stegoTailWhack: ['tail'], stegoTailSlam: ['tail'], stegoBuck: ['tail', 'legs'], stegoPounce: ['legs', 'head'], stegoTreeClub: ['head', 'neck'],
 });
+const LATER = Object.freeze(['pachy', 'triceratops']);
 const SPACE_A = new Uint8Array(40), SPACE_B = new Uint8Array(40); // at most 40 capsules a body (the Earth Apatosaurus has 21)
 function spaceMask(kind, e, out) { const strike = DUEL_STRIKES[e?.pack?.attack] || null, C = DUEL_CAPSULES[kind]; for (let i = 0; i < C.length; i++) out[i] = strike && strike.includes(C[i][3]) ? 0 : 1; }
 // [bone, to (a bone, or a point [f, r, u] in the first bone's frame), radius (model units), group]
@@ -40,6 +43,20 @@ export const DUEL_CAPSULES = Object.freeze({
     ['pelvis', 'tail1', .35, 'tail'], ['tail1', 'tail2', .25, 'tail'], ['tail2', 'tail3', .17, 'tail'], ['tail3', 'tail4', .11, 'tail'], ['tail4', 'tail5', .07, 'tail'],
     ['thighL', 'shinL', .16, 'legs'], ['shinL', 'footHL', .12, 'legs'], ['thighR', 'shinR', .16, 'legs'], ['shinR', 'footHR', .12, 'legs'],
     ['armL', 'foreL', .14, 'legs'], ['foreL', 'footFL', .11, 'legs'], ['armR', 'foreR', .14, 'legs'], ['foreR', 'footFR', .11, 'legs'],
+  ]),
+  // the Pachycephalosaurus (close-view-beast-pachy.ts): its trunk, short neck and domed head, tail, legs and little arms
+  pachy: Object.freeze([
+    ['pelvis', 'spine', .21, 'trunk'], ['spine', 'chest', .2, 'trunk'], ['chest', 'neck', .14, 'trunk'], ['neck', 'head', .1, 'neck'], ['head', [.2, 0, -.05], .1, 'head'],
+    ['pelvis', 'tail1', .17, 'tail'], ['tail1', 'tail2', .13, 'tail'], ['tail2', 'tail3', .1, 'tail'], ['tail3', 'tail4', .07, 'tail'], ['tail4', 'tail5', .045, 'tail'],
+    ['thighL', 'shinL', .12, 'legs'], ['shinL', 'metaL', .06, 'legs'], ['metaL', 'footL', .045, 'legs'], ['thighR', 'shinR', .12, 'legs'], ['shinR', 'metaR', .06, 'legs'], ['metaR', 'footR', .045, 'legs'],
+    ['armL', 'foreL', .035, 'arms'], ['armR', 'foreR', .035, 'arms'],
+  ]),
+  // the wild Triceratops (close-view-beast-triceratops.ts): barrel, neck and frilled head, tail, four legs
+  triceratops: Object.freeze([
+    ['pelvis', 'spine', .26, 'trunk'], ['spine', 'chest', .25, 'trunk'], ['chest', 'neck', .17, 'trunk'], ['neck', 'head', .13, 'neck'], ['head', 'frill', .14, 'head'],
+    ['pelvis', 'tail1', .16, 'tail'], ['tail1', 'tail2', .11, 'tail'], ['tail2', 'tail3', .08, 'tail'], ['tail3', 'tail4', .05, 'tail'],
+    ['thighL', 'shinL', .12, 'legs'], ['shinL', 'hockL', .08, 'legs'], ['thighR', 'shinR', .12, 'legs'], ['shinR', 'hockR', .08, 'legs'],
+    ['armL', 'foreL', .1, 'legs'], ['foreL', 'wristL', .07, 'legs'], ['armR', 'foreR', .1, 'legs'], ['foreR', 'wristR', .07, 'legs'],
   ]),
   wildStego: Object.freeze([
     ['pelvis', 'spine', .25, 'trunk'], ['spine', 'chest', .23, 'trunk'], ['chest', 'neck1', .14, 'trunk'],
@@ -123,6 +140,9 @@ function penetration(na, nb, push, ux, uy) {
   return worst;
 }
 export function spaceDuellists(tracks, now) {
+  // the later pairs (Tim, 2026-11-27): a Pachycephalosaurus or a wild Triceratops in a duel, and its foe, both drawn as bodies this frame
+  for (const [q, t] of tracks) { if (t.seen !== now || q.dead || !LATER.includes(q.kind) || !q.dinoDuel?.foe || !DUEL_CAPSULES[q.kind]) continue;
+    for (const [f, tf] of tracks) if (f.id === q.dinoDuel.foe && tf.seen === now && !f.dead && DUEL_CAPSULES[f.kind] && !f.apatoHeldBy && !q.apatoHeldBy) { spacePair(t, q.kind, q, tf, f.kind, f, now); return; } }
   let spino = null, stego = null, apato = null, ts = null, tt = null, ta = null;
   for (const [q, t] of tracks) { if (t.seen !== now || q.dead) continue; if (q.kind === 'spinoRex' && !spino) { spino = q; ts = t; } else if (q.kind === 'wildStego' && !stego) { stego = q; tt = t; } else if (q.kind === 'earthApato' && !apato) { apato = q; ta = t; } }
   // the Earth Apatosaurus's duels (Tim, 2026-11-18): it and the one it duels (or else the other in sight), as the original pair

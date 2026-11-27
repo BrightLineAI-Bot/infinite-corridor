@@ -17,6 +17,7 @@
 // - Muted means nothing is scheduled at all. It never reads or writes the save, and never changes the game.
 import { seededRandom } from "./soundtrack.ts";
 import { DUEL } from "./soundtrack-director.ts";
+import { duelPair } from "./dino-duel.ts";
 
 export const BATTLE_SFX = {
   maxVoices: 12, lowMaxVoices: 8,
@@ -29,7 +30,7 @@ export const BATTLE_SFX = {
   // The Stegosaurus answers a Spinosaurus roar after `delay` s (hashed in the range), at most once in `gap` s.
   answer: { delay: [.6, 1.1], gap: 2.5 },
   // Footfalls: one each `stride` tiles walked on the ground, `stepGap` s apart at the least.
-  stride: { spinoRex: 1.7, wildStego: 1.25, earthApato: 1.9 }, stepGap: .3,
+  stride: { spinoRex: 1.7, wildStego: 1.25, earthApato: 1.9, pachy: 1.2, triceratops: 1.4 }, stepGap: .3,
   roll: { max: 4.4, release: .25 },
   // The Wild Stegosaurus's roar (bellowStego, bellowShort): its fundamental (Hz; the Spinosaurus's sits at 48-72), the second saw's
   // detune, the snarl's rise (s), the rasp's band (Hz), its level and its formant's, the growl's tremolo (Hz) and the drive into the soft clipper.
@@ -45,33 +46,39 @@ export const BATTLE_SFX = {
     digScrape: [.3, 2], fling: [.42, 2], rockets: [.45, 3], boneVolley: [.42, 3], boneCrackle: [.32, 2], spear: [.62, 3], crunch: [.85, 3],
     chew: [.6, 3], woodCrack: [.75, 3], roarHit: [.6, 3], footSpino: [.42, 1], footStego: [.32, 1], footApato: [.5, 1], shed: [.5, 3],
     thrash: [.62, 3], strain: [.4, 2], rockfall: [.62, 3],
+    // the Pachycephalosaurus (Tim, 2026-11-27): the dome's hollow knock, a kick's thud, its hoot, its step; the wild Triceratops's horn clack
+    domeKnock: [.9, 3], kickThud: [.7, 3], hootPachy: [.5, 2], footPachy: [.34, 1], hornClack: [.75, 3],
   },
 };
 // The game's cues (monster-pack.ts dinoCue: phase and move) to sounds.
 export const DUEL_SOUNDS = {
   windup: {
+    pachyHeadSlam: "hootPachy", pachyCharge: "digScrape", pachyJumpSlam: "hootPachy", pachyBicycle: "hootPachy", pachyRockLaunch: "digScrape", pachySkullLaunch: "boneCrackle", pachyBoneSpikes: "boneCrackle", pachyClash: "hootPachy", pachyAmbush: "bellowShort",
+    trikeGore: "bellowShort", trikeFrillBash: "bellowStego", trikeHornSweep: "bellowShort",
     spinoRoar: "inhale", spinoLeapSlam: "roarSpino", spinoBodySlam: "roarSpino", spinoGrab: "growlSpino", spinoBite: "growlSpino", spinoDigFling: "digScrape", spinoRibSpears: "boneCrackle", spinoBoneVolley: "boneCrackle",
     apatoNeckSlam: "bellowShort", apatoWrap: "strain", apatoBeam: "inhale", apatoBeamSweep: "inhale", apatoStomp: "bellowStego", apatoHydra: "digScrape",
     stegoWheel: "bellowStego", stegoTailSlam: "bellowStego", stegoTreeClub: "bellowStego", stegoPounce: "bellowShort", stegoRearSwipe: "bellowShort", stegoPlateRockets: "bellowShort",
   },
-  roar: { spinoRoar: "roarBig", spinoArrive: "roarBig", apatoBeam: "roarBig", apatoBeamSweep: "roarBig" },
-  swing: { apatoLash: "whooshHeavy", apatoWrap: "whoosh", apatoLeaves: "whooshLight", stegoTailWhack: "whoosh", stegoRearSwipe: "whooshLight", spinoTailSwipe: "whooshHeavy", spinoRibSpears: "boneCrackle", spinoRibThrust: "whooshLight" },
-  land: { stegoPounce: "slam", stegoTailSlam: "slam", stegoBreach: "slam", stegoTreeClub: "slam", spinoLeapSlam: "slamBig", spinoBodySlam: "slam", spinoGrabThrow: "slam", spinoGrabSlam: "slamBig", stegoJawsSlam: "slamBig", apatoNeckSlam: "slamBig", apatoStomp: "slamBig", apatoStep: "slam", apatoSpires: "impact", apatoSpireStamp: "slam", apatoSeeds: "slam", apatoWrapThrow: "slam" },
+  roar: { pachyAmbush: "roarBig", spinoRoar: "roarBig", spinoArrive: "roarBig", apatoBeam: "roarBig", apatoBeamSweep: "roarBig" },
+  swing: { pachyCharge: "whooshHeavy", pachyBicycle: "whooshLight", trikeGore: "whooshHeavy", trikeHornSweep: "whoosh", apatoLash: "whooshHeavy", apatoWrap: "whoosh", apatoLeaves: "whooshLight", stegoTailWhack: "whoosh", stegoRearSwipe: "whooshLight", spinoTailSwipe: "whooshHeavy", spinoRibSpears: "boneCrackle", spinoRibThrust: "whooshLight" },
+  land: { pachyHeadSlam: "slam", pachyJumpSlam: "slamBig", pachyBicycle: "slam", pachyBonk: "domeKnock", pachyBoneSpikes: "spear", trikeFrillBash: "slamBig", stegoPounce: "slam", stegoTailSlam: "slam", stegoBreach: "slam", stegoTreeClub: "slam", spinoLeapSlam: "slamBig", spinoBodySlam: "slam", spinoGrabThrow: "slam", spinoGrabSlam: "slamBig", stegoJawsSlam: "slamBig", apatoNeckSlam: "slamBig", apatoStomp: "slamBig", apatoStep: "slam", apatoSpires: "impact", apatoSpireStamp: "slam", apatoSeeds: "slam", apatoWrapThrow: "slam" },
   // A blow that connects with the other duellist (and only then).
   hit: {
+    pachyHeadSlam: "domeKnock", pachyCharge: "domeKnock", pachyDomeRam: "domeKnock", pachyClash: "hornClack", pachyJumpSlam: "impact", pachyBicycle: "kickThud", pachyRockLaunch: "impact", pachySkullLaunch: "woodCrack", pachyBoneSpikes: "spear", pachyWave: "impact",
+    trikeGore: "hornClack", trikeHornSweep: "hornClack", trikeFrillBash: "impact",
     spinoBite: "biteSpino", spinoBodySlam: "biteSpino", spinoClaw: "rakeSpino", spinoTailSwipe: "tailSpino", spinoLeapSlam: "impact", spinoGrab: "chew", spinoRibSpears: "spear", spinoRoar: "roarHit",
     stegoBite: "biteStego", stegoClaw: "rakeStego", stegoRearSwipe: "rakeStego", stegoTailWhack: "tailStego", stegoTailSlam: "tailStego", stegoWheel: "wheelCrunch", stegoPounce: "impact", stegoTreeClub: "woodCrack", stegoBreach: "impact", stegoJaws: "thrash", spinoGrabSlam: "impact",
     apatoNeckSlam: "impact", apatoLash: "biteStego", apatoWrap: "thrash", apatoStomp: "impact", apatoSpires: "spear", apatoLeaves: "rakeStego", apatoHydra: "rakeSpino", apatoHands: "impact",
   },
   grab: { spinoGrab: "crunch", stegoJaws: "crunch", apatoWrap: "crunch" }, lift: { spinoGrab: "strain", stegoJaws: "bellowShort" }, rock: { dinoRock: "rockfall" }, feed: { dinoFeed: "chew" },
-  flee: { spinoRex: "growlSpino", wildStego: "bellowStego", earthApato: "bellowStego" }, shed: { spinoFossil: "shed" }, roll: { stegoWheel: "wheelRoll" },
-  fling: { spinoDigFling: "fling", apatoHands: "fling" }, launch: { stegoPlateRockets: "rockets", spinoBoneVolley: "boneVolley", apatoHydra: "digScrape", apatoHands: "digScrape" },
+  flee: { spinoRex: "growlSpino", wildStego: "bellowStego", earthApato: "bellowStego", pachy: "hootPachy", triceratops: "bellowShort" }, shed: { spinoFossil: "shed", pachyFossil: "shed" }, roll: { stegoWheel: "wheelRoll" },
+  fling: { spinoDigFling: "fling", apatoHands: "fling", pachyRockLaunch: "fling", pachySkullLaunch: "boneVolley" }, launch: { stegoPlateRockets: "rockets", spinoBoneVolley: "boneVolley", apatoHydra: "digScrape", apatoHands: "digScrape" },
 };
 // Blows and grabs play whatever the duel's state (they are the duel); the rest only while one is held.
 const CONTACT = new Set(["hit", "grab"]);
 const RIVAL = { spinoRex: "wildStego", wildStego: "spinoRex" };
 // The Earth Apatosaurus (Tim, 2026-11-18) duels both: a blow between any duelling pair (dino-duel.ts DINO_DUEL.pairs) is contact.
-const rivals = (who, victim) => RIVAL[who] === victim || (who === "earthApato" && (victim === "spinoRex" || victim === "wildStego")) || (victim === "earthApato" && (who === "spinoRex" || who === "wildStego"));
+const rivals = (who, victim) => RIVAL[who] === victim || (who === "earthApato" && (victim === "spinoRex" || victim === "wildStego")) || (victim === "earthApato" && (who === "spinoRex" || who === "wildStego")) || duelPair({ kind: who }, { kind: victim }); // and every later pair (the Pachycephalosaurus, the wild Triceratops)
 const ROARS = new Set(["roarSpino", "roarBig"]);
 export const SFX_NAMES = Object.keys(BATTLE_SFX.sounds);
 
@@ -158,13 +165,14 @@ export class BattleSfx {
       r.where.gain.setTargetAtTime(at.gain, now, .05); if (r.pan) r.pan.pan.setTargetAtTime(at.pan, now, .05);
     }
     if (!this.dueling || !this.pair) return;
-    for (const e of [this.pair.spino, this.pair.stego, this.pair.apato]) {
+    for (const e of [this.pair.spino, this.pair.stego, this.pair.apato, this.pair.a, this.pair.b]) {
       if (!e || e.dead) continue;
+      if (e === this.pair.a && (e === this.pair.spino || e === this.pair.stego || e === this.pair.apato)) continue; if (e === this.pair.b && (e === this.pair.spino || e === this.pair.stego || e === this.pair.apato)) continue;
       const st = this.steps[e.id] ||= { x: e.x, y: e.y, at: -Infinity }, up = e.aloft || e.spinoAir > .05 || e.stegoAir > .05 || e.stegoRoll > 0 || e.stegoSwim === 1 || e.spinoHeldBy;
       if (up) { st.x = e.x; st.y = e.y; continue; }
       if (Math.hypot(e.x - st.x, e.y - st.y) >= (BATTLE_SFX.stride[e.kind] || 1.5) && now - st.at >= BATTLE_SFX.stepGap) {
         st.x = e.x; st.y = e.y; st.at = now;
-        this.play(e.kind === "spinoRex" ? "footSpino" : e.kind === "earthApato" ? "footApato" : "footStego", { x: e.x, y: e.y, listener, at: now + BATTLE_SFX.lead });
+        this.play(e.kind === "spinoRex" ? "footSpino" : e.kind === "earthApato" ? "footApato" : e.kind === "pachy" ? "footPachy" : "footStego", { x: e.x, y: e.y, listener, at: now + BATTLE_SFX.lead });
       }
     }
   }
@@ -382,6 +390,13 @@ const SYNTH = {
   roarHit(t, out, L) { const p = { src: [], nodes: [] }, a = this.thump(p, t, out, L, 70, 36, .5), b = this.noiseBurst(p, t, out, L * .6, "lowpass", 140, .8, .04, 1).end; return { ...p, end: Math.max(a, b) }; },
   footSpino(t, out, L) { const p = { src: [], nodes: [] }; return { ...p, end: this.thump(p, t, out, L, 58, 36, .34) }; },
   footApato(t, out, L) { const p = { src: [], nodes: [] }; return { ...p, end: this.thump(p, t, out, L, 44, 28, .42) }; }, // the Earth Apatosaurus: the deepest tread
+  // the Pachycephalosaurus: the dome's knock (a hollow, ringing bonk: a short pitched thump and a bright knock), a kick's thud, its
+  // nasal hoot (a short falling sine pair), its quick step; the Triceratops's horn clack (a dry crack on a low thump)
+  domeKnock(t, out, L) { const p = { src: [], nodes: [] }, a = this.thump(p, t, out, L, 180, 70, .22), b = this.noiseBurst(p, t, out, L * .8, "bandpass", 1100, 6, .001, .05).end, c = this.thump(p, t + .006, out, L * .5, 420, 300, .12); return { ...p, end: Math.max(a, b, c) }; },
+  kickThud(t, out, L) { const p = { src: [], nodes: [] }, a = this.thump(p, t, out, L, 95, 50, .2), b = this.noiseBurst(p, t, out, L * .5, "lowpass", 900, 1, .002, .08).end; return { ...p, end: Math.max(a, b) }; },
+  hootPachy(t, out, L) { const p = { src: [], nodes: [] }, a = this.thump(p, t, out, L * .6, 320, 210, .35), b = this.thump(p, t + .12, out, L * .5, 260, 170, .3); return { ...p, end: Math.max(a, b) }; },
+  footPachy(t, out, L) { const p = { src: [], nodes: [] }; return { ...p, end: this.thump(p, t, out, L, 84, 52, .2) }; },
+  hornClack(t, out, L) { const p = { src: [], nodes: [] }, a = this.crack(p, t, out, L, [1900, 3100], .06), b = this.thump(p, t, out, L * .7, 130, 60, .25); return { ...p, end: Math.max(a, b) }; },
   footStego(t, out, L) { const p = { src: [], nodes: [] }; return { ...p, end: this.thump(p, t, out, L, 76, 48, .24) }; },
   // the grabs: the slammed body coming down (a swish and a heavy body thump), the lift's strain (a low, straining growl), and rockfall
   thrash(t, out, L) { const p = { src: [], nodes: [] }, a = this.sweep(p, t, out, L * .55, .22, 300, 1100), b = this.thump(p, t + .14, out, L, 88, 40, .34), d = this.noiseBurst(p, t + .14, out, L * .45, "bandpass", 520, 1.2, .004, .12).end; return { ...p, end: Math.max(a, b, d) }; },

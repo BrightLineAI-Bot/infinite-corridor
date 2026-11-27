@@ -16,6 +16,7 @@ import { ADV, levelAt, heightReach, dropBonus, findPerch, findRetreat, kiteLoop,
 import { onStegoTailSevered } from "./stego-bait.ts";
 import { DINO_DUEL, duelBlow as dinoDuelBlow, noteRivalHurt, duelOf, duelWinner, duelPair, DUEL_KINDS } from "./dino-duel.ts";
 import { APATO, APATO_ATTACKS, APATO_START, APATO_RUN, installApatoKit, apatoFx, apatoTick, apatoCan, apatoAfflicted, apatoCloneTick, apatoIdle, apatoLetGo, resetApatoRuntime, apatoRivalNear } from "./earth-apato.ts"; // the Earth Apatosaurus (Tim, 2026-11-18) // the dino duel's blows, floors and verdict (Tim, 2026-11-14)
+import { TRIKE_ATTACKS, TRIKE_START, TRIKE_RUN, installTrikeKit, trikeDuelTick, trikeRivalNear, trikeDuels } from "./trike-duel.ts"; // the wild Triceratops in the dino duels (Tim, 2026-11-27)
 import { PACHY, PACHY_ATTACKS, PACHY_START, PACHY_RUN, installPachyKit, pachyFrame, pachyTick, pachyCan, pachyHeading, resetPachyRuntime, pachyPoseDefaults, pachyTuned, rivalNear as pachyRivalNear } from "./pachy.ts"; // the Pachycephalosaurus (Tim, 2026-11-27)
 import { BLEED, tickCreatureBleed } from "./bleed.ts"; // the Spinosaurus's bleed (its numbers and the Wayfarer's record) // the Wild Stegosaurus: its cut tail becomes the Stego Bait (the bait module owns what happens)
 import { DUELISTS, duelistStats, duelSeparation, findHop, hopArc, duelStepTooClose } from "./duelists.ts"; // the Gaunt, hooded duelists (Tim, 2026-11-12)
@@ -343,6 +344,7 @@ export const ATTACK_MODULES = {
   spinoGrab: { id: "spinoGrab", name: "Hunter's Grip", range: [0, 8], cooldown: 14, windup: 1.6, active: 4.8, recover: .8, damage: 1, tags: ["grab", "bleed"], text: "A bite mark follows you. Be out from under it when it stops, or it lunges, lifts you in its jaws, chews (you bleed) and throws you down." },
   spinoBoneVolley: { id: "spinoBoneVolley", name: "Bone Volley", range: [3, 12], cooldown: 10, windup: .8, active: 1.6, recover: .7, damage: .55, fossil: true, tags: ["ranged"], text: "Bone only: it flings its bones into the air; they hunt you, and those that miss land and burst on the marked ground." },
   spinoRibSpears: { id: "spinoRibSpears", name: "Rib Spears", range: [0, 4.6], cooldown: 7, windup: .65, active: .7, recover: .7, damage: 1.1, fossil: true, tags: ["melee"], text: "Bone only: its ribs shoot out to either side as spears, then swing in to meet at a point in front of it." },
+  ...TRIKE_ATTACKS, // the wild Triceratops's duel moves (trike-duel.ts)
   ...PACHY_ATTACKS, // the Pachycephalosaurus (pachy.ts; every other number is in PACHY)
   ...APATO_ATTACKS, // the Earth Apatosaurus and its tree clones (earth-apato.ts; every other number is in APATO and APATO_CLONE)
   chestLaser: { id: "chestLaser", name: "Heart Lamp", range: [3, 11], cooldown: 8.5, windup: 2, active: .3, recover: 1.5, damage: 6, los: true, tags: ["ranged", "beam"], text: "The lamp in its chest fills with light while a red line follows you; the line stops, flashes, and the lamp fires along it. Be off the line, or dodge through it." },
@@ -1439,7 +1441,7 @@ export const STEGO = {
   // you). With you within `close` it turns on you instead at `youChance` % of its choices. A blow on the Spinosaurus takes `share` of
   // its health at least, never below `floor` of it (the kill stays yours). It closes to `gap` tiles past both bodies at `speed` of
   // its walk, and holds its own blow while the Spinosaurus's blow at it is coming (`wait`), so the blows alternate.
-  rival: { kinds: ["spinoRex", "earthApato"], sight: 16, refocus: 5, refocusYou: 2, close: 6, youChance: 22, share: .035, floor: .08, gap: .5, speed: .9, wait: true,
+  rival: { kinds: ["spinoRex", "earthApato", "pachy", "triceratops"], sight: 16, refocus: 5, refocusYou: 2, close: 6, youChance: 22, share: .035, floor: .08, gap: .5, speed: .9, wait: true,
     moves: ["stegoWheel", "stegoTailWhack", "stegoTailSlam", "stegoRearSwipe", "stegoPounce", "stegoBite", "stegoClaw", "stegoTreeClub"], grabs: ["stegoJaws"] },
   // Its duel grab (stegoJaws, on the Spinosaurus only; Tim 2026-11-14: "picking him up by the tail and slamming him"): it lunges
   // `reach` past its body in `bite` s and seizes the tail, then `slams` times heaves it up and round in an arc (`heave` s: `swing`
@@ -1493,12 +1495,12 @@ export const SPINO = {
   // Its prey (Tim: "wildStego and briarStag first"): within `sight` it turns on one, at `chance` % each time it chooses (it chooses again after `refocus` s on its prey, `refocusYou` s on you). A blow on
   // one takes `beastShare` of its health at least; a beast, a boss or a big-room beast is never taken below `floor` of its health by
   // it, so the kill and its bounty stay yours. It moves on its prey at `speed` of its walk.
-  hunt: { kinds: ["wildStego", "briarStag", "earthApato"], sight: 16, chance: 75, refocus: 5, refocusYou: 2, beastShare: .035, floor: .08, speed: .9, moves: ["spinoGrab", "spinoBodySlam", "spinoBite", "spinoClaw", "spinoLeapSlam"] },
+  hunt: { kinds: ["wildStego", "briarStag", "earthApato", "pachy"], sight: 16, chance: 75, refocus: 5, refocusYou: 2, beastShare: .035, floor: .08, speed: .9, moves: ["spinoGrab", "spinoBodySlam", "spinoBite", "spinoClaw", "spinoLeapSlam"] },
   infight: { range: 7, every: 8, chance: 60, share: .8 }, /* one-off jumps and grabs at other creatures it sees; `share` of the victim's health a blow takes */
   // The dino duel (Tim, 2026-11-14): on the Wild Stegosaurus it turns on you instead only at `youChance` % of its choices with you
   // within `close` (else always on the stego, never at `hunt.chance`); it trades blows with `moves` (the bone moves once it is bone)
   // and holds its own blow while the stego's blow at it is coming (`wait`). The Briar Stag keeps `hunt.chance` and `hunt.moves`.
-  duel: { kinds: ["wildStego", "earthApato"], close: 6, youChance: 22, wait: true,
+  duel: { kinds: ["wildStego", "earthApato", "pachy", "triceratops"], close: 6, youChance: 22, wait: true,
     moves: ["spinoGrab", "spinoBodySlam", "spinoBite", "spinoClaw", "spinoLeapSlam", "spinoTailSwipe", "spinoRoar", "spinoDigFling", "spinoRibSpears"] },
   arrive: { time: 1.4 }, /* an interloper roars this long as it comes in (game.ts) */
   text: { fossil: "Its flesh splits and falls away! The Spinosaurus fights on as bare bone.", grabbed: "Its jaws close on you! You are lifted off your feet." },
@@ -1835,8 +1837,8 @@ function dinoCue(w, e, phase, move, at = e, extra = null) {
 }
 // The duel's big moves (DINO_DUEL.shake, DINO_DUEL.rockfall): the screen shakes (capped, at most once each `gap` s from either
 // duellist; none under Reduced Motion: spino-rex.ts shakeOffset), and under a ceiling (w.indoors) rocks fall around a slam.
-const DINO_SHAKE = { land: "land", spinoLeapSlam: "big", spinoGrabSlam: "slam", stegoJawsSlam: "slam", spinoRoar: "roar", spinoArrive: "roar", stegoWheel: "wheel", dinoRock: "rock", apatoNeckSlam: "slam", apatoStomp: "big", apatoWrapThrow: "slam", apatoSpireStamp: "land", apatoBeam: "roar", apatoBeamSweep: "roar" };
-const DINO_SLAMS = new Set(["stegoJawsSlam", "stegoTailSlam", "stegoPounce", "stegoBreach", "stegoTreeClub", "spinoLeapSlam", "spinoBodySlam", "spinoGrabSlam", "spinoGrabThrow", "stegoWheel", "apatoNeckSlam", "apatoStomp", "apatoWrapThrow"]);
+const DINO_SHAKE = { pachyHeadSlam: "slam", pachyJumpSlam: "big", pachyBicycle: "land", pachyBonk: "land", pachyAmbush: "roar", trikeFrillBash: "slam", land: "land", spinoLeapSlam: "big", spinoGrabSlam: "slam", stegoJawsSlam: "slam", spinoRoar: "roar", spinoArrive: "roar", stegoWheel: "wheel", dinoRock: "rock", apatoNeckSlam: "slam", apatoStomp: "big", apatoWrapThrow: "slam", apatoSpireStamp: "land", apatoBeam: "roar", apatoBeamSweep: "roar" };
+const DINO_SLAMS = new Set(["pachyHeadSlam", "pachyJumpSlam", "pachyBicycle", "trikeFrillBash", "stegoJawsSlam", "stegoTailSlam", "stegoPounce", "stegoBreach", "stegoTreeClub", "spinoLeapSlam", "spinoBodySlam", "spinoGrabSlam", "spinoGrabThrow", "stegoWheel", "apatoNeckSlam", "apatoStomp", "apatoWrapThrow"]);
 function dinoBigMove(w, e, phase, move, x, y) {
   const S = DINO_DUEL.shake, d = duelOf(e), kind = phase === "land" ? DINO_SHAKE[move] || "land" : (phase === "roar" || phase === "rock") ? DINO_SHAKE[move] : phase === "hit" && move === "stegoWheel" ? "wheel" : null;
   const now = (Number(w.now) || 0) / 1000;
@@ -1877,6 +1879,7 @@ export function cancelPackAttack(e) {
 
 // Each runner advances its attack; it reads/writes s.data and s.tele (the renderer draws s.tele).
 const START = {
+  ...TRIKE_START,
   ...PACHY_START, // the Pachycephalosaurus (pachy.ts)
   ...APATO_START, // the Earth Apatosaurus (earth-apato.ts)
   giantArcs(e, s) { s.tele = { type: "ring", radius: GIANT.arcRange }; e.giantPose = "arcs"; }, // release 397: the arcs' reach, shown while it crackles
@@ -2241,6 +2244,7 @@ function gloomShadeTick(e, w) {
   return false;
 }
 const RUN = {
+  ...TRIKE_RUN,
   ...PACHY_RUN, // the Pachycephalosaurus (pachy.ts)
   ...APATO_RUN, // the Earth Apatosaurus (earth-apato.ts)
   dragonStrafe(e, s, w) {
@@ -4775,7 +4779,7 @@ function stegoWoundRival(w, source, q, amount, weight = 1) {
   noteRivalHurt(q, n); return true;
 }
 // The Spinosaurus it duels: alive, standing its ground, within `sight` (the nearest), or null.
-const stegoRivalOk = (q, e) => !!q && q !== e && !q.dead && STEGO.rival.kinds.includes(q.kind) && !q.retreating && !q.passingBeast && !q.fleeTo && !q.untargetable && !q.hidden && !q.illusion;
+const stegoRivalOk = (q, e) => !!q && q !== e && !q.dead && STEGO.rival.kinds.includes(q.kind) && (q.kind !== "triceratops" || trikeDuels(q)) && !q.pachyDisguised && !q.retreating && !q.passingBeast && !q.fleeTo && !q.untargetable && !q.hidden && !q.illusion;
 function stegoRivalNear(e, w) { let best = null, bd = STEGO.rival.sight; for (const q of w.enemies || []) { if (!stegoRivalOk(q, e)) continue; const dd = distance(q, e); if (dd < bd) { bd = dd; best = q; } } return best; }
 // The duel's winner feeds on the body (e.dinoFeed s, set by game.ts dinoEaten) before it turns on the Wayfarer; a chew now and then.
 function dinoFeeds(e, s, w) {
@@ -4995,7 +4999,7 @@ function spinoStrike(e, s, w, id, test, o = {}) {
   return landed;
 }
 // The prey it hunts first: the Wild Stegosaurus or the Briar Stag, standing its ground within sight (the nearest).
-export const spinoPreferredPrey = (q, e) => !!q && q !== e && !q.dead && SPINO.hunt.kinds.includes(q.kind) && !q.retreating && !q.passingBeast && !q.fleeTo && !q.untargetable && !q.hidden && !q.illusion && !q.spinoHeldBy;
+export const spinoPreferredPrey = (q, e) => !!q && q !== e && !q.dead && (SPINO.hunt.kinds.includes(q.kind) || (q.kind === "triceratops" && trikeDuels(q))) && !q.pachyDisguised && !q.retreating && !q.passingBeast && !q.fleeTo && !q.untargetable && !q.hidden && !q.illusion && !q.spinoHeldBy;
 function spinoPreferred(e, w) { let best = null, bd = SPINO.hunt.sight; for (const q of w.enemies || []) { if (!spinoPreferredPrey(q, e)) continue; const dd = distance(q, e); if (dd < bd) { bd = dd; best = q; } } return best; }
 // What else it turns on: ordinary creatures and wildlife it sees (the Wild Stegosaurus's rule), never another Spinosaurus.
 export const spinoPrey = (q, e) => stegoPrey(q, e) && !SPINO.hunt.kinds.includes(q.kind) && !q.spinoHeldBy;
@@ -5045,7 +5049,7 @@ function spinoTick(e, s, w, p, d) {
     const fd = distance(focus, e);
     const duel = S.duel.kinds.includes(focus.kind);
     if (s.gap <= 0 && !(duel && S.duel.wait && dinoBlowComing(focus, e))) {
-      const moves = duel ? S.duel.moves.filter((id) => (e.spinoFossil || !S.fossilOnly.includes(id)) && (id !== "spinoGrab" || focus.kind !== "earthApato")) : S.hunt.moves.filter((id) => id !== "spinoGrab" || focus.kind !== "earthApato"); // its belly lift is for the stego only
+      const moves = duel ? S.duel.moves.filter((id) => (e.spinoFossil || !S.fossilOnly.includes(id)) && (id !== "spinoGrab" || focus.kind === "wildStego")) : S.hunt.moves.filter((id) => id !== "spinoGrab" || !["earthApato", "pachy", "triceratops"].includes(focus.kind)); // its belly lift is for the stego only
       const ready = moves.filter((id) => { const A = ATTACK_MODULES[id]; return (e.packAttacks || []).includes(id) && !((s.cd[id] || 0) > 0) && fd >= A.range[0] && fd <= A.range[1] + bodyRadius(e) + (duel ? DINO_DUEL.spacing.reach : 0); });
       if (ready.length) { const id = ready[hashSeed(`${e.id}:prey-pick:${s.seq}`) % ready.length]; s.state = "attack"; s.last = id; beginAttack(e, s, id, w, focus); return true; }
     }
@@ -5113,6 +5117,7 @@ export function updatePackMonster(e, w) {
   if (e.kind === "spinoRex" && !e.aggro && spinoPreferred(e, w)) e.aggro = true; // it scents its prey before it sees you
   if (e.kind === "wildStego" && !e.aggro && stegoRivalNear(e, w)) e.aggro = true; // the dino duel: it rises to the Spinosaurus in sight
   if (e.kind === "pachy" && !e.aggro && pachyRivalNear(e, w)) e.aggro = true; // the dino duel
+  if (e.kind === "triceratops" && !friendlyTriceratops && !e.aggro && trikeRivalNear(e, w)) e.aggro = true; // a hostile wild Triceratops rises to a duel foe in sight
   if (e.kind === "earthApato" && !e.aggro && apatoRivalNear(e, w)) e.aggro = true; // the dino duel: it rises to the Spinosaurus or the Wild Stegosaurus in sight
   // game.ts VERTICAL_SEPARATION (Tim, 2026-11-26): with the Wayfarer far above (a great tree's crown), a creature that does not fly
   // (`e.farBelow`, set by the game each frame) loses interest: an attack under way ends (a leap, a teleport, a windup) and it
@@ -5135,6 +5140,7 @@ export function updatePackMonster(e, w) {
   if (def.adventureKin && advTick(e, s, w, p, d)) return;
   if (e.kind === "wildStego" && stegoTick(e, s, w, p, d)) return; // STEGO: its tail, water, climbing, hops, buck and infighting
   if (e.kind === "spinoRex" && spinoTick(e, s, w, p, d)) return; // SPINO: the fossil shed, its prey first, one-off jumps and grabs
+  if (e.kind === "triceratops" && !friendlyTriceratops && trikeDuelTick(e, s, w, p, d)) return; // its duels (trike-duel.ts)
   if (e.kind === "pachy" && pachyTick(e, s, w, p, d)) return; // PACHY: its hunger, its prey, its duel
   if (e.kind === "earthApato" && apatoTick(e, s, w, p, d)) return; // APATO: its turn, its hold, its duel
   if (def.duelistKin && duelHopStep(e, s, w)) return; // the Gaunt: a hop in flight always lands
@@ -5957,3 +5963,4 @@ installApatoKit({ bodyRadius, damageOf, toPhase, endAttack, beginAttack, rayLeng
 // The Pachycephalosaurus's module (pachy.ts) likewise.
 installPachyKit({ bodyRadius, damageOf, toPhase, endAttack, beginAttack, rayLength, duelReachPoint, cue: dinoCue, feeds: dinoFeeds, duelWinner, blowComing: dinoBlowComing, duelPair, prey: stegoPrey,
   woundRival: (w, source, q, amount, weight = 1) => stegoWoundRival(w, source, q, amount, weight), duelReach: DINO_DUEL.spacing.reach, duelGap: DINO_DUEL.spacing.gap, duelSlack: DINO_DUEL.spacing.slack });
+installTrikeKit({ bodyRadius, damageOf, toPhase, beginAttack, duelReachPoint, cue: dinoCue, duelWinner, blowComing: dinoBlowComing, duelPair, woundRival: (w, source, q, amount, weight = 1) => stegoWoundRival(w, source, q, amount, weight), duelReach: DINO_DUEL.spacing.reach, duelGap: DINO_DUEL.spacing.gap, duelSlack: DINO_DUEL.spacing.slack });

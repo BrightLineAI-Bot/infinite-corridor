@@ -127,7 +127,7 @@ function body(ctx, A, R, form, breathe) {
 function tail(ctx, A, R, V, t, form) {
   const sw = Math.sin(t * 1.6) * .03, lift = V.tail * .25, bone = form === "fossil", steel = form === "armor";
   const pts = [[-.3, .06, .14], [-.55, .06 + lift * .4 + sw, .1], [-.8, .05 + lift * .8 + sw * 2, .06], [-1.02, .05 + lift + sw * 3, .025], [-1.15, .05 + lift * 1.1 + sw * 3.5, .004]];
-  if (bone) { ctx.fillStyle = A.bone; for (let i = 0; i < 9; i++) { const s = i / 8, j = Math.min(3, Math.floor(s * 4)), a = pts[j], c = pts[j + 1], w = s * 4 - j, p = R(a[0] + (c[0] - a[0]) * w, a[1] + (c[1] - a[1]) * w); ctx.beginPath(); ctx.arc(p[0], p[1], .045 * (1 - s * .7), 0, TAU); ctx.fill(); } return; }
+  if (bone) { ctx.strokeStyle = A.boneShade; ctx.lineWidth = .025; ctx.beginPath(); let p0 = R(pts[0][0], pts[0][1]); ctx.moveTo(p0[0], p0[1]); for (const q of pts) P2(ctx, R(q[0], q[1])); ctx.stroke(); ctx.fillStyle = A.bone; for (let i = 0; i < 16; i++) { const s = i / 15, j = Math.min(3, Math.floor(s * 4)), a = pts[j], c = pts[j + 1], w = s * 4 - j, p = R(a[0] + (c[0] - a[0]) * w, a[1] + (c[1] - a[1]) * w); ctx.beginPath(); ctx.ellipse(p[0], p[1], .04 * (1 - s * .6), .05 * (1 - s * .6), 0, 0, TAU); ctx.fill(); } return; }
   ctx.fillStyle = steel ? A.steel : A.body; ctx.strokeStyle = steel ? A.seam : A.outline; ctx.lineWidth = .022;
   ctx.beginPath(); let p = R(pts[0][0], pts[0][1] + pts[0][2]); ctx.moveTo(p[0], p[1]); for (const q of pts) P2(ctx, R(q[0], q[1] + q[2])); for (let i = pts.length - 1; i >= 0; i--) P2(ctx, R(pts[i][0], pts[i][1] - pts[i][2])); ctx.closePath(); ctx.fill(); ctx.stroke();
   ctx.save(); ctx.clip(); ctx.fillStyle = steel ? A.steelDark : A.belly; ctx.globalAlpha = .55; ctx.beginPath(); p = R(-.3, pts[0][1] - .02); ctx.moveTo(p[0], p[1]); for (const q of pts) P2(ctx, R(q[0], q[1] - q[2] * .2)); for (let i = pts.length - 1; i >= 0; i--) P2(ctx, R(pts[i][0], pts[i][1] - .3)); ctx.fill(); ctx.restore();
@@ -135,7 +135,7 @@ function tail(ctx, A, R, V, t, form) {
   ctx.strokeStyle = A.stripe; ctx.lineWidth = .045; ctx.lineCap = "round"; ctx.beginPath(); p = R(pts[0][0], pts[0][1] + pts[0][2] * .85); ctx.moveTo(p[0], p[1]); for (const q of pts) P2(ctx, R(q[0], q[1] + q[2] * .7)); ctx.stroke();
 }
 function leg(ctx, A, side, ph, mv, V, hipH, R, form, far) {
-  const swing = Math.sin(ph + (side < 0 ? Math.PI : 0)) * .22 * mv, liftF = Math.max(0, Math.cos(ph + (side < 0 ? Math.PI : 0))) * .08 * mv;
+  const swing = Math.sin(ph + (side < 0 ? Math.PI : 0)) * .22 * mv + (far ? -.09 : .03), liftF = Math.max(0, Math.cos(ph + (side < 0 ? Math.PI : 0))) * .08 * mv;
   const kick = V.kick * side, tuck = V.tuck;
   const hip = R(-.02, -.02);
   const fxS = hip[0] + swing + Math.max(0, kick) * .55 - Math.max(0, -kick) * .15, footY = -(liftF + tuck * .32 + Math.max(0, kick) * .32);
@@ -180,7 +180,7 @@ function head(ctx, A, R, V, pitch, form, t, name) {
   if (!bone) { ctx.strokeStyle = A.stripe; ctx.lineWidth = .04; ctx.beginPath(); ctx.moveTo(...H(0, .26)); ctx.quadraticCurveTo(...H(-.16, .22), ...H(-.14, .06)); ctx.stroke(); }
   // the knobs ringing the dome (gray; as bone, bone)
   ctx.fillStyle = bone ? A.boneShade : steel ? A.rivet : A.knob; ctx.strokeStyle = bone ? A.boneDark : A.knobDark; ctx.lineWidth = .01;
-  for (let i = 0; i < A.knobs; i++) { const a = Math.PI * (1.05 + i / (A.knobs - 1) * .95), kp = [d[0] + Math.cos(a - ha) * .165, d[1] + Math.sin(a - ha) * .145 + .015]; ctx.beginPath(); ctx.arc(kp[0], kp[1], i % 2 ? .022 : .028, 0, TAU); ctx.fill(); ctx.stroke(); }
+  for (let i = 0; i < A.knobs; i++) { const a = Math.PI * (.5 + i / (A.knobs - 1) * .75) - ha, kp = [d[0] + Math.cos(a) * .17, d[1] + Math.sin(a) * .15]; /* round the back and base of the dome */ ctx.beginPath(); ctx.arc(kp[0], kp[1], i % 2 ? .022 : .028, 0, TAU); ctx.fill(); ctx.stroke(); }
   for (let i = 0; i < 3; i++) { const kp = H(.12 + i * .045, .05 - i * .01); ctx.beginPath(); ctx.arc(kp[0], kp[1], .016, 0, TAU); ctx.fill(); } // knobs down the snout
   // the eye (a visor band in the armor; embers in the fossil's socket)
   const ey = H(.06, .03);
