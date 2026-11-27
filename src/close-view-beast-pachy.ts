@@ -116,7 +116,7 @@ function legs(B, C, tier, form) {
   for (const L of LEGS) {
     const W = PACHY_SKELETON.bindWorld, t = BI[L.top] * 3, x = W[t], y = W[t + 1], z = W[t + 2], name = (c) => c === 'p' ? 'pelvis' : c === 't' ? L.top : c === 'm' ? L.mid : L.low;
     const rows = (low ? LEG.filter((_, i) => i % 2 === 0 || i === LEG.length - 1) : LEG).map(([u, rx, rz, a, b, w]) => bone ? [u, rx * .28, rz * .28, a, b, w] : [u, rx, rz, a, b, w]);
-    B.color(bone ? C.bone : steel ? C.steel : C.body).loft({ seg: G0.seg.leg[tier], up: [1, 0, 0], sections: (bone ? rows.slice(2) : rows).map(([u, rx, rz, a, b, w]) => ({ at: [x, y, z + u], rx, rz, bones: [name(a), name(b ?? a), w || 0] })),
+    B.color(bone ? C.bone : steel ? C.steel : C.body).loft({ seg: G0.seg.leg[tier], up: [1, 0, 0], sections: rows.map(([u, rx, rz, a, b, w]) => ({ at: [x, y, z + u], rx, rz, bones: [name(a), name(b ?? a), w || 0] })),
       tone: bone ? undefined : (i, k, st) => steel ? lerpHex(C.steel, C.steelDark, Math.max(0, -st) * .6) : lerpHex(lerpHex(C.body, C.belly, smooth(clamp01((.15 - st) / .9)) * .85), C.bodyDark, i / rows.length * .35) });
     if (bone) for (const n of [L.mid, L.low]) B.bone(n).color(C.boneShade).ellipsoid({ at: [0, 0, 0], radius: [.035, .035, .035], rings: 2, seg: 5 });
     if (steel) { // plating: a knee cap and a shin guard, the foot plated
