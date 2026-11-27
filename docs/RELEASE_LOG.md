@@ -15,13 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1085 (this merge, #PRNUM); production serves `r1080-888123c078ea` (Publish run 197, 46008629967, succeeded 2026-11-27; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1085 (this merge, #757); production serves `r1080-888123c078ea` (Publish run 197, 46008629967, succeeded 2026-11-27; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 1085 | Claude | claude/slimmer-saves / #PRNUM | Slimmer saves | Merged (#PRNUM); preview follows. |
+| 1085 | Claude | claude/slimmer-saves / #757 | Slimmer saves | Merged (#757); preview follows. |
 | 1084 | Claude | claude/close-view-indoors / #756 | Close View everywhere but dungeons | Merged (#756); preview follows. |
 | 1083 | Claude | claude/daily-region-1127 / #754 | The Great Ranges | Merged (#754); preview follows. |
 | 1082 | Claude | claude/female-sample-cost / #755 | Faster Wayfarer posing in Close View | Merged (#755); preview follows. |
