@@ -1270,3 +1270,17 @@ body.training-yard #provingGroundPanel,body.training-yard #pgIdentity{display:no
 body.reduce-motion .cr-diamond { transition: none; }
 body.reduce-motion .compass-ribbon.warm .cr-warm { animation: none; }
 body.proving-ground .compass-ribbon, body.viewport-closed .compass-ribbon { display: none; }
+/* The now-playing label (2026-11-27, soundtrack-director.ts NOW_PLAYING; main.ts showNowPlaying): a new song's title slides in
+   under the HUD (below Close View's compass ribbon), holds, slides out and fades. Under the HUD in the stack (an expanded HUD
+   covers it), clear of the compass column on the right and of the controls below; it never takes a touch. Reduce motion: still. */
+.now-playing { position: fixed; z-index: 3; top: max(var(--np-top, 0px), calc(env(safe-area-inset-top) + 80px)); left: calc(env(safe-area-inset-left) + 10px); display: flex; align-items: center; gap: 6px; max-width: calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right) - 110px); padding: 3px 10px 3px 8px; border: 1px solid #c89a5955; border-radius: 9px; background: #141714d4; color: #eadbb8; font: 600 .6875rem/1.35 ui-monospace, monospace; letter-spacing: .04em; text-shadow: 0 1px 2px #000; pointer-events: none; opacity: 0; transition: opacity var(--np-fade, .6s) ease; }
+.now-playing[hidden] { display: none; }
+.now-playing.visible { opacity: .94; }
+.now-playing .np-note { flex: none; color: #d8a75e; }
+.np-window { display: block; width: min(13.5rem, calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right) - 150px)); overflow: hidden; white-space: nowrap; -webkit-mask-image: linear-gradient(90deg, transparent, #000 6px, #000 calc(100% - 6px), transparent); mask-image: linear-gradient(90deg, transparent, #000 6px, #000 calc(100% - 6px), transparent); }
+.np-title { display: inline-block; }
+.now-playing.scrolling .np-title { animation: np-scroll var(--np-seconds, 8s) linear both; }
+@keyframes np-scroll { 0% { transform: translateX(var(--np-room, 200px)); } 28% { transform: translateX(0); } 64% { transform: translateX(min(0px, calc(var(--np-room, 200px) - var(--np-width, 0px)))); } 100% { transform: translateX(calc(-1 * var(--np-width, 200px))); } }
+body.reduce-motion .np-window { width: auto; max-width: min(13.5rem, calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right) - 150px)); text-overflow: ellipsis; -webkit-mask-image: none; mask-image: none; }
+body.reduce-motion .np-title { display: inline; animation: none !important; transform: none; }
+body.proving-ground .now-playing { display: none !important; }
