@@ -20,7 +20,7 @@ export function saveSettings(settings){const clean=normalizeSettings(settings);t
 export function effectiveQuality(settings,env={}){if(settings?.safeMode||settings?.quality==="low")return"low";if(settings?.quality&&settings.quality!=="auto")return settings.quality;const width=Number(env.width)||1280,height=Number(env.height)||800,memory=Number(env.deviceMemory)||4,cores=Number(env.hardwareConcurrency)||4;return Math.min(width,height)<500||memory<=3||cores<=3?"low":"balanced"}
 export { serializeSave, deserializeSave } from "./save-codec.ts";
 export function validateJourney(raw){try{if(!raw||typeof raw!=="object"||Array.isArray(raw))throw new Error("Save is not an object");const save=migrateSave(structuredClone(raw));if(!save.seed||!save.position||!Number.isFinite(Number(save.level)))throw new Error("Required journey fields are missing");return{health:"healthy",save,error:null}}catch(error){return{health:"damaged",save:null,error:String(error?.message||error)}}}
-export function journeyMetadata(raw,slot=1){if(!raw)return{slot,health:"empty",empty:true,name:`Journey ${slot}`,bytes:0};const checked=validateJourney(raw),source=checked.save||raw;let bytes=0;try{bytes=new Blob([JSON.stringify(raw)]).size}catch{}return{slot,health:checked.health,empty:false,error:checked.error,name:String(source.name||`Journey ${slot}`),seed:String(source.seed||"unknown"),level:Number(source.level)||1,location:source.position?.area==="dungeon"?"Dungeon":`${source.position?.rx||0}, ${source.position?.ry||0}`,updatedAt:Number(source.updatedAt)||0,explored:Object.keys(source.explored||{}).length,playSeconds:Math.max(0,Number(source.playSeconds)||0),bytes}}
+export function journeyMetadata(raw,slot=1){if(!raw)return{slot,health:"empty",empty:true,name:`Journey ${slot}`,bytes:0};const checked=validateJourney(raw),source=checked.save||raw;let bytes=0;try{bytes=new Blob([JSON.stringify(raw)]).size}catch{}return{slot,health:checked.health,empty:false,error:checked.error,name:String(source.name||`Journey ${slot}`),seed:String(source.seed||"unknown"),level:Number(source.level)||1,location:source.position?.area==="dungeon"?"Dungeon":`${source.position?.rx||0}, ${source.position?.ry||0}`,updatedAt:Number(source.updatedAt)||0,explored:Object.keys(source.explored||{}).length,playSeconds:Math.max(0,Number(source.playSeconds)||0),bytes,storedBytes:bytes}}
 // The Wayfarer tab's "Your journey" figures (release 387; Tim approved the suggestion "a short 'your journey so far' page in the
 // Wayfarer tab"). Read only from what the save already keeps; returns [label, value] rows.
 export function journeyStats(save){const n=(v)=>Math.max(0,Math.floor(Number(v)||0)),h=Math.max(0,Number(save?.playSeconds)||0)/3600,beasts=Object.values(save?.worldBeasts||{}).reduce((a,b)=>a+n(b?.slain),0),cleared=Object.values(save?.consequences?.dungeons||{}).filter((d)=>d?.resolved||d?.guardianDefeated).length,dug=Object.values(save?.digging?.dug||{}).reduce((a,l)=>a+(Array.isArray(l)?l.length:0),0);return[["Time played",`${h.toFixed(1)} h`],...(n(save?.theDeep?.record)?[["Deepest floor of the Deep",n(save.theDeep.record)]]:[]),/* release 677 */["Sections explored",n(Object.keys(save?.explored||{}).length)],["Dungeons cleared",cleared],["World bosses felled",beasts],["Listeners felled",n(save?.farArray?.listeners)],["Towns raised",n(save?.hometowns?.towns?.length)],["Blocks dug",dug]]}
@@ -70,7 +70,7 @@ export function splitSnapshot(snapshot, known = null) {
 export function assembleSave(main, records = new Map()) {
   const listed = main?.session?.[AREA_SPLIT]; if (!Array.isArray(listed)) return main;
   const areas = {}; for (const k of listed) if (records.has(k)) areas[k] = records.get(k);
-  const { [AREA_SPLIT]: _listed, [MAIN_STAMP]: _stamp, [AREA_SIZES]: _sizes, [PACKED_FROM]: _from, ...session } = main.session;
+  const { [AREA_SPLIT]: _listed, [MAIN_STAMP]: _stamp, [AREA_SIZES]: _sizes, [PACKED_FROM]: _from, [STORED_SIZE]: _stored, [MAIN_PARTS]: _parts, ...session } = main.session;
   return { ...main, session: { ...session, areas } };
 }
 // Slimmer saves (Tim, 2026-11-27: his 42-hour journey stores ~15 MB, 12 MB of it 1,825 area records, growing with every
@@ -151,6 +151,108 @@ export async function packAreas(entries, seed = "", P = PACKED_AREAS) {
   } catch {}
   return { pack: null, packed: [], refused: entries.map(([k]) => k) };
 }
+// Main-record split (Tim, 2026-11-27: "write only what changed"). Between whole writes the main record is stored as a delta,
+// but every SAVE_DELTA.everyMs it was written whole: 2.9 MB for Tim's journey, ~11 MB at ~5,000 sections, nearly all of it
+// six ever-growing collections. When a collection holds at least `minEntries` entries (or held half that and was already
+// split), a whole write stores it apart: a map's entries fall in `buckets` buckets by key (areaBucket) and a list's in
+// chunks of `chunk`, each bucket one record `${key}::part::<name>::<bucket>` written only when one of its entries' copies
+// changed (by identity: snapshotSave shares unchanged parts; a delta read back marks the buckets it edits in place). The
+// main record keeps null in the collection's place and, under session[MAIN_PARTS], each split collection's entry count
+// (and a map's next sequence number). A map entry carries its sequence number, so the map comes back in its key order;
+// an order the numbers cannot express (a key re-added in the middle) numbers the whole map again.
+// A bucket record is the area-pack codec over { e: [[key, seq, value], ...] } (deflated and checked exact), or that object
+// plain where it cannot be packed. Reading puts every collection back before the delta is applied, so the journey, the
+// listing, an export, the mirror and recovery copies are what they were; a bucket missing, unreadable, or not adding up
+// to the stored count fails the whole read (the slot is blocked, never written over). A split main record carries the
+// same PACKED_AREAS.storeVersion marker as packs, so older builds keep it as "saved by a newer release".
+export const MAIN_SPLIT = Object.freeze({ buckets: 32, chunk: 128, minEntries: 256, parts: Object.freeze([
+  Object.freeze({ name: "dungeons", path: Object.freeze(["consequences", "dungeons"]) }),
+  Object.freeze({ name: "atlas", path: Object.freeze(["atlas"]) }),
+  Object.freeze({ name: "kills", path: Object.freeze(["killLedger", "areas"]) }),
+  Object.freeze({ name: "journal", path: Object.freeze(["narrative", "journal"]), list: true }),
+  Object.freeze({ name: "awarded", path: Object.freeze(["perception", "awarded"]) }),
+  Object.freeze({ name: "flags", path: Object.freeze(["worldFlags"]) }),
+]) });
+export const MAIN_PARTS = "mainParts", STORED_SIZE = "storedSize";
+const partPrefix = (key) => `${key}::part::`;
+const partRange = (key) => IDBKeyRange.bound(partPrefix(key), partPrefix(key) + "￿");
+const partRecordKey = (key, name, b) => `${partPrefix(key)}${name}::${b}`;
+const partMemo = new Map();
+const partBucketOf = (k) => { let b = partMemo.get(k); if (b === undefined) { if (partMemo.size > 50000) partMemo.clear(); b = areaBucket(k, MAIN_SPLIT.buckets); partMemo.set(k, b); } return b; };
+const getIn = (o, path) => { for (const k of path) { if (!o || typeof o !== "object") return undefined; o = o[k]; } return o; };
+// withPath(o, path, v): o with v at path, copying (never editing) each object along it.
+const withPath = (o, path, v) => path.length ? { ...o, [path[0]]: withPath(o?.[path[0]], path.slice(1), v) } : v;
+const PART_TAG = "ic:partPack";
+// What can be split: a plain map without the pack tag, or a dense plain array; how many entries (stops counting at `cap`).
+function partCount(c, list, cap = Infinity) {
+  if (list) return Array.isArray(c) && Object.getPrototypeOf(c) === Array.prototype && Object.keys(c).length === c.length ? c.length : -1;
+  if (!isPlainObject(c)) return -1; let n = 0; for (const _k in c) if (++n >= cap) break; return n;
+}
+const partState = new Map(); // journey key -> Map name -> { next, seqOf, buckets: Map b -> { keys, refs, seqs }, sizes: Map b -> stored size, dirty: Set b }
+const freshPart = () => ({ next: 0, seqOf: new Map(), buckets: new Map(), sizes: new Map(), dirty: new Set() });
+function splitWanted(main, states) {
+  const out = new Map();
+  for (const P of MAIN_SPLIT.parts) { const c = getIn(main, P.path), was = !!states?.get(P.name)?.buckets.size, n = partCount(c, P.list, MAIN_SPLIT.minEntries); if (n >= MAIN_SPLIT.minEntries || (was && n >= MAIN_SPLIT.minEntries / 2)) out.set(P.name, c); }
+  return out;
+}
+// planParts: each split collection's buckets now, which changed since they were stored, and the main record without them.
+function planParts(main, wanted, states) {
+  const plans = []; let core = main; const meta = {};
+  for (const P of MAIN_SPLIT.parts) {
+    if (!wanted.has(P.name)) continue;
+    const c = wanted.get(P.name), st = states?.get(P.name) || freshPart(), now = new Map();
+    let seqOf = st.seqOf, next = st.next, renumbered = false;
+    if (P.list) { for (let i = 0; i < c.length; i++) { const b = Math.floor(i / MAIN_SPLIT.chunk); let e = now.get(b); if (!e) now.set(b, e = { keys: [], refs: [], seqs: [] }); e.keys.push(i); e.refs.push(c[i]); e.seqs.push(0); } }
+    else {
+      let last = -1, fresh = false; for (const k in c) { const q = seqOf.get(k); if (q === undefined) fresh = true; else if (fresh || q <= last) { renumbered = true; break; } else last = q; }
+      if (renumbered) { seqOf = new Map(); next = 0; }
+      const nextOf = new Map(); for (const k in c) { let q = seqOf.get(k); if (q === undefined) q = next++; nextOf.set(k, q); const b = partBucketOf(k); let e = now.get(b); if (!e) now.set(b, e = { keys: [], refs: [], seqs: [] }); e.keys.push(k); e.refs.push(c[k]); e.seqs.push(q); }
+      seqOf = nextOf;
+    }
+    const changed = []; for (const [b, e] of now) { const was = st.buckets.get(b); if (renumbered || st.dirty.has(b) || !was || was.keys.length !== e.keys.length || e.keys.some((k, i) => k !== was.keys[i] || !Object.is(e.refs[i], was.refs[i]) || e.seqs[i] !== was.seqs[i])) changed.push(b); }
+    plans.push({ P, now, changed, seqOf, next, sizes: new Map([...st.sizes].filter(([b]) => now.has(b))) });
+    meta[P.name] = P.list ? { count: c.length } : { count: now.size ? [...now.values()].reduce((n, e) => n + e.keys.length, 0) : 0, next };
+    core = withPath(core, P.path, null);
+  }
+  return { plans, core, meta };
+}
+async function partRecord(e, seed, urgent = false) { // an urgent (hide) save stores its buckets plain, so it is never held up
+  const value = { e: e.keys.map((k, i) => [k, e.seqs[i], e.refs[i]]) }, { pack } = urgent ? { pack: null } : await packAreas([["e", value]], seed);
+  return pack ? { [PART_TAG]: 1, pack } : { [PART_TAG]: 1, plain: value };
+}
+async function openPart(record) {
+  if (!record || typeof record !== "object" || record[PART_TAG] !== 1) throw new Error("A stored part of this journey is in a form this build cannot read. It has been kept unchanged.");
+  const value = record.pack ? (await unpackAreas(record.pack)).get("e") : record.plain;
+  if (!value || !Array.isArray(value.e)) throw new Error("A stored part of this journey is damaged. It has been kept unchanged.");
+  return value.e;
+}
+// Puts each split collection back into the main record read (records: Map partRecordKey -> record); returns the state the
+// next whole write compares with. Throws when a collection does not add up.
+async function assembleParts(key, main, records) {
+  const meta = main.session[MAIN_PARTS], states = new Map(), seed = String(main.seed ?? "");
+  for (const P of MAIN_SPLIT.parts) {
+    const m = meta[P.name]; if (!m) continue;
+    const pre = `${partPrefix(key)}${P.name}::`, mine = [...records].filter(([k]) => k.startsWith(pre)), st = freshPart();
+    const opened = await Promise.all(mine.map(([, r]) => openPart(r)));
+    const all = []; mine.forEach(([k, r], i) => { const b = Number(k.slice(pre.length)); st.sizes.set(b, r.pack ? r.pack.data.length : jsonLength(r.plain)); for (const q of opened[i]) all.push([q[0], q[1], q[2], b]); });
+    if (all.length !== m.count) throw new Error(`A stored part of this journey (${P.name}) is incomplete. It has been kept unchanged.`);
+    let c;
+    if (P.list) { c = new Array(m.count); const seen = new Set(); for (const [i, , v] of all) { if (!Number.isInteger(i) || i < 0 || i >= m.count || seen.has(i)) throw new Error(`A stored part of this journey (${P.name}) is damaged. It has been kept unchanged.`); seen.add(i); c[i] = v; } }
+    else { all.sort((a, b) => a[1] - b[1]); c = {}; for (const [k, q, v] of all) { if (own(c, k) || k === "__proto__") throw new Error(`A stored part of this journey (${P.name}) is damaged. It has been kept unchanged.`); c[k] = v; st.seqOf.set(k, q); } st.next = Number(m.next) || 0; }
+    for (const [k, q, v, b] of all) { let e = st.buckets.get(b); if (!e) st.buckets.set(b, e = { keys: [], refs: [], seqs: [] }); e.keys.push(k); e.refs.push(v); e.seqs.push(q); }
+    if (P.list) for (const e of st.buckets.values()) { const order = e.keys.map((_, i) => i).sort((x, y) => e.keys[x] - e.keys[y]); for (const f of ["keys", "refs", "seqs"]) e[f] = order.map((i) => e[f][i]); }
+    const parent = getIn(main, P.path.slice(0, -1)); if (!parent || typeof parent !== "object") throw new Error(`A stored part of this journey (${P.name}) has no place. It has been kept unchanged.`);
+    parent[P.path[P.path.length - 1]] = c; states.set(P.name, st);
+  }
+  delete main.session[MAIN_PARTS];
+  return states;
+}
+// A delta read back edits entries in place (a set below an entry, an append to an entry's list): their buckets are written
+// again by the next whole write.
+function markDeltaParts(states, ops) {
+  if (!states) return;
+  for (const [path, kind] of ops) { if (!Array.isArray(path)) continue; for (const P of MAIN_SPLIT.parts) { const st = states.get(P.name), d = P.path.length; if (!st || path.length <= d || !P.path.every((k, i) => path[i] === k)) continue; if (path.length > d + 1 || kind === "add") st.dirty.add(P.list ? Math.floor(Number(path[d]) / MAIN_SPLIT.chunk) : partBucketOf(String(path[d]))); } }
+}
 // Perf pack (P3, Tim's findings 4): the autosave copied the 3.9 MB main record twice every 8 s, once in snapshotSave and
 // once in IndexedDB's put (about 135 ms of CPU on this machine for Tim's save, 0.4-0.7 s on his phone).
 // (1) snapshotSave shares structure: each part of the journey that is unchanged since the last snapshot of the same save
@@ -229,6 +331,7 @@ function applyDelta(main, delta) {
   applyOps(main, Array.isArray(delta.ops) ? delta.ops : []);
   if (Array.isArray(delta.areas)) main.session[AREA_SPLIT] = delta.areas;
   if (delta.sizes && typeof delta.sizes === "object") main.session[AREA_SIZES] = delta.sizes;
+  if (delta.stored && typeof delta.stored === "object") main.session[STORED_SIZE] = delta.stored;
   return true;
 }
 // What each journey key holds in the database now (areaKey -> the copy written), so an autosave knows what changed.
@@ -259,7 +362,7 @@ const writeNow = (value) => urgentSnapshots.has(value) || globalThis.document?.h
 // Slimmer saves: what this page knows of each journey's stored areas (from its last write or read): which areas a pack
 // holds (areaKey -> bucket; every other listed area has a plain record), and whether the stored main record carries
 // PACKED_AREAS.storeVersion. Area copies that could not be packed are not tried again while unchanged.
-const packedIn = new Map(), gatedKeys = new Set(), unpackable = new WeakSet();
+const packedIn = new Map(), gatedKeys = new Set(), unpackable = new WeakSet(), packSizes = new Map(), coreSizes = new Map();
 // The buckets this write packs again (up to packsPerWrite, none for an urgent write): those holding an area stored plain
 // that this write leaves as it is. Each takes every listed area of its bucket this write does not put. An area under
 // minChars of JSON (a few small records, not worth the stream) stays plain unless its bucket's pack already holds it.
@@ -284,7 +387,7 @@ async function writeJourney(key, value) {
   // A pack replaces its bucket's last one, so it is written only when it holds every area that one still held.
   const packs = split && !urgent && canPackAreas() ? (await packBuckets(value, keys, putting, held, sizes)).filter((q) => q.pack && [...held].every(([k, b]) => b !== q.bucket || q.packed.includes(k))) : [];
   const packedNow = new Set(); for (const q of packs) for (const k of q.packed) { held.set(k, q.bucket); packedNow.add(k); }
-  const plainNow = new Set(keys.filter((k) => !held.has(k))), gate = held.size > 0;
+  const plainNow = new Set(keys.filter((k) => !held.has(k))), states = partState.get(key), wanted = split ? splitWanted(splitMain, states) : new Map(), gate = held.size > 0 || wanted.size > 0;
   const j = journals.get(key), now = Date.now();
   let ops = null, main = splitMain;
   if (split && j && sharedSnapshots.has(value) && sharedSnapshots.has(j.snapshot) && now - j.at < SAVE_DELTA.everyMs && (!gate || gatedKeys.has(key))) { // the first pack goes with a marked main record
@@ -293,6 +396,20 @@ async function writeJourney(key, value) {
   }
   const stamp = ops ? j.stamp : `${now.toString(36)}-${(++stampSeq).toString(36)}`;
   if (split && !ops) Object.assign(main.session, { [MAIN_STAMP]: stamp, [AREA_SIZES]: Object.fromEntries(sizes) });
+  // Main-record split: a whole write stores each split collection's changed buckets and leaves it out of the main record.
+  let plan = null, partPuts = [];
+  if (split && !ops && wanted.size) {
+    plan = planParts(main, wanted, states); main = plan.core; main.session[MAIN_PARTS] = plan.meta;
+    partPuts = (await Promise.all(plan.plans.flatMap((q) => q.changed.map(async (b) => [q, b, await partRecord(q.now.get(b), value.seed, urgent)])))).map(([q, b, r]) => { q.sizes.set(b, r.pack ? r.pack.data.length : jsonLength(r.plain)); return [partRecordKey(key, q.P.name, b), r]; });
+  }
+  // Stored size (what the journey takes in the database, compressed parts counted as stored), for the journey list.
+  const packBytes = packSizes.get(key) || new Map(); for (const q of packs) packBytes.set(q.bucket, q.pack.data.length);
+  const used = new Set(held.values()); for (const b of [...packBytes.keys()]) if (!used.has(b)) packBytes.delete(b);
+  let partBytes = 0; if (plan) { for (const q of plan.plans) for (const n of q.sizes.values()) partBytes += n; } else if (ops && states) { for (const st of states.values()) for (const n of st.sizes.values()) partBytes += n; }
+  let plainChars = 0; if (sizes) for (const k of plainNow) plainChars += Number(sizes.get(k)) || 0;
+  let packTotal = 0; for (const n of packBytes.values()) packTotal += n;
+  const deltaOps = ops ? [...ops.values()].map((q) => [q.path, q.kind, q.value]) : null, stored = { core: ops ? coreSizes.get(key) || 0 : 0, delta: deltaOps ? jsonLength(deltaOps) : 0, plain: plainChars, packs: packTotal, parts: partBytes };
+  if (split && !ops) { stored.core = jsonLength(main); main.session[STORED_SIZE] = stored; }
   if (split && !ops && gate) main = { ...main, version: PACKED_AREAS.storeVersion, session: { ...main.session, [PACKED_FROM]: main.version } };
   let queuedMs = 0;
   try {
@@ -300,7 +417,8 @@ async function writeJourney(key, value) {
       const t0 = performance.now();
       for (const [k, area] of puts) store.put(area, prefix + k);
       for (const q of packs) store.put(q.pack, packPrefix(key) + q.bucket);
-      if (ops) store.put({ base: stamp, areas: keys, sizes: Object.fromEntries(sizes), ops: [...ops.values()].map((q) => [q.path, q.kind, q.value]) }, deltaKey(key));
+      for (const [k, r] of partPuts) store.put(r, k);
+      if (ops) store.put({ base: stamp, areas: keys, sizes: Object.fromEntries(sizes), stored, ops: deltaOps }, deltaKey(key));
       else { store.put(main, key); store.delete(deltaKey(key)); }
       queuedMs = performance.now() - t0;
       // Perf spikes: the stale area records are known from the last write (or the load) of this journey, so a delta write
@@ -310,13 +428,15 @@ async function writeJourney(key, value) {
       // that hold nothing listed.
       const had = ops ? recordKeys.get(key) : null;
       if (had) { for (const k of had) if (!plainNow.has(k)) store.delete(prefix + k); for (const k of packedNow) store.delete(prefix + k); }
-      else { const used = new Set(held.values()), pre = packPrefix(key), stale = store.getAllKeys(IDBKeyRange.bound(`${key}::`, `${key}::￿`)); stale.onsuccess = () => { for (const k of stale.result) { const t = String(k); if (t.startsWith(prefix) ? !plainNow.has(t.slice(prefix.length)) : t.startsWith(pre) && !used.has(Number(t.slice(pre.length)))) store.delete(k); } }; }
+      else { const pre = packPrefix(key), partPre = partPrefix(key), parts = plan ? new Set(plan.plans.flatMap((q) => [...q.now.keys()].map((b) => partRecordKey(key, q.P.name, b)))) : new Set(), stale = store.getAllKeys(IDBKeyRange.bound(`${key}::`, `${key}::￿`)); stale.onsuccess = () => { for (const k of stale.result) { const t = String(k); if (t.startsWith(prefix) ? !plainNow.has(t.slice(prefix.length)) : t.startsWith(pre) ? !used.has(Number(t.slice(pre.length))) : t.startsWith(partPre) && !(ops ? true : parts.has(t))) store.delete(k); } }; }
     });
-  } catch (error) { journals.delete(key); recordKeys.delete(key); throw error; } // dbCall dropped the connection; the next write stores the main record whole (and sweeps)
+  } catch (error) { journals.delete(key); recordKeys.delete(key); partState.delete(key); throw error; } // dbCall dropped the connection; the next write stores the main record whole (and sweeps)
   storedAreas.set(key, new Map(keys.map((k) => [k, value.session.areas[k]])));
   if (split) recordKeys.set(key, [...plainNow]); else recordKeys.delete(key);
   if (split) packedIn.set(key, held); else packedIn.delete(key);
   if (!ops) { if (split && gate) gatedKeys.add(key); else gatedKeys.delete(key); } // a delta leaves the stored main record as it was
+  if (!ops) partState.set(key, new Map(plan ? plan.plans.map((q) => [q.P.name, { next: q.next, seqOf: q.seqOf, buckets: q.now, sizes: q.sizes, dirty: new Set() }]) : []));
+  packSizes.set(key, packBytes); if (!ops) coreSizes.set(key, stored.core);
   if (sizes) storedSizes.set(key, sizes); else storedSizes.delete(key);
   if (split) journals.set(key, { snapshot: value, stamp, ops: ops || new Map(), at: ops ? j.at : now }); else journals.delete(key);
   try { onWriteTiming?.({ ms: Math.round(queuedMs * 10) / 10, areas: puts.length, of: keys.length, delta: !!ops }); } catch {}
@@ -326,8 +446,17 @@ async function writeJourney(key, value) {
 // the mirror if healthy, else the slot is blocked); a main record is never taken alone while its delta may hold newer play.
 const readDeltas = new Map(); // journey key -> { stamp, ops } as last read: the base a loaded journey's next delta builds on
 async function readMain(key) {
-  const main = await read(key); if (!Array.isArray(main?.session?.[AREA_SPLIT])) { readDeltas.delete(key); return main; }
-  const stamp = main.session[MAIN_STAMP], delta = await read(deltaKey(key)), applied = applyDelta(main, delta);
+  let main = await read(key); if (!Array.isArray(main?.session?.[AREA_SPLIT])) { readDeltas.delete(key); return main; }
+  // Main-record split: a split main record is read again with its delta and parts in one transaction, and put together.
+  let delta, states = null;
+  if (main.session[MAIN_PARTS]) {
+    const [m, d, parts] = await dbCall("readonly", (store, finish, fail) => { const a = store.get(key), b = store.get(deltaKey(key)), ks = store.getAllKeys(partRange(key)), vs = store.getAll(partRange(key)); for (const q of [a, b, ks]) q.onerror = () => fail(q.error); vs.onerror = () => fail(vs.error); vs.onsuccess = () => finish([a.result, b.result, new Map((ks.result || []).map((k, i) => [String(k), vs.result[i]]))]); });
+    main = m; delta = d; if (!Array.isArray(main?.session?.[AREA_SPLIT])) { readDeltas.delete(key); return main; }
+    if (main.session[MAIN_PARTS]) states = await assembleParts(key, main, parts);
+  } else delta = await read(deltaKey(key));
+  partState.set(key, states || new Map()); coreSizes.set(key, Number(main.session[STORED_SIZE]?.core) || 0);
+  const stamp = main.session[MAIN_STAMP], applied = applyDelta(main, delta);
+  if (applied && Array.isArray(delta.ops)) markDeltaParts(states, delta.ops);
   readDeltas.set(key, { stamp, ops: applied && Array.isArray(delta.ops) ? delta.ops : [] });
   // Slimmer saves: the marker that keeps older builds off a journey with packed areas comes off here (one without the
   // journey's own version under it stays as it is, and so reads as damaged).
@@ -367,13 +496,13 @@ async function readJourney(key) {
   const buckets = gatedKeys.has(key) ? [...new Set(main.session[AREA_SPLIT].filter((k) => !records.has(k)).map(bucketOf))].filter((b) => packs.has(b) && !foreign(packs.get(b))) : []; // an unmarked main record (an older build's) has no packs of its own
   const opened = await Promise.all(buckets.map((b) => unpackAreas(packs.get(b))));
   for (let i = 0; i < buckets.length; i++) for (const [k, area] of opened[i]) if (!records.has(k) && bucketOf(k) === buckets[i]) { records.set(k, area); held.set(k, buckets[i]); }
-  packedIn.set(key, held);
+  packedIn.set(key, held); packSizes.set(key, new Map(buckets.map((b) => [b, packs.get(b).data.length])));
   const sizes = main.session[AREA_SIZES]; if (sizes && typeof sizes === "object") storedSizes.set(key, new Map(Object.entries(sizes).filter(([k, n]) => records.has(k) && Number.isFinite(n))));
   const save = assembleSave(main, records); assembled.add(save); return save;
 }
 async function removeJourney(key) {
-  try { await dbCall("readwrite", (store) => { store.delete(key); store.delete(deltaKey(key)); store.delete(areaRange(key)); store.delete(packRange(key)); }); }
-  finally { storedAreas.delete(key); storedSizes.delete(key); journals.delete(key); recordKeys.delete(key); packedIn.delete(key); gatedKeys.delete(key); } // after a failure too: the next write is whole and sweeps
+  try { await dbCall("readwrite", (store) => { store.delete(key); store.delete(deltaKey(key)); store.delete(areaRange(key)); store.delete(packRange(key)); store.delete(partRange(key)); }); }
+  finally { storedAreas.delete(key); storedSizes.delete(key); journals.delete(key); recordKeys.delete(key); packedIn.delete(key); gatedKeys.delete(key); partState.delete(key); packSizes.delete(key); coreSizes.delete(key); } // after a failure too: the next write is whole and sweeps
 }
 function remove(key){return dbCall("readwrite",(store)=>{store.delete(key)})}
 // Release 734 (S1): the mirror is returned as stored (not migrated), so a damaged or newer-version mirror reads as damaged,
@@ -468,7 +597,7 @@ export async function commitNewJourneyTransition({activeSlot,targetSlot,targetEm
 // A split journey is now listed from its main record (delta applied, areas not read) with a structural health check: a
 // plain object of a supported version with a seed, a position and a level. Loading still validates it in full, and a
 // slot that fails then is listed damaged (startFailed). Its size is the main record plus the stored areas' sizes.
-export function journeyListing(main,slot=1){if(!Array.isArray(main?.session?.[AREA_SPLIT]))return journeyMetadata(main,slot);const unsupported=unsupportedVersion(main),missing=!main.seed||!main.position||!Number.isFinite(Number(main.level)),error=unsupported||(missing?"Required journey fields are missing":null),sizes=main.session[AREA_SIZES];let bytes=0;try{bytes=JSON.stringify({...main,session:{...main.session,[AREA_SPLIT]:null,[AREA_SIZES]:null}}).length}catch{}if(sizes&&typeof sizes==="object")for(const n of Object.values(sizes))bytes+=Number(n)||0;return{slot,health:error?"damaged":"healthy",empty:false,error,name:String(main.name||`Journey ${slot}`),seed:String(main.seed||"unknown"),level:Number(main.level)||1,location:main.position?.area==="dungeon"?"Dungeon":`${main.position?.rx||0}, ${main.position?.ry||0}`,updatedAt:Number(main.updatedAt)||0,explored:Object.keys(main.explored||{}).length,playSeconds:Math.max(0,Number(main.playSeconds)||0),bytes}}
+export function journeyListing(main,slot=1){if(!Array.isArray(main?.session?.[AREA_SPLIT]))return journeyMetadata(main,slot);const unsupported=unsupportedVersion(main),missing=!main.seed||!main.position||!Number.isFinite(Number(main.level)),error=unsupported||(missing?"Required journey fields are missing":null),sizes=main.session[AREA_SIZES];let bytes=0;try{bytes=JSON.stringify({...main,session:{...main.session,[AREA_SPLIT]:null,[AREA_SIZES]:null,[STORED_SIZE]:null}}).length}catch{}if(sizes&&typeof sizes==="object")for(const n of Object.values(sizes))bytes+=Number(n)||0;const st=main.session[STORED_SIZE];let storedBytes=bytes;if(st&&typeof st==="object"){storedBytes=0;for(const n of Object.values(st))storedBytes+=Math.max(0,Number(n)||0)}/* slimmer saves: what the database holds (packs and parts compressed) */return{slot,health:error?"damaged":"healthy",empty:false,error,name:String(main.name||`Journey ${slot}`),seed:String(main.seed||"unknown"),level:Number(main.level)||1,location:main.position?.area==="dungeon"?"Dungeon":`${main.position?.rx||0}, ${main.position?.ry||0}`,updatedAt:Number(main.updatedAt)||0,explored:Object.keys(main.explored||{}).length,playSeconds:Math.max(0,Number(main.playSeconds)||0),bytes,storedBytes}}
 export async function listJourneySlots(){try{await migrateLegacy()}catch{}const out=[];for(let slot=1;slot<=SLOT_COUNT;slot++){let raw=null;try{raw=await readMain(slotKey(slot))}catch{}if(!raw)raw=mirrorRead(slot);const meta=journeyListing(raw,slot);if(startFailed.has(slot)&&!meta.empty)Object.assign(meta,{health:"damaged",error:startFailed.get(slot)});/* release 734 (S4) */out.push(meta)}return out}
 // A random seed for a new journey: the time and a random tail, so two journeys made together still differ.
 export function randomSeed(){let tail="";try{const a=new Uint32Array(2);crypto.getRandomValues(a);tail=a[0].toString(36)+a[1].toString(36)}catch{tail=Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2)}return`CORRIDOR-${Date.now().toString(36)}${tail.slice(0,6)}`.toUpperCase().slice(0,64)}
@@ -483,4 +612,7 @@ export async function deleteJourney(slot){const raw=await readJourney(slotKey(sl
 export async function exportJourney(slot){const raw=await readJourney(slotKey(slot));if(!raw)throw new Error("Journey slot is empty.");return JSON.stringify({format:"infinite-corridor-journey",formatVersion:1,slot,exportedAt:Date.now(),save:raw},null,2)}
 export async function importJourney(slot,text,replace=false){const bundle=JSON.parse(text),raw=bundle?.format==="infinite-corridor-journey"?bundle.save:bundle&&typeof bundle==="object"&&bundle.save&&typeof bundle.save==="object"&&"release" in bundle?bundle.save:bundle;/* release 623 (system audit): a diagnostics file carries the journey under .save; anything without a seed and version is not a journey */if(!raw||typeof raw!=="object"||typeof raw.seed!=="string"||!Number.isFinite(Number(raw.version)))throw new Error("That file is not a journey.");const valid=validateJourney(raw);if(valid.health!=="healthy")throw new Error(valid.error||"Import is damaged.");const current=await readJourney(slotKey(slot));if(current&&!replace)throw new Error("Choose an empty slot or explicitly replace this journey.");if(current)await snapshotRecovery(slot,current);replaced(slot);ensureProductionTriceratops(valid.save);valid.save.updatedAt=Date.now();await writeJourney(slotKey(slot),valid.save);mirrorWrite(slot,valid.save);return journeyMetadata(valid.save,slot)}
 export async function recoverJourney(slot){for(const index of[1,2]){const raw=await read(`recovery:${slot}:${index}`),valid=validateJourney(raw);if(valid.health==="healthy"){const damaged=await readJourney(slotKey(slot));if(damaged)await write(`damaged:${slot}:${Date.now()}`,damaged);replaced(slot);ensureProductionTriceratops(valid.save);valid.save.updatedAt=Date.now();await writeJourney(slotKey(slot),valid.save);mirrorWrite(slot,valid.save);return journeyMetadata(valid.save,slot)}}throw new Error("No healthy recovery snapshot is available.")}
-export async function storageReport(){const slots=await listJourneySlots();let estimate=null;try{estimate=await navigator.storage?.estimate?.()}catch{}return{slots,totalJourneyBytes:slots.reduce((n,q)=>n+q.bytes,0),usage:estimate?.usage||null,quota:estimate?.quota||null}}
+// Slimmer saves: sizes as the journey list and Options -> System show them (the journey as JSON, and what storage holds).
+export const sizeText=(n)=>{const v=Math.max(0,Number(n)||0);return v>=1048576?`${(v/1048576).toFixed(1)} MB`:`${Math.ceil(v/1024)} KB`};
+export function journeySizeText(meta){const json=Number(meta?.bytes)||0,stored=Number(meta?.storedBytes??json)||0;return Math.abs(stored-json)<Math.max(1024,json*.05)?sizeText(json):`${sizeText(json)} journey · ${sizeText(stored)} stored`}
+export async function storageReport(){const slots=await listJourneySlots();let estimate=null;try{estimate=await navigator.storage?.estimate?.()}catch{}return{slots,totalJourneyBytes:slots.reduce((n,q)=>n+q.bytes,0),totalStoredBytes:slots.reduce((n,q)=>n+(q.storedBytes??q.bytes),0),usage:estimate?.usage||null,quota:estimate?.quota||null}}

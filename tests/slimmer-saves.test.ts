@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { Game } from '../src/game.ts';
-import { packAreas, unpackAreas, areaBucket, PACKED_AREAS, PACKED_FROM, validateJourney, journeyListing } from '../src/persistence.ts';
+import { packAreas, unpackAreas, areaBucket, PACKED_AREAS, PACKED_FROM, MAIN_SPLIT, MAIN_PARTS, validateJourney, journeyListing, journeySizeText } from '../src/persistence.ts';
 
 // The same exactness the codec promises: key order, array length, Object.is on every leaf (undefined, NaN, -0 included).
 function exact(a, b, path = '') {
@@ -212,6 +212,114 @@ test('exact resume: a played journey saved into packs comes back as the same gam
   assert.ok(view(b) === view(a), 'the same game resumes');
 });
 
+// ---------------------------------------------------------------- the main-record split
+const partKeys = (ctl, slot = 1, name = '') => [...ctl.data.keys()].filter((k) => k.startsWith(`journey:${slot}::part::${name}`));
+// A journey whose six collections are large enough to split (areas small, so nothing is packed).
+function bigMain(seed) {
+  const s = freshSave(); s.seed = seed; s.session.areas = { 'overworld:1:0:g1': { enemies: [], objects: {} } }; s.atlas = {};
+  for (let i = 0; i < 400; i++) { s.atlas[`${i},${-i}`] = { terrain: 'glass', sites: [{ kind: 'dungeon', x: i % 30, y: 3 }], color: '#435351' }; s.worldFlags[`rest:${i},0:shrine`] = i % 3 ? true : i; s.perception.awarded[`site:overworld:${i}:0:g1:landmark-${i}`] = true; }
+  s.atlas['12'] = { terrain: 'numeric key' }; s.worldFlags.undef = undefined;
+  s.consequences.dungeons = Object.fromEntries(Array.from({ length: 300 }, (_, i) => [`dungeon:${seed}:g1:${i}:2:d-${i}`, { discovered: true, visits: i % 4, guardianDefeated: i % 5 === 0, discovery: { schema: 1, levels: {} } }]));
+  s.killLedger = { v: 1, areas: Object.fromEntries(Array.from({ length: 300 }, (_, i) => [`overworld:${i}:2:g1`, { k: [`glassMite-${i}-1`, `veilMoth-${i}-2`] }])) };
+  s.narrative.journal = Array.from({ length: 400 }, (_, i) => ({ recordId: `r${i}`, title: `Entry ${i}`, text: 'The beacon knew me before I arrived.' }));
+  return migrateSave(s);
+}
+const later = (ms) => { const real = Date.now; let off = 0; Date.now = () => real() + off; return { step: () => { off += ms; }, done: () => { Date.now = real; } }; };
+const sameJourney = (a, b) => exact({ ...a, updatedAt: 0 }, { ...b, updatedAt: 0 });
+
+test('large collections are stored apart in buckets; the main record keeps null and counts; the journey reads back exactly', async () => {
+  const ctl = fakeIdb(), P = await freshPersistence(); P.setActiveSlot(1);
+  const s = bigMain('SPLIT-MAIN'); await P.saveGame(s); await P.flushSaves();
+  const main = ctl.data.get('journey:1');
+  for (const { name, path } of MAIN_SPLIT.parts) { assert.equal(path.reduce((o, k) => o?.[k], main), null, name); assert.ok(partKeys(ctl, 1, name + '::').length > 0, name); }
+  assert.equal(main.session[MAIN_PARTS].atlas.count, 401); assert.equal(main.session[MAIN_PARTS].journal.count, 400);
+  assert.equal(main.version, PACKED_AREAS.storeVersion, 'a split main record carries the marker'); assert.ok(JSON.stringify(main).length < 20000, 'the main record is small');
+  const back = await (await freshPersistence()).loadSave();
+  assert.equal(sameJourney(back, migrateSave(structuredClone(s))), null);
+  assert.ok('undef' in back.worldFlags && back.worldFlags.undef === undefined);
+  assert.equal(exact(Object.keys(back.atlas), Object.keys(s.atlas)), null, 'key order, the numeric key first');
+  const listed = (await (await freshPersistence()).listJourneySlots())[0]; assert.equal(listed.health, 'healthy'); assert.ok(listed.storedBytes < listed.bytes / 2, `stored ${listed.storedBytes} < journey ${listed.bytes}`);
+  assert.match(journeySizeText(listed), /journey · .* stored/); assert.equal(journeySizeText({ bytes: 4096, storedBytes: 4096 }), '4 KB');
+});
+
+test('a whole write stores only the buckets whose entries changed; a key re-added in the middle keeps the order', async () => {
+  const ctl = fakeIdb(), P = await freshPersistence(), clock = later(SAVE_DELTA_MS + 1000); P.setActiveSlot(1);
+  try {
+    const s = bigMain('SPLIT-CHANGE'); await P.saveGame(s); await P.flushSaves();
+    const before = new Map(partKeys(ctl).map((k) => [k, ctl.data.get(k)]));
+    s.atlas['7,-7'].visited = 3; s.narrative.journal.push({ recordId: 'new', text: 'appended' }); delete s.worldFlags['rest:5,0:shrine'];
+    clock.step(); await P.saveGame(s, { urgent: true }); await P.flushSaves(); assert.equal(ctl.data.has('journey:1::delta'), false, 'a whole write');
+    const changed = partKeys(ctl).filter((k) => !before.has(k) || JSON.stringify(ctl.data.get(k)) !== JSON.stringify(before.get(k)));
+    assert.equal(changed.length, 3, `one bucket each for the atlas entry, the journal's last chunk and the flag (${changed})`);
+    assert.ok(changed.some((k) => k.endsWith(`journal::${Math.floor(400 / MAIN_SPLIT.chunk)}`)));
+    assert.ok(changed.every((k) => ctl.data.get(k).plain), 'an urgent (hide) save stores its buckets plain');
+    // A deleted key added again comes last, in the stored map as in the live one.
+    s.worldFlags['rest:5,0:shrine'] = 'back'; const first = Object.keys(s.atlas)[1], v = s.atlas[first]; delete s.atlas[first];
+    clock.step(); await P.saveGame(s); await P.flushSaves(); s.atlas[first] = v; clock.step(); await P.saveGame(s); await P.flushSaves();
+    const back = await (await freshPersistence()).loadSave();
+    assert.equal(exact(Object.keys(back.atlas), Object.keys(s.atlas)), null); assert.equal(exact(Object.keys(back.worldFlags), Object.keys(s.worldFlags)), null);
+    assert.equal(sameJourney(back, migrateSave(structuredClone(s))), null);
+  } finally { clock.done(); }
+});
+const SAVE_DELTA_MS = 120000;
+
+test('a map stored in another key order is numbered again (an import over the slot), and reads back in that order', async () => {
+  const ctl = fakeIdb(), P = await freshPersistence(); P.setActiveSlot(1);
+  const s = bigMain('SPLIT-ORDER'); await P.saveGame(s); await P.flushSaves();
+  const shuffled = JSON.parse(JSON.stringify(s)); shuffled.atlas = Object.fromEntries(Object.entries(shuffled.atlas).reverse()); shuffled.worldFlags = Object.fromEntries(Object.entries(shuffled.worldFlags).reverse());
+  await P.importJourney(1, JSON.stringify(shuffled), true);
+  const back = await (await freshPersistence()).loadSave();
+  assert.equal(exact(Object.keys(back.atlas), Object.keys(shuffled.atlas)), null); assert.equal(exact(Object.keys(back.worldFlags), Object.keys(shuffled.worldFlags)), null);
+  assert.ok(partKeys(ctl).length > 0);
+});
+
+test('after a boot, entries a delta edited in place are written by the next whole write (nothing is lost)', async () => {
+  const ctl = fakeIdb(), clock = later(SAVE_DELTA_MS + 1000);
+  try {
+    const P = await freshPersistence(); P.setActiveSlot(1); const s = bigMain('SPLIT-DELTA'); await P.saveGame(s); await P.flushSaves();
+    s.atlas['9,-9'].sites[0].x = 99; s.killLedger.areas['overworld:4:2:g1'].k.push('late-kill'); s.narrative.journal[3].text = 'edited';
+    await P.saveGame(s); await P.flushSaves(); assert.ok(ctl.data.has('journey:1::delta'), 'a delta write');
+    const Q = await freshPersistence(), loaded = await Q.loadSave(); assert.equal(loaded.atlas['9,-9'].sites[0].x, 99);
+    clock.step(); loaded.xp = 5; await Q.saveGame(loaded); await Q.flushSaves(); assert.equal(ctl.data.has('journey:1::delta'), false, 'a whole write after the boot');
+    const back = await (await freshPersistence()).loadSave();
+    assert.equal(back.atlas['9,-9'].sites[0].x, 99); assert.deepEqual(back.killLedger.areas['overworld:4:2:g1'].k.at(-1), 'late-kill'); assert.equal(back.narrative.journal[3].text, 'edited');
+    assert.equal(sameJourney(back, migrateSave(structuredClone(loaded))), null);
+  } finally { clock.done(); }
+});
+
+test('a collection that shrinks below half the threshold goes back into the main record and its buckets are removed', async () => {
+  const ctl = fakeIdb(), P = await freshPersistence(), clock = later(SAVE_DELTA_MS + 1000); P.setActiveSlot(1);
+  try {
+    const s = bigMain('SPLIT-SHRINK'); await P.saveGame(s); await P.flushSaves();
+    s.worldFlags = { kept: 1 }; clock.step(); await P.saveGame(s); await P.flushSaves();
+    assert.equal(partKeys(ctl, 1, 'flags::').length, 0); assert.deepEqual(ctl.data.get('journey:1').worldFlags, { kept: 1 });
+    assert.equal(sameJourney(await (await freshPersistence()).loadSave(), migrateSave(structuredClone(s))), null);
+  } finally { clock.done(); }
+});
+
+test('a missing, unreadable or foreign part blocks the slot and nothing is written; an older build sees a newer release', async () => {
+  for (const spoil of [(ctl, k) => ctl.data.delete(k), (ctl, k) => ctl.data.set(k, { junk: true }), (ctl, k) => { const r = ctl.data.get(k); ctl.data.set(k, r.pack ? { ...r, pack: { ...r.pack, codec: 'zz' } } : { ...r, plain: { e: 'x' } }); }]) {
+    const ctl = fakeIdb(), P = await freshPersistence(); P.setActiveSlot(1);
+    const s = bigMain('SPLIT-BAD'); await P.saveGame(s); await P.flushSaves(); ctl.ls.clear();
+    assert.match(journeyListing(structuredClone(ctl.data.get('journey:1')), 1).error, /newer release/);
+    spoil(ctl, partKeys(ctl, 1, 'kills::')[0]);
+    const before = new Map([...ctl.data].map(([k, v]) => [k, structuredClone(v)]));
+    const Q = await freshPersistence(), loaded = await Q.loadSave(); assert.notEqual(loaded.seed, 'SPLIT-BAD'); assert.match(Q.saveBlocked(1), /could not be read/);
+    await Q.saveGame(loaded); await Q.flushSaves().catch(() => {}); assert.deepEqual(new Map(ctl.data), before);
+  }
+});
+
+test('export, import, the mirror and a recovery copy carry the whole split journey', async () => {
+  const ctl = fakeIdb(), P = await freshPersistence(); P.setActiveSlot(1);
+  const s = bigMain('SPLIT-EXPORT'); await P.saveGame(s); await P.flushSaves();
+  const want = JSON.parse(JSON.stringify(migrateSave(structuredClone(s))));
+  const exported = JSON.parse(await P.exportJourney(1)).save; assert.deepEqual({ ...exported, updatedAt: 0 }, { ...want, updatedAt: 0 });
+  assert.deepEqual({ ...JSON.parse(ctl.ls.get('infinite-corridor:slot-mirror:1')), updatedAt: 0 }, { ...want, updatedAt: 0 }, 'the mirror is whole');
+  await P.importJourney(1, JSON.stringify(exported), true); assert.deepEqual(ctl.data.get('recovery:1:1').atlas, want.atlas, 'the recovery copy is whole');
+  assert.equal(sameJourney(await (await freshPersistence()).loadSave(), migrateSave(structuredClone(exported))), null);
+  await P.deleteJourney(1); assert.equal(partKeys(ctl).length, 0, 'parts go with the journey');
+});
+
 // ---------------------------------------------------------------- a real large journey (IC_BIG_SAVE)
 const BIG = process.env.IC_BIG_SAVE || '';
 test('a real large journey: packed losslessly, read back area by area, exported and imported, resumed as the same game', { skip: !BIG || !existsSync(BIG) ? 'set IC_BIG_SAVE to a diagnostics or exported journey file' : false, timeout: 600000 }, async () => {
@@ -231,6 +339,10 @@ test('a real large journey: packed losslessly, read back area by area, exported 
   await P.importJourney(2, JSON.stringify({ format: 'infinite-corridor-journey', formatVersion: 1, save: exported })); P.setActiveSlot(2);
   const again = await (await freshPersistence()).loadSave();
   for (const k of keys) assert.equal(JSON.stringify(again.session.areas[k]), JSON.stringify(original.session.areas[k]), `reimport ${k}`);
+  assert.equal(sameJourney(back, migrateSave(structuredClone(s))), null, 'the whole journey, main record included');
+  const main = ctl.data.get('journey:1'); console.log(`# big save: main record ${(JSON.stringify(main).length / 1e6).toFixed(2)} MB; ${partKeys(ctl).length} part records ${(partKeys(ctl).reduce((n, k) => { const r = ctl.data.get(k); return n + (r.pack ? r.pack.data.length : JSON.stringify(r.plain).length); }, 0) / 1e6).toFixed(2)} MB`);
+  const clock = later(SAVE_DELTA_MS + 1000); try { const Q = await freshPersistence(); Q.setActiveSlot(1); const again2 = await Q.loadSave(); again2.atlas['bench,1'] = { terrain: 'x' }; clock.step(); await Q.saveGame(again2); await Q.flushSaves(); assert.equal(ctl.data.has('journey:1::delta'), false);
+    assert.equal(sameJourney(await (await freshPersistence()).loadSave(), migrateSave(structuredClone(again2))), null, 'after a whole write'); } finally { clock.done(); }
   const view = (q) => { const x = q.exportSnapshot(3000); return JSON.stringify({ ...x, updatedAt: 0, session: { ...x.session, savedAt: 0 } }); };
   assert.ok(view(new Game(back, 2000)) === view(new Game(migrateSave(structuredClone(s)), 2000)), 'the same game resumes');
 });
