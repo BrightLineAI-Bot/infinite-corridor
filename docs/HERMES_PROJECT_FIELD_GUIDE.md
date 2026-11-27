@@ -67,10 +67,13 @@ Tim (2026-11-26), after the straight-on views of release 1078: make her thighs a
   - The body mesh grows in place, and every later mesh, the braid and the collar indices shift.
   - Her body is +132 vertices and +220 triangles: 3489 vertices (his 3602) and 3276 triangles of the 3328 cap (his 3170, unchanged). Every body edge is still shared by two triangles; the same six open edges as the source remain.
 - `HERO_FEMALE.sculpt.thigh` 1.12 → 1.05: thigh width at y .75 .141 → .133 (his .14); the thigh gap .059 → .064, still open.
-- `sculpt.glutes {y .93, up .12, down .12, x .07, sx .17, z -.08, back .08, depth .085, power 3}`: behind fitted z −.08, a dome `exp(−|t|³)` fullest at about hip-joint height. It is rounder on top than a gaussian, so the side reads as a dome rather than a wedge. It rises to just below the belt (never a shelf on the back) and curves under into a soft fold. It is fullest about each cheek, .84 on the centre line (a subtle cleft, as Tim asked), easing to the outer hip.
-  - Standing (idle), the buttocks are fullest at y .95 (−.275). The side silhouette turns at most 22° per .02 step (the angular .055/.095 tries on the source mesh: 59°). Chosen from six rendered passes (hips-shots/r6).
+- `sculpt.glutes {y .965, up .14, down .115, x .07, sx .17, z -.08, back .08, depth .07, power 3}`: behind fitted z −.08, a dome `exp(−|t|³)`, shaped to the side profile Tim traced (2026-11-27).
+  - One long convex arc starts right under the belt, is fullest about a third of the way down to the fold, and sweeps back in to a soft fold at the top of the back thigh.
+  - It is fullest about each cheek, .84 on the centre line (a subtle cleft), easing to the outer hip.
+  - Standing (idle), the buttocks are fullest at y .99 (−.281; pass 6 was .95). The side silhouette turns at most 22° per .02 step (the angular .055/.095 tries on the source mesh: 59°). Under the belt, his traced curve matches the render within 5.5 px at the 2× view (about 0.9 cm on the model).
+  - Pass 6 is kept on `claude/female-hips-pass6` (44387e21c).
 - `sculpt.waistDepth {y 1.24, sigma .11, back .05, backZ -.10, backSx .22, front .03, frontZ 0, frontSx .14, ease .08}`: a shift, not a squash, fitted y .91–1.57 only.
-  - `back` takes out the source's 5 cm bulge at the waist. With `back` 0 that bulge is a hump behind the line from the shoulder blades to the hips. With it, the standing back is straight from the blades to the buttocks, within 8 mm.
+  - `back` takes out the source's 5 cm bulge at the waist. With `back` 0 that bulge is a hump behind the line from the shoulder blades to the hips. With it, the standing back is straight from the blades to the buttocks, within 9 mm.
   - `front` draws the belly in by up to 3 cm. Waist depth at fitted y 1.26 is .394 → .323.
 - `sculpt.hips` out .026 → .03, sigma .13 → .14.
 - `sculpt.bust` depth .05 → .040, up .08 → .07, down .05 → .045, on the refined chest. Side bust area ahead of his chest is 11% less than release 1078, and the peak 10% less (4.1 → 3.7 cm).

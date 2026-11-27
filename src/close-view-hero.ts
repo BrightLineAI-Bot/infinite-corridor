@@ -24,14 +24,14 @@ export const HERO_FEMALE = Object.freeze({
     // (about his; 1.12 in release 1075, a little slimmer since Tim's 2026-11-26 follow-up); a gentle hip curve swells the
     // outside of the hip and upper thigh (`hips`, outward only; a little wider and smoother with the slimmer waist).
     thigh: 1.05, calf: .86, kneeY: .56, thighY: .82, hips: Object.freeze({ y: .98, sigma: .14, out: .03, edge: .06 }),
-    // Her buttocks (Tim, 2026-11-26: clearly rounder and noticeable from the side and the back, shapely and smooth, never
-    // angular; not exaggerated; tasteful, she's an armoured adventurer): behind fitted z `z` (easing in over `back`) the back
-    // of the hips swells back by `depth`, a dome exp(-|t|^power) fullest at `y` (about the hip joint; power 3 is rounder on
-    // top than a gaussian, so the side reads as a dome, not a wedge), rising to just below the belt (`up`: never a shelf on the
-    // back) and curving under (`down`) into the back of the thigh in a soft fold. Across x it is fullest about each cheek
-    // (`x`, `sx`): only a little less on the centre line (a subtle cleft) and easing toward the outer hip. On the refined mesh
-    // (HERO_FEMALE.refine) the swell is sampled finely enough to read round.
-    glutes: Object.freeze({ y: .93, up: .12, down: .12, x: .07, sx: .17, z: -.08, back: .08, depth: .085, power: 3 }),
+    // Her buttocks (Tim, 2026-11-26/27: clearly rounder and noticeable from the side and the back, shapely and smooth, never
+    // angular; not exaggerated; tasteful, she's an armoured adventurer; his traced side profile: one long convex arc from just
+    // under the belt, fullest about a third of the way down, sweeping in to the fold): behind fitted z `z` (easing in over
+    // `back`) the back of the hips swells back by `depth`, a dome exp(-|t|^power) fullest at `y`, its long upper side (`up`)
+    // starting right under the belt (the belt moves with it) and its rounder underside (`down`) curving into a soft fold. Across
+    // x it is fullest about each cheek (`x`, `sx`): only a little less on the centre line (a subtle cleft) and easing toward the
+    // outer hip. On the refined mesh (HERO_FEMALE.refine) the swell is sampled finely enough to read round.
+    glutes: Object.freeze({ y: .965, up: .14, down: .115, x: .07, sx: .17, z: -.08, back: .08, depth: .07, power: 3 }),
     // A slimmer waist front to back (Tim, 2026-11-26), with a straight back: the source back bulges about 5 cm behind the
     // line from the shoulder blades to the hips at the waist; `back` takes out just that, so the back reads straight (within
     // about 8 mm) down to the top of the buttocks, and `front` draws the belly in. About `y` (`sigma`) the back moves forward by

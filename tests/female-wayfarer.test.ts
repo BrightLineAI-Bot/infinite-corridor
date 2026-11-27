@@ -79,31 +79,32 @@ test('the female body is slimmer, with a smaller head, the same world height and
   for (const k of [12, 13, 14]) { assert.ok(Number.isFinite(ff.leftSocket[k])); assert.ok(Number.isFinite(ff.rightSocket[k])); }
 });
 
-test('rounder buttocks (Tim, 2026-11-26): smooth and round, fullest low, fuller below, a slight centre groove; the front, sides and belt kept', () => {
+test('rounder buttocks (Tim, 2026-11-27): one long convex arc from just under the belt, fullest a third of the way down, a subtle cleft; the front, sides and belt kept', () => {
   const S = HERO_FEMALE.sculpt, G = S.glutes, flat = { ...S, glutes: { ...G, depth: 0 } }, o = [0, 0, 0];
   const at = (sc, x, y, z) => sculptHeroPoint(sc, x, y, z, o).slice();
   const swell = (x, y, z) => at(flat, x, y, z)[2] - at(S, x, y, z)[2];
-  // clearly rounder, bounded: about 8 cm at the fullest in fitted space (release 1079's first swell 2.7 cm), never more than the parameter
-  const peak = swell(.088, .975, -.23);
-  assert.ok(peak > .07 && peak <= G.depth + 1e-9 && G.depth <= .10, `fullest ${peak.toFixed(4)}`);
-  // the side: fullest at about the hip joint, rising to just below the belt (never a shelf at it); a round dome (Tim, 2026-11-27:
-  // not pointy) that curves under into a soft fold
-  assert.ok(peak > swell(0, 1.057, -.28) * 3 && swell(.1, 1.18, -.26) < .002, 'fullest low; the belt line (fitted y 1.18 up) barely moves');
+  // clearly rounder, bounded: about 7 cm at the fullest in fitted space (release 1079's first swell 2.7 cm), never more than the parameter
+  const peak = swell(.088, G.y, -.23);
+  assert.ok(peak > .06 && peak <= G.depth + 1e-9 && G.depth <= .10, `fullest ${peak.toFixed(4)}`);
+  // the side (Tim's traced profile, 2026-11-27): the swell starts right under the belt and keeps rising (no straight or inward
+  // stretch), fullest about a third of the way down to the fold, a round dome that curves under into a soft fold
+  assert.ok(swell(.1, 1.10, -.26) > peak * .3 && swell(.1, 1.18, -.26) < .002, 'it starts right under the belt; the belt line (fitted y 1.18 up) barely moves');
+  for (let y = 1.15; y > G.y; y -= .01) assert.ok(swell(.1, y - .01, -.26) >= swell(.1, y, -.26), `rising from the belt to the crown (${y.toFixed(2)})`);
   const crown = swell(.1, G.y, -.2); assert.ok(swell(.1, G.y - .06, -.2) > crown * .75 && swell(.1, G.y + .06, -.2) > crown * .75 && swell(.1, G.y - .2, -.2) < crown * .1, 'a round dome, then under into the fold');
   for (let y = .45; y < 1.3; y += .005) assert.ok(swell(.1, y, -.2) >= 0, `never pulled forward (${y.toFixed(3)})`);
   assert.ok(Math.abs(swell(.1, .55, -.2)) < 1e-4, 'the back of the thigh toward the knee is untouched');
   // the back: two masses, a little less on the centre line (a slight groove), easing toward the outer hip
-  assert.ok(swell(0, .979, -.23) < peak * .9 && swell(0, .979, -.23) > peak * .6 && swell(.25, .975, -.2) < peak * .5, 'a slight centre groove; eased to the outer hip');
+  assert.ok(swell(0, G.y, -.23) < peak * .9 && swell(0, G.y, -.23) > peak * .6 && swell(.25, G.y, -.2) < peak * .5, 'a subtle centre cleft; eased to the outer hip');
   // only behind: the front, the outside of the hip and the thigh plates (in front of z -.06) are untouched; x and y never move
   for (const [x, y, z] of [[.1, .93, .1], [.25, .93, -.03], [.2, 1.0, -.055], [.1, 1.7, -.2], [.1, .5, -.2]]) assert.ok(Math.abs(swell(x, y, z)) < 1e-9, `${x} ${y} ${z}`);
   for (const [x, y, z] of [[.1, .93, -.2], [0, .9, -.25]]) { const a = at(S, x, y, z), b = at(flat, x, y, z); assert.equal(a[0], b[0]); assert.equal(a[1], b[1]); }
-  // standing (idle, posed): the side silhouette is fullest at about hip-joint height and round, with no sharp point: over .02
+  // standing (idle, posed): the side silhouette is fullest about a third of the way down from the belt and round, with no sharp point: over .02
   // steps it never turns more than 35 degrees (the .055/.095 versions, on the source mesh: about 59 degrees at the peak)
   const s = createHeroPoseState(female), V = s.vertices, I = female.arrays.indices, M = female.meta.meshes.find(m => m.name === 'RogueBody'); // the body only
   const back = (y, xl) => { let b = 1; for (let i = M.firstIndex; i < M.firstIndex + M.indexCount; i += 3) for (let e = 0; e < 3; e++) { const p = I[i + e] * 6, q = I[i + (e + 1) % 3] * 6, y0 = V[p + 1], y1 = V[q + 1];
     if ((y0 - y) * (y1 - y) > 0 || y0 === y1) continue; const t = (y - y0) / (y1 - y0); if (Math.abs(V[p] + (V[q] - V[p]) * t) < xl) b = Math.min(b, V[p + 2] + (V[q + 2] - V[p + 2]) * t); } return b; };
   let low = 1, lowY = 0; for (let y = .86; y < 1.02; y += .01) { const b = back(y, .16); if (b < low) { low = b; lowY = y; } }
-  assert.ok(lowY > .9 && lowY < .98 && low < -.27, `fullest at ${lowY.toFixed(2)} (${low.toFixed(3)})`);
+  assert.ok(lowY > .95 && lowY < 1.03 && low < -.27, `fullest at ${lowY.toFixed(2)} (${low.toFixed(3)}; pass 6 was .95)`);
   let turn = 0; for (let y = .8; y <= 1.1; y += .005) { const a1 = Math.atan2(back(y, .16) - back(y - .02, .16), .02), a2 = Math.atan2(back(y + .02, .16) - back(y, .16), .02); turn = Math.max(turn, Math.abs(a2 - a1) * 180 / Math.PI); }
   assert.ok(turn < 35, `round, no sharp point (${turn.toFixed(1)} degrees)`);
   // the back above stays straight from the shoulder blades to the top of the buttocks (no hollow, no hump; was a 5 cm hump at the waist)
@@ -132,7 +133,7 @@ test('a slimmer waist front to back (Tim, 2026-11-26): the belly drawn in, the b
   const back = (A, y0, y1) => band(A, y0, y1, Math.min, 1), front = (A, y0, y1) => band(A, y0, y1, Math.max, -1);
   // before (release 1079): small of the back -.293 (behind the backside's -.251), belly .118; his -.300 and .121
   assert.ok(back(P, 1.2, 1.4) > back(Q, 1.2, 1.4) + .03 && back(P, 1.2, 1.4) < back(Q, 1.2, 1.4) + .07, 'the small of the back drawn in a little');
-  assert.ok(back(P, .95, 1.0) < back(P, 1.2, 1.4) - .05, 'the buttocks well behind the waist');
+  assert.ok(back(P, .95, 1.0) < back(P, 1.2, 1.4) - .03, 'the buttocks well behind the waist');
   assert.ok(back(P, 1.2, 1.4) < back(P, 1.45, 1.65) - .02, 'and the back curves gently up to the shoulder blades');
   assert.ok(front(P, 1.1, 1.45) < front(Q, 1.1, 1.45) - .007 && front(P, 1.1, 1.45) > front(Q, 1.1, 1.45) - .035, 'the belly drawn in a little');
   assert.ok(front(P, 1.7, 1.85) > front(P, 1.1, 1.45) + .08, 'the bust still reads clearly above the waist');
