@@ -446,7 +446,7 @@ export function pachyAmbushSpawn(seed, rx, ry, V, open, size = 32) {
   const A = PACHY_AMBUSH; if (!(V >= 1)) return null;
   if (Math.abs(rx) + Math.abs(ry) < A.minDepth) return null;
   const key = `${seed}:pachy-ambush:v${V}:${rx}:${ry}`; if (hashSeed(key) % 1000 >= A.perThousand) return null;
-  for (let i = 0; i < A.tries; i++) { const h = hashSeed(`${key}:spot:${i}`), span = size - A.fromEdge * 2, x = A.fromEdge + (h % span), y = A.fromEdge + ((h >>> 9) % span); if (open(x, y)) return { id: `${key}`, kind: PACHY_KIND, x, y, boss: false, pachyAmbush: true, pachyDisguised: true }; }
+  for (let i = 0; i < A.tries; i++) { const h = hashSeed(`${key}:spot:${i}`), span = size - A.fromEdge * 2, x = A.fromEdge + (h % span), y = A.fromEdge + ((h >>> 9) % span); if (open(x, y)) return { id: `${key}:pachy`, kind: PACHY_KIND, x, y, boss: false, pachyAmbush: true, pachyDisguised: true }; }
   return null;
 }
 // save.pachy (additive at schema 14, normalised in freshSave and migrateSave): { v: 1, slain: [spawn ids] } — the Pachycephalosauruses

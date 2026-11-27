@@ -41,10 +41,10 @@ export function grantSlainEchoes(save) {
 // stegoRoomSpawn) to the beast; a journey that killed one before this release is caught up once from the lasting per-kill flag the
 // Game wrote for every rewarded kill (worldFlags `drop:v1:<area>:<enemy id>`, kept in the kill ledger now). A dino duel's eaten loser is never the Wayfarer's
 // (game.ts dinoEaten: noRewards), so it is never counted.
-export const ROOM_BEAST_KILL = { spinoRex: /:(spino-rex|spino)$/, wildStego: /:wild-stego$/, earthApato: /:earth-apato$/ };
+export const ROOM_BEAST_KILL = { spinoRex: /:(spino-rex|spino)$/, wildStego: /:wild-stego$/, earthApato: /:earth-apato$/, pachy: /:pachy$/ };
 export const ROOM_BEAST_IDS = Object.keys(ROOM_BEAST_KILL);
 const ROOM_BEAST_FIRST = ["spinoRex", "wildStego"]; // the record's first two ids, always written
-const roomBeastOf = (e) => e?.spinoRoom || e?.spinoInterloper ? "spinoRex" : e?.stegoRoom ? "wildStego" : e?.apatoRoom ? "earthApato" : null;
+const roomBeastOf = (e) => e?.spinoRoom || e?.spinoInterloper ? "spinoRex" : e?.stegoRoom ? "wildStego" : e?.apatoRoom ? "earthApato" : e?.pachyRoom || e?.pachyAmbush ? "pachy" : null;
 // `catchUp` false (freshSave) leaves the scan to the first load: a fresh save's defaults are merged under every loaded one, so a mark
 // set there would stand in for an old journey that never scanned.
 export function ensureRoomBeastSlain(save, catchUp = true) {
@@ -77,6 +77,11 @@ export const SPINO_ECHO = { delay: .32, share: .5, stunShare: 1 };
 // It stays where it was planted. When it ends, a new one can be planted `cooldown` ms later. Runtime only (game.earthResolve): a reload
 // drops the sigil; only its cooldown clock (player.echoResolveReadyAt) resumes, as the other Echo clocks do.
 export const APATO_ECHO = { still: .25, radius: 1.6, maxRadius: 4, grow: .2, seconds: 4, extend: .6, cap: 10, guard: .15, lifesteal: .08, cooldown: 4000 }; // Tim (2026-11-25): guard .25 → .15, lifesteal .1 → .08; the heal stays its own, outside the shared heal-on-hit cap
+// Dome Rush (the Pachycephalosaurus's Echo; Tim, 2026-11-27). After a dodge, the first blow you land within `window` ms is a dome
+// butt: it deals `share` more of that blow's damage, staggers the foe `stagger` s (bosses and elites `bossStagger` of it, as every
+// Wayfarer stagger; the stagger governor still holds) and knocks an ordinary foe back `push` tiles. Then none for `cooldown` ms.
+// Runtime only: its clocks are on the player (echoDomeUntil, echoDomeReadyAt), as the other Echo clocks are.
+export const PACHY_ECHO = { window: 1100, share: .45, stagger: .5, bossStagger: .3, push: 1.1, cooldown: 2500 };
 export const ECHOES = {
   thunderhorn: { name: "Thunderhorn's Charge", cost: 2, trigger: "dodge", module: "ramCharge", text: "Your dodge becomes a charge: foes you pass through are trampled and staggered." },
   riftLynx: { name: "Lynx Pounce", cost: 2, trigger: "dodge", module: "blinkStrike", text: "Your first strike within 1.2 s of a dodge deals +60%." },
@@ -128,6 +133,8 @@ export const ECHOES = {
   // The Earth Apatosaurus (APATO_ECHO above; game.ts earthResolve*). Taken as every world beast's is: certain on the first kill, or on load.
   earthApato: { name: "Earth Resolve", cost: 2, trigger: "still", module: "apatoSeeds",
     text: `Attack while standing still and a root sigil grows under you. Standing inside it you take ${Math.round(APATO_ECHO.guard * 100)}% less damage and heal ${Math.round(APATO_ECHO.lifesteal * 100)}% of the damage you deal; each hit you land from inside grows it and makes it last longer (at most ${APATO_ECHO.cap} s). It stays where it grew, and returns ${APATO_ECHO.cooldown / 1000} s after it fades.` },
+  pachy: { name: "Dome Rush", cost: 2, trigger: "dodge", module: "pachyDomeRam",
+    text: `After a dodge, your first blow within ${PACHY_ECHO.window / 1000} s is a dome butt: +${Math.round(PACHY_ECHO.share * 100)}% damage, a stagger and a knock back (then a ${PACHY_ECHO.cooldown / 1000} s rest).` },
   spinoRex: { name: "Spinosaur's Echo", cost: 2, trigger: "plunge", module: "spinoLeapSlam",
     text: `Your jump-attack slams echo: an afterimage of you slams the same ground ${SPINO_ECHO.delay} s later for ${Math.round(SPINO_ECHO.share * 100)}% of the damage.` },
 };
@@ -349,13 +356,14 @@ function emberBurst(game, now, at, damage) {
 }
 
 export function echoEvent(game, event, now, data = {}) {
-  if (event === "hit") return void echoHit(game, now, data.enemy, data.damage);
+  if (event === "hit") { domeRush(game, now, data.enemy, data.damage); return void echoHit(game, now, data.enemy, data.damage); }
   if (event === "spell") game.passiveCast?.(now); // hit-cast-passives.ts: Arcane Edge, Glyph Mine, Casting Wind, Echoing Cast (with or without Echoes set)
   const save = game.save, p = game.player, eq = activeEchoes(save), world = game.glyphWorld(now), dmg = echoDamage(save), me = centre(p);
   if (!eq.length) return;
   if (event === "dodge") {
     if (eq.includes("thunderhorn")) p.echoCharge = { until: p.dodgeUntil || now + 300, hit: {} };
     if (eq.includes("riftLynx")) p.echoPounceUntil = now + 1200;
+    if (eq.includes("pachy") && now >= (p.echoDomeReadyAt || 0)) p.echoDomeUntil = now + PACHY_ECHO.window; // Dome Rush
     if (eq.includes("briarStag")) { (game.echoPatches ||= []).push({ kind: "web", x: me.x, y: me.y, radius: 1.6, until: now + 3000, slow: .5 }); const foe = nearest(game, me.x, me.y, 3)[0]; if (foe) { world.arc(p, foe, "#9cff6a"); world.damage(foe, Math.round(dmg * .6)); } } // release 705
     if (eq.includes("pallidCrawler")) p.stamina = Math.min(save.maxStamina, p.stamina + 5);
     if (eq.includes("veilSpinner")) (game.echoPatches ||= []).push({ kind: "web", x: me.x, y: me.y, radius: 1.4, until: now + 3000, slow: .5 });
@@ -441,6 +449,19 @@ export function tickEchoes(game, dt, now, moving) {
   game.echoPatches = keep;
 }
 // Lynx Pounce: consumed by the next melee strike.
+// Dome Rush (PACHY_ECHO): the first blow after a dodge, inside its window, butts. True when it did.
+export function domeRush(game, now, enemy, damage) {
+  const p = game?.player, D = PACHY_ECHO;
+  if (!p || !enemy || enemy.dead || !(damage > 0) || !(now < (p.echoDomeUntil || 0)) || !hasEcho(game.save, "pachy")) return false;
+  p.echoDomeUntil = 0; p.echoDomeReadyAt = now + D.cooldown;
+  const extra = Math.max(1, Math.round(damage * D.share * (game.vulnScale?.(enemy, now) ?? 1))), before = Math.max(0, enemy.hp), big = !!(enemy.boss || enemy.eliteId || enemy.elite);
+  enemy.hp -= extra; enemy.hitFlash = .18; enemy.hitStun = Math.max(enemy.hitStun || 0, big ? D.stagger * D.bossStagger : D.stagger);
+  game.astralPlayerHit?.(enemy, Math.max(0, before - Math.max(0, enemy.hp)));
+  if (!big) { const c = centre(enemy), me = centre(p), dx = c.x - me.x, dy = c.y - me.y, m = Math.hypot(dx, dy) || 1; game.glyphWorld?.(now)?.nudge?.(enemy, dx / m * D.push, dy / m * D.push); }
+  (game.glyphVisuals ||= []).push({ kind: "burst", x: enemy.x + .5, y: enemy.y + .45, radius: .8, life: .3, max: .3 });
+  if (enemy.hp <= 0 && !enemy.dead) { enemy.dead = true; game.defeatEnemy?.(enemy); }
+  return true;
+}
 export function pounceBonus(game, now) {
   if (!hasEcho(game.save, "riftLynx") || now >= (game.player.echoPounceUntil || 0)) return 1;
   game.player.echoPounceUntil = 0;
