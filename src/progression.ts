@@ -259,7 +259,7 @@ const ECHO_HINTS = {
   crystalCrab: "Geode Shell: being hurt cracks off shards that strike back.", stalker: "Stalker's Mist: your dodge turns you to mist that drains foes.",
   graveLantern: "Lantern Stillness: stand still a moment and you mend.", wildStego: "Stegosaur's Grip: jump into a wall and hold on.",
   earthApato: "Earth Resolve: attack standing still and a root sigil grows under you.", spinoRex: "Spinosaur's Echo: your jump-attack slams echo.",
-  triceratops: "Triceratops Cunning: three hits on one foe and you gore it.",
+  triceratops: "Triceratops Chop: every third melee attack, two horn spikes chop down on your target.",
 };
 for (const [id, hint] of Object.entries(ECHO_HINTS)) {
   const parent = MINION_ECHOES[id] ? creatureOf(MINION_ECHOES[id]) : null, who = creatureOf(id), the = /^the /i.test(who) ? who.replace(/^The /, "the ") : `${/^[AEIOU]/.test(who) ? "an" : "a"} ${who}`;

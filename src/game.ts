@@ -99,7 +99,7 @@ import { generateItem, spellOpen, explorationGateOpen, primaryCarryKind, ORRERY_
 import { itemCap, upgradeLimit, upgradedItem, unlockRefinement, toolKey } from "./items.ts"; import { socketCount } from "./glyphs.ts"; // 2026-11-18: gearReadout
 import { SMITHY, paySalvage, salvagePaidText, salvageYieldMode, reforgeRoll, SPARE_GEAR_STATE } from "./smithy.ts"; // release 607: one salvage table; 2026-11-18: its yield (SALVAGE_YIELD)
 import { earthResolvePlant, earthResolveHit, tickEarthResolve } from "./echoes.ts"; // Earth Resolve, the Earth Apatosaurus's Echo
-import { echoEvent, tickEchoes, echoDrop, noteRoomBeastKill, pounceBonus, ECHOES, hasEcho, WALL_CLING, plungeAfterimage } from "./echoes.ts";
+import { echoEvent, tickEchoes, echoDrop, noteRoomBeastKill, pounceBonus, ECHOES, hasEcho, WALL_CLING, plungeAfterimage, chopSwing, TRICERATOPS_CHOP } from "./echoes.ts";
 import { skillMeleeBonus, skillReachBonus, riftStep, riftStepTo, riftStepReady, riftReachOf, RIFT_AIM, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, SANCTUARY, sanctuaryOn, altOn, ALT_PASSIVES, altChosen, aerialChargesNow, tickAerialCharges, aerialStepBlocked } from "./constellation.ts";
 import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.ts";
 import { RULES as MARGIN_RULES, MARGINALIA, EMBER_WAKE, RED_MARGIN, SECOND_WIND, SHADOW_STEP, HOURGLASS, INK_SHIELD, GILDED, marginBonus, marginRun, beginMarginRun, endMarginRun, runHas, wardenSpawns, wardenOffer, wardenPage, chooseMarginalia, pasteMarginalia, marginaliaOpen, marginCrossing, ensureMarginalia } from "./marginalia.ts";
@@ -4634,6 +4634,7 @@ export class Game {
       fatalFallPending: this._fatalFallPending === true,
       edgeHold: this.edgeHold && this.area === "overworld" ? { dx: this.edgeHold.dx, dy: this.edgeHold.dy, elapsed: Math.max(0, clock - this.edgeHold.at) } : null, // QA 926: the edge just crossed (EDGE_HOLD) holds as long after a reload
       springSoak: this.springSoak ? { ...this.springSoak } : null, // QA 926: the hot springs' play-second clocks (HOT_SPRINGS), so a reload resumes a soak exactly
+      chopSwings: Math.max(0, Math.min(TRICERATOPS_CHOP.every - 1, Math.floor(Number(p.chopSwings) || 0))), // Triceratops Chop: melee attacks counted toward the next spikes (additive, schema 14)
       // Exact resume of a jump in the air (found with TREE_GLIDE.home.reached): the height it left from and the sky-hop height it
       // holds; before, a jump off a great crown saved mid-air resumed at the ground's height and its fall (or freefall) was lost.
       jumpAir: clock < (this.jumpUntil || 0) && !this.droneLift ? { from: Number.isFinite(this.jumpFrom) ? this.jumpFrom : null, skyAir: Number.isFinite(this.skyAir) ? this.skyAir : null, scale: Number(this.skyAirScale) || null, dur: Number(this.jumpDur) || null, liftDrop: this.liftDrop === true, hopGap: this.skyHopGap === true, deckHop: this.deckHop === true, ...(this.keelLine ? { keel: { x: this.keelLine.x, y: this.keelLine.y } } : {}) } : null,
@@ -4824,6 +4825,7 @@ export class Game {
     const q = r.rite; if (q && typeof q === "object" && typeof q.key === "string" && /^-?\d+,-?\d+$/.test(q.key) && [q.elapsed, q.left, q.next].every((v) => Number.isFinite(Number(v))) && Number(q.left) > 0 && q.at && [q.at.x, q.at.y].every(Number.isFinite))
       this.rite = { key: q.key, at: { x: q.at.x, y: q.at.y }, started: now - Math.max(0, Number(q.elapsed)), until: now + Number(q.left), nextAt: now + Math.max(0, Number(q.next)), n: Math.max(0, Math.floor(Number(q.n) || 0)) };
     for (const k of ["sailVx", "sailVy"]) if (Number.isFinite(Number(r[k]))) p[k] = Number(r[k]);
+    { const n = Math.floor(Number(r.chopSwings)); if (n > 0 && n < TRICERATOPS_CHOP.every) p.chopSwings = n; } // Triceratops Chop's count (echoes.ts); anything else starts at 0
     if (Number.isFinite(Number(r.poisonSoak))) this.poisonSoak = Math.max(0, Number(r.poisonSoak));
     if (Number.isFinite(Number(r.raftZ))) this.raftZ = Number(r.raftZ);
     if (r.swimming === true) { this.swimming = true; if (typeof r.swimKind === "string") this.swimKind = r.swimKind; }
@@ -9941,7 +9943,7 @@ export class Game {
       this.recordPrimaryConsequences(hits);
       return{released:true,cancelled:false,hits};
     }
-    if(q.payload.kind==='fist'){const src=q.payload.effect,out=src.kind==='fist-kick'?0:.7/* the kick spins round her */,at={x:this.player.x+.5+q.aim.x*out,y:this.player.y+.45+q.aim.y*out},fx={...src,x:at.x,y:at.y,hits:{},pulseIndex:0,untilPulse:0,toolUseNewborn:true},landed=this.enemies.some(e=>!e.dead&&!e.untargetable&&!e.hidden&&Math.hypot(e.x+.5-at.x,e.y+.45-at.y)<=fx.radius+Math.max(0,enemyBodyRadius(e)-.38));this.effects.push(fx);if(this.fistCombo?.step===q.payload.step&&Array.isArray(this.fistCombo.landed))this.fistCombo.landed[this.fistCombo.landed.length-1]=landed;if(q.payload.cloneEligible)this.cloneSwing({...BRAWLER_ECHO.cloneArc,damage:Number(q.payload.cloneDamage)||1},q.aim,now);return{released:true,cancelled:false};}
+    if(q.payload.kind==='fist'){const src=q.payload.effect,out=src.kind==='fist-kick'?0:.7/* the kick spins round her */,at={x:this.player.x+.5+q.aim.x*out,y:this.player.y+.45+q.aim.y*out},fx={...src,x:at.x,y:at.y,hits:{},pulseIndex:0,untilPulse:0,toolUseNewborn:true},landed=this.enemies.some(e=>!e.dead&&!e.untargetable&&!e.hidden&&Math.hypot(e.x+.5-at.x,e.y+.45-at.y)<=fx.radius+Math.max(0,enemyBodyRadius(e)-.38));this.effects.push(fx);this.fistChop(fx,q.aim,now);if(this.fistCombo?.step===q.payload.step&&Array.isArray(this.fistCombo.landed))this.fistCombo.landed[this.fistCombo.landed.length-1]=landed;if(q.payload.cloneEligible)this.cloneSwing({...BRAWLER_ECHO.cloneArc,damage:Number(q.payload.cloneDamage)||1},q.aim,now);return{released:true,cancelled:false};}
     return{released:false,cancelled:true};
   }
   clearAttackBuffer() { this.attackBufferUntil = 0; this.attackBufferToolUse=false; this.attackBufferHoldOnly=false; }
@@ -10022,10 +10024,13 @@ export class Game {
     const cutShare = daggers ? FOURFOLD_DAGGERS.share : swingCall ? swingCall.share : Number(profile.share) || 1; // a swing step's share (melee-swing.ts PRIMARY_SWINGS); a plain swing's, its profile's (items.ts PRIMARY_PROFILES: the Salvage Blade's Focus boost)
     const contact = !swingCall || swingCall.contact, extra = swingCall ? PRIMARY_SWINGS[swingCall.kind].extraShare : 1; // once per swing: the Shadow Clone, the Echo, the awakened move (the Echo and the Clone scaled by the slower swing's cadence; the awakened move, every third swing, keeps its own weight)
     const pounce = isEcho || followCut || !hits.some((q) => !unharmablePerson(q)) ? 1 : pounceBonus(this, now);
+    // The swing's physical damage on each foe it strikes (foe-independent until the Nanobot's scatter and the glyphs), before the
+    // Wayfarer's damage scale; Triceratops Chop's spikes take their share of it (echoes.ts TRICERATOPS_CHOP).
+    const swingBoxing = committed?committed.boxing:(now < (this.boxingUntil || 0) ? BRAWLER["shadow-boxing"] : null), swingBase = (profile.damage + (committed?Number(committed.meleeBonus)||0:this.weaponBonus())) * (1 + (committed?Number(committed.attackDamage)||0:armorGlyphBonus(this.save).attackDamage)) * (isEcho ? echo.share : 1) * cutShare * pounce * (1 + (swingBoxing?.damage || 0)) * ((committed?committed.spellblade:this.spellbladeOn(now)) ? 1 + FIELD_PASSIVES.spellblade.damage : 1); /* release 515: Spellblade */ /* release 485: Shadow Boxing */ /* release 335: armor Volatile */
     for (const e of hits) {
       if (unharmablePerson(e)) continue; // Tim (2026-11-20): townsfolk cannot be harmed
       alertEnemy(e);
-      const boxing = committed?committed.boxing:(now < (this.boxingUntil || 0) ? BRAWLER["shadow-boxing"] : null), base = (profile.damage + (committed?Number(committed.meleeBonus)||0:this.weaponBonus())) * (1 + (committed?Number(committed.attackDamage)||0:armorGlyphBonus(this.save).attackDamage)) * (isEcho ? echo.share : 1) * cutShare * pounce * (1 + (boxing?.damage || 0)) * ((committed?committed.spellblade:this.spellbladeOn(now)) ? 1 + FIELD_PASSIVES.spellblade.damage : 1), /* release 515: Spellblade */ /* release 485: Shadow Boxing */ /* release 335: armor Volatile */ scattered = this.scatterCheck(e, true, glyphsReachSwarm(glyphs), now), dealt = scattered ? 0 : glyphDamage(glyphs, e, base, { echo: isEcho }, now); // release 245: plain steel scatters the Nanobot Knight
+      const boxing = swingBoxing, base = swingBase, scattered = this.scatterCheck(e, true, glyphsReachSwarm(glyphs), now), dealt = scattered ? 0 : glyphDamage(glyphs, e, base, { echo: isEcho }, now); // release 245: plain steel scatters the Nanobot Knight
       const imbued = scattered ? 0 : Math.round((committed?Number(committed.imbue)||0:this.imbueBonus(now)) * (isEcho ? echo.share : 1) * cutShare), hpBefore = Math.max(0,e.hp); // Imbue Weapon: the magic share of the hit
       e.hp -= wayfarerDamage(dealt + imbued); // Tim 2026-11-11 (WAYFARER_DAMAGE); Shadow Boxing's heal and the glyphs keep `dealt`
       if (imbued > 0) imbueSpark(this, e.x + .5, e.y + .45, now);
@@ -10044,6 +10049,7 @@ export class Game {
       glyphHit(this.glyphWorld(now), glyphs, e, dealt, { echo: isEcho });
       if (!isEcho && !scattered) this.bellToll(e, dealt + imbued, now); // 2026-11-11: Bell Toll
     }
+    if (!isEcho && !followCut && contact) { let struck = null; for (const e of hits) if (!unharmablePerson(e) && !e.dead) { struck = e; break; } chopSwing(this, now, struck, swingBase, geometry.dx, geometry.dy); } // Triceratops Chop: once a swing, at its contact (echoes.ts)
     if (daggers && !followCut) (this.glyphTimers ||= []).push({ at: now + FOURFOLD_DAGGERS.gapMs, kind: "daggerCut", aim: { x: geometry.dx, y: geometry.dy }, share: isEcho ? echo.share : 1, echoed: isEcho, areaId: this.areaId() }); // the second cut ("//")
     if (!isEcho && !followCut && contact) this.cloneSwing(profile, { x: geometry.dx, y: geometry.dy }, now, extra); // release 365: the Shadow Clone swings too
     // Awakened primary: every third swing releases the weapon's own awakened move (awakened-arts.ts: Fissure, Returning blades,
@@ -10213,6 +10219,24 @@ export class Game {
   artBlocked(now = this.lastUpdateNow || 0) { return !(this.player.hp > 0) || this.cursed("attack", now) || this.penned(now) || this.plungeBlocked() || (!!this.fall && !this.aerialHeld()) || !!this.fallen || !!this.plunge || now < (this.plungeRecoverUntil || 0); }
   artOpen(x, y) { return this.quandrixOpen(x, y); }
   artAim(direction = null) { return this.quandrixAim(direction || this.player.meleeAim || this.save.lastAim); } // a manual aim, the lock, the stick, else auto aim
+  // An Iron Fists step at its contact counts toward Triceratops Chop (echoes.ts): the foe nearest the blow that it reaches, and the
+  // punch's power before the Wayfarer's damage scale.
+  fistChop(fx, aim, now) {
+    let foe = null, best = Infinity;
+    for (const e of this.enemies) { if (e.dead || e.untargetable || e.hidden || unharmablePerson(e)) continue; const d = Math.hypot(e.x + .5 - fx.x, e.y + .45 - fx.y); if (d <= fx.radius + Math.max(0, enemyBodyRadius(e) - .38) && d < best) { best = d; foe = e; } }
+    return chopSwing(this, now, foe, Number(fx.damage) || 0, Number(aim?.x) || 0, Number(aim?.y) || 0);
+  }
+  // A Triceratops Chop spike (echoes.ts TRICERATOPS_CHOP): `amount` physical damage before the Wayfarer's damage scale, through it
+  // like any blow (Tempo's window; plain horn scatters the Nanobot Knight), with kill credit. Never a hit: no landHit, glyphs,
+  // frenzy blow or Tesseract heal, so it feeds no on-hit effect and nothing chains. Returns the health it took.
+  chopBlow(e, amount, now = this.lastUpdateNow || 0) {
+    if (!e || e.dead || e.untargetable || unharmablePerson(e) || !(amount > 0)) return 0;
+    alertEnemy(e); if (this.scatterCheck(e, true, false, now)) return 0;
+    const C = TRICERATOPS_CHOP, hpBefore = Math.max(0, e.hp); e.hp -= wayfarerDamage(Math.max(1, Math.round(amount * vulnScale(e, now))));
+    const actual = Math.max(0, hpBefore - Math.max(0, e.hp)); e.hitFlash = .18; e.hitStun = Math.max(e.hitStun || 0, e.boss || e.eliteId ? C.bossStun : C.stun);
+    if (e.hp <= 0 && !e.dead) { e.dead = true; this.defeatEnemy(e); }
+    this.astralPlayerHit(e, actual); return actual;
+  }
   // One blow of an art: the weapon's own glyphs, through the Wayfarer's damage scale; a foe that holds its ground is never knocked.
   artBlow(e, amount, now, stun = 0, x = e.x + .5, y = e.y + .45, knock = 0) {
     if (!e || e.dead || e.untargetable || !(amount > 0)) return 0;
@@ -12460,7 +12484,7 @@ export class Game {
     const effect={ id: `fist-${(this.save.effectCounter = (this.save.effectCounter || 0) + 1)}`, kind: kick ? "fist-kick" : step === 3 ? "fist-uppercut" : "iron-fist", brawler: true, x: at.x, y: at.y, life: step >= 3 ? .3 : .25, radius, pulse: 99, untilPulse: 0, damage: Math.max(1, Math.round(this.fistPower() * ((rhythm ? P.share * F.beatShare : (P.share + (P.chargeShare || 0) * full) * (perfect ? F.perfectShare : 1) * (onBeat ? F.beatShare : 1)) * (finisher ? F.finisher : 1) + (rhythm ? F.rhythmBonus : 0)) * (1 + (boxing?.damage || 0)))), pulseIndex: 0, hits: {}, glyphHost: "melee", healShare: boxing?.heal || 0, imbue: this.imbueBonus(now), stun: finisher ? F.finisherStun : Math.max(P.stun || 0, .3 * full), finisher: !!finisher, ...(onBeat ? { onBeat: true } : {}) };
     if (full > 0 || perfect) effect.rr = chargedRelease(this); // Rapid Reload: a charged (or perfect) punch is a charged release
     const delayed=this.attackAction==='attack'||this._fistInputUpdate===true; // Tim 2026-11-14: the Close View interior contact delay, in every area and both views
-    if(!delayed)this.effects.push(effect);
+    if(!delayed){this.effects.push(effect);this.fistChop(effect,d,now);}
     if (step === 1) this.save.fistOpeningHand = fistLead; // kept for older readers: always the right now
     this.fistCombo = { step, until: now + F.window * 1000, landed: [...before, delayed ? false : landed], lead: fistLead, level: fistCalloutLevel(perfect, onBeat) /* the HUD status meter (FIST_CALLOUT): presentation only */ }; // the chain loops: after the last step the cross comes next
     this.fistRecoverUntil = Math.max(this.fistRecoverUntil || 0, now + F.gate * 1000); this.fistQueued = null;
