@@ -70,8 +70,86 @@ export function splitSnapshot(snapshot, known = null) {
 export function assembleSave(main, records = new Map()) {
   const listed = main?.session?.[AREA_SPLIT]; if (!Array.isArray(listed)) return main;
   const areas = {}; for (const k of listed) if (records.has(k)) areas[k] = records.get(k);
-  const { [AREA_SPLIT]: _listed, [MAIN_STAMP]: _stamp, [AREA_SIZES]: _sizes, ...session } = main.session;
+  const { [AREA_SPLIT]: _listed, [MAIN_STAMP]: _stamp, [AREA_SIZES]: _sizes, [PACKED_FROM]: _from, ...session } = main.session;
   return { ...main, session: { ...session, areas } };
+}
+// Slimmer saves (Tim, 2026-11-27: his 42-hour journey stores ~15 MB, 12 MB of it 1,825 area records, growing with every
+// section, and each boot reads them all). Areas the Wayfarer has left are stored in packs: each area key falls in one of
+// PACKED_AREAS.buckets buckets (areaBucket, pinned by the format), and a bucket's areas are kept together as their JSON,
+// deflated by the browser's CompressionStream, in one record `${key}::pack::<bucket>`. Tim's areas: 10.9 MB of records
+// become ~1.3 MB in 256 packs.
+// Lossless by construction, not by trust: an area goes into a pack only when JSON can carry it exactly (plain objects and
+// dense arrays; undefined, NaN, the infinities and -0 travel as a list of their paths), and a pack is written only when
+// unpacking it gives back every area with the same keys in the same order and every value (Object.is). Anything else
+// stays a plain record, as before. Reading unpacks, so the journey in memory, an export, a recovery copy and the mirror
+// are exactly what they were.
+// Which records hold an area: an area written by this save (it changed: the one the Wayfarer is in changes every save) is
+// a plain record, as before (a cheap copy, no stream). A later write that finds it unchanged packs its bucket, up to
+// `packsPerWrite` buckets a write, so a journey stored before this is packed over a few minutes of play, never in one
+// long write. A plain record wins over a pack's copy of the same area (an area written plain after it was packed); a
+// bucket packed again drops such copies. The save made as the page hides (urgent) packs nothing, so it is never held up.
+// Older builds cannot read packs, so a main record whose journey has any is stored with `version` PACKED_AREAS.storeVersion
+// (the journey's own under session[PACKED_FROM]): an older build lists and keeps it as "saved by a newer release" and
+// never writes over it (release 734), where it would otherwise read those areas as missing. The schema stays 14: only
+// the stored main record carries the marker, and reading takes it off. A pack this build cannot read (unknown format or
+// codec, a failed checksum) fails the whole read, like a delta that cannot be read: the slot is blocked, never written over.
+export const PACKED_AREAS = Object.freeze({ tag: "ic:areaPack", format: 1, codec: "deflate", buckets: 256, storeVersion: 1014, packsPerWrite: 8, minChars: 1024 });
+export const PACKED_FROM = "packedFrom";
+const packPrefix = (key) => `${key}::pack::`;
+const packRange = (key) => IDBKeyRange.bound(packPrefix(key), packPrefix(key) + "￿");
+// areaBucket(areaKey): FNV-1a of the key, modulo the bucket count (part of the format: never change it for format 1).
+export function areaBucket(areaKey, n = PACKED_AREAS.buckets) { const t = String(areaKey); let h = 0x811c9dc5; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 0x01000193); } return (h >>> 0) % n; }
+const bucketMemo = new Map(); // areaKey -> bucket (cleared when large; keys are strings, so this is only a memo)
+const bucketOf = (k) => { let b = bucketMemo.get(k); if (b === undefined) { if (bucketMemo.size > 50000) bucketMemo.clear(); b = areaBucket(k); bucketMemo.set(k, b); } return b; };
+const PACK_SPECIALS = Object.freeze([undefined, NaN, Infinity, -Infinity, -0]);
+const specialCode = (v) => v === undefined ? 0 : typeof v !== "number" ? -1 : v !== v ? 1 : v === Infinity ? 2 : v === -Infinity ? 3 : v === 0 && 1 / v < 0 ? 4 : -1;
+export const canPackAreas = () => typeof CompressionStream === "function" && typeof DecompressionStream === "function" && typeof Blob === "function" && typeof Response === "function";
+// scanExact(v, path, specials, open): whether JSON (with the specials listed) carries v exactly; open holds the objects on
+// the path (a cycle is refused). A key "__proto__" is refused (restoring a special under it would set a prototype).
+function scanExact(v, path, specials, open) {
+  const code = specialCode(v); if (code >= 0) { specials.push([path.slice(), code]); return true; }
+  if (v === null || typeof v === "string" || typeof v === "number" || typeof v === "boolean") return true;
+  if (typeof v !== "object" || open.has(v)) return false;
+  open.add(v); let ok = true;
+  if (Array.isArray(v)) { if (Object.keys(v).length !== v.length) ok = false; else for (let i = 0; ok && i < v.length; i++) { path.push(i); ok = scanExact(v[i], path, specials, open); path.pop(); } }
+  else if (!plainProto(v) || own(v, "__proto__") || Object.getOwnPropertySymbols(v).length) ok = false;
+  else for (const k of Object.keys(v)) { path.push(k); ok = scanExact(v[k], path, specials, open); path.pop(); if (!ok) break; }
+  open.delete(v); return ok;
+}
+// sameExact(a, b): the same value, key order and leaves (Object.is), for what scanExact admits.
+function sameExact(a, b) {
+  if (Object.is(a, b)) return true;
+  if (!a || !b || typeof a !== "object" || typeof b !== "object" || Array.isArray(a) !== Array.isArray(b)) return false;
+  if (Array.isArray(a)) { if (a.length !== b.length) return false; for (let i = 0; i < a.length; i++) if (!sameExact(a[i], b[i])) return false; return true; }
+  const ka = Object.keys(a), kb = Object.keys(b); if (ka.length !== kb.length) return false;
+  for (let i = 0; i < ka.length; i++) if (ka[i] !== kb[i] || !sameExact(a[ka[i]], b[ka[i]])) return false;
+  return true;
+}
+const asNull = (_k, v) => specialCode(v) >= 0 ? null : v;
+async function streamBytes(bytes, transform) { return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(transform)).arrayBuffer()); }
+export const isAreaPack = (r) => !!r && typeof r === "object" && !Array.isArray(r) && own(r, PACKED_AREAS.tag);
+// unpackAreas(pack): Map areaKey -> area. Throws for a pack this build cannot read.
+export async function unpackAreas(pack, P = PACKED_AREAS) {
+  if (!isAreaPack(pack) || pack[P.tag] !== P.format || pack.codec !== P.codec || !(pack.data instanceof Uint8Array) || typeof DecompressionStream !== "function") throw new Error("Stored areas are in a form this build cannot read. They have been kept unchanged.");
+  const { k, a, s } = JSON.parse(new TextDecoder().decode(await streamBytes(pack.data, new DecompressionStream(pack.codec))));
+  if (!Array.isArray(k) || !Array.isArray(a) || !Array.isArray(s) || k.length !== a.length) throw new Error("A stored area pack is damaged. It has been kept unchanged.");
+  for (const q of s) { const parent = q[0], value = PACK_SPECIALS[q[1]]; let o = a; for (let i = 0; i < parent.length; i++) o = o[parent[i]]; for (let i = 2; i < q.length; i++) o[q[i]] = value; }
+  return new Map(k.map((key, i) => [String(key), a[i]]));
+}
+// packAreas(entries, seed): { pack, packed, refused }: the pack of the entries ([areaKey, area]) JSON carries exactly (null
+// when none, or when unpacking it did not give every one back exactly: then all are refused).
+export async function packAreas(entries, seed = "", P = PACKED_AREAS) {
+  const keys = [], areas = [], specials = [], refused = [];
+  if (!canPackAreas()) return { pack: null, packed: [], refused: entries.map(([k]) => k) };
+  // specials travel grouped: [parent path, code, key, key...] for each run of one code under one parent
+  for (const [k, area] of entries) { const sp = []; if (area && typeof area === "object" && !Array.isArray(area) && scanExact(area, [areas.length], sp, new Set())) { keys.push(k); areas.push(area); let last = null; for (const [path, code] of sp) { const key = path.pop(); if (last && last[1] === code && sameExact(last[0], path)) last.push(key); else specials.push(last = [path, code, key]); } } else refused.push(k); }
+  if (!keys.length) return { pack: null, packed: [], refused };
+  try {
+    const pack = { [P.tag]: P.format, codec: P.codec, seed: String(seed ?? ""), data: await streamBytes(new TextEncoder().encode(JSON.stringify({ k: keys, a: areas, s: specials }, asNull)), new CompressionStream(P.codec)) };
+    const back = await unpackAreas(pack, P);
+    if (back.size === keys.length && keys.every((k, i) => sameExact(back.get(k), areas[i]))) return { pack, packed: keys, refused };
+  } catch {}
+  return { pack: null, packed: [], refused: entries.map(([k]) => k) };
 }
 // Perf pack (P3, Tim's findings 4): the autosave copied the 3.9 MB main record twice every 8 s, once in snapshotSave and
 // once in IndexedDB's put (about 135 ms of CPU on this machine for Tim's save, 0.4-0.7 s on his phone).
@@ -178,34 +256,67 @@ let hurry = null;
 const nextTask = () => new Promise((resolve) => { const go = () => { clearTimeout(t); if (hurry === go) hurry = null; resolve(); }, t = setTimeout(go, 0); hurry = go; });
 const urgentSnapshots = new WeakSet();
 const writeNow = (value) => urgentSnapshots.has(value) || globalThis.document?.hidden === true;
+// Slimmer saves: what this page knows of each journey's stored areas (from its last write or read): which areas a pack
+// holds (areaKey -> bucket; every other listed area has a plain record), and whether the stored main record carries
+// PACKED_AREAS.storeVersion. Area copies that could not be packed are not tried again while unchanged.
+const packedIn = new Map(), gatedKeys = new Set(), unpackable = new WeakSet();
+// The buckets this write packs again (up to packsPerWrite, none for an urgent write): those holding an area stored plain
+// that this write leaves as it is. Each takes every listed area of its bucket this write does not put. An area under
+// minChars of JSON (a few small records, not worth the stream) stays plain unless its bucket's pack already holds it.
+async function packBuckets(value, keys, putting, held, sizes, P = PACKED_AREAS) {
+  const areas = value.session.areas, chosen = new Set(), packable = (k) => !putting.has(k) && !!areas[k] && typeof areas[k] === "object" && !unpackable.has(areas[k]) && (held.has(k) || sizes.get(k) >= P.minChars);
+  for (const k of keys) { if (chosen.size >= P.packsPerWrite) break; if (!held.has(k) && packable(k)) chosen.add(bucketOf(k)); }
+  if (!chosen.size) return [];
+  const members = new Map([...chosen].map((b) => [b, []]));
+  for (const k of keys) { const list = members.get(bucketOf(k)); if (list && packable(k)) list.push([k, areas[k]]); }
+  return Promise.all([...members].map(async ([bucket, entries]) => {
+    const { pack, packed, refused } = await packAreas(entries, value.seed, P);
+    for (const k of refused) unpackable.add(areas[k]);
+    return { bucket, pack, packed };
+  }));
+}
 async function writeJourney(key, value) {
-  await openDb(); if (!writeNow(value)) await nextTask(); const { main, puts, keys } = splitSnapshot(value, storedAreas.get(key)), prefix = areaPrefix(key);
-  const split = main !== value, sizes = split ? sizesFor(key, value.session.areas, puts, keys) : null, j = journals.get(key), now = Date.now();
-  let ops = null;
-  if (split && j && sharedSnapshots.has(value) && sharedSnapshots.has(j.snapshot) && now - j.at < SAVE_DELTA.everyMs) {
+  await openDb(); const urgent = writeNow(value); if (!urgent) await nextTask(); const { main: splitMain, puts, keys } = splitSnapshot(value, storedAreas.get(key)), prefix = areaPrefix(key);
+  const split = splitMain !== value, sizes = split ? sizesFor(key, value.session.areas, puts, keys) : null, live = new Set(keys);
+  // Slimmer saves: where each listed area is stored after this write (a put is a plain record; a packed bucket holds its members).
+  const putting = new Set(puts.map(([k]) => k)), held = new Map();
+  if (split) for (const [k, b] of packedIn.get(key) || []) if (live.has(k) && !putting.has(k)) held.set(k, b);
+  // A pack replaces its bucket's last one, so it is written only when it holds every area that one still held.
+  const packs = split && !urgent && canPackAreas() ? (await packBuckets(value, keys, putting, held, sizes)).filter((q) => q.pack && [...held].every(([k, b]) => b !== q.bucket || q.packed.includes(k))) : [];
+  const packedNow = new Set(); for (const q of packs) for (const k of q.packed) { held.set(k, q.bucket); packedNow.add(k); }
+  const plainNow = new Set(keys.filter((k) => !held.has(k))), gate = held.size > 0;
+  const j = journals.get(key), now = Date.now();
+  let ops = null, main = splitMain;
+  if (split && j && sharedSnapshots.has(value) && sharedSnapshots.has(j.snapshot) && now - j.at < SAVE_DELTA.everyMs && (!gate || gatedKeys.has(key))) { // the first pack goes with a marked main record
     ops = new Map(j.ops); diffSnapshots(j.snapshot, value, [], ops);
     let w = 0; for (const op of ops.values()) w += op.w; if (w > SAVE_DELTA.weight) ops = null;
   }
   const stamp = ops ? j.stamp : `${now.toString(36)}-${(++stampSeq).toString(36)}`;
   if (split && !ops) Object.assign(main.session, { [MAIN_STAMP]: stamp, [AREA_SIZES]: Object.fromEntries(sizes) });
+  if (split && !ops && gate) main = { ...main, version: PACKED_AREAS.storeVersion, session: { ...main.session, [PACKED_FROM]: main.version } };
   let queuedMs = 0;
   try {
     await dbCall("readwrite", (store) => {
       const t0 = performance.now();
       for (const [k, area] of puts) store.put(area, prefix + k);
+      for (const q of packs) store.put(q.pack, packPrefix(key) + q.bucket);
       if (ops) store.put({ base: stamp, areas: keys, sizes: Object.fromEntries(sizes), ops: [...ops.values()].map((q) => [q.path, q.kind, q.value]) }, deltaKey(key));
       else { store.put(main, key); store.delete(deltaKey(key)); }
       queuedMs = performance.now() - t0;
       // Perf spikes: the stale area records are known from the last write (or the load) of this journey, so a delta write
       // deletes those no longer listed without reading back every area key (~1,700 in a mature journey, every 8 s); a full
-      // write, or a journey this page has not written or read yet, still sweeps the store.
-      const live = new Set(keys), had = ops ? recordKeys.get(key) : null;
-      if (had) { for (const k of had) if (!live.has(k)) store.delete(prefix + k); }
-      else { const stale = store.getAllKeys(areaRange(key)); stale.onsuccess = () => { for (const k of stale.result) if (!live.has(String(k).slice(prefix.length))) store.delete(k); }; }
+      // write, or a journey this page has not written or read yet, still sweeps the store. Slimmer saves: an area now in a
+      // pack loses its plain record the same way, and the sweep (one read of the journey's keys) also removes the packs
+      // that hold nothing listed.
+      const had = ops ? recordKeys.get(key) : null;
+      if (had) { for (const k of had) if (!plainNow.has(k)) store.delete(prefix + k); for (const k of packedNow) store.delete(prefix + k); }
+      else { const used = new Set(held.values()), pre = packPrefix(key), stale = store.getAllKeys(IDBKeyRange.bound(`${key}::`, `${key}::￿`)); stale.onsuccess = () => { for (const k of stale.result) { const t = String(k); if (t.startsWith(prefix) ? !plainNow.has(t.slice(prefix.length)) : t.startsWith(pre) && !used.has(Number(t.slice(pre.length)))) store.delete(k); } }; }
     });
   } catch (error) { journals.delete(key); recordKeys.delete(key); throw error; } // dbCall dropped the connection; the next write stores the main record whole (and sweeps)
   storedAreas.set(key, new Map(keys.map((k) => [k, value.session.areas[k]])));
-  if (split) recordKeys.set(key, keys); else recordKeys.delete(key);
+  if (split) recordKeys.set(key, [...plainNow]); else recordKeys.delete(key);
+  if (split) packedIn.set(key, held); else packedIn.delete(key);
+  if (!ops) { if (split && gate) gatedKeys.add(key); else gatedKeys.delete(key); } // a delta leaves the stored main record as it was
   if (sizes) storedSizes.set(key, sizes); else storedSizes.delete(key);
   if (split) journals.set(key, { snapshot: value, stamp, ops: ops || new Map(), at: ops ? j.at : now }); else journals.delete(key);
   try { onWriteTiming?.({ ms: Math.round(queuedMs * 10) / 10, areas: puts.length, of: keys.length, delta: !!ops }); } catch {}
@@ -218,6 +329,10 @@ async function readMain(key) {
   const main = await read(key); if (!Array.isArray(main?.session?.[AREA_SPLIT])) { readDeltas.delete(key); return main; }
   const stamp = main.session[MAIN_STAMP], delta = await read(deltaKey(key)), applied = applyDelta(main, delta);
   readDeltas.set(key, { stamp, ops: applied && Array.isArray(delta.ops) ? delta.ops : [] });
+  // Slimmer saves: the marker that keeps older builds off a journey with packed areas comes off here (one without the
+  // journey's own version under it stays as it is, and so reads as damaged).
+  const from = main.session[PACKED_FROM];
+  if (main.version === PACKED_AREAS.storeVersion && (typeof from === "number" || typeof from === "string")) { main.version = from; delete main.session[PACKED_FROM]; gatedKeys.add(key); } else gatedKeys.delete(key);
   return main;
 }
 // Perf pack (follow-up): the first autosave after every boot wrote the 3.9 MB main record whole, because the delta's base
@@ -237,17 +352,28 @@ function primeJournal(key, stored, save) {
 async function readJourney(key) {
   const main = await readMain(key); if (!Array.isArray(main?.session?.[AREA_SPLIT])) return main;
   const prefix = areaPrefix(key);
-  const records = await dbCall("readonly", (store, finish, fail) => {
-    const ks = store.getAllKeys(areaRange(key)), vs = store.getAll(areaRange(key));
-    vs.onsuccess = () => finish(new Map((ks.result || []).map((k, i) => [String(k).slice(prefix.length), vs.result[i]]))); vs.onerror = () => fail(vs.error); ks.onerror = () => fail(ks.error);
+  // Slimmer saves: the area packs are read in the same transaction; a listed area without a plain record is taken from
+  // its bucket's pack (a pack carrying another journey's seed is not this journey's), and a pack that cannot be read
+  // fails the whole read. Packs holding nothing listed are left unread. A listed area found nowhere is absent, as a missing
+  // area record always was (release 555).
+  const [records, packs] = await dbCall("readonly", (store, finish, fail) => {
+    const ks = store.getAllKeys(areaRange(key)), vs = store.getAll(areaRange(key)), pks = store.getAllKeys(packRange(key)), pvs = store.getAll(packRange(key)), pre = packPrefix(key);
+    for (const q of [ks, vs, pks]) q.onerror = () => fail(q.error);
+    pvs.onerror = () => fail(pvs.error);
+    pvs.onsuccess = () => finish([new Map((ks.result || []).map((k, i) => [String(k).slice(prefix.length), vs.result[i]])), new Map((pks.result || []).map((k, i) => [Number(String(k).slice(pre.length)), pvs.result[i]]))]);
   });
   recordKeys.set(key, [...records.keys()]);
+  const held = new Map(), seed = String(main.seed ?? ""), foreign = (p) => isAreaPack(p) && p.seed !== seed;
+  const buckets = gatedKeys.has(key) ? [...new Set(main.session[AREA_SPLIT].filter((k) => !records.has(k)).map(bucketOf))].filter((b) => packs.has(b) && !foreign(packs.get(b))) : []; // an unmarked main record (an older build's) has no packs of its own
+  const opened = await Promise.all(buckets.map((b) => unpackAreas(packs.get(b))));
+  for (let i = 0; i < buckets.length; i++) for (const [k, area] of opened[i]) if (!records.has(k) && bucketOf(k) === buckets[i]) { records.set(k, area); held.set(k, buckets[i]); }
+  packedIn.set(key, held);
   const sizes = main.session[AREA_SIZES]; if (sizes && typeof sizes === "object") storedSizes.set(key, new Map(Object.entries(sizes).filter(([k, n]) => records.has(k) && Number.isFinite(n))));
   const save = assembleSave(main, records); assembled.add(save); return save;
 }
 async function removeJourney(key) {
-  try { await dbCall("readwrite", (store) => { store.delete(key); store.delete(deltaKey(key)); store.delete(areaRange(key)); }); }
-  finally { storedAreas.delete(key); storedSizes.delete(key); journals.delete(key); recordKeys.delete(key); } // after a failure too: the next write is whole and sweeps
+  try { await dbCall("readwrite", (store) => { store.delete(key); store.delete(deltaKey(key)); store.delete(areaRange(key)); store.delete(packRange(key)); }); }
+  finally { storedAreas.delete(key); storedSizes.delete(key); journals.delete(key); recordKeys.delete(key); packedIn.delete(key); gatedKeys.delete(key); } // after a failure too: the next write is whole and sweeps
 }
 function remove(key){return dbCall("readwrite",(store)=>{store.delete(key)})}
 // Release 734 (S1): the mirror is returned as stored (not migrated), so a damaged or newer-version mirror reads as damaged,
