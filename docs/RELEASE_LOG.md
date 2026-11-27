@@ -15,13 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1079 (this merge, #751); production serves `r1076-4dec3446cb5b` (Publish run 196, 45836612440, succeeded 2026-11-26; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1080 (this merge, #751); production serves `r1076-4dec3446cb5b` (Publish run 196, 45836612440, succeeded 2026-11-26; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
-| 1079 | Claude | claude/female-hips-shape / #751 | The female Wayfarer's shape, refined | Merged (#751); preview follows. |
+| 1080 | Claude | claude/female-hips-shape / #751 | The female Wayfarer's shape, refined | Merged (#751); preview follows. |
+| 1079 | Claude | claude/crown-vertical-separation / #752 | The crown is its own space | Merged (#752); preview follows. |
 | 1078 | Claude | claude/wayfarer-posture-bust / #750 | The Wayfarers stand up straight; a fuller bust | Merged (#750); preview follows. |
 | 1077 | Claude | claude/daily-thread-1126 / #749 | The Turves of Scarrow Moss | Merged (#749); preview follows. |
 | 1076 | Claude | claude/defence-toughness-threat / #748 | Defence and the Threat Sigil | Merged (#748); preview follows. |
