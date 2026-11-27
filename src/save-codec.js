@@ -1,5 +1,5 @@
 // Canonical transport codec shared by production and isolated scratch recovery.
 // Importing this module performs no storage, network or Game construction.
-import { migrateSave } from './types.js?v=r1076-4dec3446cb5b';
+import { migrateSave } from './types.js?v=r1080-888123c078ea';
 export function serializeSave(save){return JSON.stringify({...save,updatedAt:Date.now()})}
 export function deserializeSave(text){return migrateSave(JSON.parse(text))}

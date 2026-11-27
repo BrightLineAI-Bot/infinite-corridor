@@ -7,12 +7,12 @@
 // still find no room: from 2026-11-26 a tree is named only once game.ts greatTreeProbe has built its section's terrain and found
 // one, `treeChecks` candidates at most, nearest first); a Starfield crossing where the section's ordinary crossing would roll
 // one on first entry. Only sections with no Atlas entry are named, so all of this is new ground (placement 2, landscape 14).
-import { hashSeed, rng } from "./random.js?v=r1076-4dec3446cb5b";
-import { dungeonId } from "./world.js?v=r1076-4dec3446cb5b";
-import { sectionRegion, farSleepSection, dreamsHere, DREAM_VERSION } from "./landscape.js?v=r1076-4dec3446cb5b";
-import { skylandSection, SKY_PLACE } from "./skylands.js?v=r1076-4dec3446cb5b";
-import { TREES_V14 } from "./trees.js?v=r1076-4dec3446cb5b";
-import { guideHost } from "./waymark-guides.js?v=r1076-4dec3446cb5b";
+import { hashSeed, rng } from "./random.js?v=r1080-888123c078ea";
+import { dungeonId } from "./world.js?v=r1080-888123c078ea";
+import { sectionRegion, farSleepSection, dreamsHere, DREAM_VERSION } from "./landscape.js?v=r1080-888123c078ea";
+import { skylandSection, SKY_PLACE } from "./skylands.js?v=r1080-888123c078ea";
+import { TREES_V14 } from "./trees.js?v=r1080-888123c078ea";
+import { guideHost } from "./waymark-guides.js?v=r1080-888123c078ea";
 
 // Starfield rolls by placement (Tim, 2026-11-25: "Starfield should be relatively rare; it's just another dungeon, so it shouldn't
 // be prioritised for any reason"). A crossing's Starfield roll (one hash, `chasm-crossing:v1`) is made once, at its first entry, and

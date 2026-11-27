@@ -13,23 +13,23 @@
 // least that far from the Ember Refuge. A place found empty when the Wayfarer gets there (questArrive: no wreck, no crater, no
 // stair, no Revenant) is marked `miss`, and the next is resolved after it, so no step is ever stranded. And the events the
 // steps move on (questEvent: a kill, a salvage, a word with the giver, a token collected, a place cleared, a beast come home).
-import { rng, hashSeed } from "./random.js?v=r1076-4dec3446cb5b";
-import { dungeonId, regionSettled, CROSSING_ROLLS } from "./world.js?v=r1076-4dec3446cb5b";
-import { starfieldRolls, starPlaceAt } from "./wonders.js?v=r1076-4dec3446cb5b";
-import { openSeaQuick, farSleepSection, SEA_FEATURES } from "./landscape.js?v=r1076-4dec3446cb5b";
-import { canyonHere, canyonIdFor } from "./canyon.js?v=r1076-4dec3446cb5b";
-import { skylandSection, SKY_PLACE, grantSeed } from "./skylands.js?v=r1076-4dec3446cb5b";
-import { pentagonAt, PENTAGON } from "./pentagon.js?v=r1076-4dec3446cb5b";
-import { hamletSection } from "./settlements.js?v=r1076-4dec3446cb5b";
-import { HORDE } from "./revenant-horde.js?v=r1076-4dec3446cb5b";
-import { GATE_REVENANT } from "./monster-pack.js?v=r1076-4dec3446cb5b";
-import { ladderRoll } from "./dungeon-ladder.js?v=r1076-4dec3446cb5b";
-import { farCivCentre, farCivAt, farDomainCentre } from "./far-realms.js?v=r1076-4dec3446cb5b";
-import { APERTURE_BANDS, apertureBand } from "./items.js?v=r1076-4dec3446cb5b";
-import { rollMireCrypt, dreamHallRoll } from "./underlands.js?v=r1076-4dec3446cb5b";
-import { annexRecord } from "./deep-annex.js?v=r1076-4dec3446cb5b";
-import { ensureQuests, QUEST_RECORD } from "./journey-start.js?v=r1076-4dec3446cb5b";
-import { QUESTS, QUEST_IDS, questState, questOpen, questStep, stepDone, stepPlace, stepCount, mealFrom, questFollowId } from "./quests.js?v=r1076-4dec3446cb5b";
+import { rng, hashSeed } from "./random.js?v=r1080-888123c078ea";
+import { dungeonId, regionSettled, CROSSING_ROLLS } from "./world.js?v=r1080-888123c078ea";
+import { starfieldRolls, starPlaceAt } from "./wonders.js?v=r1080-888123c078ea";
+import { openSeaQuick, farSleepSection, SEA_FEATURES } from "./landscape.js?v=r1080-888123c078ea";
+import { canyonHere, canyonIdFor } from "./canyon.js?v=r1080-888123c078ea";
+import { skylandSection, SKY_PLACE, grantSeed } from "./skylands.js?v=r1080-888123c078ea";
+import { pentagonAt, PENTAGON } from "./pentagon.js?v=r1080-888123c078ea";
+import { hamletSection } from "./settlements.js?v=r1080-888123c078ea";
+import { HORDE } from "./revenant-horde.js?v=r1080-888123c078ea";
+import { GATE_REVENANT } from "./monster-pack.js?v=r1080-888123c078ea";
+import { ladderRoll } from "./dungeon-ladder.js?v=r1080-888123c078ea";
+import { farCivCentre, farCivAt, farDomainCentre } from "./far-realms.js?v=r1080-888123c078ea";
+import { APERTURE_BANDS, apertureBand } from "./items.js?v=r1080-888123c078ea";
+import { rollMireCrypt, dreamHallRoll } from "./underlands.js?v=r1080-888123c078ea";
+import { annexRecord } from "./deep-annex.js?v=r1080-888123c078ea";
+import { ensureQuests, QUEST_RECORD } from "./journey-start.js?v=r1080-888123c078ea";
+import { QUESTS, QUEST_IDS, questState, questOpen, questStep, stepDone, stepPlace, stepCount, mealFrom, questFollowId } from "./quests.js?v=r1080-888123c078ea";
 
 export const QUEST_PLACES = Object.freeze({
   radius: 24, // sections searched round a quest's `from` (Chebyshev rings), a few thousand hashes at most, once
@@ -384,4 +384,4 @@ export function questLeads(save) {
   }
   return out;
 }
-export { openQuestCount } from "./quests.js?v=r1076-4dec3446cb5b";
+export { openQuestCount } from "./quests.js?v=r1080-888123c078ea";

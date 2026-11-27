@@ -10,9 +10,9 @@
 // - Mirage of Blades: the three thrown blades as Standard View draws them (tool-forms.ts sweepBlade: a greatsword, a great
 //   axe and a shuriken), the same outline, size (× MIRAGE.size) and colours, laid flat and spun about the vertical.
 // No allocation per frame; every mesh is inside the triangle budgets the tests check.
-import { MESH_FLOATS, prism, ellipsoid, part, block } from './close-view-mesh.js?v=r1076-4dec3446cb5b';
-import { rangedWeapon } from './items.js?v=r1076-4dec3446cb5b';
-import { MIRAGE, MIRAGE_BLADE_VIEW } from './tool-forms.js?v=r1076-4dec3446cb5b';
+import { MESH_FLOATS, prism, ellipsoid, part, block } from './close-view-mesh.js?v=r1080-888123c078ea';
+import { rangedWeapon } from './items.js?v=r1080-888123c078ea';
+import { MIRAGE, MIRAGE_BLADE_VIEW } from './tool-forms.js?v=r1080-888123c078ea';
 
 const FLOATS = 10; // close-view-models.ts MODEL_FLOATS (position, normal, RGB, alpha); a test pins the two together
 // ---------------------------------------------------------------- the Great Sweep (held gear recipe space)

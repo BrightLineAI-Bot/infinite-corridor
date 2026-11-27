@@ -4,9 +4,9 @@
 // fragments (about 20, differing by Reading) listed in the Reciter's Tome; a Reading whose fragments are all found is
 // mastered. Lines a player has heard are remembered (one bitset per voice), so nobody repeats a line until
 // that voice is exhausted. Pure data and rules: no DOM, no randomness beyond the seeded `pick` passed in.
-import { RECITATIONS } from "./recitations.js?v=r1076-4dec3446cb5b";
-import { hashSeed } from "./random.js?v=r1076-4dec3446cb5b";
-import { IDENTITY_FRAME, START_FRAME, activeFrame, frameFor, toFrame, turnBearing } from "./journey-start.js?v=r1076-4dec3446cb5b";
+import { RECITATIONS } from "./recitations.js?v=r1080-888123c078ea";
+import { hashSeed } from "./random.js?v=r1080-888123c078ea";
+import { IDENTITY_FRAME, START_FRAME, activeFrame, frameFor, toFrame, turnBearing } from "./journey-start.js?v=r1080-888123c078ea";
 
 export const LORE_VERSION = 1;
 // Distance bands, in sections from the origin (|rx| + |ry|).
@@ -190,6 +190,7 @@ export const ARCANA_REGIONS = {
     weaver: { toward: "w", from: 36, to: 80 },
     mirror: { toward: "e", from: 36, to: 80 },
     washing: { toward: "se", from: 12, to: 30 }, // the Washing at Sallowby (story version 6, 2026-11-21): between the Fevered Stairs and the Clear Country
+    turves: { toward: "nw", from: 22, to: 48 }, // the Turves of Scarrow Moss (story version 8, 2026-11-26): between the Long Table and the Ash Orchards; to 48 straight-line so the whole home lies inside the far band (70 walked) even on the diagonal
   },
 };
 // Whether section (rx, ry) lies in set `id`'s home (false for a set with none).

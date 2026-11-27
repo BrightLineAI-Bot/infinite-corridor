@@ -5,9 +5,9 @@
 // Tim's decisions (2026-11-04): a catch pays nothing (no marks, materials, spoils, XP or reward flags; its hunt still ends as a
 // fall does); the Questing Beast, the Psychic Crystal, the Void Walker, the Lightning Giant and the Nanobot Knight can never be caught.
 // Data and save rules only; game.ts calls in, renderer.ts draws.
-import { hashSeed } from "./random.js?v=r1076-4dec3446cb5b";
-import { trapChance } from "./building.js?v=r1076-4dec3446cb5b";
-import { ensureHatchling } from "./hatchling.js?v=r1076-4dec3446cb5b";
+import { hashSeed } from "./random.js?v=r1080-888123c078ea";
+import { trapChance } from "./building.js?v=r1080-888123c078ea";
+import { ensureHatchling } from "./hatchling.js?v=r1080-888123c078ea";
 
 // One row per catchable beast. `pen`: the pen's side in tiles it takes (scaled to its footprint); `scale`: its renderer's scale as a
 // mount, its real size as met in the world (Tim, 2026-11-04: "so you can be riding a pretty huge beast"; the pack form's scale x the

@@ -1,4 +1,4 @@
-import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.js?v=r1076-4dec3446cb5b";
+import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.js?v=r1080-888123c078ea";
 // Dungeon Monster Pack v1: ten composable creatures built from shared attribute tables.
 //
 // A pack monster is a composition of five reusable parts, each defined once below:
@@ -8,18 +8,18 @@ import { HAUNT, GLOOM_FINALE, darkDue, darkDuration } from "./haunts.js?v=r1076-
 // grafts one borrowed attack onto some individuals, so the same ten monsters keep producing
 // new combinations. Nothing here touches the save, the DOM, or randomness: every choice is a
 // pure function of stable ids, so the simulation stays deterministic.
-import { stageOneBeastReference, reductionGuard } from "./stages.js?v=r1076-4dec3446cb5b";
-import { hashSeed, byHash } from "./random.js?v=r1076-4dec3446cb5b";
-import { updateAstralActor } from "./astral-worm.js?v=r1076-4dec3446cb5b";
-import { WORLD_BOSS_PACE } from "./boss-kit.js?v=r1076-4dec3446cb5b"; // world-boss pacing (Tim, 2026-11-18)
-import { ADV, levelAt, heightReach, dropBonus, findPerch, findRetreat, kiteLoop, lampLoop } from "./adventure-creatures.js?v=r1076-4dec3446cb5b"; // adventure creatures (Tim, 2026-11-11)
-import { onStegoTailSevered } from "./stego-bait.js?v=r1076-4dec3446cb5b";
-import { DINO_DUEL, duelBlow as dinoDuelBlow, noteRivalHurt, duelOf, duelWinner, duelPair, DUEL_KINDS } from "./dino-duel.js?v=r1076-4dec3446cb5b";
-import { APATO, APATO_ATTACKS, APATO_START, APATO_RUN, installApatoKit, apatoFx, apatoTick, apatoCan, apatoAfflicted, apatoCloneTick, apatoIdle, apatoLetGo, resetApatoRuntime, apatoRivalNear } from "./earth-apato.js?v=r1076-4dec3446cb5b"; // the Earth Apatosaurus (Tim, 2026-11-18) // the dino duel's blows, floors and verdict (Tim, 2026-11-14)
-import { BLEED, tickCreatureBleed } from "./bleed.js?v=r1076-4dec3446cb5b"; // the Spinosaurus's bleed (its numbers and the Wayfarer's record) // the Wild Stegosaurus: its cut tail becomes the Stego Bait (the bait module owns what happens)
-import { DUELISTS, duelistStats, duelSeparation, findHop, hopArc, duelStepTooClose } from "./duelists.js?v=r1076-4dec3446cb5b"; // the Gaunt, hooded duelists (Tim, 2026-11-12)
-import { behaviourProfile, behaviourState, behaviourGate, behaviourReact, resetBehaviour, ringVector, pressVector, squadRequest, shapeBlow, startFeint, afterBlow } from "./enemy-behaviour.js?v=r1076-4dec3446cb5b"; // ordinary creature behaviour (Tim, 2026-11-14)
-import { tacticsMove, tacticsWindup } from "./squad-tactics.js?v=r1076-4dec3446cb5b"; // squad tactics (Tim, 2026-11-15)
+import { stageOneBeastReference, reductionGuard } from "./stages.js?v=r1080-888123c078ea";
+import { hashSeed, byHash } from "./random.js?v=r1080-888123c078ea";
+import { updateAstralActor } from "./astral-worm.js?v=r1080-888123c078ea";
+import { WORLD_BOSS_PACE } from "./boss-kit.js?v=r1080-888123c078ea"; // world-boss pacing (Tim, 2026-11-18)
+import { ADV, levelAt, heightReach, dropBonus, findPerch, findRetreat, kiteLoop, lampLoop } from "./adventure-creatures.js?v=r1080-888123c078ea"; // adventure creatures (Tim, 2026-11-11)
+import { onStegoTailSevered } from "./stego-bait.js?v=r1080-888123c078ea";
+import { DINO_DUEL, duelBlow as dinoDuelBlow, noteRivalHurt, duelOf, duelWinner, duelPair, DUEL_KINDS } from "./dino-duel.js?v=r1080-888123c078ea";
+import { APATO, APATO_ATTACKS, APATO_START, APATO_RUN, installApatoKit, apatoFx, apatoTick, apatoCan, apatoAfflicted, apatoCloneTick, apatoIdle, apatoLetGo, resetApatoRuntime, apatoRivalNear } from "./earth-apato.js?v=r1080-888123c078ea"; // the Earth Apatosaurus (Tim, 2026-11-18) // the dino duel's blows, floors and verdict (Tim, 2026-11-14)
+import { BLEED, tickCreatureBleed } from "./bleed.js?v=r1080-888123c078ea"; // the Spinosaurus's bleed (its numbers and the Wayfarer's record) // the Wild Stegosaurus: its cut tail becomes the Stego Bait (the bait module owns what happens)
+import { DUELISTS, duelistStats, duelSeparation, findHop, hopArc, duelStepTooClose } from "./duelists.js?v=r1080-888123c078ea"; // the Gaunt, hooded duelists (Tim, 2026-11-12)
+import { behaviourProfile, behaviourState, behaviourGate, behaviourReact, resetBehaviour, ringVector, pressVector, squadRequest, shapeBlow, startFeint, afterBlow } from "./enemy-behaviour.js?v=r1080-888123c078ea"; // ordinary creature behaviour (Tim, 2026-11-14)
+import { tacticsMove, tacticsWindup } from "./squad-tactics.js?v=r1080-888123c078ea"; // squad tactics (Tim, 2026-11-15)
 
 export const MONSTER_PACK_VERSION = 1;
 // A separate content pin: generic pack selectors still exclude this species.
@@ -5089,11 +5089,15 @@ export function updatePackMonster(e, w) {
   const calmCrystal = roaming && e.kind === "psychicCrystal";
   const B = w.squad && !friendlyTriceratops ? behaviourProfile(e) : null, b = B ? behaviourState(e, w.squad) : null; // enemy-behaviour.ts: its record, before it looks for the Wayfarer
   if (calmCrystal && !e.aggro) { if (d < CRYSTAL.touchAggro || (Number.isFinite(s.calmHp) && e.hp < s.calmHp)) e.aggro = true; s.calmHp = e.hp; }
-  else if (!friendlyTriceratops && !e.aggro && d < (hunting ? CRYSTAL.roamSight : brain?.hiddenUntilAggro ? 4.2 : 7) && (!hunting || w.los(e, w.player)) && (!brain?.cone || advSees(e, w, p, d))) e.aggro = true; // a patrol sees only in its lamp's cone
+  else if (!friendlyTriceratops && !e.aggro && !e.farBelow && d < (hunting ? CRYSTAL.roamSight : brain?.hiddenUntilAggro ? 4.2 : 7) && (!hunting || w.los(e, w.player)) && (!brain?.cone || advSees(e, w, p, d))) e.aggro = true; // a patrol sees only in its lamp's cone
   e.hidden = !!(brain?.hiddenUntilAggro && !e.aggro) || (s.attack === "burrowAmbush" && ["travel", "erupt"].includes(s.phase)) || (e.kind === "sinkmaw" ? e.advBuried !== false : !!e.advBuried);
   if (e.kind === "spinoRex" && !e.aggro && spinoPreferred(e, w)) e.aggro = true; // it scents its prey before it sees you
   if (e.kind === "wildStego" && !e.aggro && stegoRivalNear(e, w)) e.aggro = true; // the dino duel: it rises to the Spinosaurus in sight
   if (e.kind === "earthApato" && !e.aggro && apatoRivalNear(e, w)) e.aggro = true; // the dino duel: it rises to the Spinosaurus or the Wild Stegosaurus in sight
+  // game.ts VERTICAL_SEPARATION (Tim, 2026-11-26): with the Wayfarer far above (a great tree's crown), a creature that does not fly
+  // (`e.farBelow`, set by the game each frame) loses interest: an attack under way ends (a leap, a teleport, a windup) and it
+  // wanders, waits or goes home below. A shot already loosed flies on. When the Wayfarer comes down it notices them as ever.
+  if (e.farBelow) { e.aggro = false; if (s.attack) endAttack(e, s); s.tele = null; }
   // enemy-behaviour.ts (Tim, 2026-11-14): ordinary creatures, when the game hands a squad board: arrival, blows, calls, the alert beat.
   if (B) { w.squad.w = w; w.squad.disp = null; if (behaviourGate(e, b, B, w.squad, packDrop)) return; }
   if (!e.aggro) {

@@ -38,8 +38,8 @@
 // past 1,000 sections: Ember Mend and Wellspring (quests that open once the Wayfarer has stood 1,000 sections out), Mage's Hand
 // and Continuous Assault (far threads, Phase 7). Eligible directed quests open independently; an unfinished early quest never
 // prevents a later quest from being offered. The player still chooses one quest at a time for the compass to follow.
-import { hashSeed } from "./random.js?v=r1076-4dec3446cb5b";
-import { exploring, progressionKept } from "./journey-start.js?v=r1076-4dec3446cb5b";
+import { hashSeed } from "./random.js?v=r1080-888123c078ea";
+import { exploring, progressionKept } from "./journey-start.js?v=r1080-888123c078ea";
 
 export const STORY = Object.freeze({
   table: 5, // the progression table that withholds every b, d and V ability (journey-start.ts EXPLORATION.table); Phase 7's was 4

@@ -10,12 +10,12 @@
 // the held Wayfarer or foe, its last five bones coiled round them. Each bone is placed by its offset in its parent's frame and aimed
 // at the next, never scaled, so the neck keeps its girth however far it runs (the skin between two bones stretches along the path).
 // Bounded: 39 bones, the triangle counts below; no allocation per frame.
-import { APATO_ART, APATO_FX } from "./apato-render.js?v=r1076-4dec3446cb5b";
-import { APATO } from "./earth-apato.js?v=r1076-4dec3446cb5b";
+import { APATO_ART, APATO_FX } from "./apato-render.js?v=r1080-888123c078ea";
+import { APATO } from "./earth-apato.js?v=r1080-888123c078ea";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, aimWorld, boneLocalToWorld, writeSkin, poseAnimalLeg,
   createGait, stepGait, meshBuilder, clamp01, smooth, kick, wobble, TIER_DETAIL,
-} from "./close-view-beast-rig.js?v=r1076-4dec3446cb5b";
+} from "./close-view-beast-rig.js?v=r1080-888123c078ea";
 
 const hex = (s) => parseInt(s.slice(1), 16);
 export const APATO_RIG = Object.freeze({

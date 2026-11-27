@@ -1,16 +1,16 @@
 // Imported Wayfarer presentation only. No simulation, storage, or import-time I/O.
-import { CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES, CLOSE_VIEW_WAYFARER_KIT, CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT, CLOSE_VIEW_SUIT_KIT_TRIANGLES } from './close-view-player-forms.js?v=r1076-4dec3446cb5b';
+import { CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES, CLOSE_VIEW_WAYFARER_KIT, CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT, CLOSE_VIEW_SUIT_KIT_TRIANGLES } from './close-view-player-forms.js?v=r1080-888123c078ea';
 const KIT_BUFFER_TRIANGLES = Math.max(CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT_TRIANGLES);
-import { CLOSE_VIEW_SHADOW_FORMS } from './close-view-shadow-forms.js?v=r1076-4dec3446cb5b';
-import { CLOSE_VIEW_HERO_WEAPON_FORM } from './close-view-models.js?v=r1076-4dec3446cb5b'; // the Carbine's stock, for its shouldered hold
-import { sampleSweepPose } from './great-sweep.js?v=r1076-4dec3446cb5b'; // the Great Sweep's 360° swing clock (2026-11-14)
-import { TOOL_ACTION_TIMING, sampleToolActionMotion, toolUsePoseTime, primaryVisualStage, cleaverCarryFrame, sampleCycloneMotion } from './action-motion.js?v=r1076-4dec3446cb5b';
-import { CARBINE_HOLD, CLOSE_VIEW_RIFLE_GRIP, closeViewHeldHand, closeViewHeldScale, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, CLOSE_VIEW_CLEAVER_SLASHES, CLOSE_VIEW_CLEAVER_SLASH_TIMING, sampleCleaverSlash, CLOSE_VIEW_SWING_SLASHES, sampleSwingSlash, CLOSE_VIEW_DAGGER_CUTS, cleaverSlashBlade, cleaverSlashAngle, CLOSE_VIEW_GREAT_SWEEP, sampleGreatSweep, greatSweepBlade, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight, FALL_POSE, sampleFallPose, CLOSE_VIEW_WATER } from './close-view-player-presentation.js?v=r1076-4dec3446cb5b';
+import { CLOSE_VIEW_SHADOW_FORMS } from './close-view-shadow-forms.js?v=r1080-888123c078ea';
+import { CLOSE_VIEW_HERO_WEAPON_FORM } from './close-view-models.js?v=r1080-888123c078ea'; // the Carbine's stock, for its shouldered hold
+import { sampleSweepPose } from './great-sweep.js?v=r1080-888123c078ea'; // the Great Sweep's 360° swing clock (2026-11-14)
+import { TOOL_ACTION_TIMING, sampleToolActionMotion, toolUsePoseTime, primaryVisualStage, cleaverCarryFrame, sampleCycloneMotion } from './action-motion.js?v=r1080-888123c078ea';
+import { CARBINE_HOLD, CLOSE_VIEW_RIFLE_GRIP, closeViewHeldHand, closeViewHeldScale, cleaverHandRoles, cleaverCutMotion, sampleMeleeActionPose, CLOSE_VIEW_CLEAVER_SLASHES, CLOSE_VIEW_CLEAVER_SLASH_TIMING, sampleCleaverSlash, CLOSE_VIEW_SWING_SLASHES, sampleSwingSlash, CLOSE_VIEW_DAGGER_CUTS, cleaverSlashBlade, cleaverSlashAngle, CLOSE_VIEW_GREAT_SWEEP, sampleGreatSweep, greatSweepBlade, sampleDrinkPose, sampleShovelDigPose, stonePlaceWeight, cacheReachWeight, chestOpenWeight, FALL_POSE, sampleFallPose, CLOSE_VIEW_WATER } from './close-view-player-presentation.js?v=r1080-888123c078ea';
 export const HERO_BODY_TRIANGLES = 3328;
 export const HERO_PROPORTIONS = Object.freeze({width:.80,depth:.82,hands:.62});
 // The female Wayfarer (Tim, 2026-11-25): the same rig, clips, textures, palette and gear sockets, sculpted once per pose
 // state in fitted bind space (fitProportions, never per frame): narrower shoulders, waist and limbs, a slightly smaller
-// head and a modest bust; the small back bun of the source hair is left out and a long white braid hangs down the back
+// head and a bust (HERO_FEMALE.sculpt.bust); the small back bun of the source hair is left out and a long white braid hangs down the back
 // (HERO_BRAID). The male body is the asset as converted and is not touched by any of this.
 export const HERO_BODIES = Object.freeze(['male', 'female']);
 export const HERO_FEMALE = Object.freeze({
@@ -21,10 +21,46 @@ export const HERO_FEMALE = Object.freeze({
     limb: .80, armY: 1.863, armZ: -.03, wristX: .90, legX: .16, legZ: -.02, ankleY: .24, legTop: 1.0,
     // Her legs (Tim, 2026-11-26: "more shapely and naturally filled out", a slight gap between the thighs, not a wide one):
     // about each leg's own axis the calf keeps `calf` of the male girth, rising past the knee (`kneeY` to `thighY`) to `thigh`
-    // (a little fuller than his); a gentle hip curve swells the outside of the hip and upper thigh (`hips`, outward only).
-    thigh: 1.12, calf: .86, kneeY: .56, thighY: .82, hips: Object.freeze({ y: .98, sigma: .13, out: .026, edge: .06 }),
-    // A modest bust: two soft forward swells on the chest, front surface only.
-    bust: Object.freeze({ y: 1.72, x: .088, sx: .065, sy: .085, depth: .05, front: .06 }) }),
+    // (about his; 1.12 in release 1075, a little slimmer since Tim's 2026-11-26 follow-up; full girth only from `thighY`, .82
+    // until Tim's 2026-11-27 markup asked for thighs tapering a little more toward the knee); a gentle hip curve swells the
+    // outside of the hip and upper thigh (`hips`, outward only; a little wider and smoother with the slimmer waist).
+    thigh: 1.05, calf: .86, kneeY: .56, thighY: .92, hips: Object.freeze({ y: .98, sigma: .14, out: .03, edge: .06 }),
+    // Her buttocks (Tim, 2026-11-26/27: clearly rounder and noticeable from the side and the back, shapely and smooth, never
+    // angular; not exaggerated; tasteful, she's an armoured adventurer; his traced side profile: one long convex arc from just
+    // under the belt, fullest about a third of the way down, sweeping in to the fold): behind fitted z `z` (easing in over
+    // `back`) the back of the hips swells back by `depth`, a dome exp(-|t|^power) fullest at `y`, its long upper side (`up`)
+    // starting right under the belt (the belt moves with it) and its rounder underside (`down`; short and firm, so the fullest
+    // point sits a little high and reads perky, Tim 2026-11-27) curving into a soft fold. Across
+    // x it is fullest about each cheek (`x`, `sx`): only a little less on the centre line (a subtle cleft) and easing toward the
+    // outer hip. On the refined mesh (HERO_FEMALE.refine) the swell is sampled finely enough to read round.
+    glutes: Object.freeze({ y: .995, up: .12, down: .095, x: .07, sx: .17, z: -.08, back: .08, depth: .056, power: 3 }),
+    // A slimmer waist front to back (Tim, 2026-11-26), with a straight back: the source back bulges about 5 cm behind the
+    // line from the shoulder blades to the hips at the waist; `back` takes out just that, so the back reads straight (within
+    // about 8 mm) down to the top of the buttocks, and `front` draws the belly in. About `y` (`sigma`) the back moves forward by
+    // `back` behind `backZ` (across x by `backSx`) and the belly moves back by `front` ahead of `frontZ` (across x by
+    // `frontSx`), each easing in over `ease`. A shift, not a squash: the belt and pouches over the waist move with the body.
+    // Fitted y .91-1.57 only, so the bust, the backside and the thigh plates are left as they are.
+    waistDepth: Object.freeze({ y: 1.24, sigma: .11, back: .05, backZ: -.10, backSx: .22, front: .03, frontZ: 0, frontSx: .14, ease: .08 }),
+    // The bust (Tim, 2026-11-26: "slightly fuller... easy to tell she's a woman just by looking at her, but not exaggerated";
+    // later a small step trimmer, fit rather than busty, and smooth like the buttocks: `depth` .05 -> .045, `down` .05 -> .045,
+    // on the refined chest; the chest plates of the kit and the suit take `kit` more depth and `kitDown` more underside so
+    // they keep their clearance over the rounder chest):
+    // the front of the upper chest swells forward by `depth`, fully from `from` to `to` (fitted y) and across the chest to
+    // `x`, easing out over `edge` toward the armpits, with a long gentle upper slope (`up`) and a shorter, rounder underside
+    // (`down`); under it the front of the ribs eases back `tuck` (about `tuckY`, `tuckSigma`; across x by `tuckSx`) so the
+    // underside reads against the waist. The source chest is low-poly (front vertices only on the centre line and near
+    // x .18-.20), so the swell is flat across them; HERO_FEMALE.refine adds the vertices between that let it read round.
+    bust: Object.freeze({ from: 1.70, to: 1.81, up: .07, down: .045, x: .17, edge: .12, depth: .040, front: .06, tuckY: 1.63, tuckSigma: .05, tuckSx: .16, tuck: .02, kit: .012, kitDown: .02 }) }),
+  // Her buttocks and bust get more geometry (Tim, 2026-11-26: round and smooth, not angular), once when her asset is derived: each pass
+  // splits the body triangles whose centroid (fitted bind) lies in one of its boxes (behind fitted z `back`, or ahead of `front`)
+  // 1->4 at the edge midpoints, and their neighbours 1->2 or 1->3 so there are no cracks or T-junctions (the second pass only
+  // within triangles the first split); then `smooth` Laplacian passes (weight `lambda`) round the vertices of the refined
+  // buttocks patch and the ring around it, so it blends into the hips and thighs (the inner thighs, |x| < `ring.x` below
+  // `ring.y`, held, so the gap stays open). The buttocks get two passes, the bust (Tim: the same treatment)
+  // one, unsmoothed so the chest kit keeps its fit: its new vertices carry the smooth bust swell.
+  refine: Object.freeze({ passes: Object.freeze([
+    Object.freeze([Object.freeze({ y0: .72, y1: 1.10, x: .22, back: -.08 }), Object.freeze({ y0: 1.62, y1: 1.88, x: .24, front: .08, smooth: false })]),
+    Object.freeze([Object.freeze({ y0: .90, y1: .98, x: .12, back: -.20 })])]), smooth: 2, lambda: .5, ring: Object.freeze({ x: .08, y: 1.0 }) }),
 });
 export const heroBodyProportions = (body) => body === 'female' ? HERO_FEMALE.proportions : HERO_PROPORTIONS;
 const gauss = (t) => Math.exp(-t * t);
@@ -43,8 +79,12 @@ export function sculptHeroPoint(S, x, y, z, out) {
     nx = c + (nx - c) * f; nz = S.legZ + (z - S.legZ) * f;
   }
   { const H = S.hips, c = S.legX * s; if (y < S.shoulderY && nx > c) nx += H.out * gauss((y - H.y) / H.sigma) * smoothstep((nx - c) / H.edge); } // the hip curve, outside only
+  { const G = S.glutes; if (z < G.z && y > G.y - 3 * G.down && y < G.y + 3 * G.up) nz -= G.depth * Math.exp(-Math.pow(Math.abs(y - G.y) / (y < G.y ? G.down : G.up), G.power)) * gauss((nx - G.x) / G.sx) * smoothstep((G.z - z) / G.back); } // the buttocks, behind only
+  { const D = S.waistDepth; if (y > D.y - 3 * D.sigma && y < D.y + 3 * D.sigma) { const g = gauss((y - D.y) / D.sigma); // the waist, front to back
+    if (z < D.backZ) nz += D.back * g * gauss(nx / D.backSx) * smoothstep((D.backZ - z) / D.ease); else if (z > D.frontZ) nz -= D.front * g * gauss(nx / D.frontSx) * smoothstep((z - D.frontZ) / D.ease); } }
   const B = S.bust;
-  if (z > 0 && y > B.y - 3 * B.sy && y < B.y + 3 * B.sy) nz += B.depth * Math.max(gauss((nx - B.x) / B.sx), 0) * gauss((y - B.y) / B.sy) * smoothstep(z / B.front);
+  if (z > 0 && y > B.from - 3 * B.down && y < B.to + 3 * B.up) nz += B.depth * (1 - smoothstep((nx - B.x) / B.edge)) * (y < B.from ? gauss((y - B.from) / B.down) : y > B.to ? gauss((y - B.to) / B.up) : 1) * smoothstep(z / B.front);
+  if (z > 0 && Math.abs(y - B.tuckY) < 3 * B.tuckSigma) nz -= B.tuck * gauss(nx / B.tuckSx) * gauss((y - B.tuckY) / B.tuckSigma) * smoothstep(z / B.front);
   out[0] = sg * nx; out[1] = ny; out[2] = nz; return out;
 }
 // The point and the normal (by the sculpt's numerical Jacobian, cofactor form) in place.
@@ -450,7 +490,7 @@ function primaryPose(state,pose,profile,p,step=1){
   const commit=p<.12?smoothstep(p/.12):p<=.40?1:1-smoothstep((p-.40)/.60);
   const travel=smoothstep((p-.12)/.28),cut=PRIMARY_CUTS[step-1],pike=profile==='cinder-pike';
   // Torso commitment and a free-arm counterbalance leave the independent source feet alone.
-  if(commit>0){if(pike){const L=PIKE_LUNGE,T=PIKE_THRUST[step-1],k=commit*(.55+.45*smoothstep((p-.14)/.16));lungeStance(state,pose,commit,T.lunge);rotateY(pose,27,L.turn*commit);rotateX(pose,27,L.lean*k);rotateX(pose,24,L.chest*k);rotateX(pose,4,-L.look*k);}else{rotateY(pose,27,cut.twist*commit);rotateX(pose,24,(step===3?.15:.07)*commit);rotateX(pose,4,-.05*commit);rotateX(pose,12,-.28*commit);rotateZ(pose,12,-cut.twist*.4*commit);}}
+  if(commit>0){if(pike){const L=PIKE_LUNGE,T=PIKE_THRUST[step-1],k=commit*(.55+.45*smoothstep((p-.14)/.16));lungeStance(state,pose,commit,T.lunge);rotateY(pose,27,L.turn*commit);const u=commit*state.standShare,S=HERO_STAND;rotateX(pose,27,L.lean*k+S.spine*u);rotateX(pose,24,L.chest*k+S.chest*u);rotateX(pose,4,-L.look*k+S.neck*u);}else{rotateY(pose,27,cut.twist*commit);rotateX(pose,24,(step===3?.15:.07)*commit);rotateX(pose,4,-.05*commit);rotateX(pose,12,-.28*commit);rotateZ(pose,12,-cut.twist*.4*commit);}}
   build(state.asset,state,pose);
   const t=state.primaryTarget,g=state.global,ls=12*16,le=11*16,lw=7*16,rs=22*16,re=21*16,rw=18*16,rg=16*16;
   const leftReach=Math.hypot(g[le+12]-g[ls+12],g[le+13]-g[ls+13],g[le+14]-g[ls+14])+Math.hypot(g[lw+12]-g[le+12],g[lw+13]-g[le+13],g[lw+14]-g[le+14]);
@@ -720,7 +760,7 @@ function rifleSupportHand(state,pose,profile,rifle,A,weight){
 // gives the same arms on every frame (a charge's restamps no longer restart a raise). `recoil` 0..1 is one shot's kick.
 function carbineHoldPose(state,pose,recoil){
   const H=CARBINE_HOLD,F=CLOSE_VIEW_HERO_WEAPON_FORM.carbine,A=heldArm('carbine'),m=A.sign,t=state.primaryTarget,k=clamp(Number(recoil)||0);
-  rotateZ(pose,4,-m*H.head.roll);rotateX(pose,4,H.head.nod);rotateY(pose,4,m*H.head.turn);
+  rotateZ(pose,4,-m*H.head.roll);rotateX(pose,4,H.head.nod+HERO_STAND.neck*state.standShare);rotateY(pose,4,m*H.head.turn); // the cheek down on the stock: HERO_STAND's head-up is given back
   build(state.asset,state,pose);
   const g=state.global,s=A.shoulder*16,e=A.elbow*16,h=A.wrist*16,sx=g[s+12],sy=g[s+13],sz=g[s+14],scale=state.worldScale>0?state.worldScale:1;
   const reach=Math.hypot(g[e+12]-sx,g[e+13]-sy,g[e+14]-sz)+Math.hypot(g[h+12]-g[e+12],g[h+13]-g[e+13],g[h+14]-g[e+14]);
@@ -764,12 +804,15 @@ export function createHeroPoseState(asset,proportions=heroBodyProportions(asset.
   if(proportions.head!==undefined&&!(proportions.head>=.25&&proportions.head<=.5))throw new Error('Invalid hero head scale');
   const s = { asset, pose: new Float64Array(size), other: new Float64Array(size), loop: new Float64Array(size),fallLast:new Float64Array(10),fistSource:new Float64Array(size),fistScratch:new Float64Array(63),fistBindLocal:new Float64Array(n*9),fistBindGlobal:new Float64Array(n*9),fistMirrorC:new Float64Array(n*n*9), primaryTarget:new Float64Array(3),primaryScratch:new Float64Array(60),sweepScratch:new Float64Array(48),sweepBlade:new Float64Array(6),sweepSample:{},sweepSpin:0,slash:{},slashFrame:new Float64Array(20),slashMatrix:new Float64Array(16),slashBlade:new Float64Array(6),primaryGripResidual:0,worldScale:1,hammerLayer:new Float64Array(size),hammerLegData:new Float64Array(20),hammerFeet:new Float64Array(16),ankleLocal:new Float64Array(6),anklePoint:new Float64Array(3),local: new Float64Array(n * 16), global: new Float64Array(n * 16), nodeNormals: new Float64Array(n * 9), skinMatrices: asset.skins.map(k => new Float64Array(k.joints.length * 16)), skinNormals: asset.skins.map(k => new Float64Array(k.joints.length * 9)), vertices: new Float64Array(asset.vertexCount * 6), headScale: asset.meta.headAttachment.defaultScale, seatY: 0, minY: 0, referenceHeight: 1, downClearance: 0, rollX: 0, rollZ: 0, clip: 'Idle', clipTime: 0, rollCompX: 0, rollCompZ: 0 };
   s.hammerLegSides=[s.hammerLegData.subarray(0,10),s.hammerLegData.subarray(10,20)];
+  s.sourceAnkle=new Float64Array(6);s.standFeet=new Float64Array(20);s.standShare=1; // HERO_STAND: the ankles on the source skeleton; the stance's share of the pose (the idle's)
   if(proportions.head!==undefined)s.headScale=proportions.head;
   const sculpt=asset.body==='female'?HERO_FEMALE.sculpt:null;
   s.proportions={width:proportions.width,depth:proportions.depth,hands:proportions.hands};s.sculpt=sculpt;s.fit=fitProportions(asset,s.proportions,sculpt);
   if(sculpt)s.overlayParts=sculptOverlays(sculpt,proportions.depth/HERO_PROPORTIONS.depth,s.headScale/asset.meta.headAttachment.defaultScale);
   clipPose(asset, asset.clips.Idle, 0, s.pose); build(asset, s, s.pose); deform(asset, s);
-  {const inv=s.primaryScratch;for(const [side,lower,foot] of [[0,29,1],[1,31,36]]){inverseAffine(inv,0,s.global,lower*16);const x=s.global[foot*16+12],y=s.global[foot*16+13],z=s.global[foot*16+14],o=side*3;s.ankleLocal[o]=inv[0]*x+inv[4]*y+inv[8]*z+inv[12];s.ankleLocal[o+1]=inv[1]*x+inv[5]*y+inv[9]*z+inv[13];s.ankleLocal[o+2]=inv[2]*x+inv[6]*y+inv[10]*z+inv[14];}}
+  const ankleLocal=(out)=>{const inv=s.primaryScratch;for(const [side,lower,foot] of [[0,29,1],[1,31,36]]){inverseAffine(inv,0,s.global,lower*16);const x=s.global[foot*16+12],y=s.global[foot*16+13],z=s.global[foot*16+14],o=side*3;out[o]=inv[0]*x+inv[4]*y+inv[8]*z+inv[12];out[o+1]=inv[1]*x+inv[5]*y+inv[9]*z+inv[13];out[o+2]=inv[2]*x+inv[6]*y+inv[10]*z+inv[14];}};
+  ankleLocal(s.ankleLocal);
+  {const fit=s.fit;s.sourceFit={offsets:new Float64Array(n*3),inverseBinds:fit.inverseBinds};s.fit=s.sourceFit;build(asset,s,s.pose);ankleLocal(s.sourceAnkle);s.fit=fit;build(asset,s,s.pose);}
   {const q=s.fistScratch,a=new Float64Array(9),b=new Float64Array(9);for(let node=0;node<n;node++){qmat(s.fistBindLocal,node*9,asset.rest,node*10+3);matrixQuat(q,0,s.global,node*16);qmat(s.fistBindGlobal,node*9,q,0);}for(const [l,r] of FIST_PAIRS)for(const [target,source] of [[l,r],[r,l]]){const tp=asset.meta.nodes[target].parent,sp=asset.meta.nodes[source].parent;m3transpose(a,0,s.fistBindGlobal,tp*9);for(let k=0;k<9;k++)b[k]=s.fistBindGlobal[sp*9+k];b[0]*=-1;b[3]*=-1;b[6]*=-1;m3mul(s.fistMirrorC,(target*n+source)*9,a,0,b,0);}s.fistSource.set(asset.rest);s.other.set(asset.rest);s.fistMirrorRestError=0;for(const [l,r] of FIST_PAIRS)for(const [target,source] of [[l,r],[r,l]]){fistMirroredRotation(s,target,source);const o=target*10+3,d=Math.min(Math.hypot(s.other[o]-asset.rest[o],s.other[o+1]-asset.rest[o+1],s.other[o+2]-asset.rest[o+2],s.other[o+3]-asset.rest[o+3]),Math.hypot(s.other[o]+asset.rest[o],s.other[o+1]+asset.rest[o+1],s.other[o+2]+asset.rest[o+2],s.other[o+3]+asset.rest[o+3]));s.fistMirrorRestError=Math.max(s.fistMirrorRestError,d);}}
   let collar = Infinity, head = Infinity; for (const v of asset.meta.headAttachment.collarVertexIndices) collar = Math.min(collar, s.vertices[v * 6 + 1]);
   for (const m of asset.meta.meshes) if (m.node === asset.meta.headAttachment.node) for (let i = m.firstVertex; i < m.firstVertex + m.vertexCount; i++) head = Math.min(head, s.vertices[i * 6 + 1]);
@@ -781,6 +824,8 @@ export function createHeroPoseState(asset,proportions=heroBodyProportions(asset.
   for (const v of asset.arrays.indices) { if(v>=braidFrom)continue; const y=s.vertices[v*6+1]; s.minY = Math.min(s.minY, y); max = Math.max(max, y); s.downClearance=Math.max(s.downClearance,-s.vertices[v*6+2]+.02); }
   s.referenceHeight = max - s.minY; if (!(s.referenceHeight > .1)) throw new Error('Invalid hero height');
   s.restHip = Float64Array.of(s.global[33*16+12], s.global[33*16+13], s.global[33*16+14]); // the idle hips: a swimmer's body is drawn about them (swimPose)
+  // HERO_STAND's straighter back reaches further behind the hips: a knockdown's clearance allows for it
+  {s.other.set(s.pose);standPose(asset,s,s.other);deform(asset,s);for(const v of asset.arrays.indices)if(v<braidFrom)s.downClearance=Math.max(s.downClearance,-s.vertices[v*6+2]+.02);build(asset,s,s.pose);deform(asset,s);}
   for(let side=0;side<2;side++){
     const foot=side===0?1:36,r=side*8,points=[],q=s.primaryScratch;let sole=Infinity;
     matrixQuat(q,0,s.global,foot*16);qinv(q,4,q,0);
@@ -873,16 +918,79 @@ export function closeViewHeroBodyAsset(asset, body) {
   }
   meshes.push({ name: 'Braid', node: asset.meta.headAttachment.parent, skin: -1, procedural: 'braid', firstVertex: first, vertexCount: braidVertices, firstIndex: bodyIndexCount, indexCount: braidTriangles * 3, materialLayer: 1, paletteClass: 'source' });
   const head = asset.meta.headAttachment, meta = { ...asset.meta, vertexCount, indexCount, meshes, headAttachment: { ...head, collarVertexIndices: head.collarVertexIndices.map(v => remap[v]) } };
-  const out = { ...asset, meta, arrays, vertexCount, indexCount, body: 'female', braid: { firstVertex: first, vertexCount: braidVertices, hairRings, bunTriangles: (a.indices.length - bodyIndexCount) / 3, triangles: braidTriangles } };
+  const out = refineHeroBody({ ...asset, meta, arrays, vertexCount, indexCount, body: 'female', braid: { firstVertex: first, vertexCount: braidVertices, hairRings, bunTriangles: (a.indices.length - bodyIndexCount) / 3, triangles: braidTriangles } });
   derived.set(asset, out); return out;
+}
+// HERO_FEMALE.refine on the derived female asset (setup only): the body mesh (first, from vertex 0 and index 0) gains vertices
+// at its end and triangles in place; everything after it shifts. Attributes interpolate at midpoints: position, normal, uv,
+// the four strongest joint weights (renormalised), material and palette class from the edge's first end. Over the triangle
+// cap, the unrefined asset is kept.
+function refineHeroBody(asset) {
+  const R = HERO_FEMALE.refine, W = HERO_FEMALE.proportions, a = asset.arrays, body = asset.meta.meshes[0];
+  if (!R || body?.name !== 'RogueBody' || body.firstVertex !== 0 || body.firstIndex !== 0) return asset;
+  const n0 = body.vertexCount, pos = [], nor = [], uv = [], jn = [], wt = [], ml = [], pc = [];
+  for (let v = 0; v < n0; v++) { for (let k = 0; k < 3; k++) { pos.push(a.positions[v * 3 + k]); nor.push(a.normals[v * 3 + k]); } uv.push(a.uvs[v * 2], a.uvs[v * 2 + 1]); for (let k = 0; k < 4; k++) { jn.push(a.joints[v * 4 + k]); wt.push(a.weights[v * 4 + k]); } ml.push(a.materialLayers[v]); pc.push(a.paletteClasses[v]); }
+  const key = (v) => Math.round(pos[v * 3] * 1e5) + ',' + Math.round(pos[v * 3 + 1] * 1e5) + ',' + Math.round(pos[v * 3 + 2] * 1e5);
+  const edgeKey = (p, q) => { const x = key(p), y = key(q); return x < y ? x + '|' + y : y + '|' + x; };
+  const mid = (p, q) => {
+    const v = pos.length / 3;
+    for (let k = 0; k < 3; k++) { pos.push((pos[p * 3 + k] + pos[q * 3 + k]) / 2); nor.push(nor[p * 3 + k] + nor[q * 3 + k]); }
+    const l = Math.hypot(nor[v * 3], nor[v * 3 + 1], nor[v * 3 + 2]) || 1; for (let k = 0; k < 3; k++) nor[v * 3 + k] /= l;
+    uv.push((uv[p * 2] + uv[q * 2]) / 2, (uv[p * 2 + 1] + uv[q * 2 + 1]) / 2);
+    const w = new Map(); for (const s of [p, q]) for (let k = 0; k < 4; k++) if (wt[s * 4 + k] > 0) w.set(jn[s * 4 + k], (w.get(jn[s * 4 + k]) || 0) + wt[s * 4 + k] / 2);
+    const top = [...w].sort((x, y) => y[1] - x[1]).slice(0, 4), sum = top.reduce((t, e) => t + e[1], 0) || 1;
+    for (let k = 0; k < 4; k++) { jn.push(top[k] ? top[k][0] : 0); wt.push(top[k] ? top[k][1] / sum : 0); }
+    ml.push(ml[p]); pc.push(pc[p]); return v;
+  };
+  let tris = []; for (let i = 0; i < body.indexCount; i += 3) tris.push([a.indices[i], a.indices[i + 1], a.indices[i + 2], 0]);
+  for (const [pass, B] of R.passes.entries()) {
+    const inBox = (t) => { let x = 0, y = 0, z = 0; for (let k = 0; k < 3; k++) { x += pos[t[k] * 3]; y += pos[t[k] * 3 + 1]; z += pos[t[k] * 3 + 2]; } x *= W.width / 3; y /= 3; z *= W.depth / 3;
+      const b = B.find(b => y > b.y0 && y < b.y1 && Math.abs(x) < b.x && (b.back !== undefined ? z < b.back : z > b.front)); return b ? (b.smooth === false ? 4 : 1) : 0; };
+    const marked = tris.map(t => (pass === 0 || t[3] === 1) ? inBox(t) : 0), split = new Set();
+    tris.forEach((t, i) => { if (marked[i]) for (let k = 0; k < 3; k++) split.add(edgeKey(t[k], t[(k + 1) % 3])); });
+    const cache = new Map(), m = (p, q) => { const k = p < q ? p + ',' + q : q + ',' + p; if (!cache.has(k)) cache.set(k, mid(p, q)); return cache.get(k); }, next = [];
+    tris.forEach((t, i) => {
+      const s = [0, 1, 2].map(k => split.has(edgeKey(t[k], t[(k + 1) % 3]))), c = s.filter(Boolean).length, f = marked[i] || (c === 3 ? (t[3] === 4 ? 4 : 1) : t[3] === 1 ? 2 : t[3]);
+      if (c === 0) { next.push(t); return; }
+      if (c === 3) { const [p, q, r] = t, pq = m(p, q), qr = m(q, r), rp = m(r, p); next.push([p, pq, rp, f], [pq, q, qr, f], [rp, qr, r, f], [pq, qr, rp, f]); return; }
+      const o = c === 1 ? s.indexOf(true) : s.indexOf(false) === 0 ? 1 : s.indexOf(false) === 1 ? 2 : 0; // c 1: the split edge first; c 2: the unsplit edge last
+      const p = t[o], q = t[(o + 1) % 3], r = t[(o + 2) % 3], g = t[3] === 1 ? 2 : t[3];
+      if (c === 1) { const pq = m(p, q); next.push([p, pq, r, g], [pq, q, r, g]); }
+      else { const pq = m(p, q), qr = m(q, r); next.push([pq, q, qr, g], [p, pq, qr, g], [p, qr, r, g]); }
+    });
+    tris = next;
+  }
+  // Laplacian rounding of the patch's inside: position groups (seam copies move together) touched only by fully split triangles.
+  const groups = new Map(), gOf = []; for (let v = 0; v < pos.length / 3; v++) { const k = key(v); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(v); gOf[v] = k; }
+  const inside = new Map(), nbr = new Map();
+  const touched = new Map(); // with R.ring, also the ring of vertices around the patch (touched by its border triangles), so it blends in
+  for (const t of tris) for (let k = 0; k < 3; k++) { const g = gOf[t[k]]; inside.set(g, (inside.get(g) ?? true) && t[3] === 1); touched.set(g, (touched.get(g) ?? 0) | (t[3] === 1 || t[3] === 2 ? 1 : t[3] === 4 ? 2 : 0)); if (!nbr.has(g)) nbr.set(g, new Set()); nbr.get(g).add(gOf[t[(k + 1) % 3]]); nbr.get(g).add(gOf[t[(k + 2) % 3]]); }
+  const crotch = (g) => { const v = groups.get(g)[0]; return Math.abs(pos[v * 3]) * W.width < R.ring.x && pos[v * 3 + 1] < R.ring.y; }; // the inner thighs keep their gap
+  const movable = R.ring ? [...touched].filter(e => e[1] === 1 && (inside.get(e[0]) || !crotch(e[0]))).map(e => e[0]) : [...inside].filter(e => e[1]).map(e => e[0]), at = new Map(); for (const [g, vs] of groups) at.set(g, [pos[vs[0] * 3], pos[vs[0] * 3 + 1], pos[vs[0] * 3 + 2]]);
+  for (let it = 0; it < R.smooth; it++) {
+    const moved = movable.map(g => { const c = [0, 0, 0], ns = nbr.get(g); for (const h of ns) { const q = at.get(h); c[0] += q[0]; c[1] += q[1]; c[2] += q[2]; } const p = at.get(g); return p.map((x, k) => x + R.lambda * (c[k] / ns.size - x)); });
+    movable.forEach((g, i) => at.set(g, moved[i]));
+  }
+  const fn = new Map(); for (const t of tris) { const [p, q, r] = t.slice(0, 3).map(v => at.get(gOf[v])), u = [q[0] - p[0], q[1] - p[1], q[2] - p[2]], w = [r[0] - p[0], r[1] - p[1], r[2] - p[2]], c = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]]; for (let k = 0; k < 3; k++) { const g = gOf[t[k]], e = fn.get(g) || [0, 0, 0]; e[0] += c[0]; e[1] += c[1]; e[2] += c[2]; fn.set(g, e); } }
+  for (const g of movable) { const p = at.get(g), e = fn.get(g), l = Math.hypot(...e) || 1; for (const v of groups.get(g)) for (let k = 0; k < 3; k++) { pos[v * 3 + k] = p[k]; nor[v * 3 + k] = e[k] / l; } }
+  const added = pos.length / 3 - n0, bodyIndices = tris.length * 3, delta = bodyIndices - body.indexCount, vertexCount = asset.vertexCount + added, indexCount = asset.indexCount + delta;
+  if (indexCount > HERO_BODY_TRIANGLES * 3 || vertexCount > 65535) return asset;
+  const shift = (v) => v < n0 ? v : v + added, grow = (src, width, Type, mine) => { const out = new Type(vertexCount * width); out.set(mine, 0); out.set(src.subarray(n0 * width), (n0 + added) * width); return out; };
+  const indices = new Uint16Array(indexCount); tris.forEach((t, i) => { indices[i * 3] = t[0]; indices[i * 3 + 1] = t[1]; indices[i * 3 + 2] = t[2]; });
+  for (let i = body.indexCount; i < asset.indexCount; i++) indices[i + delta] = shift(a.indices[i]);
+  const arrays = Object.assign(Object.create(null), a, { positions: grow(a.positions, 3, Float32Array, pos), normals: grow(a.normals, 3, Float32Array, nor), uvs: grow(a.uvs, 2, Float32Array, uv), joints: grow(a.joints, 4, Uint16Array, jn), weights: grow(a.weights, 4, Float32Array, wt), materialLayers: grow(a.materialLayers, 1, Uint8Array, ml), paletteClasses: grow(a.paletteClasses, 1, Uint8Array, pc), indices });
+  const meshes = asset.meta.meshes.map((m, i) => i === 0 ? { ...m, vertexCount: n0 + added, indexCount: bodyIndices } : { ...m, firstVertex: m.firstVertex + added, firstIndex: m.firstIndex + delta });
+  const head = asset.meta.headAttachment, meta = { ...asset.meta, vertexCount, indexCount, meshes, headAttachment: { ...head, collarVertexIndices: head.collarVertexIndices.map(shift) } };
+  return { ...asset, meta, arrays, vertexCount, indexCount, braid: { ...asset.braid, firstVertex: asset.braid.firstVertex + added }, refined: { vertices: added, triangles: delta / 3 } };
 }
 // Standard kit, suit kit and suit armour pieces re-fitted once to the sculpted body (bind space, as authored for the male fit).
 function sculptOverlays(S, depthRatio, headRatio) {
   const map = new Map(), p = new Float64Array(3), hx = 0, hy = 2.127, hz = 0;
+  const chest = { ...S, bust: { ...S.bust, depth: S.bust.depth + S.bust.kit, down: S.bust.down + S.bust.kitDown } }; // the plates on the chest (node 24) keep their clearance to the refined, rounder bust
   for (const part of [...CLOSE_VIEW_WAYFARER_KIT, ...CLOSE_VIEW_SUIT_KIT, ...CLOSE_VIEW_POWER_SUIT_ARMOR]) {
     map.set(part, part.vertices.map(v => {
       if (part.node === 3) return [hx + (v[0] - hx) * headRatio, hy + (v[1] - hy) * headRatio, hz + (v[2] - hz) * headRatio];
-      sculptHeroPoint(S, v[0], v[1], v[2] * depthRatio, p); return [p[0], p[1], p[2]];
+      sculptHeroPoint(part.node === 24 ? chest : S, v[0], v[1], v[2] * depthRatio, p); return [p[0], p[1], p[2]];
     }));
   }
   return map;
@@ -1336,6 +1444,32 @@ function plantedCrouch(asset,state,pose,k,drop){
   pose[33*10+1]-=drop*k;
   for(let side=0;side<2;side++){const left=side===0,o=side*10;target[0]=data[o];target[1]=data[o+1];target[2]=data[o+2];solveLeg(state,pose,left,target,k,state.hammerLegSides[side]);}
 }
+// The standing stance (Tim, 2026-11-26: both Wayfarers stood "hunched from the hips with knees bent, as if slightly squatting,
+// with a curved back"). The source Idle clip is corrected where it is sampled, before the gait blend, so walking and running
+// fade it out as they fade the idle out (none of it is left from 1.6 tiles/s). The hips rise, the feet fixed and the knee
+// plane kept, until each hip-to-ankle span takes `legs` of the remaining knee bend out; the spine (Abdomen), chest (Torso)
+// and neck straighten by `spine`, `chest` and `neck` (radians, + is back / head up). The feet, their roots and soles are
+// untouched, so they stay planted on groundZ. It is solved on the source skeleton (no fit offsets), so it is the same pose
+// for every body and proportion. It is the idle every action starts from and returns to, as the source Idle was: an
+// action that plays its own clip (a dodge's roll, a strike, a pick-up) blends away from it to its own animation as before,
+// and a layered pose (a carry, a cast's arm) is laid over the standing body.
+export const HERO_STAND = Object.freeze({ legs: .90, spine: .09, chest: .05, neck: .05 });
+function standPose(asset,state,pose){
+  const S=HERO_STAND,fit=state.fit,ankles=state.ankleLocal;state.fit=state.sourceFit;state.ankleLocal=state.sourceAnkle;
+  const data=state.hammerLegData,g=state.global,target=state.primaryTarget,q=state.primaryScratch,feet=state.standFeet;build(asset,state,pose);
+  for(let i=0;i<10;i++){feet[i]=pose[10+i];feet[10+i]=pose[360+i];} // the feet (nodes 1 and 36) are kept exactly as the clip put them
+  let rise=Infinity;
+  for(let side=0;side<2;side++){const left=side===0,foot=left?1:36,ho=(left?30:32)*16,ko=(left?29:31)*16,o=side*10;anklePoint(state,left,target);
+    for(let c=0;c<3;c++){data[o+c]=target[c];data[o+3+c]=g[foot*16+12+c]-target[c];}matrixQuat(data,o+6,g,foot*16);
+    const a=Math.hypot(g[ko+12]-g[ho+12],g[ko+13]-g[ho+13],g[ko+14]-g[ho+14]),b=Math.hypot(target[0]-g[ko+12],target[1]-g[ko+13],target[2]-g[ko+14]);
+    const hx=g[ho+12]-target[0],hy=g[ho+13]-target[1],hz=g[ho+14]-target[2],d=Math.hypot(hx,hy,hz),want=d+Math.max(0,a+b-d)*S.legs;
+    rise=Math.min(rise,Math.sqrt(Math.max(0,want*want-hx*hx-hz*hz))-hy);}
+  // the hips' rise in model space, into the Root's frame (the Body's parent)
+  inverseAffine(q,0,g,38*16);const o=33*10;pose[o]+=q[4]*rise;pose[o+1]+=q[5]*rise;pose[o+2]+=q[6]*rise;
+  for(let side=0;side<2;side++){const o2=side*10;target[0]=data[o2];target[1]=data[o2+1];target[2]=data[o2+2];solveLeg(state,pose,side===0,target,0,state.hammerLegSides[side]);}
+  for(let i=0;i<10;i++){pose[10+i]=feet[i];pose[360+i]=feet[10+i];}state.fit=fit;state.ankleLocal=ankles;
+  rotateX(pose,27,-S.spine);rotateX(pose,24,-S.chest);rotateX(pose,4,-S.neck);build(asset,state,pose);
+}
 const PICKUP_POSE = Object.freeze({ drop: .36, chestDrop: .17, bend: .46, upper: .22, reach: .30 });
 const DRINK_LIFE = Object.freeze({ tilt: .26, arch: .10, shoulder: .08 });
 export function sampleCloseViewHero(asset, state, input, out) {
@@ -1359,6 +1493,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
   const airFall=action?.kind==='jump'&&action.jumpAir?.falling===true&&action.jumpAir.flail!==false;
   const idleFrozen = input.reducedMotion || carbineHeld || action&&!timedAction&&!hammerAction&&!locomotionLayer&&!airFall, idleSec = idleFrozen ? 0 : idleMs / 1000;
   clipPose(asset, asset.clips.Idle, idleFrozen ? 0 : ((idleMs / 1000) % asset.clips.Idle.duration + asset.clips.Idle.duration) % asset.clips.Idle.duration, state.pose);
+  state.standShare=speed<1.6?1-speed/1.6:0;if(state.standShare>0)standPose(asset,state,state.pose); // HERO_STAND: the idle stood up straight (the gait blend below fades it with the idle)
   if (speed > 0 && !knocked) { const walk = asset.clips.Walk || asset.clips.Idle, run = asset.clips.Run || walk; clipPose(asset, walk, phase * walk.duration, state.other); blend(state.pose, state.other, Math.min(1, speed / 1.6)); if (speed > 2.8) { loopPose(asset,run,phase,state.other,state.loop); blend(state.pose,state.other,smoothstep((speed-2.8)/1.2)); } }
   if(!knocked)alivePose(state.pose,idleSec,speed,input);
   const primaryAction=action?.kind==='melee'&&!action.weaponArt&&['cinder-pike','verge-cleaver'].includes(action.profile)?action.profile:null,heldPrimary=['cinder-pike','verge-cleaver'].includes(input.heldProfile)?input.heldProfile:null,

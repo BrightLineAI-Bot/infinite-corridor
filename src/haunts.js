@@ -11,9 +11,9 @@
 // Where (`places`): keeps, arcologies and the courts of the Great Castles on the overworld (`keep`), the floors inside the great buildings, castles and the Pentagon
 // (`interior`), and now and then the fog moors and the Far Sleep (`wild`). Spawns are hashed from the seed and the area, so a
 // haunted place is haunted every visit.
-import { reductionGuard } from "./stages.js?v=r1076-4dec3446cb5b"; // defence pack: the gear reduction ceiling (DAMAGE_REDUCTION.cap)
-import { hashSeed } from "./random.js?v=r1076-4dec3446cb5b";
-import { LETHAL_KINDS } from "./landscape.js?v=r1076-4dec3446cb5b";
+import { reductionGuard } from "./stages.js?v=r1080-888123c078ea"; // defence pack: the gear reduction ceiling (DAMAGE_REDUCTION.cap)
+import { hashSeed } from "./random.js?v=r1080-888123c078ea";
+import { LETHAL_KINDS } from "./landscape.js?v=r1080-888123c078ea";
 
 export const HAUNT = {
   confuse: { wisp: 3.2, gorge: 5 }, // seconds the Wayfarer's movement is reversed

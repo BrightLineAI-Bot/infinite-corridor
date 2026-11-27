@@ -4,9 +4,9 @@
 // a new hunt can begin somewhere else. 2026-11-18 (Tim: "give the Questing Beast the 15-minute engagement window too, replacing its
 // four tries"): its tries are gone; it holds its section for the world beasts' engagement window (world-beasts.ts BEAST_ENGAGEMENT,
 // `engagedAt` on its hunt, the same rules), then it is gone as it always went, fading where it stands.
-import { hashSeed, byHash } from "./random.js?v=r1076-4dec3446cb5b";
-import { WORLD_BEASTS, BEAST_BASELINE, BEAST_BALANCE, beastProfileVitals, ENCOUNTER, encounterReady, encounterChance, encounterMet, isMarineTile, beastUnlocked, BEAST_ENGAGEMENT, beastEngaged } from "./world-beasts.js?v=r1076-4dec3446cb5b";
-import { LETHAL_KINDS } from "./landscape.js?v=r1076-4dec3446cb5b";
+import { hashSeed, byHash } from "./random.js?v=r1080-888123c078ea";
+import { WORLD_BEASTS, BEAST_BASELINE, BEAST_BALANCE, beastProfileVitals, ENCOUNTER, encounterReady, encounterChance, encounterMet, isMarineTile, beastUnlocked, BEAST_ENGAGEMENT, beastEngaged } from "./world-beasts.js?v=r1080-888123c078ea";
+import { LETHAL_KINDS } from "./landscape.js?v=r1080-888123c078ea";
 
 // Release 187 (Tim, 2026-10-18): far tougher and far more dangerous. About twice the health; each blow takes about
 // 27% of maximum health (four unhealed hits kill); it runs fast and barely pauses between attacks.

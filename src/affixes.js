@@ -15,8 +15,8 @@
 // - Shaman (`SHAMAN`): now and then a pack has a shaman standing apart, channelling; while it lives, its packmates within `radius` of
 //   it cannot be harmed (a ward shimmers round them, a ring round the shaman). Kill the shaman first.
 // Runtime state on the creatures (`affixClock`, `inAura`, `wardedBy`) and in game.affixHazards (never saved; at most `maxHazards`).
-import { hashSeed, byHash } from "./random.js?v=r1076-4dec3446cb5b";
-import { projectileVisualHeight } from "./actor-presentation.js?v=r1076-4dec3446cb5b";
+import { hashSeed, byHash } from "./random.js?v=r1080-888123c078ea";
+import { projectileVisualHeight } from "./actor-presentation.js?v=r1080-888123c078ea";
 
 export const AFFIXES = {
   volcanic: { name: "Volcanic", color: "#ff6a2a", every: 3.2, arm: .8, radius: 1.15, life: 4, dps: .35 },
@@ -63,7 +63,7 @@ export function tickAffixes(game, dt, now, hurt, poison) {
     e.lastHp = e.hp;
     if (!e.affixes?.length) continue;
     if (e.affixes.includes("enraged") && !e.enragedOn && e.hp < e.maxHp * AFFIXES.enraged.below) { const R = AFFIXES.enraged; e.enragedOn = true; e.scale = (e.scale || 1) * R.scale; e.damage = Math.max(1, Math.round(e.damage * R.damage)); e.speedMultiplier = (e.speedMultiplier || 1) * R.speed; }
-    if (Math.hypot(e.x + .5 - px, e.y + .45 - py) > T.reach || e.retreating || e.untargetable && !e.warded) continue;
+    if (Math.hypot(e.x + .5 - px, e.y + .45 - py) > T.reach || e.retreating || e.farBelow /* game.ts VERTICAL_SEPARATION */ || e.untargetable && !e.warded) continue;
     const clock = (e.affixClock ||= {});
     for (const id of e.affixes) {
       const A = AFFIXES[id]; if (!A?.every) continue;

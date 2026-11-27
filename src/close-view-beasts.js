@@ -1,28 +1,28 @@
 // The Close View beast roster (release 891): which world beasts have a skinned Close View body (close-view-beast-rig.ts),
 // and when one may use it. A beast outside the roster, in a form its body does not cover, or beyond the slot's
 // BEAST_SLOT.maxBeasts (BEAST_SLOT.minion.maxMinions for a small minion) keeps its standard-view billboard exactly as before.
-import { BEAST_SLOT } from "./close-view-beast-rig.js?v=r1076-4dec3446cb5b";
-import { createGiantTrack, sampleGiant, giantMesh, GIANT_RIG } from "./close-view-beast-giant.js?v=r1076-4dec3446cb5b";
-import { createStagTrack, sampleStag, stagMesh, STAG_RIG } from "./close-view-beast-stag.js?v=r1076-4dec3446cb5b";
-import { createTurtleTrack, sampleTurtle, turtleMesh, TURTLE_RIG } from "./close-view-beast-turtle.js?v=r1076-4dec3446cb5b";
-import { createQbTrack, sampleQb, qbMesh, QB_RIG } from "./close-view-beast-questing.js?v=r1076-4dec3446cb5b";
-import { createKnightTrack, sampleKnight, knightMesh, KNIGHT_RIG } from "./close-view-beast-knight.js?v=r1076-4dec3446cb5b";
-import { createDragonTrack, sampleDragon, tyrantMesh, doomMesh, DRAGON_RIG } from "./close-view-beast-dragon.js?v=r1076-4dec3446cb5b";
-import { createMothTrack, sampleMoth, mothMesh, MOTH_RIG } from "./close-view-beast-moth.js?v=r1076-4dec3446cb5b";
-import { createWormTrack, sampleWorm, wormMesh, WORM_RIG } from "./close-view-beast-worm.js?v=r1076-4dec3446cb5b";
-import { createTentacleTrack, sampleTentacle, tentacleMesh, TENTACLE_RIG } from "./close-view-beast-tentacle.js?v=r1076-4dec3446cb5b";
-import { createCrystalTrack, sampleCrystal, crystalMesh, CRYSTAL_RIG } from "./close-view-beast-crystal.js?v=r1076-4dec3446cb5b";
-import { createBlobTrack, sampleBlob, blobMesh, BLOB_RIG } from "./close-view-beast-blob.js?v=r1076-4dec3446cb5b";
-import { createWalkerTrack, sampleWalker, walkerMesh, WALKER_RIG } from "./close-view-beast-walker.js?v=r1076-4dec3446cb5b";
-import { createAstralTrack, sampleAstral, astralMesh, astralRidden, ASTRAL_CV_RIG } from "./close-view-beast-astral.js?v=r1076-4dec3446cb5b";
-import { createStalkerTrack, sampleStalker, stalkerMesh, STALKER_RIG } from "./close-view-beast-stalker.js?v=r1076-4dec3446cb5b";
-import { createGloomvastTrack, sampleGloomvast, gloomvastMesh, GLOOMVAST_RIG } from "./close-view-beast-gloomvast.js?v=r1076-4dec3446cb5b";
-import { createListenerTrack, sampleListener, listenerMesh, LISTENER_RIG } from "./close-view-beast-listener.js?v=r1076-4dec3446cb5b";
-import { createStegoTrack, sampleStego, stegoMesh, STEGO_RIG } from "./close-view-beast-stego.js?v=r1076-4dec3446cb5b";
-import { createSpinoTrack, sampleSpino, spinoMesh, SPINO_RIG } from "./close-view-beast-spino.js?v=r1076-4dec3446cb5b";
-import { createApatoTrack, sampleApato, apatoMesh, APATO_RIG, createApatoCloneTrack, sampleApatoClone, apatoCloneMesh, CLONE_RIG } from "./close-view-beast-apato.js?v=r1076-4dec3446cb5b"; // the Earth Apatosaurus (Tim, 2026-11-18)
-import { createDuelistTrack, sampleDuelist, duelistMesh, DUELIST_RIG } from "./close-view-beast-duelist.js?v=r1076-4dec3446cb5b";
-import { createTriceratopsTrack, sampleTriceratops, triceratopsMesh, TRICERATOPS_RIG } from "./close-view-beast-triceratops.js?v=r1076-4dec3446cb5b";
+import { BEAST_SLOT } from "./close-view-beast-rig.js?v=r1080-888123c078ea";
+import { createGiantTrack, sampleGiant, giantMesh, GIANT_RIG } from "./close-view-beast-giant.js?v=r1080-888123c078ea";
+import { createStagTrack, sampleStag, stagMesh, STAG_RIG } from "./close-view-beast-stag.js?v=r1080-888123c078ea";
+import { createTurtleTrack, sampleTurtle, turtleMesh, TURTLE_RIG } from "./close-view-beast-turtle.js?v=r1080-888123c078ea";
+import { createQbTrack, sampleQb, qbMesh, QB_RIG } from "./close-view-beast-questing.js?v=r1080-888123c078ea";
+import { createKnightTrack, sampleKnight, knightMesh, KNIGHT_RIG } from "./close-view-beast-knight.js?v=r1080-888123c078ea";
+import { createDragonTrack, sampleDragon, tyrantMesh, doomMesh, DRAGON_RIG } from "./close-view-beast-dragon.js?v=r1080-888123c078ea";
+import { createMothTrack, sampleMoth, mothMesh, MOTH_RIG } from "./close-view-beast-moth.js?v=r1080-888123c078ea";
+import { createWormTrack, sampleWorm, wormMesh, WORM_RIG } from "./close-view-beast-worm.js?v=r1080-888123c078ea";
+import { createTentacleTrack, sampleTentacle, tentacleMesh, TENTACLE_RIG } from "./close-view-beast-tentacle.js?v=r1080-888123c078ea";
+import { createCrystalTrack, sampleCrystal, crystalMesh, CRYSTAL_RIG } from "./close-view-beast-crystal.js?v=r1080-888123c078ea";
+import { createBlobTrack, sampleBlob, blobMesh, BLOB_RIG } from "./close-view-beast-blob.js?v=r1080-888123c078ea";
+import { createWalkerTrack, sampleWalker, walkerMesh, WALKER_RIG } from "./close-view-beast-walker.js?v=r1080-888123c078ea";
+import { createAstralTrack, sampleAstral, astralMesh, astralRidden, ASTRAL_CV_RIG } from "./close-view-beast-astral.js?v=r1080-888123c078ea";
+import { createStalkerTrack, sampleStalker, stalkerMesh, STALKER_RIG } from "./close-view-beast-stalker.js?v=r1080-888123c078ea";
+import { createGloomvastTrack, sampleGloomvast, gloomvastMesh, GLOOMVAST_RIG } from "./close-view-beast-gloomvast.js?v=r1080-888123c078ea";
+import { createListenerTrack, sampleListener, listenerMesh, LISTENER_RIG } from "./close-view-beast-listener.js?v=r1080-888123c078ea";
+import { createStegoTrack, sampleStego, stegoMesh, STEGO_RIG } from "./close-view-beast-stego.js?v=r1080-888123c078ea";
+import { createSpinoTrack, sampleSpino, spinoMesh, SPINO_RIG } from "./close-view-beast-spino.js?v=r1080-888123c078ea";
+import { createApatoTrack, sampleApato, apatoMesh, APATO_RIG, createApatoCloneTrack, sampleApatoClone, apatoCloneMesh, CLONE_RIG } from "./close-view-beast-apato.js?v=r1080-888123c078ea"; // the Earth Apatosaurus (Tim, 2026-11-18)
+import { createDuelistTrack, sampleDuelist, duelistMesh, DUELIST_RIG } from "./close-view-beast-duelist.js?v=r1080-888123c078ea";
+import { createTriceratopsTrack, sampleTriceratops, triceratopsMesh, TRICERATOPS_RIG } from "./close-view-beast-triceratops.js?v=r1080-888123c078ea";
 
 // A beast in your section is always in sight (Tim, 2026-11-14: "when you're in Close View, the world bosses should always be
 // visible whenever they're in the same section as you... You should know where they are"). The Close View had kept every

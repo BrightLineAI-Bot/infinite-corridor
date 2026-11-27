@@ -1,47 +1,47 @@
-import { weaponArtCharge, javelinInFlight } from "./weapon-arts.js?v=r1076-4dec3446cb5b"; // weapon arts (2026-11-13): the Close View charge pose; the pike gone from her hands while the javelin flies
-import { rangedWeapon, PRIMARY_CARRY_MODEL, primaryCarryKind } from './items.js?v=r1076-4dec3446cb5b';
-import { biomechanicalKeep } from "./close-view-room-routing.js?v=r1076-4dec3446cb5b";
-import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from "./vehicle-gates.js?v=r1076-4dec3446cb5b";
-import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, legacyInteriorBuildLevel, LIFT_PER_LEVEL } from "./landscape.js?v=r1076-4dec3446cb5b";
-import { buildVisualRevision, hasStoneBuilds } from "./building.js?v=r1076-4dec3446cb5b";
-import { importedEmitterAppearance, heldToolKind, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, normalizeMeleeActionVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage, cleaverCarryFrame, sampleCleaverChoreography } from "./action-motion.js?v=r1076-4dec3446cb5b";
-import { swingVisualProgress } from "./melee-swing.js?v=r1076-4dec3446cb5b"; // the weighted swing's clock (2026-11-14)
-import { creaturePoseFamily, creatureFootprint, MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, writeCloseViewHeroKit, HERO_SLOT_EXTRA_TRIANGLES, closeViewToolEmissionPoint, closeViewHeldMuzzlePoint } from "./close-view-models.js?v=r1076-4dec3446cb5b";
-import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero, aerialHandsFree, closeViewHeroBodyAsset } from './close-view-hero.js?v=r1076-4dec3446cb5b';
-import { wayfarerBody } from './journey-start.js?v=r1076-4dec3446cb5b'; // the Wayfarer's body: which hero asset is drawn
-import { actorPresentation, actorProfile, designedAlpha, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight, shotVisualHeight } from "./actor-presentation.js?v=r1076-4dec3446cb5b";
-import { closeViewHeldToolKind, writeCloseViewHeldTool } from './close-view-sweep-gear.js?v=r1076-4dec3446cb5b'; // the Great Sweep and the Orrery held in the right hand (2026-11-14)
-import { closeViewPlayerForm, closeViewWaterState, closeViewWaterLift, closeViewSwimPhases, CLOSE_VIEW_WATER, playerFormModelKey, cleaverHandRoles, closeViewHeldHand, CLOSE_VIEW_HELD_GEAR, carbineRecoil, ordinaryJumpPresentation, ordinaryFallPresentation, ordinaryDefeatPresentation, ordinaryLandingPresentation } from './close-view-player-presentation.js?v=r1076-4dec3446cb5b';
-import { HURT_VISUAL_MS, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from './consume-visual.js?v=r1076-4dec3446cb5b';
-import { fistCharge, fistHeld, shadowDashGhosts, shadowDashPose } from './brawler-spells.js?v=r1076-4dec3446cb5b';
-import { CLOSE_VIEW_SHADOW_FORMS, createShadowDash, resetShadowDash, stepShadowDash, shadowStrikePhase, shadowCloneAlpha, followShadowDash } from './close-view-shadow-forms.js?v=r1076-4dec3446cb5b';
-import { dronePos, phaseShielded } from "./affixes.js?v=r1076-4dec3446cb5b";
-import { PENTAGON_BACKDROPS } from "./pentagon-halls.js?v=r1076-4dec3446cb5b";
-import { standardProjectile, standardProjectileColor, triceratopsHornVertices, TRICERATOPS_HORN_TRAIL } from "./combat-visuals.js?v=r1076-4dec3446cb5b";
+import { weaponArtCharge, javelinInFlight } from "./weapon-arts.js?v=r1080-888123c078ea"; // weapon arts (2026-11-13): the Close View charge pose; the pike gone from her hands while the javelin flies
+import { rangedWeapon, PRIMARY_CARRY_MODEL, primaryCarryKind } from './items.js?v=r1080-888123c078ea';
+import { biomechanicalKeep } from "./close-view-room-routing.js?v=r1080-888123c078ea";
+import { interiorCeilingHeight, interiorArchAt, INTERIOR_TRAVERSAL } from "./vehicle-gates.js?v=r1080-888123c078ea";
+import { interiorTerrain, interiorSurfaceHeight, interiorSurfaceLevel, interiorTileLevel, interiorGeometryHeight, interiorTerrainSignature, legacyInteriorBuildLevel, LIFT_PER_LEVEL } from "./landscape.js?v=r1080-888123c078ea";
+import { buildVisualRevision, hasStoneBuilds } from "./building.js?v=r1080-888123c078ea";
+import { importedEmitterAppearance, heldToolKind, ACTION_MOTION, ATTACK_VISUAL_PROFILES, TOOL_VISUAL_KINDS, attackVisualDeadline, normalizeAttackVisual, normalizeMeleeActionVisual, recordHeroPresentation, toolUseReleaseAge, primaryVisualStage, primaryCarryStage, cleaverCarryFrame, sampleCleaverChoreography } from "./action-motion.js?v=r1080-888123c078ea";
+import { swingVisualProgress } from "./melee-swing.js?v=r1080-888123c078ea"; // the weighted swing's clock (2026-11-14)
+import { creaturePoseFamily, creatureFootprint, MODEL_FLOATS, MODEL_MAX_VERTICES, modelSupported, modelSupportsAttachments, writeCloseViewModel, writeCloseViewHeroEquipment, writeCloseViewHeroKit, HERO_SLOT_EXTRA_TRIANGLES, closeViewToolEmissionPoint, closeViewHeldMuzzlePoint } from "./close-view-models.js?v=r1080-888123c078ea";
+import { loadCloseViewHero, getCloseViewHeroAsset, closeViewHeroAssetStatus, createHeroPoseState, createHeroFrame, sampleCloseViewHero, aerialHandsFree, closeViewHeroBodyAsset } from './close-view-hero.js?v=r1080-888123c078ea';
+import { wayfarerBody } from './journey-start.js?v=r1080-888123c078ea'; // the Wayfarer's body: which hero asset is drawn
+import { actorPresentation, actorProfile, designedAlpha, actorModelKey, packActionPresentation, nativeCreatureCoverage, projectileVisualHeight, projectileVisualPoint, readProjectileVisualFlight, shotVisualHeight } from "./actor-presentation.js?v=r1080-888123c078ea";
+import { closeViewHeldToolKind, writeCloseViewHeldTool } from './close-view-sweep-gear.js?v=r1080-888123c078ea'; // the Great Sweep and the Orrery held in the right hand (2026-11-14)
+import { closeViewPlayerForm, closeViewWaterState, closeViewWaterLift, closeViewSwimPhases, CLOSE_VIEW_WATER, playerFormModelKey, cleaverHandRoles, closeViewHeldHand, CLOSE_VIEW_HELD_GEAR, carbineRecoil, ordinaryJumpPresentation, ordinaryFallPresentation, ordinaryDefeatPresentation, ordinaryLandingPresentation } from './close-view-player-presentation.js?v=r1080-888123c078ea';
+import { HURT_VISUAL_MS, sampleCachePickupVisual, sampleConsumeVisual, sampleHurtVisual } from './consume-visual.js?v=r1080-888123c078ea';
+import { fistCharge, fistHeld, shadowDashGhosts, shadowDashPose } from './brawler-spells.js?v=r1080-888123c078ea';
+import { CLOSE_VIEW_SHADOW_FORMS, createShadowDash, resetShadowDash, stepShadowDash, shadowStrikePhase, shadowCloneAlpha, followShadowDash } from './close-view-shadow-forms.js?v=r1080-888123c078ea';
+import { dronePos, phaseShielded } from "./affixes.js?v=r1080-888123c078ea";
+import { PENTAGON_BACKDROPS } from "./pentagon-halls.js?v=r1080-888123c078ea";
+import { standardProjectile, standardProjectileColor, triceratopsHornVertices, TRICERATOPS_HORN_TRAIL } from "./combat-visuals.js?v=r1080-888123c078ea";
 const HORN_TRAIL_COLOR = 0xfff7dc, HORN_FLASH_COLOR = 0xfffbe8; // the horn shot's trail and muzzle flash (distinct from its body colour)
-import { TRICERATOPS_COMPOSITE, TRICERATOPS_CLOSE_VIEW, MOUNT_BEASTS, TRICERATOPS_DRILL_POSE, triceratopsHornPose, triceratopsDrillPose, triceratopsWhirlAngle } from "./beast-mounts.js?v=r1076-4dec3446cb5b";
-import { CARBINE, CONTINUOUS_ASSAULT, CLONE_CARBINE, carbineCharged, carbineFill, shotFade } from "./tool-forms.js?v=r1076-4dec3446cb5b"; // the Carbine's beam and charge glow; Continuous Assault's sky lasers
-import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r1076-4dec3446cb5b";
-import { behaviourProfile } from "./enemy-behaviour.js?v=r1076-4dec3446cb5b"; // a heavy blow's real recovery (creature motion, 2026-11-15)
-import { CREATURE_MOTION, MOTION_STATE_FLOATS, swapStep, swapEase, deathAlpha } from "./creature-motion.js?v=r1076-4dec3446cb5b"; // the shared creature motion layers (2026-11-15)
-import { hashSeed } from "./random.js?v=r1076-4dec3446cb5b";
-import { knockdownPose } from "./lightning-giant-render.js?v=r1076-4dec3446cb5b";
-import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r1076-4dec3446cb5b";
-import { holeDrops, labFogState, HOLE_DROPS, sightLineTo, sightExempt, creatureInSight, creatureSightLevel, sightField, sightFieldAt, SIGHT_LINES } from "./labyrinths.js?v=r1076-4dec3446cb5b"; // sight lines (2026-11-18): lock-on and threat framing see what the Wayfarer sees
-import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.js?v=r1076-4dec3446cb5b";
-import { SIGIL_CELLS } from "./watcher.js?v=r1076-4dec3446cb5b";
-import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT, DUELIST_SLOT, TRICERATOPS_SLOT, CLOSE_VIEW_BEAST_SIGHT, closeViewSectionBeast } from "./close-view-beasts.js?v=r1076-4dec3446cb5b";
-import { createTriceratopsTrack, sampleTriceratops, triceratopsMesh, TRICERATOPS_RIG } from "./close-view-beast-triceratops.js?v=r1076-4dec3446cb5b";
-import { MOUNT_DRAW } from "./beast-mounts-render.js?v=r1076-4dec3446cb5b";
-import { HATCH_DRAW, hatchlingPresentation } from "./hatchling-render.js?v=r1076-4dec3446cb5b"; // the Triceratops hatchling's skinned body
-import { drawApatoCloseFx, admitApatoProps } from "./close-view-beast-apato.js?v=r1076-4dec3446cb5b"; // the Earth Apatosaurus's standing hazards (cards)
-import { stageDuel } from "./close-view-duel.js?v=r1076-4dec3446cb5b"; // the dino duel: the two bodies spaced and the held one in the other's jaws // release 891: world beasts' skinned bodies (and the Gaunt's)
-import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, prepareCloseViewBeastMesh, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, glProps, closeViewPropsAvailable, glRelief, closeViewReliefAvailable, closeViewOutdoorAvailable, closeViewOccluderAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.js?v=r1076-4dec3446cb5b"; // version 4: the GPU scene
-import { closeViewFolkKind, folkLookCached, folkHeightJitter, createFolkTrack, sampleFolk, createTurtleFolkTrack, sampleTurtleFolk, folkMesh, turtleFolkMesh, FOLK_SLOT, FOLK_MOTION } from "./close-view-folk.js?v=r1076-4dec3446cb5b"; // 2026-11-13: the townsfolk's skinned bodies
-import { lanternReach, lanternNightReach } from "./spell-slots.js?v=r1076-4dec3446cb5b"; // the Lantern lengthens the torch
-import { OUTDOOR, outdoorScene, outdoorInsideHouse, outdoorTreeObject, outdoorPropObject, propScene, outdoorRelief, outdoorSurfaceZ, outdoorLightning, LIGHTNING, outdoorRoofZ, outdoorRoofTopAt, OUTDOOR_FLOATS, outdoorTowerAir, outdoorMoodId } from "./close-view-outdoor.js?v=r1076-4dec3446cb5b";
-import { CLOSE_VIEW_POLISH, smoothDamp, softTilt, recentreStep, fadeToward, smoothstep01, crossfadeAlpha, inertiaRelease, inertiaDecay, inertiaTravel } from "./close-view-polish.js?v=r1076-4dec3446cb5b"; // the polish pass (2026-11-19): smooth pitch, zoom, recentre, fades, cross-fades and hit-stop
-import { roofDeckAt, roofDeckById } from "./roof-decks.js?v=r1076-4dec3446cb5b"; // roof decks: the Wayfarer on a roof, the roof kept, the tap on a roof
+import { TRICERATOPS_COMPOSITE, TRICERATOPS_CLOSE_VIEW, MOUNT_BEASTS, TRICERATOPS_DRILL_POSE, triceratopsHornPose, triceratopsDrillPose, triceratopsWhirlAngle } from "./beast-mounts.js?v=r1080-888123c078ea";
+import { CARBINE, CONTINUOUS_ASSAULT, CLONE_CARBINE, carbineCharged, carbineFill, shotFade } from "./tool-forms.js?v=r1080-888123c078ea"; // the Carbine's beam and charge glow; Continuous Assault's sky lasers
+import { ATTACK_MODULES, BOSS_PACE } from "./monster-pack.js?v=r1080-888123c078ea";
+import { behaviourProfile } from "./enemy-behaviour.js?v=r1080-888123c078ea"; // a heavy blow's real recovery (creature motion, 2026-11-15)
+import { CREATURE_MOTION, MOTION_STATE_FLOATS, swapStep, swapEase, deathAlpha } from "./creature-motion.js?v=r1080-888123c078ea"; // the shared creature motion layers (2026-11-15)
+import { hashSeed } from "./random.js?v=r1080-888123c078ea";
+import { knockdownPose } from "./lightning-giant-render.js?v=r1080-888123c078ea";
+import { dungeonPointDiscovered, dungeonTileVisibility } from "./dungeon-framework.js?v=r1080-888123c078ea";
+import { holeDrops, labFogState, HOLE_DROPS, sightLineTo, sightExempt, creatureInSight, creatureSightLevel, sightField, sightFieldAt, SIGHT_LINES } from "./labyrinths.js?v=r1080-888123c078ea"; // sight lines (2026-11-18): lock-on and threat framing see what the Wayfarer sees
+import { muralPattern, PENTAGON_MURALS } from "./pentagon-halls.js?v=r1080-888123c078ea";
+import { SIGIL_CELLS } from "./watcher.js?v=r1080-888123c078ea";
+import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT, DUELIST_SLOT, TRICERATOPS_SLOT, CLOSE_VIEW_BEAST_SIGHT, closeViewSectionBeast } from "./close-view-beasts.js?v=r1080-888123c078ea";
+import { createTriceratopsTrack, sampleTriceratops, triceratopsMesh, TRICERATOPS_RIG } from "./close-view-beast-triceratops.js?v=r1080-888123c078ea";
+import { MOUNT_DRAW } from "./beast-mounts-render.js?v=r1080-888123c078ea";
+import { HATCH_DRAW, hatchlingPresentation } from "./hatchling-render.js?v=r1080-888123c078ea"; // the Triceratops hatchling's skinned body
+import { drawApatoCloseFx, admitApatoProps } from "./close-view-beast-apato.js?v=r1080-888123c078ea"; // the Earth Apatosaurus's standing hazards (cards)
+import { stageDuel } from "./close-view-duel.js?v=r1080-888123c078ea"; // the dino duel: the two bodies spaced and the held one in the other's jaws // release 891: world beasts' skinned bodies (and the Gaunt's)
+import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, prepareCloseViewBeastMesh, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, glProps, closeViewPropsAvailable, glRelief, closeViewReliefAvailable, closeViewOutdoorAvailable, closeViewOccluderAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.js?v=r1080-888123c078ea"; // version 4: the GPU scene
+import { closeViewFolkKind, folkLookCached, folkHeightJitter, createFolkTrack, sampleFolk, createTurtleFolkTrack, sampleTurtleFolk, folkMesh, turtleFolkMesh, FOLK_SLOT, FOLK_MOTION } from "./close-view-folk.js?v=r1080-888123c078ea"; // 2026-11-13: the townsfolk's skinned bodies
+import { lanternReach, lanternNightReach } from "./spell-slots.js?v=r1080-888123c078ea"; // the Lantern lengthens the torch
+import { OUTDOOR, outdoorScene, outdoorInsideHouse, outdoorTreeObject, outdoorPropObject, propScene, outdoorRelief, outdoorSurfaceZ, outdoorLightning, LIGHTNING, outdoorRoofZ, outdoorRoofTopAt, OUTDOOR_FLOATS, outdoorTowerAir, outdoorMoodId } from "./close-view-outdoor.js?v=r1080-888123c078ea";
+import { CLOSE_VIEW_POLISH, smoothDamp, softTilt, recentreStep, fadeToward, smoothstep01, crossfadeAlpha, inertiaRelease, inertiaDecay, inertiaTravel } from "./close-view-polish.js?v=r1080-888123c078ea"; // the polish pass (2026-11-19): smooth pitch, zoom, recentre, fades, cross-fades and hit-stop
+import { roofDeckAt, roofDeckById } from "./roof-decks.js?v=r1080-888123c078ea"; // roof decks: the Wayfarer on a roof, the roof kept, the tap on a roof
 // The overworld's heightfield (OUTDOOR.terrain): while it is drawn, everything that stands on the ground (the Wayfarer, the
 // creatures, their shadows, shots, the camera's floor) stands at its height; elsewhere the interiors' own heights, as before.
 const RELIEF = { map: null, R: null };
@@ -652,7 +652,7 @@ export const CLOSE_VIEW = Object.freeze({
   // opacity follows CLOSE_VIEW.creatures, and `fade` eases only how far a wall hides it). `ghost`: seen through a wall that
   // stands between it and the camera, it is drawn again over the wall at this opacity (eased the same way), never lost.
   // `windup`: a creature winding up an attack glows (`glowRGB`, pulsing every `pulseMs` between `glow` and `glowPeak`) with a
-  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r1076-4dec3446cb5b's hitFlash,
+  // ring on the floor at its feet; `flash`: a creature just struck flashes light for its hit flash (game.js?v=r1080-888123c078ea's hitFlash,
   // `flashSec` long) at up to this opacity. All tiers: these are what a fight needs to read.
   // Version 4: the GPU scene (close-view-gl.ts; quality.*.gl, glScale (of the screen's own resolution), mip, aniso). Without
   // WebGL2 the 2D view of version 3 draws instead. `maskMs`: how often the hazard mask (one texel a tile) follows what the fog of
@@ -826,7 +826,7 @@ export const CLOSE_VIEW = Object.freeze({
   maxItems: 4096,
 });
 
-// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r1076-4dec3446cb5b's traps, aperture marks
+// Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.js?v=r1080-888123c078ea's traps, aperture marks
 // and ranged effects; the Proving Ground's ranged effects), drawn onto the ground texture after the renderer, and `art`, a map
 // from creature kind to a phase-2 close-view drawer.
 export const CLOSE_VIEW_HOOKS = { makeCanvas: null, groundLayers: [], art: Object.create(null), navigationDoors: null, gl: null, orbit: null }; // orbit: false runs the collision rig that the fixed-distance orbit replaced (2026-11-18; its own regression tests) // gl: false keeps the 2D view (the lab's ?cvGL=0)
@@ -1069,7 +1069,7 @@ function grow() { N *= 2; const re = (A, n) => { const b = new A.constructor(n);
   boardSX = re(boardSX, N); boardSY = re(boardSY, N); boardPW = re(boardPW, N); boardPH = re(boardPH, N); boardX = re(boardX, N); boardY = re(boardY, N); boardK = re(boardK, N); boardB = re(boardB, N); boardScale = re(boardScale, N); boardHalfWidth = re(boardHalfWidth, N); boardTop = re(boardTop, N); boardBelow = re(boardBelow, N); boardWX = re(boardWX, N); boardWY = re(boardWY, N); boardOcc = re(boardOcc, N); boardFade = re(boardFade, N); swapCard = re(swapCard, N); }
 
 // What the last frame cost (tests and the Proving Ground read it).
-// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r1076-4dec3446cb5b's renderTimings).
+// Per-stage milliseconds of the last frame, while `on` (the diagnostic probe's switch, as renderer.js?v=r1080-888123c078ea's renderTimings).
 export const closeViewTimings = { on: false, ground: 0, torch: 0, floor: 0, scene: 0, overlay: 0 };
 export const closeViewStats = { rigProbes: 0, rigSamples: 0, sightCuts: 0, terrainPulls: 0, snapshots: 0, frames: 0, faces: 0, facesCut: 0, boards: 0, bands: 0, wallBuilds: 0, culled: 0, detailed: 0, gl: 0, flat: 0 };
 // Last completed scene, not the most recent GPU attempt. Reuse existing fallback
@@ -1505,7 +1505,7 @@ function lockOnScreen(g, e) {
 }
 export function closeViewLockCandidate(g, { yaw = CAM.yaw, cone = CLOSE_VIEW.lock.cone, range = CLOSE_VIEW.lock.range, ox = null, oy = null, skip = null, screen = true } = {}) {
   const L = CLOSE_VIEW.lock, p = g.player, px = footX(p), py = footY(p), cx = ox ?? px, cy = oy ?? py; let best = null, bestS = Infinity, bestVisible = false;
-  for (const e of g.enemies || []) { if (!lockable(e) || e.id === skip) continue; const ex = e.x + .5, ey = e.y + .75, d = Math.hypot(ex - cx, ey - cy); if (d > range) continue;
+  for (const e of g.enemies || []) { if (!lockable(e) || e.id === skip || e.farBelow && !g.reachesBelow?.()) continue; /* game.ts VERTICAL_SEPARATION: far below, only the Carbine locks */ const ex = e.x + .5, ey = e.y + .75, d = Math.hypot(ex - cx, ey - cy); if (d > range) continue;
     const a = Math.abs(wrap(Math.atan2(ey - py, ex - px) - yaw)) / DEG, visible = screen && lockOnScreen(g, e);
     if (a > (screen ? Math.max(cone, L.fallbackCone) : cone)) continue;
     if (screen && !visible && (a > L.fallbackCone || Math.hypot(ex - px, ey - py) > L.fallbackRange)) continue;
@@ -1557,7 +1557,7 @@ export function closeViewTargetScore(g, e) { const p = g.player, ex = e.x + .5, 
 function targetModeScan(g, skip) {
   const L = CLOSE_VIEW.lock, T = CLOSE_VIEW.targetMode, p = g.player, px = footX(p), py = footY(p), reduce = !!(g.presentation?.reduceMotion || g.presentation?.safeMode); let bestS = Infinity;
   TM_SCAN.best = TM_SCAN.near = null; TM_SCAN.nearD = TM_SCAN.bestS = Infinity;
-  for (const e of g.enemies || []) { if (!lockable(e) || e.id === skip) continue; const ex = e.x + .5, ey = e.y + .75, d = Math.hypot(ex - px, ey - py); if (d > L.range) continue;
+  for (const e of g.enemies || []) { if (!lockable(e) || e.id === skip || e.farBelow && !g.reachesBelow?.()) continue; /* game.ts VERTICAL_SEPARATION */ const ex = e.x + .5, ey = e.y + .75, d = Math.hypot(ex - px, ey - py); if (d > L.range) continue;
     const off = Math.abs(wrap(Math.atan2(ey - py, ex - px) - CAM.yaw)); if (reduce && off > L.cone * DEG) continue; // reduced motion: never an automatic swing round behind
     const sc = targetScore(e, d, off), beats = sc < bestS, nearer = d <= T.threatRange && d < TM_SCAN.nearD;
     if (!(beats || nearer) || !lockSees(g, e)) continue;
@@ -2130,7 +2130,7 @@ export function closeViewScreenToWorld(g, w, h, x, y) {
   return { x: CAM.cx + CAM.rx * u + CAM.fx * v, y: CAM.cy + CAM.ry * u + CAM.fy * v };
 }
 const PROJ = { sx: 0, sy: 0, depth: 0 };
-// Version 4, for tests: the GPU floor's own sum (close-view-gl.js?v=r1076-4dec3446cb5b's ENV_FS), in JS. The world point on the floor (z 0) under a
+// Version 4, for tests: the GPU floor's own sum (close-view-gl.js?v=r1080-888123c078ea's ENV_FS), in JS. The world point on the floor (z 0) under a
 // screen point of the last frame, or null above the horizon; exact, so project(closeViewFloorRay(x, y)) lands on (x, y).
 export function closeViewFloorRay(x, y) {
   if (CAM.valid && (interiorTerrain(CAM.map) || hasStoneBuilds(CAM.map))) return terrainFloorRay(CAM.map, x, y);

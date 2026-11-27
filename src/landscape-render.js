@@ -1,11 +1,11 @@
 // Landscape Pack drawing: high-detail procedural textures for overland geography, cached per (kind, variant, tile
 // size) in offscreen canvases, plus per-frame animation (surf, glow) and pseudo-3D elevation: a raised tile's top is
 // drawn shifted up by its level and a shaded cliff face fills the drop below it.
-import { SEASONS } from "./seasons.js?v=r1076-4dec3446cb5b";
-import { LIFT_PER_LEVEL, safeVoidScarTransition, PALETTE_REGIONS, tileLiftScale } from "./landscape.js?v=r1076-4dec3446cb5b";
-import { TREES, canopyBehindTrunk, canopyAboveCrown, canopyRepaint } from "./trees.js?v=r1076-4dec3446cb5b";
-import { DOMAIN_LOOKS, domainKinds, DOMAIN_MELTS } from "./domain-looks.js?v=r1076-4dec3446cb5b";
-import { BIZARRO } from "./strange.js?v=r1076-4dec3446cb5b"; // the bizarro pockets
+import { SEASONS } from "./seasons.js?v=r1080-888123c078ea";
+import { LIFT_PER_LEVEL, safeVoidScarTransition, PALETTE_REGIONS, tileLiftScale } from "./landscape.js?v=r1080-888123c078ea";
+import { TREES, canopyBehindTrunk, canopyAboveCrown, canopyRepaint } from "./trees.js?v=r1080-888123c078ea";
+import { DOMAIN_LOOKS, domainKinds, DOMAIN_MELTS } from "./domain-looks.js?v=r1080-888123c078ea";
+import { BIZARRO } from "./strange.js?v=r1080-888123c078ea"; // the bizarro pockets
 
 const TAU = Math.PI * 2;
 const cache = new Map();

@@ -1,7 +1,7 @@
-import { freshSave, migrateSave, unsupportedVersion, compactedAreas } from "./types.js?v=r1076-4dec3446cb5b";
-import { ensureProductionTriceratops } from "./beast-mounts.js?v=r1076-4dec3446cb5b";
-import { startJourney } from "./progression.js?v=r1076-4dec3446cb5b";
-import { setWayfarerBody } from "./journey-start.js?v=r1076-4dec3446cb5b";
+import { freshSave, migrateSave, unsupportedVersion, compactedAreas } from "./types.js?v=r1080-888123c078ea";
+import { ensureProductionTriceratops } from "./beast-mounts.js?v=r1080-888123c078ea";
+import { startJourney } from "./progression.js?v=r1080-888123c078ea";
+import { setWayfarerBody } from "./journey-start.js?v=r1080-888123c078ea";
 
 const DB = "infinite-corridor", STORE = "saves", SLOT_COUNT = 3;
 const LEGACY_MIRROR = "infinite-corridor:active-v2", ACTIVE_SLOT = "infinite-corridor:active-slot-v1", SETTINGS = "infinite-corridor:settings-v1";
@@ -18,7 +18,7 @@ export function withMotionDefault(raw,env=globalThis){const r=raw&&typeof raw===
 export function loadSettings(env=globalThis){let raw={};try{raw=JSON.parse(localStorage.getItem(SETTINGS)||"{}")}catch{}return normalizeSettings(withMotionDefault(raw,env))}
 export function saveSettings(settings){const clean=normalizeSettings(settings);try{localStorage.setItem(SETTINGS,JSON.stringify(clean))}catch{}return clean}
 export function effectiveQuality(settings,env={}){if(settings?.safeMode||settings?.quality==="low")return"low";if(settings?.quality&&settings.quality!=="auto")return settings.quality;const width=Number(env.width)||1280,height=Number(env.height)||800,memory=Number(env.deviceMemory)||4,cores=Number(env.hardwareConcurrency)||4;return Math.min(width,height)<500||memory<=3||cores<=3?"low":"balanced"}
-export { serializeSave, deserializeSave } from "./save-codec.js?v=r1076-4dec3446cb5b";
+export { serializeSave, deserializeSave } from "./save-codec.js?v=r1080-888123c078ea";
 export function validateJourney(raw){try{if(!raw||typeof raw!=="object"||Array.isArray(raw))throw new Error("Save is not an object");const save=migrateSave(structuredClone(raw));if(!save.seed||!save.position||!Number.isFinite(Number(save.level)))throw new Error("Required journey fields are missing");return{health:"healthy",save,error:null}}catch(error){return{health:"damaged",save:null,error:String(error?.message||error)}}}
 export function journeyMetadata(raw,slot=1){if(!raw)return{slot,health:"empty",empty:true,name:`Journey ${slot}`,bytes:0};const checked=validateJourney(raw),source=checked.save||raw;let bytes=0;try{bytes=new Blob([JSON.stringify(raw)]).size}catch{}return{slot,health:checked.health,empty:false,error:checked.error,name:String(source.name||`Journey ${slot}`),seed:String(source.seed||"unknown"),level:Number(source.level)||1,location:source.position?.area==="dungeon"?"Dungeon":`${source.position?.rx||0}, ${source.position?.ry||0}`,updatedAt:Number(source.updatedAt)||0,explored:Object.keys(source.explored||{}).length,playSeconds:Math.max(0,Number(source.playSeconds)||0),bytes}}
 // The Wayfarer tab's "Your journey" figures (release 387; Tim approved the suggestion "a short 'your journey so far' page in the

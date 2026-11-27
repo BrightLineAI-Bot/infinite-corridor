@@ -12,16 +12,16 @@
 // CAIRN_LINES.plain) and, taken, the compass follows it to the nearest crossing (nearestCrossing). Classic keeps today's lines and
 // the errand's waymarks; leads and rumours run in both modes, as extras (section 6), and a Classic rumour never points at an
 // ability its own rules already open (awakening, the hatchling).
-import { hashSeed } from "./random.js?v=r1076-4dec3446cb5b";
-import { crossingRolled } from "./world.js?v=r1076-4dec3446cb5b";
-import { nearestWonders, WONDERS, compassWords } from "./wonders.js?v=r1076-4dec3446cb5b";
-import { arcanaHint, arcanaToward, arcanaHas, ARCANA_REGIONS, ARCANA_UNLOCKS } from "./lore.js?v=r1076-4dec3446cb5b";
-import { ensureLeads, exploring, saveFrame, EXPLORATION, LEAD_RECORD } from "./journey-start.js?v=r1076-4dec3446cb5b";
-import { APERTURE_BANDS, apertureBand } from "./items.js?v=r1076-4dec3446cb5b";
-import { HORDE_RUMOUR, RELIQUARY, worldWithheld } from "./world-routes.js?v=r1076-4dec3446cb5b"; // Phase 6: the horde rumour (2.7)
-import { nearestHorde, hordeLeadLive, pityLead, pityLive } from "./world-leads.js?v=r1076-4dec3446cb5b"; // Phase 6: the strong lead (G3)
-import { QUEST_IDS, questOpen, boughtRumour, paidRumourView, storyWithheld } from "./quests.js?v=r1076-4dec3446cb5b"; // Phase 7: quests count as leads; Phase 8: a bought rumour
-import { threadFound } from "./threads.js?v=r1076-4dec3446cb5b"; import { TRAIL_IDS, trailBegun } from "./thread-trails.js?v=r1076-4dec3446cb5b"; // 2026-11-21: the Washing at Sallowby (a rumour, then a quest the compass can follow)
+import { hashSeed } from "./random.js?v=r1080-888123c078ea";
+import { crossingRolled } from "./world.js?v=r1080-888123c078ea";
+import { nearestWonders, WONDERS, compassWords } from "./wonders.js?v=r1080-888123c078ea";
+import { arcanaHint, arcanaToward, arcanaHas, ARCANA_REGIONS, ARCANA_UNLOCKS } from "./lore.js?v=r1080-888123c078ea";
+import { ensureLeads, exploring, saveFrame, EXPLORATION, LEAD_RECORD } from "./journey-start.js?v=r1080-888123c078ea";
+import { APERTURE_BANDS, apertureBand } from "./items.js?v=r1080-888123c078ea";
+import { HORDE_RUMOUR, RELIQUARY, worldWithheld } from "./world-routes.js?v=r1080-888123c078ea"; // Phase 6: the horde rumour (2.7)
+import { nearestHorde, hordeLeadLive, pityLead, pityLive } from "./world-leads.js?v=r1080-888123c078ea"; // Phase 6: the strong lead (G3)
+import { QUEST_IDS, questOpen, boughtRumour, paidRumourView, storyWithheld } from "./quests.js?v=r1080-888123c078ea"; // Phase 7: quests count as leads; Phase 8: a bought rumour
+import { threadFound } from "./threads.js?v=r1080-888123c078ea"; import { TRAIL_IDS, trailBegun } from "./thread-trails.js?v=r1080-888123c078ea"; // 2026-11-21: the Washing at Sallowby (a rumour, then a quest the compass can follow)
 
 export const LEADS = Object.freeze({
   floor: 2, // G2: at least this many leads the player can act on now
@@ -103,6 +103,10 @@ export const RUMOURS = Object.freeze({
   washing: Object.freeze({ modes: [0, 1], set: "washing", title: "Washing in the crossings",
     open: (save) => !threadFound(save, "washing").length,
     line: (where) => `Washing turns up in the crossings ${where}, they say: bundles tied in clean sheets, still damp, with a slip pinned on. Somebody's whole village, by the sound of it.` }),
+  // 2026-11-26 (story version 8): the Turves of Scarrow Moss, told by name and home until its first turf is found (then it is a quest).
+  turves: Object.freeze({ modes: [0, 1], set: "turves", title: "Peat in the crossings",
+    open: (save) => !threadFound(save, "turves").length,
+    line: (where) => `Somebody's been leaving cut peat in the crossings ${where}, they say: good turves, set up out of the wet, and not one of them burned. Nobody will put them on a fire. Nobody can say why not.` }),
   // Phase 6 (2.7): from Infinite II, the nearest Revenant horde crossing not yet entered, while the first horde's certain reliquary
   // waits and the pool still holds something to find. Found by the horde's own hash (world-finds.ts nearestHorde).
   // Every offered goal can be completed (2026-11-25): told floor or not (`always`), like the strong lead: the first horde's reliquary
@@ -118,7 +122,7 @@ export const RUMOURS = Object.freeze({
   wonder: Object.freeze({ modes: [0, 1], title: "A wonder",
     line: (w, rx, ry) => `People speak of ${WONDERS.kinds[w.kind].name} ${compassWords(w.rx - rx, w.ry - ry)}, about ${w.d} section${w.d === 1 ? "" : "s"} off.` }),
 });
-export const RUMOUR_ORDER = Object.freeze(["hatchling", "awakening", "horde", "lamplighter", "bells", "washing", "wonder"]);
+export const RUMOUR_ORDER = Object.freeze(["hatchling", "awakening", "horde", "lamplighter", "bells", "washing", "turves", "wonder"]);
 // The people whose idle words may become a rumour (by object id; the hamlets' folk and the Listener towns' cooks by kind, in
 // game.ts). Hollis is not one: his talk points the way to the Refuge's farm and quarry (refuge-lands.ts), which a rumour must not hide.
 export const RUMOUR_SPEAKERS = Object.freeze(["vendor-vela", "warden-oren", "keeper-sela", "cairn-keeper", "vendor-iona", "resident-tarn", "vendor-mora", "resident-esh"]);

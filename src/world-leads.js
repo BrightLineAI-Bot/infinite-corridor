@@ -1,19 +1,19 @@
 // Phase 6's leads (docs/progression-design.md revision 3: 2.5 G3 and 2.7), for leads.ts: the nearest Revenant horde crossing not yet
 // entered (the horde rumour, from Infinite II), and the strong lead pity gives after a long dry spell. Hashes shortlist candidates,
 // and nothing here reads the progression table (leads.ts is imported early: atlas-view.ts).
-import { hashSeed, rng } from "./random.js?v=r1076-4dec3446cb5b";
-import { exploring, ensureFeats } from "./journey-start.js?v=r1076-4dec3446cb5b";
-import { MILESTONES, RELIQUARY, PITY, HORDE_RUMOUR, WORLD_WITHHELD, earnedWorld, worldWithheld, featCount, milestoneLine, reliquaryRoll } from "./world-routes.js?v=r1076-4dec3446cb5b";
-import { dungeonId, dungeonDescriptor, regionSettled, CROSSING_ROLLS } from "./world.js?v=r1076-4dec3446cb5b";
-import { HORDE } from "./revenant-horde.js?v=r1076-4dec3446cb5b";
-import { ladderRoll } from "./dungeon-ladder.js?v=r1076-4dec3446cb5b";
-import { shaftHere, deepIdFor, deepKey } from "./the-deep.js?v=r1076-4dec3446cb5b";
-import { APERTURE_BANDS, apertureBand } from "./items.js?v=r1076-4dec3446cb5b";
-import { hamletSection, legacyMouthHamlet } from "./settlements.js?v=r1076-4dec3446cb5b";
-import { farDomainAt } from "./far-realms.js?v=r1076-4dec3446cb5b";
-import { rollMireCrypt } from "./underlands.js?v=r1076-4dec3446cb5b";
-import { annexRecord, DEEP_ANNEX } from "./deep-annex.js?v=r1076-4dec3446cb5b";
-import { starfieldRolls, starPlaceAt } from "./wonders.js?v=r1076-4dec3446cb5b";
+import { hashSeed, rng } from "./random.js?v=r1080-888123c078ea";
+import { exploring, ensureFeats } from "./journey-start.js?v=r1080-888123c078ea";
+import { MILESTONES, RELIQUARY, PITY, HORDE_RUMOUR, WORLD_WITHHELD, earnedWorld, worldWithheld, featCount, milestoneLine, reliquaryRoll } from "./world-routes.js?v=r1080-888123c078ea";
+import { dungeonId, dungeonDescriptor, regionSettled, CROSSING_ROLLS } from "./world.js?v=r1080-888123c078ea";
+import { HORDE } from "./revenant-horde.js?v=r1080-888123c078ea";
+import { ladderRoll } from "./dungeon-ladder.js?v=r1080-888123c078ea";
+import { shaftHere, deepIdFor, deepKey } from "./the-deep.js?v=r1080-888123c078ea";
+import { APERTURE_BANDS, apertureBand } from "./items.js?v=r1080-888123c078ea";
+import { hamletSection, legacyMouthHamlet } from "./settlements.js?v=r1080-888123c078ea";
+import { farDomainAt } from "./far-realms.js?v=r1080-888123c078ea";
+import { rollMireCrypt } from "./underlands.js?v=r1080-888123c078ea";
+import { annexRecord, DEEP_ANNEX } from "./deep-annex.js?v=r1080-888123c078ea";
+import { starfieldRolls, starPlaceAt } from "./wonders.js?v=r1080-888123c078ea";
 
 // game.ts installs the pure physical probe after its module loads. Early/standalone callers cannot promise an unverified site.
 let worldLeadProbe = null;

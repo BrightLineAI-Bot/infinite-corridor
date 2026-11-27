@@ -23,7 +23,7 @@
 // Angles are degrees relative to the aim, positive clockwise on screen (from +x toward +y, y down), as melee-swing.ts. The
 // Wayfarer holds the sweep in the right hand (CLOSE_VIEW_HELD_GEAR), so the forehand starts on the aim's right (+90) and turns
 // counter-clockwise (`turn` -360); the next press within its visual alternates (direction -1: mirrored, from -90, +360).
-import { circleTouchesSector } from './melee-swing.js?v=r1076-4dec3446cb5b';
+import { circleTouchesSector } from './melee-swing.js?v=r1080-888123c078ea';
 
 export const GREAT_SWEEP_SWING = Object.freeze({
   hilt: .3, // the blade's inner radius (tiles); the tip is BRAWLER['great-sweep'].radius (with Spellblade and Charged Air)

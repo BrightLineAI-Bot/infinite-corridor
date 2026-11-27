@@ -2,19 +2,19 @@
 // a worldview … zoom to region … see more of the map at large"). Pure helpers for main.ts: the zoom range, framing a
 // set of sections, and the places a player can jump to (the explored world, each region they have heard, and the
 // towns, districts and Wayglasses inside it), plus the shared optional route-panel renderer.
-import { secondWayfarerTarget } from "./second-wayfarer.js?v=r1076-4dec3446cb5b";
-import { trailOfFollow, trailTarget } from "./thread-trails.js?v=r1076-4dec3446cb5b"; // 2026-11-21: a followed thread (the Washing at Sallowby)
-import { nearestCrossing } from "./leads.js?v=r1076-4dec3446cb5b"; // Progression Phase 4: the Cairn Keeper's errand on an Exploration journey
-import { exploring } from "./journey-start.js?v=r1076-4dec3446cb5b";
-import { questOfFollow } from "./quests.js?v=r1076-4dec3446cb5b"; import { questTarget } from "./quest-places.js?v=r1076-4dec3446cb5b"; // progression Phase 7: a followed quest
-import { READINGS, READING_ORDER, readingAt, readingKnown } from "./lore.js?v=r1076-4dec3446cb5b";
-import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.js?v=r1076-4dec3446cb5b";
-import { PENTAGON, parsePentagonId, pentagonPlan, pentagonLinkKey, pentagonCentre } from "./pentagon.js?v=r1076-4dec3446cb5b";
-import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r1076-4dec3446cb5b";
-import { labFogOf, labFogState } from "./labyrinths.js?v=r1076-4dec3446cb5b";
-import { TALL_TOWERS } from "./tall-towers.js?v=r1076-4dec3446cb5b";
-import { sectionSignals } from "./world.js?v=r1076-4dec3446cb5b"; import { wonderAt } from "./wonders.js?v=r1076-4dec3446cb5b"; import { APERTURE_BANDS, apertureBand } from "./items.js?v=r1076-4dec3446cb5b"; // the compass's nearby places (2026-11-25; 2026-11-26: only the five kinds Tim named)
-import { worldBeastsHeld } from "./world-beasts.js?v=r1076-4dec3446cb5b"; import { guideHost } from "./waymark-guides.js?v=r1076-4dec3446cb5b";
+import { secondWayfarerTarget } from "./second-wayfarer.js?v=r1080-888123c078ea";
+import { trailOfFollow, trailTarget } from "./thread-trails.js?v=r1080-888123c078ea"; // 2026-11-21: a followed thread (the Washing at Sallowby)
+import { nearestCrossing } from "./leads.js?v=r1080-888123c078ea"; // Progression Phase 4: the Cairn Keeper's errand on an Exploration journey
+import { exploring } from "./journey-start.js?v=r1080-888123c078ea";
+import { questOfFollow } from "./quests.js?v=r1080-888123c078ea"; import { questTarget } from "./quest-places.js?v=r1080-888123c078ea"; // progression Phase 7: a followed quest
+import { READINGS, READING_ORDER, readingAt, readingKnown } from "./lore.js?v=r1080-888123c078ea";
+import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.js?v=r1080-888123c078ea";
+import { PENTAGON, parsePentagonId, pentagonPlan, pentagonLinkKey, pentagonCentre } from "./pentagon.js?v=r1080-888123c078ea";
+import { dungeonPointDiscovered } from "./dungeon-framework.js?v=r1080-888123c078ea";
+import { labFogOf, labFogState } from "./labyrinths.js?v=r1080-888123c078ea";
+import { TALL_TOWERS } from "./tall-towers.js?v=r1080-888123c078ea";
+import { sectionSignals } from "./world.js?v=r1080-888123c078ea"; import { wonderAt } from "./wonders.js?v=r1080-888123c078ea"; import { APERTURE_BANDS, apertureBand } from "./items.js?v=r1080-888123c078ea"; // the compass's nearby places (2026-11-25; 2026-11-26: only the five kinds Tim named)
+import { worldBeastsHeld } from "./world-beasts.js?v=r1080-888123c078ea"; import { guideHost } from "./waymark-guides.js?v=r1080-888123c078ea";
 
 const DUNGEON_ROUTE_TAGS = { exit: "OUT", deepReturn: "RETURN", buildingStair: "STAIR", deepTransition: "PASSAGE", deepStair: "DEEP STAIR", annexStair: "DOWN", warpDais: "DAIS", deepPortal: "PORTAL", deepShortcut: "SHORTCUT", emberDoor: "EMBER DOOR", labGate: "DOOR" };
 export const DUNGEON_DOOR_WAYPOINTS = { max: 3 };

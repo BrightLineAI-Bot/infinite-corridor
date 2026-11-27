@@ -4,8 +4,8 @@
 // bolts, the tail whirl, the stomp's ring, the chill, the heal and the buffs). Drawing only: nothing here changes the game.
 // Close View: the companion's card is replaced by his skinned body (close-view.ts admitHatchling sets HATCH_DRAW.skipBody while it
 // paints the cards); his mother and the pen stay cards; the visuals lie on the floor.
-import { drawTriceratopsBody } from "./triceratops-render.js?v=r1076-4dec3446cb5b";
-import { HATCHLING } from "./hatchling.js?v=r1076-4dec3446cb5b";
+import { drawTriceratopsBody } from "./triceratops-render.js?v=r1080-888123c078ea";
+import { HATCHLING } from "./hatchling.js?v=r1080-888123c078ea";
 
 const TAU = Math.PI * 2;
 export const HATCH_ART = Object.freeze({
