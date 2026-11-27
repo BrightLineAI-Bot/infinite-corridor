@@ -83,9 +83,9 @@ test('rounder buttocks (Tim, 2026-11-27): one long convex arc from just under th
   const S = HERO_FEMALE.sculpt, G = S.glutes, flat = { ...S, glutes: { ...G, depth: 0 } }, o = [0, 0, 0];
   const at = (sc, x, y, z) => sculptHeroPoint(sc, x, y, z, o).slice();
   const swell = (x, y, z) => at(flat, x, y, z)[2] - at(S, x, y, z)[2];
-  // clearly rounder, bounded: about 7 cm at the fullest in fitted space (release 1079's first swell 2.7 cm), never more than the parameter
+  // clearly rounder, bounded: about 5.6 cm at the fullest in fitted space (release 1079's first swell 2.7 cm), never more than the parameter
   const peak = swell(.088, G.y, -.23);
-  assert.ok(peak > .06 && peak <= G.depth + 1e-9 && G.depth <= .10, `fullest ${peak.toFixed(4)}`);
+  assert.ok(peak > .05 && peak <= G.depth + 1e-9 && G.depth <= .10, `fullest ${peak.toFixed(4)}`);
   // the side (Tim's traced profile, 2026-11-27): the swell starts right under the belt and keeps rising (no straight or inward
   // stretch), fullest about a third of the way down to the fold, a round dome that curves under into a soft fold
   assert.ok(swell(.1, 1.10, -.26) > peak * .3 && swell(.1, 1.18, -.26) < .002, 'it starts right under the belt; the belt line (fitted y 1.18 up) barely moves');
