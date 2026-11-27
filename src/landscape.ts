@@ -21,7 +21,7 @@ import { DOMAIN_WALKABLE, DOMAIN_BLOCKED } from "./domain-looks.ts";
 // Version 1: release 94 landscape. Version 2 (Waterbodies, water world W1): seas spanning many sections with islands
 // and a deep-ocean band, inland lakes, swamps and poison swamps. Version 3 (the Skiff, W2): docks with a Shipwright.
 // Each section keeps the version it was first seen with.
-export const LANDSCAPE_VERSION = 29; // the Cloudfells (REGIONS_V29, applyFells: rolling granite uplands standing out of a sea of low cloud: heather fells stepping up one level at a time to crag-paved tops with granite tors, and in the hollows under the cloud moss, peat hags that slow the step and wadeable tarns, now and then a shepherd's cache by a summit); 28: the Oasis Ergs (REGIONS_V28, applyOasis: long pale seif dunes along each region's bearing, a gentle windward flank and a steep slip face up to a crest, and in the corridors between them reed-fringed wadis strung with turquoise oasis pools, date palms, patches of sinking sand that slow the step, now and then a caravan's cache on a crest); 27: the Magma Rivers (REGIONS_V27, applyMagma: channels of lava running along each region's bearing between raised scoria levees, crusted over here and there into bridges, cinder cones with a lava crater and a climbable rim, fumaroles ringed with sulphur, now and then a cache on a rim); 26: the Marrowworks (REGIONS_V26, applyMarrow: a buried biomechanical engine: vertebral causeways with chevron ribs stepping down either side, gutters with lethal sumps spanned by sinew bridges, ichor pools, conduits, vents, rib-tip tusks, now and then a ribcage with a cache); 25: the Lunar Wastes (REGIONS_V25, applyLunar: regolith highlands and basalt maria, craters of three sizes with raised rims, sunken floors and central peaks, ejecta rays, boulders, rilles with natural bridges, now and then a monolith); 24: the Rimeglaciers (REGIONS_V24, applyGlacier: stepped ice sheets with icefalls, crevasse fields and snow bridges, seracs, moraine, melt pools); 23: the Reckoning Fields (REGIONS_V23, applyReckoning: self-similar figures computed from each region's site, raised plates, monoliths); 22: the canopy grove (trees.ts TREES_V21: several great trees joined at crown height by branch bridges, one climbed; walk hops only over open ground, no two-tile gaps); 772: Terrace Springs (REGIONS_V21, applyTerraces: stepped sinter terraces, spring pools, hot springs); 768: the last spires back (trees.ts TREES_V20: every side may be three tiles again; a tree is laid only where every climb tile is drawn, with canopyRepaint); 764: tall spires again (trees.ts TREES_V19: groves tried first and harder, tall spires, then the earlier spire reach, every readable turn); 758: great-tree platforming review (trees.ts TREES_V18: taller climbs, open hop gaps, perches and the forest's trees kept out of the trunk's drawn strip); 721: the great mushrooms beyond a thousand sections (great-mushrooms.ts); 717: the Storm Halls' pillar lands; 716: the far civilisations (far-realms.ts FAR_CIVS) take their own land (each from its `landSince`); // 672: great trees found where they fit, and in forests and amberwood too (trees.ts TREES_V14); 645: the tree package (trees.ts: spires and groves, perches, leaves); 631: giant canopy trees in the jungle (633: rebuilt tall, before 631 was published); 629: petrified woods, savanna, reef flats, amberwood, obsidian fields; 625: jungles, carapace wastes, salt marshes, crystal fields, sporewoods; 617: fog moors; release 569: world regions (REGIONS); 573: forest and frost regions, region names; 579: moonlands; 583: volcanic regions; 591: pillar lands; earlier versions are kept for the sections pinned to them
+export const LANDSCAPE_VERSION = 30; // the Great Ranges (REGIONS_V30, applyRanges: long ranges of high ridges along each region's bearing, a gentle flank stepping up through foothills to crags and snow-capped summits, and a sheer face on the other side; passes cut through at intervals, scree that slows, alpine lakes and meadows in the valleys between, now and then a climbers' cache on a summit reached by a switchback trail); 29: the Cloudfells (REGIONS_V29, applyFells: rolling granite uplands standing out of a sea of low cloud: heather fells stepping up one level at a time to crag-paved tops with granite tors, and in the hollows under the cloud moss, peat hags that slow the step and wadeable tarns, now and then a shepherd's cache by a summit); 28: the Oasis Ergs (REGIONS_V28, applyOasis: long pale seif dunes along each region's bearing, a gentle windward flank and a steep slip face up to a crest, and in the corridors between them reed-fringed wadis strung with turquoise oasis pools, date palms, patches of sinking sand that slow the step, now and then a caravan's cache on a crest); 27: the Magma Rivers (REGIONS_V27, applyMagma: channels of lava running along each region's bearing between raised scoria levees, crusted over here and there into bridges, cinder cones with a lava crater and a climbable rim, fumaroles ringed with sulphur, now and then a cache on a rim); 26: the Marrowworks (REGIONS_V26, applyMarrow: a buried biomechanical engine: vertebral causeways with chevron ribs stepping down either side, gutters with lethal sumps spanned by sinew bridges, ichor pools, conduits, vents, rib-tip tusks, now and then a ribcage with a cache); 25: the Lunar Wastes (REGIONS_V25, applyLunar: regolith highlands and basalt maria, craters of three sizes with raised rims, sunken floors and central peaks, ejecta rays, boulders, rilles with natural bridges, now and then a monolith); 24: the Rimeglaciers (REGIONS_V24, applyGlacier: stepped ice sheets with icefalls, crevasse fields and snow bridges, seracs, moraine, melt pools); 23: the Reckoning Fields (REGIONS_V23, applyReckoning: self-similar figures computed from each region's site, raised plates, monoliths); 22: the canopy grove (trees.ts TREES_V21: several great trees joined at crown height by branch bridges, one climbed; walk hops only over open ground, no two-tile gaps); 772: Terrace Springs (REGIONS_V21, applyTerraces: stepped sinter terraces, spring pools, hot springs); 768: the last spires back (trees.ts TREES_V20: every side may be three tiles again; a tree is laid only where every climb tile is drawn, with canopyRepaint); 764: tall spires again (trees.ts TREES_V19: groves tried first and harder, tall spires, then the earlier spire reach, every readable turn); 758: great-tree platforming review (trees.ts TREES_V18: taller climbs, open hop gaps, perches and the forest's trees kept out of the trunk's drawn strip); 721: the great mushrooms beyond a thousand sections (great-mushrooms.ts); 717: the Storm Halls' pillar lands; 716: the far civilisations (far-realms.ts FAR_CIVS) take their own land (each from its `landSince`); // 672: great trees found where they fit, and in forests and amberwood too (trees.ts TREES_V14); 645: the tree package (trees.ts: spires and groves, perches, leaves); 631: giant canopy trees in the jungle (633: rebuilt tall, before 631 was published); 629: petrified woods, savanna, reef flats, amberwood, obsidian fields; 625: jungles, carapace wastes, salt marshes, crystal fields, sporewoods; 617: fog moors; release 569: world regions (REGIONS); 573: forest and frost regions, region names; 579: moonlands; 583: volcanic regions; 591: pillar lands; earlier versions are kept for the sections pinned to them
 export const LIFT_PER_LEVEL = 0.34; // drawn height of one elevation level, in tiles
 export const CANOPY_LIFT = 2; // release 637: a great tree's levels are drawn this many times taller (the climb is unchanged)
 export const tileLiftScale = (t) => (t?.canopy ? CANOPY_LIFT : t?.roofLift || 1); // a great building's roof is drawn at the top of its facade (great-buildings.ts)
@@ -50,7 +50,7 @@ export const BIOMES = {
   blight: { id: "blight", name: "Blight Mire", atlas: "#7cbf3a" },
 };
 // Release 573: ground laid by a region rather than by the landscape fields (biomeFor never reports these).
-export const REGION_GROUNDS = { forest: { id: "forest", name: "Deepwood", atlas: "#2f5a34" }, frost: { id: "frost", name: "Frostlands", atlas: "#dce9f2" }, lunar: { id: "lunar", name: "Moonlands", atlas: "#b4b7bf" }, volcanic: { id: "volcanic", name: "Firelands", atlas: "#3a2420" }, pillars: { id: "pillars", name: "Pillar Lands", atlas: "#b9784c" }, fog: { id: "fog", name: "Fog Moors", atlas: "#7f8a86" }, jungle: { id: "jungle", name: "Jungle", atlas: "#1f6b2c" }, biomech: { id: "biomech", name: "Carapace Wastes", atlas: "#4a4f57" }, salt: { id: "salt", name: "Salt Marsh", atlas: "#e4dfd0" }, crystal: { id: "crystal", name: "Crystal Fields", atlas: "#8fd3e8" }, fungal: { id: "fungal", name: "Sporewood", atlas: "#7a4f8a" }, petrified: { id: "petrified", name: "Petrified Wood", atlas: "#8d8a82" }, savanna: { id: "savanna", name: "Savanna", atlas: "#c9a84a" }, reef: { id: "reef", name: "Reef Flats", atlas: "#e48f7a" }, amber: { id: "amber", name: "Amberwood", atlas: "#b8652a" }, obsidian: { id: "obsidian", name: "Obsidian Fields", atlas: "#1d1b22" }, terraces: { id: "terraces", name: "Terrace Springs", atlas: "#bfe0d8" }, reckoning: { id: "reckoning", name: "Reckoning Fields", atlas: "#2c3270" }, glacier: { id: "glacier", name: "Rimeglacier", atlas: "#8fc6e4" }, regolith: { id: "regolith", name: "Lunar Waste", atlas: "#9eabc2" }, marrow: { id: "marrow", name: "Marrowworks", atlas: "#446357" }, magma: { id: "magma", name: "Magma Rivers", atlas: "#8a2e14" }, oasis: { id: "oasis", name: "Oasis Ergs", atlas: "#d8c8a2" }, fells: { id: "fells", name: "Cloudfells", atlas: "#98a491" } };
+export const REGION_GROUNDS = { forest: { id: "forest", name: "Deepwood", atlas: "#2f5a34" }, frost: { id: "frost", name: "Frostlands", atlas: "#dce9f2" }, lunar: { id: "lunar", name: "Moonlands", atlas: "#b4b7bf" }, volcanic: { id: "volcanic", name: "Firelands", atlas: "#3a2420" }, pillars: { id: "pillars", name: "Pillar Lands", atlas: "#b9784c" }, fog: { id: "fog", name: "Fog Moors", atlas: "#7f8a86" }, jungle: { id: "jungle", name: "Jungle", atlas: "#1f6b2c" }, biomech: { id: "biomech", name: "Carapace Wastes", atlas: "#4a4f57" }, salt: { id: "salt", name: "Salt Marsh", atlas: "#e4dfd0" }, crystal: { id: "crystal", name: "Crystal Fields", atlas: "#8fd3e8" }, fungal: { id: "fungal", name: "Sporewood", atlas: "#7a4f8a" }, petrified: { id: "petrified", name: "Petrified Wood", atlas: "#8d8a82" }, savanna: { id: "savanna", name: "Savanna", atlas: "#c9a84a" }, reef: { id: "reef", name: "Reef Flats", atlas: "#e48f7a" }, amber: { id: "amber", name: "Amberwood", atlas: "#b8652a" }, obsidian: { id: "obsidian", name: "Obsidian Fields", atlas: "#1d1b22" }, terraces: { id: "terraces", name: "Terrace Springs", atlas: "#bfe0d8" }, reckoning: { id: "reckoning", name: "Reckoning Fields", atlas: "#2c3270" }, glacier: { id: "glacier", name: "Rimeglacier", atlas: "#8fc6e4" }, regolith: { id: "regolith", name: "Lunar Waste", atlas: "#9eabc2" }, marrow: { id: "marrow", name: "Marrowworks", atlas: "#446357" }, magma: { id: "magma", name: "Magma Rivers", atlas: "#8a2e14" }, oasis: { id: "oasis", name: "Oasis Ergs", atlas: "#d8c8a2" }, fells: { id: "fells", name: "Cloudfells", atlas: "#98a491" }, ranges: { id: "ranges", name: "Great Ranges", atlas: "#7b986b" } };
 // Waterbodies (version 2) balance table. `continent` bends the ocean field so whole seas form; `island` lifts land back
 // out of open water; `deep` is how far above the ocean threshold deep water starts.
 export const WATERBODIES = {
@@ -88,11 +88,15 @@ export const OASIS_BLOCKED = ["palmTree"];
 // MIRE.slow). No kind here may contain "sea" (the Close View reads it as water), "pit", "hole", "void", "lava", "magma", "cinder" or "ember".
 const FELLS_WALKABLE = ["fellGrass", "fellCrag", "screeSlope", "cloudMoss", "peatHag", "tarnPool"];
 export const FELLS_BLOCKED = ["graniteTor"];
+// The Great Ranges (version 30): the walkable kinds (applyRanges); `crestPinnacle` is blocked. `talusSlope` is walkable but slow (water-traversal.ts
+// MIRE.slow); `alpineLake` is wadeable. No kind here may contain "sea", "pit", "hole", "void", "abyss", "lava", "magma", "cinder" or "ember".
+const RANGES_WALKABLE = ["alpineMeadow", "alpineLake", "foothillGrass", "rangeRock", "rangeSnow", "summitSnow", "talusSlope", "colTrail", "rangeTrail"];
+export const RANGES_BLOCKED = ["crestPinnacle"];
 // Thresholds tuned so roughly a third of sections carry a landscape feature (see tests/landscape.test.ts).
 const T = { ocean: 0.70, beach: 0.675, mountain: 0.68, alien: 0.75, desert: 0.67 };
 const SHALLOWS_FROM = T.ocean - .012; // sea level above which water is shallows (below it, beach)
 const WALKABLE_LANDSCAPE = new Set(["craterFloor", /* Canyon craters */ "arcFloor", "arcStair", /* the ruined arcologies (keeps.ts) */ "snowRock", "snowPeak", "mountainRock", "alpineGrass", "mountainTrail", "sand", "duneCrest", "duneFace",
-  "beach", "shallows", "dock", "bogGround", "mireWater", "toxicBog", "toxicMire", "alienMoss", "alienPlatform", "castleCourt", "castleStair", "battlement", "mesaTop", "skyBridge", "volcanicRim", "ashSlope", "forestFloor", "snowField", "lakeIce", "moonDust", "craterFloor", "craterRim", "basalt", "basaltFissure", "pillarGround", "skyPlatform", "fogMoor", "mistPool", "jungleFloor", "jungleMire", "ribPlate", "oilSlick", "saltCrust", "brinePool", "crystalShale", "prismPool", "sporeLoam", "sporeBed", "stoneLitter", "silicaPool", "savannaGrass", "wateringHole", "reefFlat", "tidePool", "amberLitter", "amberPool", "obsidianFloor", "quicksilverPool", "canopyBranch", "canopyCrown", "canopyLeaf", ...MUSHROOM_KINDS, "thornBasalt", "thornFloor", "thornShards", ...DOMAIN_WALKABLE, ...TERRACE_WALKABLE, ...RECKONING_WALKABLE, ...GLACIER_WALKABLE, ...LUNAR_WALKABLE, ...MARROW_WALKABLE, ...MAGMA_WALKABLE, ...OASIS_WALKABLE, ...FELLS_WALKABLE]); // 721: great mushroom caps; 723: the Thornglass Caldera (far-domains.ts) // 631: canopy trees (canopyTrunk is blocked) // 629: the second palette // 617: fog moors; 625: the palette regions // release 573: forestFloor..lakeIce; 579: the moon; 583: basalt; 591: pillar lands
+  "beach", "shallows", "dock", "bogGround", "mireWater", "toxicBog", "toxicMire", "alienMoss", "alienPlatform", "castleCourt", "castleStair", "battlement", "mesaTop", "skyBridge", "volcanicRim", "ashSlope", "forestFloor", "snowField", "lakeIce", "moonDust", "craterFloor", "craterRim", "basalt", "basaltFissure", "pillarGround", "skyPlatform", "fogMoor", "mistPool", "jungleFloor", "jungleMire", "ribPlate", "oilSlick", "saltCrust", "brinePool", "crystalShale", "prismPool", "sporeLoam", "sporeBed", "stoneLitter", "silicaPool", "savannaGrass", "wateringHole", "reefFlat", "tidePool", "amberLitter", "amberPool", "obsidianFloor", "quicksilverPool", "canopyBranch", "canopyCrown", "canopyLeaf", ...MUSHROOM_KINDS, "thornBasalt", "thornFloor", "thornShards", ...DOMAIN_WALKABLE, ...TERRACE_WALKABLE, ...RECKONING_WALKABLE, ...GLACIER_WALKABLE, ...LUNAR_WALKABLE, ...MARROW_WALKABLE, ...MAGMA_WALKABLE, ...OASIS_WALKABLE, ...FELLS_WALKABLE, ...RANGES_WALKABLE]); // 721: great mushroom caps; 723: the Thornglass Caldera (far-domains.ts) // 631: canopy trees (canopyTrunk is blocked) // 629: the second palette // 617: fog moors; 625: the palette regions // release 573: forestFloor..lakeIce; 579: the moon; 583: basalt; 591: pillar lands
 
 // ---------------------------------------------------------------- noise
 // Perf pack (worldgen WG-09): a lattice value is hashSeed(`${key}:${ix}:${iy}`), and a section needs about 70k of them, each
@@ -163,7 +167,7 @@ export const REGIONS = { heartland: 12, fadeIn: 4, cell: 9, jitter: .8, weightSp
     alien: { alien: .3, ocean: -.2 }, swamp: { wet: .11, ocean: -.2, desert: -.3 }, lakes: { lake: .2, ocean: -.15 }, dream: { ocean: -.2, mountain: -.2 },
     ashfields: { ocean: -.25, mountain: -.25, desert: -.3, alien: -.3, wet: -.3, lake: -.2 }, glasslands: { ocean: -.25, mountain: -.25, desert: -.3, alien: -.3, wet: -.3, lake: -.2 },
     emberlands: { ocean: -.25, mountain: -.25, desert: -.3, alien: -.3, wet: -.3, lake: -.2 },
-    forest: { ocean: -.15, desert: -.35, alien: -.3, wet: -.12, mountain: -.1, lake: -.05 }, lunar: { ocean: -.3, wet: -.4, lake: -.3, desert: -.25, mountain: -.15, alien: -.15 }, /* 579 */ pillars: { ocean: -.3, wet: -.4, lake: -.3, desert: -.15, mountain: -.2, alien: -.2 }, /* 591 */ fog: { ocean: -.2, desert: -.35, alien: -.3, mountain: -.15, lake: -.1 }, /* 617 */ jungle: { ocean: -.2, desert: -.4, alien: -.25, mountain: -.15, wet: .04 }, biomech: { ocean: -.3, wet: -.35, lake: -.3, desert: -.2, alien: -.2, mountain: -.2 }, salt: { ocean: -.18, desert: -.1, alien: -.3, mountain: -.25, lake: -.1 }, crystal: { ocean: -.3, wet: -.35, lake: -.25, desert: -.25, alien: -.1, mountain: -.15 }, fungal: { ocean: -.25, desert: -.4, alien: -.15, mountain: -.2, wet: -.05 }, /* 625 */ petrified: { ocean: -.25, wet: -.3, lake: -.2, desert: -.15, alien: -.25, mountain: -.15 }, savanna: { ocean: -.25, wet: -.3, desert: -.05, alien: -.3, mountain: -.25 }, reef: { ocean: -.1, desert: -.3, alien: -.2, mountain: -.3, lake: .05 }, amber: { ocean: -.2, desert: -.35, alien: -.3, mountain: -.15 }, obsidian: { ocean: -.3, wet: -.4, lake: -.3, desert: -.2, alien: -.15, mountain: -.1 }, /* 629 */ volcanic: { ocean: -.3, wet: -.45, lake: -.35, desert: -.2, alien: -.2, mountain: .05 }, /* 583 */ frost: { desert: -.4, wet: -.3, alien: -.3, ocean: -.1, lake: .05 }, terraces: { ocean: -.3, wet: -.4, lake: -.3, desert: -.3, alien: -.25, mountain: -.2 } /* version 21 */, reckoning: { ocean: -.3, wet: -.45, lake: -.35, desert: -.3, alien: -.3, mountain: -.3 } /* version 23 */, glacier: { ocean: -.3, wet: -.4, lake: -.25, desert: -.45, alien: -.3, mountain: -.06 } /* version 24: a few peaks stand through the ice */, regolith: { ocean: -.3, wet: -.45, lake: -.35, desert: -.45, alien: -.3, mountain: -.3 }, marrow: { ocean: -.3, wet: -.45, lake: -.35, desert: -.45, alien: -.4, mountain: -.3 } /* version 25: the waste lays its own relief */, magma: { ocean: -.3, wet: -.45, lake: -.35, desert: -.45, alien: -.35, mountain: -.3 } /* version 27: dry ground, its own cones */, oasis: { ocean: -.3, wet: -.45, lake: -.35, desert: -.45, alien: -.35, mountain: -.3 } /* version 28: the erg lays its own dunes and water */, fells: { ocean: -.3, wet: -.45, lake: -.35, desert: -.45, alien: -.35, mountain: -.35 } /* version 29: the fells lay their own relief, cloud and tarns */ }, // release 573 (version 5)
+    forest: { ocean: -.15, desert: -.35, alien: -.3, wet: -.12, mountain: -.1, lake: -.05 }, lunar: { ocean: -.3, wet: -.4, lake: -.3, desert: -.25, mountain: -.15, alien: -.15 }, /* 579 */ pillars: { ocean: -.3, wet: -.4, lake: -.3, desert: -.15, mountain: -.2, alien: -.2 }, /* 591 */ fog: { ocean: -.2, desert: -.35, alien: -.3, mountain: -.15, lake: -.1 }, /* 617 */ jungle: { ocean: -.2, desert: -.4, alien: -.25, mountain: -.15, wet: .04 }, biomech: { ocean: -.3, wet: -.35, lake: -.3, desert: -.2, alien: -.2, mountain: -.2 }, salt: { ocean: -.18, desert: -.1, alien: -.3, mountain: -.25, lake: -.1 }, crystal: { ocean: -.3, wet: -.35, lake: -.25, desert: -.25, alien: -.1, mountain: -.15 }, fungal: { ocean: -.25, desert: -.4, alien: -.15, mountain: -.2, wet: -.05 }, /* 625 */ petrified: { ocean: -.25, wet: -.3, lake: -.2, desert: -.15, alien: -.25, mountain: -.15 }, savanna: { ocean: -.25, wet: -.3, desert: -.05, alien: -.3, mountain: -.25 }, reef: { ocean: -.1, desert: -.3, alien: -.2, mountain: -.3, lake: .05 }, amber: { ocean: -.2, desert: -.35, alien: -.3, mountain: -.15 }, obsidian: { ocean: -.3, wet: -.4, lake: -.3, desert: -.2, alien: -.15, mountain: -.1 }, /* 629 */ volcanic: { ocean: -.3, wet: -.45, lake: -.35, desert: -.2, alien: -.2, mountain: .05 }, /* 583 */ frost: { desert: -.4, wet: -.3, alien: -.3, ocean: -.1, lake: .05 }, terraces: { ocean: -.3, wet: -.4, lake: -.3, desert: -.3, alien: -.25, mountain: -.2 } /* version 21 */, reckoning: { ocean: -.3, wet: -.45, lake: -.35, desert: -.3, alien: -.3, mountain: -.3 } /* version 23 */, glacier: { ocean: -.3, wet: -.4, lake: -.25, desert: -.45, alien: -.3, mountain: -.06 } /* version 24: a few peaks stand through the ice */, regolith: { ocean: -.3, wet: -.45, lake: -.35, desert: -.45, alien: -.3, mountain: -.3 }, marrow: { ocean: -.3, wet: -.45, lake: -.35, desert: -.45, alien: -.4, mountain: -.3 } /* version 25: the waste lays its own relief */, magma: { ocean: -.3, wet: -.45, lake: -.35, desert: -.45, alien: -.35, mountain: -.3 } /* version 27: dry ground, its own cones */, oasis: { ocean: -.3, wet: -.45, lake: -.35, desert: -.45, alien: -.35, mountain: -.3 } /* version 28: the erg lays its own dunes and water */, fells: { ocean: -.3, wet: -.45, lake: -.35, desert: -.45, alien: -.35, mountain: -.35 } /* version 29: the fells lay their own relief, cloud and tarns */, ranges: { ocean: -.3, wet: -.45, lake: -.35, desert: -.45, alien: -.35, mountain: -.35 } /* version 30: the ranges lay their own ridges, passes and lakes */ }, // release 573 (version 5)
   plains: { ashfields: "ash", glasslands: "glass", emberlands: "ember" } };
 const REGION_TOTAL = REGIONS.types.reduce((n, [, w]) => n + w, 0), siteCache = new Map();
 function regionSite(seed, cx, cy) {
@@ -298,6 +302,18 @@ function v29RegionType(seed, id, type) {
   const [cx, cy] = String(id).split(",").map(Number), q = regionSite(seed, cx, cy); if (Math.hypot(q.x, q.y) < REGIONS_V29.minRing) return type;
   return (hashSeed(`${seed}:region-site:v29:${id}`) % 10007) / 10007 < p ? REGIONS_V29.to : type;
 }
+// The Great Ranges (landscape version 30; the daily world-regions work; Tim's list: "great mountain ranges"). The Snowpeak Range is the
+// mountain field's relief, a few sections of rough heights; the Rimeglaciers and the Cloudfells took ice and low granite fells. This is the
+// range itself, far out: long high ridges along the region's bearing, a sheer face on one side, passes cut through them, lakes in the
+// valleys. A region whose site lies at least `minRing` sections (straight line) from Ember Refuge, of a type in `chance` after the version
+// 29 roll, may become a great range on its own hash, with that type's chance, so every other region keeps the type it had and the near
+// world never shows them. The pool: the mountain regions not already glaciated or fells, and some Frostlands.
+export const REGIONS_V30 = { chance: { mountains: .5, frost: .25 }, to: "ranges", minRing: 40 };
+function v30RegionType(seed, id, type) {
+  const p = REGIONS_V30.chance[type]; if (!p) return type;
+  const [cx, cy] = String(id).split(",").map(Number), q = regionSite(seed, cx, cy); if (Math.hypot(q.x, q.y) < REGIONS_V30.minRing) return type;
+  return (hashSeed(`${seed}:region-site:v30:${id}`) % 10007) / 10007 < p ? REGIONS_V30.to : type;
+}
 function wildRegionType(seed, id, version = 5) {
   let roll = (hashSeed(`${seed}:region-site:v5:${id}`) % 10007) / 10007;
   for (const [t, p] of REGIONS_V5.wildTo) { if ((roll -= p) < 0) return t; }
@@ -323,6 +339,7 @@ export function regionAt(seed, sx, sy, version = 4) {
   if (version >= 27) type = v27RegionType(seed, best.id, type); // the Magma Rivers
   if (version >= 28) type = v28RegionType(seed, best.id, type); // the Oasis Ergs
   if (version >= 29) type = v29RegionType(seed, best.id, type); // the Cloudfells
+  if (version >= 30) type = v30RegionType(seed, best.id, type); // the Great Ranges
   if (version >= 15) { const civ = farCivAt(seed, sx, sy); if (civ && version >= civ.landSince) type = civ.land; } // release 716: a civilisation's country is its own land (717: from its own version)
   const ring = Math.hypot(sx, sy), fade = Math.max(0, Math.min(1, (ring - REGIONS.heartland) / REGIONS.fadeIn)); // the heartland round Ember Refuge keeps the old mix
   return { id: best.id, type: fade > 0 ? type : "wild", hold: Math.min(1, (second - bd) / REGIONS.blend) * fade, gap: fade > 0 ? second - bd : Infinity };
@@ -338,7 +355,7 @@ export const REGION_NAMES = {
     mountains: ["Peaks", "Spine", "Heights", "Teeth", "Range"], desert: ["Waste", "Dunes", "Barrens", "Sands", "Erg"], alien: ["Garden", "Bloom", "Lattice", "Strangeland", "Reef"],
     swamp: ["Fen", "Mire", "Bog", "Sump", "Marsh"], lakes: ["Meres", "Lakes", "Tarns", "Waters"], isles: ["Isles", "Archipelago", "Scatter", "Keys"],
     dream: ["Sleep", "Reverie", "Dreaming", "Slumber"], ashfields: ["Ashfields", "Cinderplain", "Greys"], glasslands: ["Glasslands", "Shards", "Mirrorfields"],
-    emberlands: ["Emberlands", "Kilnlands", "Smoulder"], lunar: ["Mare", "Moonfields", "Craters", "Highlands", "Dust"], volcanic: ["Firelands", "Caldera", "Cinders", "Furnace", "Burning Lands"], fog: ["Moor", "Mists", "Fogs", "Greyfells", "Murk", "Hollows"], jungle: ["Jungle", "Canopy", "Green Deep", "Vines", "Rainwood"], biomech: ["Carapace", "Ossuary", "Engine", "Ribwork", "Husk"], salt: ["Saltings", "Brines", "Salt Pans", "Salt Marsh", "Flats"], crystal: ["Prisms", "Facets", "Geodes", "Crystal Fields", "Lattice Fields"], fungal: ["Sporewood", "Caps", "Mycelium", "Gills", "Rotwood"], petrified: ["Stonewood", "Petrified Wood", "Grey Grove", "Fossil Wood"], savanna: ["Savanna", "Grasslands", "Veldt", "Long Grass", "Plains"], reef: ["Reef", "Coral Flats", "Shoals", "Tidelands"], amber: ["Amberwood", "Autumn Wood", "Leaffall", "Russet Wood"], obsidian: ["Obsidian", "Black Glass", "Mirrors", "Quicksilver Fields"], pillars: ["Pillars", "Mesas", "Tablelands", "Hoodoos", "Stone Forest", "Tepuis"], forest: ["Wood", "Weald", "Forest", "Pines", "Greenwood"], frost: ["Frost", "Snows", "Rime", "Icefields", "Tundra"], terraces: ["Springs", "Terraces", "Basins", "Steps", "Wells", "Sinters"], reckoning: ["Reckoning", "Sieve", "Recursion", "Proof", "Tessellation", "Rulework"], glacier: ["Glacier", "Icefall", "Ice Sheet", "Icecap", "Rimefield", "Crevasses"], regolith: ["Crater Field", "Regolith Waste", "Craterlands", "Ejecta Plain", "Rilles", "Far Highlands", "Mare"], marrow: ["Marrowworks", "Engine", "Ribcage", "Spinefield", "Boneworks", "Sumps", "Vertebrae"], magma: ["Magma Rivers", "Lavaflows", "Cinder Cones", "Fumaroles", "Scoria", "Slagfields", "Burning Rivers"], oasis: ["Erg", "Oases", "Wadis", "Reedwater", "Palm Wells", "Sand Sea", "Mirage Wells"], fells: ["Fells", "Cloudfells", "Tors", "Uplands", "High Moor", "Edges", "Cloudtops"] },
+    emberlands: ["Emberlands", "Kilnlands", "Smoulder"], lunar: ["Mare", "Moonfields", "Craters", "Highlands", "Dust"], volcanic: ["Firelands", "Caldera", "Cinders", "Furnace", "Burning Lands"], fog: ["Moor", "Mists", "Fogs", "Greyfells", "Murk", "Hollows"], jungle: ["Jungle", "Canopy", "Green Deep", "Vines", "Rainwood"], biomech: ["Carapace", "Ossuary", "Engine", "Ribwork", "Husk"], salt: ["Saltings", "Brines", "Salt Pans", "Salt Marsh", "Flats"], crystal: ["Prisms", "Facets", "Geodes", "Crystal Fields", "Lattice Fields"], fungal: ["Sporewood", "Caps", "Mycelium", "Gills", "Rotwood"], petrified: ["Stonewood", "Petrified Wood", "Grey Grove", "Fossil Wood"], savanna: ["Savanna", "Grasslands", "Veldt", "Long Grass", "Plains"], reef: ["Reef", "Coral Flats", "Shoals", "Tidelands"], amber: ["Amberwood", "Autumn Wood", "Leaffall", "Russet Wood"], obsidian: ["Obsidian", "Black Glass", "Mirrors", "Quicksilver Fields"], pillars: ["Pillars", "Mesas", "Tablelands", "Hoodoos", "Stone Forest", "Tepuis"], forest: ["Wood", "Weald", "Forest", "Pines", "Greenwood"], frost: ["Frost", "Snows", "Rime", "Icefields", "Tundra"], terraces: ["Springs", "Terraces", "Basins", "Steps", "Wells", "Sinters"], reckoning: ["Reckoning", "Sieve", "Recursion", "Proof", "Tessellation", "Rulework"], glacier: ["Glacier", "Icefall", "Ice Sheet", "Icecap", "Rimefield", "Crevasses"], regolith: ["Crater Field", "Regolith Waste", "Craterlands", "Ejecta Plain", "Rilles", "Far Highlands", "Mare"], marrow: ["Marrowworks", "Engine", "Ribcage", "Spinefield", "Boneworks", "Sumps", "Vertebrae"], magma: ["Magma Rivers", "Lavaflows", "Cinder Cones", "Fumaroles", "Scoria", "Slagfields", "Burning Rivers"], oasis: ["Erg", "Oases", "Wadis", "Reedwater", "Palm Wells", "Sand Sea", "Mirage Wells"], fells: ["Fells", "Cloudfells", "Tors", "Uplands", "High Moor", "Edges", "Cloudtops"], ranges: ["Range", "Sierra", "Massif", "Divide", "Crests", "Horns", "Cordillera"] },
   // version 25: a lunar waste whose noun is "Mare" is named as a sea of the moon: "Mare" and one of these (no "the")
   maria: ["Silentium", "Cinerum", "Vigiliae", "Umbrarum", "Pallidum", "Ferri", "Lucernae", "Obliviae", "Tacitum", "Algoris", "Longinquum", "Desertorum"],
 };
@@ -367,6 +384,11 @@ function regionTile(seed, gx, gy, version = 4) {
   r = regionTileKept(seed, gx, gy, version); if (m.size >= 30000) m.clear(); m.set(k, r); return r;
 }
 function regionTileKept(seed, gx, gy, version = 4) {
+  if (version >= 30) { // version 30: the version 29 tile, rolled once more (outside the heartland) for the Great Ranges
+    const key = `${seed}:30:${gx >> 2}:${gy >> 2}`; let r = leanCache.get(key); if (r) return r;
+    const b = regionTile(seed, gx, gy, 29); r = b.gap === Infinity ? b : { ...b, type: v30RegionType(seed, b.id, b.type) };
+    keepLean(key, r); return r;
+  }
   if (version >= 29) { // version 29: the version 28 tile, rolled once more (outside the heartland) for the Cloudfells
     const key = `${seed}:29:${gx >> 2}:${gy >> 2}`; let r = leanCache.get(key); if (r) return r;
     const b = regionTile(seed, gx, gy, 28); r = b.gap === Infinity ? b : { ...b, type: v29RegionType(seed, b.id, b.type) };
@@ -622,7 +644,7 @@ export function applyLandscape(map, seed, rx, ry, { explored = false, version = 
     const plain = REGIONS.plains[sectionRegion(seed, rx, ry).type];
     if (plain) { for (const t of map.tiles) if (!t.landscape && !t.structure && !t.buildingId && (t.kind === "ash" || t.kind === "glass" || t.kind === "ember")) t.kind = plain; map.dominant = plain; }
   }
-  if (version >= 5 && !full) touched += applyWoodsAndFrost(map, seed, rx, ry, mask, hamlet); // release 573
+  if (version >= 5 && !full) touched += applyWoodsAndFrost(map, seed, rx, ry, mask, hamlet, version); // release 573; version 30: not where a great range lies
   if (version >= 6 && !full) touched += applyMoonlands(map, seed, rx, ry, version); // release 579; version 25: not where a lunar waste lies
   if (version >= 7 && !full) touched += applyFirelands(map, seed, rx, ry, mask, version); // release 583; version 27: not where magma rivers run
   if (version >= 8 && !full) touched += applyPillarGround(map, seed, rx, ry, mask); // release 591
@@ -636,6 +658,7 @@ export function applyLandscape(map, seed, rx, ry, { explored = false, version = 
   if (version >= 27 && !full) touched += applyMagma(map, seed, rx, ry, mask, hamlet, walls); // the Magma Rivers
   if (version >= 28 && !full) touched += applyOasis(map, seed, rx, ry, mask, hamlet, walls); // the Oasis Ergs
   if (version >= 29 && !full) touched += applyFells(map, seed, rx, ry, mask, hamlet, walls); // the Cloudfells
+  if (version >= 30 && !full) touched += applyRanges(map, seed, rx, ry, mask, hamlet, walls); // the Great Ranges
   if (biome === "castle") touched += buildCastle(map, seed, rx, ry, protectedMask(map, { spawns: false, ruins: false, decor: false }));
   if (!touched) return map;
   if (biome === "mountains" && hashSeed(`${seed}:land:volcano:${rx}:${ry}`) % 3 === 0) buildVolcano(map, seed, rx, ry, mask);
@@ -1638,6 +1661,150 @@ function applyFells(map, seed, rx, ry, held, hamlet, walls = false) {
   }
   return touched;
 }
+// The Great Ranges (landscape version 30; the daily world-regions work, Tim 2026-10-29: "beautiful collections of regions... rich and
+// vibrant"; his list: "great mountain ranges"). Bare ground in a great range is laid as long high ridges running along the region's bearing
+// (`rangeFlow`, 8 turns of a half turn), one every `ridge.period` tiles across it, swaying (`ridge.sway`). One world field (`rangesAt`, a
+// few noise reads a tile, closed form in the bearing's frame, so neighbouring sections in the same region agree at their shared edge).
+// Each ridge's crest (`ridge.crest` either side of its line) stands `ridge.top` levels high (3 to 5, rising and falling along it into
+// summits and saddles); on one flank it steps down a level every `ridge.gentle` tiles, through snow (`rangeSnow` from `snow`, `summitSnow`
+// from `summit`) and crag (`rangeRock` from `rock`, and on every brink) to foothills (`foothillGrass`); on the other it falls a level every
+// `ridge.steep` tiles, and where a noise along the ridge rises (`cliff`) the face stays sheer: up to `cliff.max` levels at a step, a fall
+// that hurts but never kills (FALL_DAMAGE; landscape-render.ts RANGE_BRINK rims every such brink). Every `col.period` tiles along a ridge (jittered) a pass is cut through it: the crest falls to `col.level` with the
+// flanks widening a level a tile either side, and a worn trail (`colTrail`) runs over it from valley to valley. In the valleys between
+// the ridges: alpine meadow (`alpineMeadow`) and, where a noise along the valley rises, a lake (`alpineLake`, wadeable) on its middle.
+// Scree (`talusSlope`, walkable but slow: water-traversal.ts MIRE.slow) lies on the low flanks where a noise says so.
+// The heights are settled twice by the Terrace-Springs sweeps: once with every step one level (the smooth relief), once letting a sheer
+// face keep its drop (and every tile beside an exit causeway or the plaza, which then run on through a gorge; never beside the border, an
+// object's or a creature's ground, or other ground). Every tile the plaza reached both ways on the smooth relief must still be
+// reached both ways with the faces (the real rule: climb one, drop any, lethal ground excluded, thin walls counted on new ground); where
+// one is lost, the shortest run of face tiles from reached ground to it is laid back on the smooth relief (`repairs` times at most), and
+// if that is not enough every face is. Then pinnacles (`crestPinnacle`, blocked, at most `pinnacle.max`) stand on the high crests, each
+// kept only if it cuts no ground off. Now and then (`cache.chance`) a climbers' cache lies on the highest summit the plaza reaches, with a
+// switchback trail (`rangeTrail`, a stair at each step up) climbing to it. The plaza, the exit causeways and the border stay level 0 and
+// firm (no lake or scree on them; a pass trail may cross them), and a hamlet keeps the colours but no heights, faces, pinnacles, scree or cache. Balance in this
+// table and REGIONS_V30. Generation only: nothing is animated, no weather of its own; the ground is drawn once into the ground cache.
+export const RANGES = {
+  flowTurns: 8,
+  ridge: { period: 17, sway: { scale: 30, amp: 4 }, crest: 2.2, gentle: 1.5, steep: .42, top: { scale: 12, base: 3, span: 4 } },
+  col: { period: 34, jitter: .4, half: 1.2, level: 1, widen: 1, trail: .7 },
+  cliff: { max: 3, scale: 10, above: .38, gorge: true },
+  valley: { typical: 4 }, // the crest height the valley's middle line is set from
+  lake: { scale: 9, above: .55, reach: 2.8, grow: 9 },
+  talus: { scale: 2.7, above: .58, minLevel: 1, maxLevel: 3 },
+  rock: 2, snow: 3, summit: 4, // the levels the crag, the snow and the summit snow begin at
+  pinnacle: { scale: 1.5, above: .64, minLevel: 3, max: 6, tries: 16 },
+  repairs: 40,
+  cache: { chance: .45, minLevel: 3, tries: 6, name: "A climbers' cache under the summit cairn" },
+};
+const rangeFlows = new Map();
+export function rangeFlow(seed, id) {
+  const key = `${seed}:${id}`; let f = rangeFlows.get(key); if (f) return f;
+  const a = (hashSeed(`${seed}:ranges:v1:${id}:flow`) % RANGES.flowTurns) / RANGES.flowTurns * Math.PI; f = { ux: Math.cos(a), uy: Math.sin(a) };
+  if (rangeFlows.size >= 1024) rangeFlows.clear(); rangeFlows.set(key, f); return f;
+}
+const RANGE_KIND = (level, face) => level >= RANGES.summit ? "summitSnow" : level >= RANGES.snow ? "rangeSnow" : level >= RANGES.rock || (face && level > 0) ? "rangeRock" : level > 0 ? "foothillGrass" : "alpineMeadow";
+// The natural ground at a world tile (its middle) for a region's bearing `f`: its level (before the sweeps), kind, whether it lies on a
+// sheer face (`cliff`), on a crest (`crest`) or in a pass (`col`). Pure; a few noise reads.
+export function rangesAt(seed, f, gx, gy) {
+  const R = RANGES, D = R.ridge, C = R.col, P = D.period, px = gx + .5, py = gy + .5, u = px * f.ux + py * f.uy, v = -px * f.uy + py * f.ux;
+  const w = v - (valueNoise(`${seed}:ranges:sway`, u / D.sway.scale, .5) - .5) * 2 * D.sway.amp, k = Math.round(w / P), dv = w - k * P, a = Math.abs(dv);
+  const peak = Math.min(MAX_LEVEL, D.top.base + Math.floor(valueNoise(`${seed}:ranges:top`, u / D.top.scale, k * 5.3) * D.top.span));
+  let du = Infinity; const m = Math.round(u / C.period);
+  for (let j = m - 1; j <= m + 1; j++) du = Math.min(du, Math.abs(u - (j + (valueNoise(`${seed}:ranges:col`, j * 1.7, k * 3.3) - .5) * 2 * C.jitter) * C.period));
+  const top = Math.min(peak, C.level + Math.max(0, Math.ceil(du - C.half)) * C.widen), steep = dv > 0, fall = Math.ceil(Math.max(0, a - D.crest) / (steep ? D.steep : D.gentle));
+  const level = Math.max(0, top - fall), ridge = peak - fall > 0, col = du < C.half + 1;
+  const cliff = steep && !col && level > 0 && valueNoise(`${seed}:ranges:cliff`, u / R.cliff.scale, k * 2.9) > R.cliff.above;
+  const at = { level, kind: RANGE_KIND(level, steep), cliff, crest: a <= D.crest, col };
+  if (ridge && du < C.trail) { at.kind = "colTrail"; return at; }
+  if (level > 0) return at;
+  const mid = (P + R.valley.typical * (D.steep - D.gentle)) / 2, e = (((dv - mid) % P) + P) % P, c = Math.min(e, P - e);
+  const reach = Math.min(R.lake.reach, (valueNoise(`${seed}:ranges:lake`, u / R.lake.scale, k * 7.1) - R.lake.above) * R.lake.grow);
+  if (reach > 0 && c <= reach) at.kind = "alpineLake";
+  return at;
+}
+function applyRanges(map, seed, rx, ry, held, hamlet, walls = false) {
+  // the protected ground, less the trees and rocks: the ridges run on where they stood
+  const mask = protectedMask(map, { decor: false }); for (let i = 0; i < 1024; i++) if (held[i] && !mask[i] && map.tiles[i].landscape) mask[i] = 1;
+  const R = RANGES, T = map.tiles, lv = new Int8Array(1024).fill(-1), face = new Uint8Array(1024), crest = new Uint8Array(1024), mine = []; let touched = 0; // lv: each tile's level (-1: not ours)
+  for (const t of T) {
+    if (t.structure || t.buildingId || t.blocked || t.landscape || !BARE_GROUND.has(t.kind)) continue;
+    const gx = rx * 32 + t.x, gy = ry * 32 + t.y, r = regionTile(seed, gx, gy, 30); if (r.type !== REGIONS_V30.to) continue;
+    const i = idx(t.x, t.y), a = rangesAt(seed, rangeFlow(seed, r.id), gx, gy), hold = hamlet || mask[i];
+    Object.assign(t, { kind: hold ? (a.kind === "alpineLake" && !mask[i] ? "alpineLake" : a.kind === "colTrail" ? "colTrail" : "alpineMeadow") : a.kind, landscape: "ranges", elev: 0, detail: terraceDetail(gx, gy) }); touched++;
+    lv[i] = hold ? 0 : a.level; if (!hold && a.cliff) face[i] = 1; if (a.crest) crest[i] = 1;
+    if (!mask[i]) mine.push(t);
+  }
+  if (!touched) return 0;
+  map.ranges = true; for (const t of T) { const i = idx(t.x, t.y); if (held[i] && !mask[i] && t.landscape === "ranges") held[i] = 0; } // so the passes after (ensureClimbable) keep its heights too
+  const settle = (rise) => { const out = Int8Array.from(lv); // the Terrace-Springs sweeps: no tile more than `rise(i)` above its lowest walkable neighbour
+    for (let pass = 0, changed = true; changed && pass < 12; pass++) { changed = false;
+      for (let k = 0; k < 2048; k++) { const i = k < 1024 ? k : 2047 - k; if (out[i] <= 0) continue; const x = i % 32, y = (i - x) / 32; let lo = 99;
+        for (const [dx, dy] of N4) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx > 31 || ny > 31) continue; const j = idx(nx, ny), n = T[j], e = out[j] >= 0 ? out[j] : !n.blocked && !LETHAL_KINDS.has(n.kind) ? n.elev || 0 : 99; if (e < lo) lo = e; }
+        if (out[i] > lo + rise(i)) { out[i] = lo + rise(i); changed = true; } } }
+    return out; };
+  // a face may stand sheer over the exit causeways and the plaza (a gorge: they run on, flat and joined), never over the border, an
+  // object's or a creature's ground, or ground that is not the range's
+  const lanes = protectedMask({ exits: map.exits, objects: [], tiles: [] }, { spawns: false, border: false });
+  const sheer = (i) => { const x = i % 32, y = (i - x) / 32; let gorge = false;
+    for (const [dx, dy] of N4) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx > 31 || ny > 31) continue; const j = idx(nx, ny); if (lv[j] < 0 || (mask[j] && !lanes[j])) return 1; if (lanes[j]) gorge = true; }
+    return face[i] || (gorge && R.cliff.gorge) ? R.cliff.max : 1; };
+  const smooth = settle(() => 1), setLv = (L) => { for (let i = 0; i < 1024; i++) if (lv[i] >= 0) T[i].elev = L[i]; };
+  const start = { x: 16, y: 16 }, both = () => { const go = reachableFrom(map, 32, 32, start, walls), back = canReturnTo(map, 32, 32, start, walls); for (let i = 0; i < 1024; i++) go[i] &= back[i]; return go; };
+  const lostFrom = (before) => { const now = both(); for (let i = 0; i < 1024; i++) if (before[i] && !now[i]) return now; return null; };
+  setLv(smooth);
+  if (!hamlet && mine.length) {
+    const before = both(), cliffs = settle(sheer), D = new Uint8Array(1024); let raised = 0;
+    for (let i = 0; i < 1024; i++) if (lv[i] >= 0 && cliffs[i] > smooth[i]) { D[i] = 1; raised++; T[i].elev = cliffs[i]; }
+    for (let n = 0; n < R.repairs && raised; n++) { // the shortest run of face tiles from reached ground to lost ground goes back to the smooth relief
+      const now = lostFrom(before); if (!now) break;
+      const lost = (j) => before[j] && !now[j], from = new Int16Array(1024).fill(-1), q = []; let target = -1;
+      for (let i = 0; i < 1024; i++) if (D[i]) { const x = i % 32, y = (i - x) / 32; if (N4.some(([dx, dy]) => x + dx >= 0 && x + dx < 32 && y + dy >= 0 && y + dy < 32 && now[idx(x + dx, y + dy)] && !D[idx(x + dx, y + dy)])) { from[i] = i; q.push(i); } }
+      for (let k = 0; k < q.length && target < 0; k++) { const i = q[k], x = i % 32, y = (i - x) / 32;
+        if (lost(i) || N4.some(([dx, dy]) => x + dx >= 0 && x + dx < 32 && y + dy >= 0 && y + dy < 32 && lost(idx(x + dx, y + dy)) && !D[idx(x + dx, y + dy)])) { target = i; break; }
+        for (const [dx, dy] of N4) { const nx = x + dx, ny = y + dy, j = idx(nx, ny); if (nx < 0 || ny < 0 || nx > 31 || ny > 31 || !D[j] || from[j] >= 0) continue; from[j] = i; q.push(j); } }
+      if (target < 0) break;
+      for (let i = target; ; i = from[i]) { T[i].elev = smooth[i]; D[i] = 0; raised--; if (from[i] === i) break; }
+    }
+    for (let pass = 0, changed = true; changed && pass < 12; pass++) { changed = false; // a face laid back beside one still standing never leaves a fatal drop
+      for (let i = 0; i < 1024; i++) { if (!D[i]) continue; const x = i % 32, y = (i - x) / 32; let lo = 99;
+        for (const [dx, dy] of N4) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx > 31 || ny > 31) continue; const n = T[idx(nx, ny)]; if (!n.blocked && !LETHAL_KINDS.has(n.kind)) lo = Math.min(lo, n.elev || 0); }
+        if (T[i].elev > lo + R.cliff.max) { T[i].elev = Math.max(smooth[i], lo + R.cliff.max); changed = true; } } }
+    if (lostFrom(before)) setLv(smooth); // not enough: every face goes back to the smooth relief
+  }
+  const brinkAt = (i, e) => { const x = i % 32, y = (i - x) / 32; return N4.some(([dx, dy]) => { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx > 31 || ny > 31) return false; const n = T[idx(nx, ny)]; return !n.blocked && !LETHAL_KINDS.has(n.kind) && (n.elev || 0) <= e - 2; }); };
+  for (let i = 0; i < 1024; i++) if (lv[i] >= 0) { const t = T[i], e = t.elev || 0, x = i % 32, y = (i - x) / 32, brink = brinkAt(i, e); // the kind follows the level the sweeps left
+    if (t.kind === "colTrail" || (t.kind === "alpineLake" && e === 0)) continue;
+    t.kind = RANGE_KIND(e, brink);
+    if (!hamlet && !mask[i] && e >= R.talus.minLevel && e <= R.talus.maxLevel && !brink && valueNoise(`${seed}:ranges:talus`, (rx * 32 + x) / R.talus.scale, (ry * 32 + y) / R.talus.scale) > R.talus.above
+      && N4.some(([dx, dy]) => { const nx = x + dx, ny = y + dy; return nx >= 0 && ny >= 0 && nx < 32 && ny < 32 && (T[idx(nx, ny)].elev || 0) > e; })) t.kind = "talusSlope";
+  }
+  const tally = () => { let lakes = 0, cols = 0, talus = 0, faces = 0; // the map's counts, once the range is laid
+    for (let i = 0; i < 1024; i++) if (lv[i] >= 0) { const t = T[i]; if (t.kind === "alpineLake") lakes++; else if (t.kind === "colTrail") cols++; else if (t.kind === "talusSlope") talus++; if (!t.blocked && brinkAt(i, t.elev || 0)) faces++; }
+    if (lakes) map.alpineLakes = lakes; if (cols) map.colTrails = cols; if (talus) map.talus = talus; if (faces) map.sheerFaces = faces; return touched; };
+  if (hamlet || !mine.length) return tally();
+  const h = (k) => hashSeed(`${seed}:ranges:v1:${rx}:${ry}:${k}`), order = (key) => (p, q) => (h(`${key}${p.x},${p.y}`) % 9973) - (h(`${key}${q.x},${q.y}`) % 9973);
+  const busy = new Set([...(map.objects || []).filter((o) => !DECOR.has(o.kind)), ...(map.enemySpawns || [])].map((o) => idx(Math.round(o.x), Math.round(o.y))));
+  const deco = new Set((map.objects || []).filter((o) => DECOR.has(o.kind)).map((o) => idx(Math.round(o.x), Math.round(o.y))));
+  const built = (t) => N4.some(([dx, dy]) => T[idx(t.x + dx, t.y + dy)].structure || T[idx(t.x + dx, t.y + dy)].buildingId);
+  const clear = (t) => !busy.has(idx(t.x, t.y)) && !deco.has(idx(t.x, t.y)) && t.x > 0 && t.y > 0 && t.x < 31 && t.y < 31 && !built(t) && N4.every(([dx, dy]) => !mask[idx(t.x + dx, t.y + dy)]);
+  const before = both(); let spires = 0; // a pinnacle stands only where it cuts no ground off (both ways, by the real movement rules)
+  const tops = mine.filter((t) => !t.blocked && crest[idx(t.x, t.y)] && (t.elev || 0) >= R.pinnacle.minLevel && clear(t) && valueNoise(`${seed}:ranges:pinnacle`, (rx * 32 + t.x) / R.pinnacle.scale, (ry * 32 + t.y) / R.pinnacle.scale) > R.pinnacle.above);
+  for (const t of tops.sort(order("p")).slice(0, R.pinnacle.tries)) { if (spires >= R.pinnacle.max) break;
+    const was = t.kind; Object.assign(t, { kind: "crestPinnacle", blocked: true }); const now = both(); let cut = false;
+    for (let i = 0; i < 1024 && !cut; i++) if (before[i] && !now[i] && T[i].kind !== "crestPinnacle") cut = true;
+    if (cut) { t.kind = was; t.blocked = false; } else spires++; }
+  if (spires) map.pinnacles = spires;
+  if ((h("cache") % 1000) / 1000 < R.cache.chance) { // a climbers' cache on the highest summit the plaza reaches, and a switchback trail up to it
+    const seen = both(), ok = (t) => !t.blocked && seen[idx(t.x, t.y)] && t.x >= 2 && t.y >= 2 && t.x <= 29 && t.y <= 29 && !busy.has(idx(t.x, t.y)) && !deco.has(idx(t.x, t.y));
+    const summits = mine.filter((t) => ok(t) && (t.elev || 0) >= R.cache.minLevel && (t.kind === "rangeSnow" || t.kind === "summitSnow")).sort((p, q) => (q.elev - p.elev) || order("c")(p, q)).slice(0, R.cache.tries);
+    for (const at of summits) {
+      const path = bfsPath(map, start, (t) => t === at, walls); if (!path) continue;
+      for (let k = 0; k < path.length - 1; k++) { const t = T[path[k]], next = T[path[k + 1]]; if (t.landscape !== "ranges" || t.blocked || !(t.elev > 0)) continue; t.kind = "rangeTrail"; if ((next.elev || 0) === t.elev + 1) t.slope = true; }
+      map.objects.push({ id: `ranges-cache-${rx}-${ry}`, kind: "chest", name: R.cache.name, x: at.x, y: at.y, state: "closed", actions: ["open"], rewardSource: "chest" }); map.summitTrail = path.length; break;
+    }
+  }
+  return tally();
+}
 // The palette regions (release 625, version 10): bare ground in such a region becomes its `ground`, with wadeable `pool`s where
 // one noise rises and impassable `block`s (never on protected ground) where another peaks; a jungle also grows dense trees
 // (`trees`, choppable like the forest's, capped per section). One table row per region: mobile-cheap, no per-frame cost.
@@ -1871,7 +2038,7 @@ function applyMoonlands(map, seed, rx, ry, version = 6) {
   }
   return touched;
 }
-function applyWoodsAndFrost(map, seed, rx, ry, mask, hamlet) {
+function applyWoodsAndFrost(map, seed, rx, ry, mask, hamlet, version = 5) {
   let touched = 0; const grove = [];
   for (const t of map.tiles) {
     if (t.structure || t.buildingId || t.blocked && !t.landscape) continue;
@@ -1879,6 +2046,7 @@ function applyWoodsAndFrost(map, seed, rx, ry, mask, hamlet) {
     if (type === "forest" && !t.landscape && BARE_GROUND.has(t.kind)) { t.kind = "forestFloor"; t.landscape = "forest"; touched++; if (!mask[idx(t.x, t.y)]) grove.push(t); }
     else if (type === "forest" && t.kind === "bogGround" && !mask[idx(t.x, t.y)]) grove.push(t); // swamp woods
     else if (type === "frost") {
+      if (version >= 30 && regionTile(seed, gx, gy, 30).type === REGIONS_V30.to) continue; // version 30: the Great Ranges lay it
       if (!t.landscape && BARE_GROUND.has(t.kind)) {
         const spire = !mask[idx(t.x, t.y)] && valueNoise(`${seed}:frost:spire`, gx / FROST.spire.scale, gy / FROST.spire.scale) > FROST.spire.above;
         Object.assign(t, spire ? { kind: "iceSpire", blocked: true, landscape: "frost" } : { kind: "snowField", landscape: "frost" }); touched++;
@@ -2494,7 +2662,7 @@ export function canStep(entity, map, width, fromX, fromY, toX, toY) {
   if (diff === 1) return !!entity.jumping;
   return diff < 0; // dropping off a ledge: the game applies fall damage by height
 }
-export function isLandscapeKind(kind) { return WALKABLE_LANDSCAPE.has(kind) || [...DEEP_WATER, "arcWall", "clodPlain", "clodGreen", "clodYellow", "clodRed", "craterWall", "crag", "crystalSpire", "alienPool", "castleWall", "castleTower", "castleKeep", "lava", "iceSpire", "hoodoo", "moorStone", "canopyTrunk", "thornCrystal", "springVent", "ruleMonolith", "serac", "lunarBoulder", "craterMount", "lunarMonolith", "fallenMonolith", ...MARROW_BLOCKED, ...MAGMA_BLOCKED, ...OASIS_BLOCKED, ...FELLS_BLOCKED, ...DOMAIN_BLOCKED, ...PALETTE_BLOCKERS].includes(kind); }
+export function isLandscapeKind(kind) { return WALKABLE_LANDSCAPE.has(kind) || [...DEEP_WATER, "arcWall", "clodPlain", "clodGreen", "clodYellow", "clodRed", "craterWall", "crag", "crystalSpire", "alienPool", "castleWall", "castleTower", "castleKeep", "lava", "iceSpire", "hoodoo", "moorStone", "canopyTrunk", "thornCrystal", "springVent", "ruleMonolith", "serac", "lunarBoulder", "craterMount", "lunarMonolith", "fallenMonolith", ...MARROW_BLOCKED, ...MAGMA_BLOCKED, ...OASIS_BLOCKED, ...FELLS_BLOCKED, ...RANGES_BLOCKED, ...DOMAIN_BLOCKED, ...PALETTE_BLOCKERS].includes(kind); }
 export function elevationAt(map, width, x, y) { return legacyInteriorBuildLevel(map, tileUnder(map, width, x, y)) || (map?.landscape ? interiorTerrain(map) ? interiorSurfaceLevel(map, x + .5, y + .75) : (tileUnder(map, width, x, y)?.elev || 0) : 0); }
 
 // ---------------------------------------------------------------- the Far Sleep (release 305)
