@@ -7,6 +7,7 @@
 // banded steel dome. FOSSIL: the same silhouette in old bone: vertebrae, ribs, a bare skull with its dome and knobs, embers for eyes.
 // The rock disguise: a gray boulder, too round and too smooth, a pale yellowish cap on top ringed with gray knobs (the dome, if you look).
 // q: the shared pack paint context { k, b, u, s, t, flip, e } (monster-render.ts paintPackMonster). No gradients, no per-frame arrays.
+import { PACHY } from "./pachy.ts"; // the daze's time (PACHY.daze.stars)
 
 const TAU = Math.PI * 2;
 export const PACHY_ART = Object.freeze({
@@ -38,6 +39,8 @@ export const PACHY_POSES = Object.freeze({
   kickR: { kick: -1, pitch: .45, head: .3, tuck: .3, tail: -.3 },
   butt: { pitch: -.25, head: -.55, crouch: .1, tail: .3 },
   clash: { pitch: -.3, head: -.6, crouch: .25, tail: .35 },
+  drumRaise: { pitch: .3, head: .6, crouch: .3, tail: -.15 }, // Dome Drum: feet planted, the dome reared up...
+  drum: { pitch: -.62, head: -.95, crouch: .5, tail: .5 }, // ...and knocked down on the ground, beat after beat
   boneStamp: { crouch: .6, pitch: -.1, head: -.2, tail: .2 },
   skullReady: { pitch: .15, head: .2, arms: 1, tail: 0 },
   skullThrow: { pitch: -.25, head: -.4, arms: .3, tail: .3 },
@@ -68,7 +71,7 @@ export function drawPachy(ctx, q, now = 0) {
   if (dt > 0 && moved < 2) { M.phase = (M.phase + TAU * moved / (2 * A.stride * Math.max(.6, Number(e.scale) || 1))) % TAU; M.moving += ((moved / dt > .05 ? 1 : 0) - M.moving) * Math.min(1, dt * A.settle); }
   if (reduce) M.moving = 0;
   const name = pachyPoseName(e) || (M.moving > .3 ? "walk" : "idle"); if (name !== M.pose) { M.pose = name; M.since = now; }
-  const P = PACHY_POSES[name], V = M.v; for (const key of KEYS) { const want = P[key] || 0; V[key] = !(dt > 0) || reduce ? want : V[key] + (want - V[key]) * Math.min(1, dt * A.ease * (/kick|slam|butt|clash|charge/.test(name) ? 2 : 1)); }
+  const P = PACHY_POSES[name], V = M.v; for (const key of KEYS) { const want = P[key] || 0; V[key] = !(dt > 0) || reduce ? want : V[key] + (want - V[key]) * Math.min(1, dt * A.ease * (/kick|slam|butt|clash|charge|drum/.test(name) ? 2 : 1)); }
   const look = pachyLook(e);
   if (name === "rock") return drawPachyRock(ctx, k, q.b, u, t, reduce);
   const air = Math.max(0, Number(e.pachyAir) || 0) * q.s, b = q.b - air, ph = M.phase, mv = name === "walk" ? M.moving : 0;
@@ -280,6 +283,24 @@ export function drawPachyGolem(ctx, cx, foot, s, scale = 1, left = 1, now = 0, r
     ctx.fillStyle = i % 2 ? A.rock : A.rockLight; ctx.strokeStyle = A.rockDark; ctx.lineWidth = Math.max(1, s * .025);
     ctx.beginPath(); for (let j = 0; j < 6; j++) { const a = j / 6 * TAU + rot, r = 1 - (j % 2) * .18, qx = px + Math.cos(a) * w * h * r, qy = py + Math.sin(a) * hh * h * r; j ? ctx.lineTo(qx, qy) : ctx.moveTo(qx, qy); } ctx.closePath(); ctx.fill(); ctx.stroke();
     ctx.strokeStyle = G.seam; ctx.globalAlpha = .75 + (reduce ? 0 : .25 * Math.sin(t * 6 + i)); ctx.lineWidth = Math.max(1, s * .018); ctx.beginPath(); ctx.moveTo(px - w * h * .5, py - hh * h * .1); ctx.lineTo(px, py + hh * h * .25); ctx.lineTo(px + w * h * .4, py - hh * h * .2); ctx.stroke(); ctx.globalAlpha = 1; }
+  ctx.restore();
+  return true;
+}
+
+// ---------------------------------------------------------------- the daze on the Wayfarer (pachy.ts PACHY.daze)
+// While she is dazed (p.dazedUntil, set by game.ts dazeHit), little stars circle over her head; they fade over the last `fade` of the
+// time. She stays on her feet (no knockdown tip, unlike the Lightning Giant's shock). Reduced Motion: the stars hold still.
+export const PACHY_DAZE_ART = Object.freeze({ count: 5, rx: .3, ry: .09, up: 1, size: .1, spin: 4.2, twinkle: 9, fade: .3, fill: "#ffe45c", edge: "#a8741a" });
+// What is left of the daze's stars (1 to 0), or 0 when she is not dazed (never on a fallen Wayfarer).
+export function pachyDazeLeft(p, now, total = PACHY.daze.stars * 1000) { const u = Number(p?.dazedUntil) || 0; if (!(now < u) || !(Number(p?.hp) > 0)) return 0; return Math.max(0, Math.min(1, (u - now) / total)); }
+// (cx, foot): the figure's centre line and feet in pixels; `s` pixels a tile; `left` from pachyDazeLeft. No allocation.
+export function drawPachyDazeStars(ctx, cx, foot, s, left, now = 0, reduce = false) {
+  const Z = PACHY_DAZE_ART; if (!(left > 0)) return false;
+  const t = reduce ? 0 : now / 1000, a = Math.min(1, left / Z.fade), cy = foot - Z.up * s, r = Math.max(2, Z.size * s);
+  ctx.save(); ctx.lineWidth = Math.max(1, s * .012); ctx.strokeStyle = Z.edge; ctx.fillStyle = Z.fill;
+  for (let i = 0; i < Z.count; i++) { const ang = t * Z.spin + i / Z.count * TAU, x = cx + Math.cos(ang) * Z.rx * s, y = cy + Math.sin(ang) * Z.ry * s, near = Math.sin(ang) > 0;
+    ctx.globalAlpha = a * (near ? 1 : .6) * (reduce ? 1 : .8 + .2 * Math.sin(t * Z.twinkle + i * 1.7)); const rr = r * (near ? 1 : .75);
+    ctx.beginPath(); for (let j = 0; j < 10; j++) { const b = -Math.PI / 2 + j * Math.PI / 5 + t * 2, k = j % 2 ? rr * .45 : rr; j ? ctx.lineTo(x + Math.cos(b) * k, y + Math.sin(b) * k) : ctx.moveTo(x + Math.cos(b) * k, y + Math.sin(b) * k); } ctx.closePath(); ctx.fill(); ctx.stroke(); }
   ctx.restore();
   return true;
 }

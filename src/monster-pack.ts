@@ -932,7 +932,7 @@ export const MONSTER_PACK = {
   pachy: {
     id: "pachy", name: "The Pachycephalosaurus", epithet: "The Dome That Waits", unique: true,
     stats: [360, 18, 0], form: { scale: 1.8 }, sizeClass: "huge", movement: "walk", brain: "restless",
-    attacks: ["pachyHeadSlam", "pachyCharge", "pachyRockLaunch", "pachyJumpSlam", "pachyBicycle", "pachyDomeRam", "pachyBoneSpikes", "pachySkullLaunch"], bossAttacks: [],
+    attacks: ["pachyHeadSlam", "pachyCharge", "pachyRockLaunch", "pachyJumpSlam", "pachyBicycle", "pachyDomeRam", "pachyBoneSpikes", "pachySkullLaunch", "pachyDomeDrum" /* Dome Drum (Tim, 2026-11-27) */], bossAttacks: [],
     palette: ["#5f9a3c", "#8d9196", "#f2d23a", "#1a1a1a"], render: "pachy", tags: ["beast", "elder", "dinosaur", "predator"],
     lore: "A dome-headed dinosaur on two strong legs, taller than a cart: green above, gray beneath, a black stripe from its crown down its back to its tail, its head and great domed skull yellow, ringed with gray knobs. It is always hungry, and it eats meat. It lies still as an odd-looking rock until you come close, then bursts out. It slams its dome down, charges head first, flicks rocks from its dome, leaps and stomps, and comes at you in a wheel of kicks. Hurt it and it plates itself over as a machine of itself; hurt it more and its flesh falls away, and it fights on as fossil bone, flinging skulls across the room.",
   },
@@ -1837,7 +1837,7 @@ function dinoCue(w, e, phase, move, at = e, extra = null) {
 }
 // The duel's big moves (DINO_DUEL.shake, DINO_DUEL.rockfall): the screen shakes (capped, at most once each `gap` s from either
 // duellist; none under Reduced Motion: spino-rex.ts shakeOffset), and under a ceiling (w.indoors) rocks fall around a slam.
-const DINO_SHAKE = { pachyHeadSlam: "slam", pachyJumpSlam: "big", pachyBicycle: "land", pachyBonk: "land", pachyAmbush: "roar", trikeFrillBash: "slam", land: "land", spinoLeapSlam: "big", spinoGrabSlam: "slam", stegoJawsSlam: "slam", spinoRoar: "roar", spinoArrive: "roar", stegoWheel: "wheel", dinoRock: "rock", apatoNeckSlam: "slam", apatoStomp: "big", apatoWrapThrow: "slam", apatoSpireStamp: "land", apatoBeam: "roar", apatoBeamSweep: "roar" };
+const DINO_SHAKE = { pachyHeadSlam: "slam", pachyDomeDrum: "land", pachyJumpSlam: "big", pachyBicycle: "land", pachyBonk: "land", pachyAmbush: "roar", trikeFrillBash: "slam", land: "land", spinoLeapSlam: "big", spinoGrabSlam: "slam", stegoJawsSlam: "slam", spinoRoar: "roar", spinoArrive: "roar", stegoWheel: "wheel", dinoRock: "rock", apatoNeckSlam: "slam", apatoStomp: "big", apatoWrapThrow: "slam", apatoSpireStamp: "land", apatoBeam: "roar", apatoBeamSweep: "roar" };
 const DINO_SLAMS = new Set(["pachyHeadSlam", "pachyJumpSlam", "pachyBicycle", "trikeFrillBash", "stegoJawsSlam", "stegoTailSlam", "stegoPounce", "stegoBreach", "stegoTreeClub", "spinoLeapSlam", "spinoBodySlam", "spinoGrabSlam", "spinoGrabThrow", "stegoWheel", "apatoNeckSlam", "apatoStomp", "apatoWrapThrow"]);
 function dinoBigMove(w, e, phase, move, x, y) {
   const S = DINO_DUEL.shake, d = duelOf(e), kind = phase === "land" ? DINO_SHAKE[move] || "land" : (phase === "roar" || phase === "rock") ? DINO_SHAKE[move] : phase === "hit" && move === "stegoWheel" ? "wheel" : null;

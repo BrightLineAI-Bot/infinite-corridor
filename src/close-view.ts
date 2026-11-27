@@ -34,7 +34,8 @@ import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT, DUELIST_SLOT, TR
 import { createTriceratopsTrack, sampleTriceratops, triceratopsMesh, TRICERATOPS_RIG } from "./close-view-beast-triceratops.ts";
 import { MOUNT_DRAW } from "./beast-mounts-render.ts";
 import { HATCH_DRAW, hatchlingPresentation } from "./hatchling-render.ts"; // the Triceratops hatchling's skinned body
-import { drawPachyGolemClose } from "./close-view-beast-pachy.ts"; // Dome Rush's Earth Golem (cards)
+import { drawPachyGolemClose, drawPachyDazeClose } from "./close-view-beast-pachy.ts"; // Dome Rush's Earth Golem (cards); the Pachycephalosaurus's daze (stars)
+import { pachyDazeLeft } from "./pachy-render.ts"; // the daze: no knockdown tip
 import { golemScale } from "./echoes.ts"; // Dome Rush's Earth Golem: the Wayfarer drawn larger
 import { drawApatoCloseFx, admitApatoProps } from "./close-view-beast-apato.ts"; // the Earth Apatosaurus's standing hazards (cards)
 import { stageDuel } from "./close-view-duel.ts"; // the dino duel: the two bodies spaced and the held one in the other's jaws // release 891: world beasts' skinned bodies (and the Gaunt's)
@@ -4445,7 +4446,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if (winding && !track.winding) track.windAt = now;
     if (attack && !track.attacking) track.attackAt = now;
     const defeat = who === player ? ordinaryDefeatPresentation(g, now) : null;
-    const knock = stunned && !defeat ? knockdownPose(now - (player.stunnedAt || now), (player.stunnedUntil || now) - (player.stunnedAt || now), reduce) : null;
+    const knock = stunned && !defeat ? knockdownPose(pachyDazeLeft(player, now) > 0 ? 0 /* dazed by the Pachycephalosaurus: held at the start of the fall, on her feet, stars over her head */ : now - (player.stunnedAt || now), (player.stunnedUntil || now) - (player.stunnedAt || now), reduce) : null;
     const profilePose = fisting ? 'fist' : visualProfile?.startsWith("orrery-") ? "cast" : tool ? "tool" : "attack";
     const ordinary = who === player && (!form || form.kind === 'playerIronFists') && !g.save.boat?.aboard && !g.mountRide?.();
     let hurtPhase = null;
@@ -5214,7 +5215,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     if (itemKind[it] !== 1 || draw !== capturedPlayer || !MODEL_STATE.admitted.has(it)) continue;
     const X = boardWX[it], Y = boardWY[it], support = surfaceZ(g.map, X, Y - .07) + closeViewActorLift(draw, true);
     const statusNow = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
-    const knocked = statusNow < (g.player.stunnedUntil || 0), form = closeViewPlayerForm(g), body = knocked ? .35 : form ? form.head * .52 : .72;
+    const knocked = statusNow < (g.player.stunnedUntil || 0) && !(pachyDazeLeft(g.player, statusNow) > 0), form = closeViewPlayerForm(g), body = knocked ? .35 : form ? form.head * .52 : .72;
     for (let i = 0; i < 3; i++) {
       const phase = reduce ? i * 2.094 : statusNow / 150 + i * 2.094;
       const side = (i - 1) * .15 + (reduce ? 0 : Math.sin(phase) * .035);
@@ -5286,6 +5287,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   for (const f of g.packEffects || []) { if (f.kind !== "dinoRock" || !(f.arming > 0) || !finite(f.x) || !finite(f.y)) continue;
     const k = 1 - Math.max(0, f.arming) / (f.armTotal || 1), r = Math.max(.25, (f.radius || .7) * DINO_ROCK_DRAW.size), z = reduce ? DINO_ROCK_DRAW.still : DINO_ROCK_DRAW.from * (1 - k * k);
     card(f.x + .5, f.y + .62, z, z + r * 2, r, 0, DINO_ROCK_DRAW.alpha, 0, 0); }
+  drawPachyDazeClose(g.player, card, reduce, now); // the Pachycephalosaurus's daze: stars circling over the Wayfarer's head (close-view-beast-pachy.ts)
   drawPachyGolemClose(g.player, card, reduce, now); // Dome Rush's Earth Golem: rocky plates and an amber glow round the Wayfarer (close-view-beast-pachy.ts)
   drawApatoCloseFx(g.enemies, card, reduce, now, g.earthResolve || null); // the Earth Apatosaurus: its spires, hands, rocks, leaves, seeds, roots and beam stand up from the floor (close-view-beast-apato.ts)
   { const A = CONTINUOUS_ASSAULT; for (const fx of g.effects) { if (fx.kind !== "assault-lance" || !(fx.life > 0) || !finite(fx.x) || !finite(fx.y)) continue; // Continuous Assault: columns of light from high above (tool-forms.ts; the rings and scorch are on the floor)

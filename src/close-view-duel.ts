@@ -19,7 +19,7 @@ export const DUEL_STAGE = Object.freeze({ margin: .1, maxSep: 3.5, ease: 5, pass
 export const DUEL_STRIKES = Object.freeze({
   spinoBite: ['head', 'neck'], spinoGrab: ['head', 'neck'], spinoBodySlam: ['head', 'neck'], spinoLeapSlam: ['head', 'neck'], spinoRoar: ['head'], spinoClaw: ['arms', 'head'], spinoTailSwipe: ['tail'], spinoRibSpears: ['arms'],
   apatoNeckSlam: ['head', 'neck'], apatoLash: ['head', 'neck'], apatoWrap: ['head', 'neck'], apatoStomp: ['legs'], apatoLeaves: ['head'],
-  pachyHeadSlam: ['head', 'neck'], pachyCharge: ['head', 'neck'], pachyDomeRam: ['head', 'neck'], pachyClash: ['head', 'neck'], pachyBicycle: ['legs'], pachyJumpSlam: ['legs'],
+  pachyHeadSlam: ['head', 'neck'], pachyCharge: ['head', 'neck'], pachyDomeRam: ['head', 'neck'], pachyDomeDrum: ['head', 'neck'], pachyClash: ['head', 'neck'], pachyBicycle: ['legs'], pachyJumpSlam: ['legs'],
   trikeGore: ['head', 'neck'], trikeHornSweep: ['head', 'neck'], trikeFrillBash: ['head', 'neck'],
   stegoBite: ['head', 'neck'], stegoJaws: ['head', 'neck'], stegoClaw: ['legs', 'head'], stegoRearSwipe: ['legs', 'head', 'neck'], stegoTailWhack: ['tail'], stegoTailSlam: ['tail'], stegoBuck: ['tail', 'legs'], stegoPounce: ['legs', 'head'], stegoTreeClub: ['head', 'neck'],
 });

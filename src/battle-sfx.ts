@@ -53,7 +53,7 @@ export const BATTLE_SFX = {
 // The game's cues (monster-pack.ts dinoCue: phase and move) to sounds.
 export const DUEL_SOUNDS = {
   windup: {
-    pachyHeadSlam: "hootPachy", pachyCharge: "digScrape", pachyJumpSlam: "hootPachy", pachyBicycle: "hootPachy", pachyRockLaunch: "digScrape", pachySkullLaunch: "boneCrackle", pachyBoneSpikes: "boneCrackle", pachyClash: "hootPachy", pachyAmbush: "bellowShort",
+    pachyHeadSlam: "hootPachy", pachyDomeDrum: "hootPachy", pachyCharge: "digScrape", pachyJumpSlam: "hootPachy", pachyBicycle: "hootPachy", pachyRockLaunch: "digScrape", pachySkullLaunch: "boneCrackle", pachyBoneSpikes: "boneCrackle", pachyClash: "hootPachy", pachyAmbush: "bellowShort",
     trikeGore: "bellowShort", trikeFrillBash: "bellowStego", trikeHornSweep: "bellowShort",
     spinoRoar: "inhale", spinoLeapSlam: "roarSpino", spinoBodySlam: "roarSpino", spinoGrab: "growlSpino", spinoBite: "growlSpino", spinoDigFling: "digScrape", spinoRibSpears: "boneCrackle", spinoBoneVolley: "boneCrackle",
     apatoNeckSlam: "bellowShort", apatoWrap: "strain", apatoBeam: "inhale", apatoBeamSweep: "inhale", apatoStomp: "bellowStego", apatoHydra: "digScrape",
@@ -61,10 +61,10 @@ export const DUEL_SOUNDS = {
   },
   roar: { pachyAmbush: "roarBig", spinoRoar: "roarBig", spinoArrive: "roarBig", apatoBeam: "roarBig", apatoBeamSweep: "roarBig" },
   swing: { pachyCharge: "whooshHeavy", pachyBicycle: "whooshLight", trikeGore: "whooshHeavy", trikeHornSweep: "whoosh", apatoLash: "whooshHeavy", apatoWrap: "whoosh", apatoLeaves: "whooshLight", stegoTailWhack: "whoosh", stegoRearSwipe: "whooshLight", spinoTailSwipe: "whooshHeavy", spinoRibSpears: "boneCrackle", spinoRibThrust: "whooshLight" },
-  land: { pachyHeadSlam: "slam", pachyJumpSlam: "slamBig", pachyBicycle: "slam", pachyBonk: "domeKnock", pachyBoneSpikes: "spear", trikeFrillBash: "slamBig", stegoPounce: "slam", stegoTailSlam: "slam", stegoBreach: "slam", stegoTreeClub: "slam", spinoLeapSlam: "slamBig", spinoBodySlam: "slam", spinoGrabThrow: "slam", spinoGrabSlam: "slamBig", stegoJawsSlam: "slamBig", apatoNeckSlam: "slamBig", apatoStomp: "slamBig", apatoStep: "slam", apatoSpires: "impact", apatoSpireStamp: "slam", apatoSeeds: "slam", apatoWrapThrow: "slam" },
+  land: { pachyHeadSlam: "slam", pachyDomeDrum: "domeKnock", pachyJumpSlam: "slamBig", pachyBicycle: "slam", pachyBonk: "domeKnock", pachyBoneSpikes: "spear", trikeFrillBash: "slamBig", stegoPounce: "slam", stegoTailSlam: "slam", stegoBreach: "slam", stegoTreeClub: "slam", spinoLeapSlam: "slamBig", spinoBodySlam: "slam", spinoGrabThrow: "slam", spinoGrabSlam: "slamBig", stegoJawsSlam: "slamBig", apatoNeckSlam: "slamBig", apatoStomp: "slamBig", apatoStep: "slam", apatoSpires: "impact", apatoSpireStamp: "slam", apatoSeeds: "slam", apatoWrapThrow: "slam" },
   // A blow that connects with the other duellist (and only then).
   hit: {
-    pachyHeadSlam: "domeKnock", pachyCharge: "domeKnock", pachyDomeRam: "domeKnock", pachyClash: "hornClack", pachyJumpSlam: "impact", pachyBicycle: "kickThud", pachyRockLaunch: "impact", pachySkullLaunch: "woodCrack", pachyBoneSpikes: "spear", pachyWave: "impact",
+    pachyHeadSlam: "domeKnock", pachyCharge: "domeKnock", pachyDomeRam: "domeKnock", pachyDomeDrum: "domeKnock", pachyClash: "hornClack", pachyJumpSlam: "impact", pachyBicycle: "kickThud", pachyRockLaunch: "impact", pachySkullLaunch: "woodCrack", pachyBoneSpikes: "spear", pachyWave: "impact",
     trikeGore: "hornClack", trikeHornSweep: "hornClack", trikeFrillBash: "impact",
     spinoBite: "biteSpino", spinoBodySlam: "biteSpino", spinoClaw: "rakeSpino", spinoTailSwipe: "tailSpino", spinoLeapSlam: "impact", spinoGrab: "chew", spinoRibSpears: "spear", spinoRoar: "roarHit",
     stegoBite: "biteStego", stegoClaw: "rakeStego", stegoRearSwipe: "rakeStego", stegoTailWhack: "tailStego", stegoTailSlam: "tailStego", stegoWheel: "wheelCrunch", stegoPounce: "impact", stegoTreeClub: "woodCrack", stegoBreach: "impact", stegoJaws: "thrash", spinoGrabSlam: "impact",

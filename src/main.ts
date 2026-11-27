@@ -2899,7 +2899,7 @@ function updateHud(now) { closePan.sync(); // Close View's crescent and lock but
   hudSet(hudEl("#staminaBar"),"value",stamina);
   // Release 257: Lightning Giant shock pips (shown only while charged or knocked down).
   { const pips = hudEl("#reloadPips"), n = reloadPips(game); hudSet(pips,"class:off",n < 0); hudSet(pips,"data-count",String(Math.max(0, n))); } // Rapid Reload (hit-cast-passives.ts): charged releases that hit, toward the refund
-  { const pips = hudEl("#shockPips"), stunned = now < (game.player.stunnedUntil || 0), count = stunned ? 3 : Math.max(0, Math.min(3, game.player.shockCount || 0)); hudSet(pips,"class:off",!count); hudSet(pips,"class:stunned",stunned); hudSet(pips,"data-count",String(count)); }
+  { const pips = hudEl("#shockPips"), stunned = now < (game.player.stunnedUntil || 0) && !(now < (game.player.dazedUntil || 0)) /* a Pachycephalosaurus daze is no lightning stun */, count = stunned ? 3 : Math.max(0, Math.min(3, game.player.shockCount || 0)); hudSet(pips,"class:off",!count); hudSet(pips,"class:stunned",stunned); hudSet(pips,"data-count",String(count)); }
   const aperture = save.perception?.aperture || 0,
     tier = apertureTier(aperture),
     apertureNext = APERTURE_THRESHOLDS[tier];

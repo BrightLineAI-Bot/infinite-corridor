@@ -14,7 +14,7 @@ import { drawBleedIcon } from "./bleed.ts";
 import { drawPoisonIcon } from "./apato-poison.ts";
 import { drawEarthResolveSigil } from "./apato-render.ts";
 import { insideResolve, golemOn, golemScale, PACHY_ECHO } from "./echoes.ts"; // the Earth Apatosaurus's root venom; Dome Rush's Earth Golem
-import { drawPachyGolem } from "./pachy-render.ts"; // Dome Rush's Earth Golem on the Wayfarer
+import { drawPachyGolem, drawPachyDazeStars, pachyDazeLeft } from "./pachy-render.ts"; // Dome Rush's Earth Golem on the Wayfarer; the Pachycephalosaurus's daze (stars)
 import { drawRealmTile, drawRealmCosmos, drawRealmObject } from "./seed-realm-render.ts"; // seed realms
 import { biomechanicalKeep } from "./close-view-room-routing.ts";
 import { PENTAGON_MURALS } from "./pentagon-halls.ts"; // release 795: the grand halls' murals, drawn small
@@ -159,7 +159,7 @@ export function drawNativePlayerDecorations(ctx, g, s, now) {
   const p=g.player,form=playerFormPresentation(g),quiet=!!(g.presentation?.reduceMotion||g.presentation?.safeMode),t=quiet?0:now;
   const x=(p.x+.5)*s,foot=(p.y+.82)*s;
   ctx.save();
-  if(now<(p.stunnedUntil||0))drawShockSparks(ctx,x,(p.y+.9)*s,s,t);
+  if(now<(p.stunnedUntil||0)&&!(pachyDazeLeft(p,now)>0))drawShockSparks(ctx,x,(p.y+.9)*s,s,t); // dazed by the Pachycephalosaurus: no sparks (Close View draws its stars as cards: close-view-beast-pachy.ts drawPachyDazeClose)
   if(form?.mech){
     const m=g.save.mech;
     if(form.empowered){const r=s*(.72+.05*Math.sin(t/140)),glow=ctx.createRadialGradient(x,foot-.27*s,r*.2,x,foot-.27*s,r);glow.addColorStop(0,'#ffb05a55');glow.addColorStop(1,'#ff5a1f00');ctx.fillStyle=glow;ctx.beginPath();ctx.arc(x,foot-.27*s,r,0,Math.PI*2);ctx.fill();}
@@ -3377,7 +3377,7 @@ export function render(ctx, g, w, h, now) {
       }
       const ride = mountRide, mountFacing = drillPose ? triceratopsDrillFacing(mountComposite?.viewFacing, drillPose) : mountComposite?.viewFacing || (mountPose ? Math.abs(mountPose.x) >= Math.abs(mountPose.y) ? mountPose.x < 0 ? "left" : "right" : mountPose.y < 0 ? "up" : "down" : p.facing), seatInfo = ride ? drawMount(ctx, ride, p, s, g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now, lift, !!(g.presentation?.reduceMotion || g.presentation?.safeMode), mountPose, mountFacing, drillPose) : null, seat = seatInfo ? seatInfo.up : 0; // release 748: riding
       // Release 257: knocked flat by the Lightning Giant's shock, the Wayfarer tips over, shakes, and gets back up.
-      const knocked = now < (p.stunnedUntil || 0), kd = knocked ? knockdownPose(now - (p.stunnedAt || now), (p.stunnedUntil || now) - (p.stunnedAt || now), !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) : null;
+      const knocked = now < (p.stunnedUntil || 0) && !(pachyDazeLeft(p, now) > 0) /* dazed by the Pachycephalosaurus she stays on her feet, stars over her head */, kd = knocked ? knockdownPose(now - (p.stunnedAt || now), (p.stunnedUntil || now) - (p.stunnedAt || now), !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) : null;
       if (kd) { const fx = (p.x + .5) * s + kd.shake, fy = (p.y + .9) * s - lift; ctx.save(); ctx.translate(fx, fy); ctx.rotate(kd.angle * (p.facing === "left" ? -1 : 1)); ctx.translate(-(p.x + .5) * s, -(p.y + .9) * s + lift); }
       const drone = !!g.droneUp?.() && !!g.droneAt, mech = !!g.mechUp?.(), mechLift = (mech || drone) && g.mechBoosting ? s * (drone ? .35 : .22) : 0; // release 317: the robot ashore, lifted while it boosts; 321: the drone carries higher
       if (mech && g.save.mech?.empowered) { const cx = (p.x + .5) * s, cy = (p.y + .55) * s - lift - mechLift, r = s * (.72 + .05 * Math.sin(now / 140)), glow = ctx.createRadialGradient(cx, cy, r * .2, cx, cy, r); glow.addColorStop(0, "#ffb05a55"); glow.addColorStop(1, "#ff5a1f00"); ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill(); } // release 383: the empowered robot's furnace glow
@@ -3402,6 +3402,7 @@ export function render(ctx, g, w, h, now) {
         now < (p.attackUntil || 0) ? "attack" : "walk",false,(g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1)*golemScale(p,now,!!(g.presentation?.reduceMotion||g.presentation?.safeMode)), // Dome Rush's Earth Golem: larger
       ); STD_HANDS_FREE = false; STD_SALVAGE = false; STD_BODY = "male";
       if (!suited && !mech && golemOn(p, now)) drawPachyGolem(ctx, (p.x + .5) * s, (p.y + .82) * s - lift - seat, s, golemScale(p, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)), (p.echoGolemUntil - now) / (PACHY_ECHO.seconds * 1000), now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)); // its rocky plates and its time (pachy-render.ts)
+      if (!suited && !mech) drawPachyDazeStars(ctx, (p.x + .5) * s, (p.y + .82) * s - lift - seat, s, pachyDazeLeft(p, now), now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)); // the Pachycephalosaurus's daze: stars over her head (pachy-render.ts)
       if (aerialK > 0 && p.facing !== "down") drawAerialArmsStd(ctx, p.x, p.y - (lift + seat) / s, s, p.facing, aerialK); // inside the lean
       if (rushLean) { ctx.restore(); if (cleaverRushLean(g)) drawCleaverRushBlade(ctx, g, s, lift); } // the blade carried low and trailing
       if (!suited && !mech) drawAerialRingsStd(ctx, g, (p.x + .5) * s, (p.y + .82) * s - lift - seat, s, now, 1); // Aerial Step: the near halves, over them

@@ -8,7 +8,7 @@
 // It follows the pose contract the standard view reads (e.pachyPose, pachyAir, pachyForm, pachyShift, pachyDisguised) through the
 // standard view's own pose table (PACHY_POSES), so both views agree; nothing here reads attack timing or changes the game.
 // Body units u are the standard view's (a tile times the actor's scale); the root carries S = env.scale.
-import { PACHY_ART, PACHY_POSES, pachyPoseName, pachyLook } from "./pachy-render.ts";
+import { PACHY_ART, PACHY_POSES, PACHY_DAZE_ART, pachyPoseName, pachyLook, pachyDazeLeft } from "./pachy-render.ts";
 import { PACHY_ECHO } from "./echoes.ts"; // Dome Rush's Earth Golem (drawPachyGolemClose)
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, boneLocalToWorld, writeSkin, poseAnimalLeg,
@@ -294,7 +294,7 @@ export function samplePachy(tr, e, env) {
   const name = dead ? 'dead' : pachyPoseName(e) || 'idle';
   if (name !== tr.poseName) { tr.poseName = name; tr.poseAt = now; }
   const want = POSE_VEC[name] || POSE_VEC.idle; for (let k = 0; k < K; k++) TV[k] = want[k];
-  const rate = /kick|slam|butt|clash|charge|bonk/.test(name) ? G.strikeEase : G.ease, V = tr.v, first = !Number.isFinite(tr.yaw);
+  const rate = /kick|slam|butt|clash|charge|bonk|drum/.test(name) ? G.strikeEase : G.ease, V = tr.v, first = !Number.isFinite(tr.yaw);
   for (let k = 0; k < K; k++) V[k] = first || reduce || !(dt > 0) ? TV[k] : V[k] + (TV[k] - V[k]) * Math.min(1, dt * rate);
   const air = dead || form === 'rock' ? 0 : Math.max(0, Number(e.pachyAir) || 0);
   // facing: where its move aims; else where it goes; standing, the Wayfarer
@@ -377,5 +377,17 @@ export function drawPachyGolemClose(p, card, reduce = false, now = 0) {
   card(x, y, 0, 1.9, .55, 11, .12 + .12 * left, G.glow, 0);
   for (let i = 0; i < G.plates.length; i++) { const [a0, z, r, h, w] = G.plates[i], a = a0 + t * G.spin, px = x + Math.cos(a) * r, py = y + Math.sin(a) * r, zz = z * S + (reduce ? 0 : .015 * Math.sin(t * 3 + i));
     card(px, py, zz - h * .3, zz + h * .7, w, 7, .95, 0, G.stone); card(px, py, zz - w * .5, zz + w * .5, w * .8, 11, .6 + (reduce ? 0 : .3 * Math.sin(t * 6 + i)), G.seam, 0); }
+  return true;
+}
+
+// The Pachycephalosaurus's daze on the Wayfarer in Close View (pachy.ts PACHY.daze; the standard view's pachy-render.ts
+// drawPachyDazeStars): little golden stars circling over her head while she is dazed, each a bright core in a soft halo, fading over
+// the last of the time. Reduced Motion: they hold still. Cards only; no allocation.
+export const DAZE_CLOSE = Object.freeze({ up: 1.42, rx: .27, ry: .27, halo: .085, core: .035, star: 0xffe45c, glow: 0xffb347 });
+export function drawPachyDazeClose(p, card, reduce = false, now = 0) {
+  const left = pachyDazeLeft(p, now); if (!(left > 0)) return false;
+  const Z = PACHY_DAZE_ART, C = DAZE_CLOSE, t = reduce ? 0 : now / 1000, a = Math.min(1, left / Z.fade), x = p.x + .5, y = p.y + .75;
+  for (let i = 0; i < Z.count; i++) { const ang = t * Z.spin + i / Z.count * Math.PI * 2, px = x + Math.cos(ang) * C.rx, py = y + Math.sin(ang) * C.ry, z = C.up + (reduce ? 0 : .03 * Math.sin(t * 5 + i)), tw = reduce ? 1 : .8 + .2 * Math.sin(t * Z.twinkle + i * 1.7);
+    card(px, py, z - C.halo, z + C.halo, C.halo, 11, .55 * a * tw, C.glow, 0); card(px, py, z - C.core, z + C.core, C.core, 11, a * tw, C.star, 0); }
   return true;
 }

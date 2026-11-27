@@ -14,7 +14,8 @@
 //
 // The pose contract the art reads (never timing):
 //   e.pachyPose: null | "slamRaise" | "slam" | "chargeReady" | "charge" | "bonk" | "domeLoad" | "domeFlick" | "crouch" | "air" | "land" |
-//     "kickL" | "kickR" | "butt" | "boneStamp" | "skullReady" | "skullThrow" | "burst" | "armorUp" | "shed" | "feed" | "clash";
+//     "kickL" | "kickR" | "butt" | "boneStamp" | "skullReady" | "skullThrow" | "burst" | "armorUp" | "shed" | "feed" | "clash" |
+//     "drumRaise" | "drum" (Dome Drum: the dome up, then knocked on the ground, beat after beat);
 //   e.pachyForm: "flesh" | "armor" | "fossil"; e.pachyShift (0..1: the armor plating closing, or the flesh falling away);
 //   e.pachyDisguised (true while it lies as a rock); e.pachyAir (tiles off the ground); e.pachyHeading { x, y };
 //   e.pachyFx (the pools: rocks { fx, fy, tx, ty, t, total }, skulls { x, y, vx, vy, spin }, bones { x, y, t, warn, up }, waves { x, y, r }).
@@ -36,6 +37,16 @@ export const PACHY = {
   },
   fossilOnly: ["pachyBoneSpikes", "pachySkullLaunch"],
   fleshOnly: ["pachyRockLaunch"],
+  // Dome Drum (Tim, 2026-11-27): it plants its feet and knocks its dome on the ground `knocks` times in a row (a count between the two,
+  // hashed per beast and move), one knock every `every` s. Each knock strikes the marked circle `reach` past its body (in `radius`; the
+  // mark follows the Wayfarer at `follow` while the head is up, and holds for the last `lockAt` s before each knock) and sends a small
+  // burst ring out (`ring` tiles over `ringTime` s, `ringShare`, jumpable). `down`: the share of each beat the dome rests on the ground.
+  // A knock or a ring that dazes the Wayfarer ends the drum (`endOnDaze`): no knock lands on her while she is down.
+  drum: { knocks: [3, 4], every: .55, reach: 1.3, radius: 1.1, follow: 3, lockAt: .2, ring: 2.4, ringTime: .45, ringShare: .25, down: .35, endOnDaze: true },
+  // The daze (Tim, 2026-11-27, after the Lightning Giant's stun counter): every landed blow of its head (`head`) or of any of its burst
+  // rings counts; the `hits`-th within `decay` s of the last stuns the Wayfarer for `stun` s, stars circling over her head for `stars` s.
+  // A knock or slam and its own ring count once between them. A parried blow, a stunned or fallen Wayfarer: nothing counts (game.ts dazeHit).
+  daze: { hits: 2, stun: 1, decay: 8, stars: 2, head: ["pachyHeadSlam", "pachyCharge", "pachyDomeDrum"], rings: true },
   // Head slam: it rears and brings the dome down on the marked circle `reach` past its body (tracked until `lockAt`); a ring runs out
   // (`ring` tiles, `ringShare`, jumpable).
   slam: { reach: 1.5, radius: 1.35, lockAt: .25, follow: 5, ring: 2.8, ringShare: .3 },
@@ -83,6 +94,7 @@ export const PACHY = {
     armorOff: "Its plating clanks open and falls away.",
     fossil: "Its flesh splits and sloughs off! The Pachycephalosaurus fights on as bare fossil bone.",
     burst: "The odd rock cracks open: it was the Pachycephalosaurus, and it is hungry!",
+    daze: "The dome rings your skull: you are dazed!",
   },
 };
 // The moves (spread into monster-pack.ts ATTACK_MODULES). Times are seconds; `damage` multiplies the creature's damage.
@@ -92,6 +104,7 @@ export const PACHY_ATTACKS = {
   pachyRockLaunch: { id: "pachyRockLaunch", name: "Dome Flick", range: [3, 11], cooldown: 9, windup: .7, active: 1, recover: .6, damage: .55, tags: ["ranged", "ground"], text: "It digs its dome under the ground and flicks rocks high into the air; they fall on the marked spots." },
   pachyJumpSlam: { id: "pachyJumpSlam", name: "Leaping Stomp", range: [3, 10], cooldown: 8, windup: .7, active: 1.1, recover: .8, damage: 1.5, tags: ["ground", "leap"], text: "It crouches, the landing circle following you, then leaps and comes down feet first; the ground rings out. Out of the circle, then jump the ring." },
   pachyBicycle: { id: "pachyBicycle", name: "Wheeling Kicks", range: [2.5, 11], cooldown: 10, windup: .75, active: 2.1, recover: .9, damage: .6, tags: ["charge", "leap"], text: "It jumps and comes down the lane in hops, pedalling its legs in kick after kick. Step off the lane." },
+  pachyDomeDrum: { id: "pachyDomeDrum", name: "Dome Drum", range: [0, 4], cooldown: 8, windup: .8, active: 2.6, recover: .9, damage: .85, tags: ["melee", "ground"], text: "It plants its feet and drums its dome on the ground, knock after knock, each knock on the marked circle and a burst ring running out. Two blows of its head or its rings and you are dazed: keep out of the circle and jump the rings." },
   pachyDomeRam: { id: "pachyDomeRam", name: "Dome Butts", range: [0, 3.2], cooldown: 5, windup: .5, active: 1.3, recover: .6, damage: .7, tags: ["melee", "combo"], text: "Three short head-butts in a row, stepping in after you with each." },
   pachyBoneSpikes: { id: "pachyBoneSpikes", name: "Bone Spikes", range: [1, 8], cooldown: 7, windup: .65, active: 1.1, recover: .6, damage: 1.05, fossil: true, tags: ["ground"], text: "Bone only: it stamps and spikes of fossil bone burst from the ground in a line toward you, one after another." },
   pachySkullLaunch: { id: "pachySkullLaunch", name: "Skull Volley", range: [4, 14], cooldown: 9, windup: .85, active: 1.5, recover: .7, damage: .8, fossil: true, tags: ["ranged"], text: "Bone only: it flings fossil skulls at you across the room, one after another, each turning a little after you. Dodge late." },
@@ -129,9 +142,15 @@ const isRival = (e, q) => !!q && PACHY.duel.kinds.includes(q.kind) && K.duelPair
 // A blow in the circle (x0, y0, r), or within r of the segment to (x1, y1) when `seg`: on the Wayfarer, and on its prey (a duel foe:
 // measured to the near side of its bulk; an ordinary creature: most of its health, and eaten if it dies). True if anything was hit.
 const within = (x, y, seg, x0, y0, x1, y1, r) => seg ? segDist(x, y, x0, y0, x1, y1) <= r : hyp(x - x0, y - y0) <= r;
+// A blow of its head (PACHY.daze.head) that lands on the Wayfarer counts toward the daze: `youHit` and `youDazed` say what the last
+// strike did to her (read straight after it; a module scratch pair, so nothing is allocated).
+let youHit = false, youDazed = false;
+// One counted blow (game.ts dazeHit): true if it stunned her; the pools keep a running count of the dazes it has dealt (`dazed`).
+function daze(e, w) { const ok = !!w.dazeHit?.(e); if (ok) pachyPools(e).dazed++; return ok; }
 function strike(e, s, w, id, x0, y0, r, share = 1, seg = false, x1 = 0, y1 = 0, opts = null) {
-  const p = w.player, n = dmg(e, id, share); let landed = false;
+  const p = w.player, n = dmg(e, id, share); let landed = false; youHit = false; youDazed = false;
   if (within(p.x, p.y, seg, x0, y0, x1, y1, r) && (!w.los || w.los(e, p))) landed = !!w.hurt(e, n, { jumpable: !!opts?.jumpable, source: id });
+  if (landed) { youHit = true; if (PACHY.daze.head.includes(id)) youDazed = daze(e, w); }
   if (landed && opts?.push) w.push?.(e, opts.push, r + 1);
   const prey = preyOf(w, s); if (prey) landed = hitPrey(e, w, prey, x0, y0, r, n, id, seg, x1, y1) || landed;
   return landed;
@@ -148,14 +167,14 @@ function hitPrey(e, w, q, x0, y0, r, n, id, seg = false, x1 = 0, y1 = 0) {
 // ---------------------------------------------------------------- the pools (one allocation, on first sight)
 function pool(n, make) { const a = new Array(n); for (let i = 0; i < n; i++) a[i] = make(); return a; }
 export function pachyPools(e) {
-  if (e.pachyFx && e.pachyFx.v === PACHY.version) return e.pachyFx;
+  if (e.pachyFx && e.pachyFx.v === PACHY.version) { if (!Number.isFinite(e.pachyFx.dazed)) e.pachyFx.dazed = 0; return e.pachyFx; } // (pools from before the daze: its count starts at 0)
   const C = PACHY.caps;
   e.pachyFx = {
-    v: PACHY.version,
+    v: PACHY.version, dazed: 0,
     rocks: pool(C.rocks, () => ({ on: false, fx: 0, fy: 0, tx: 0, ty: 0, t: 0, total: 0, delay: 0, dmg: 0, prey: null })),
     skulls: pool(C.skulls, () => ({ on: false, x: 0, y: 0, vx: 0, vy: 0, left: 0, dmg: 0, spin: 0, prey: null })),
     bones: pool(C.bones, () => ({ on: false, x: 0, y: 0, t: 0, warn: 0, up: 0, hit: false, dmg: 0, prey: null })),
-    waves: pool(C.waves, () => ({ on: false, x: 0, y: 0, r: 0, max: 0, t: 0, total: 0, hit: false, preyHit: false, dmg: 0, prey: null })),
+    waves: pool(C.waves, () => ({ on: false, x: 0, y: 0, r: 0, max: 0, t: 0, total: 0, hit: false, preyHit: false, dmg: 0, prey: null, counted: false })),
   };
   return e.pachyFx;
 }
@@ -163,7 +182,9 @@ function take(list) { for (let i = 0; i < list.length; i++) if (!list[i].on) ret
 export function pachyLive(e, kind) { const L = e?.pachyFx?.[kind]; if (!L) return 0; let n = 0; for (let i = 0; i < L.length; i++) if (L[i].on) n++; return n; }
 function clearPools(e) { const F = e.pachyFx; if (!F) return; for (const k of ["rocks", "skulls", "bones", "waves"]) for (const q of F[k] || []) q.on = false; }
 function target(w, id) { if (!id) return null; for (const q of w.enemies || []) if (q.id === id && !q.dead) return q; return null; }
-function wave(e, w, x, y, max, n, prey) { const q = take(pachyPools(e).waves); if (!q) return; q.on = true; q.x = x; q.y = y; q.r = 0; q.max = max; q.t = 0; q.total = .5; q.hit = false; q.preyHit = false; q.dmg = n; q.prey = prey || null; }
+// A burst ring out from (x, y) to `max` tiles over `total` s. `counted`: the blow it rings out from already counted toward the daze
+// (one knock, one count).
+function wave(e, w, x, y, max, n, prey, counted = false, total = .5) { const q = take(pachyPools(e).waves); if (!q) return; q.on = true; q.x = x; q.y = y; q.r = 0; q.max = max; q.t = 0; q.total = total; q.hit = false; q.preyHit = false; q.dmg = n; q.prey = prey || null; q.counted = !!counted; }
 // The pose contract's resting values.
 export const pachyPoseDefaults = () => ({ pachyPose: null, pachyAir: 0 });
 // A reload: no move or hazard resumes mid-way; its form, the armor's time left, the thresholds it has used and the disguise are kept.
@@ -195,7 +216,7 @@ function tickPools(e, w) {
     if (!q.hit && q.t >= q.warn) { q.hit = true; if (hyp(p.x - q.x, p.y - q.y) <= B.radius + .15) w.hurt(e, q.dmg, { jumpable: false, source: "pachyBoneSpikes" }); hitPrey(e, w, target(w, q.prey), q.x, q.y, B.radius, q.dmg, "pachyBoneSpikes"); }
     if (q.t >= q.warn + q.up) q.on = false; }
   for (const q of F.waves) { if (!q.on) continue; q.t += dt; const k = Math.min(1, q.t / q.total); q.r = q.max * k;
-    if (!q.hit && Math.abs(hyp(p.x - q.x, p.y - q.y) - q.r) < .45) { q.hit = true; w.hurt(e, q.dmg, { jumpable: true, source: "pachyWave" }); }
+    if (!q.hit && Math.abs(hyp(p.x - q.x, p.y - q.y) - q.r) < .45) { q.hit = true; if (w.hurt(e, q.dmg, { jumpable: true, source: "pachyWave" }) && PACHY.daze.rings && !q.counted) daze(e, w); }
     const foe = target(w, q.prey); if (foe && !q.preyHit && Math.abs(hyp(foe.x - q.x, foe.y - q.y) - q.r) < K.bodyRadius(foe) + .4) { q.preyHit = true; hitPrey(e, w, foe, foe.x, foe.y, 99, q.dmg, "pachyWave"); }
     if (k >= 1) q.on = false; }
 }
@@ -267,12 +288,19 @@ export const PACHY_START = {
   pachyRockLaunch(e, s, w) { s.windupTotal = s.t; e.pachyPose = "domeLoad"; s.tele = null; s.data.marks = rockMarks(e, s, w); face(e, s.data.aim.x, s.data.aim.y); },
   pachyJumpSlam(e, s, w) { const J = PACHY.jump; s.windupTotal = s.t; s.data.mark = aimPoint(e, s.data.target, J.max, { x: 0, y: 0 }); s.tele = { type: "circle", x: s.data.mark.x, y: s.data.mark.y, radius: J.radius }; e.pachyPose = "crouch"; face(e, s.data.aim.x, s.data.aim.y); },
   pachyBicycle(e, s, w) { const B = PACHY.bicycle; s.windupTotal = s.t; s.data.dir = { x: s.data.aim.x, y: s.data.aim.y }; s.data.len = K.rayLength(w, e, s.data.dir, B.dist); s.tele = { type: "lane", aim: s.data.dir, length: s.data.len, width: B.radius * 2 }; e.pachyPose = "crouch"; face(e, s.data.aim.x, s.data.aim.y); },
+  pachyDomeDrum(e, s) { const D = PACHY.drum, d = s.data; s.windupTotal = s.t; d.count = pachyDrumKnocks(e, s.seq); d.dazed = pachyPools(e).dazed; d.n = 0; d.next = 0; d.mark = aimPoint(e, d.target, D.reach, { x: 0, y: 0 }); s.tele = { type: "circle", x: d.mark.x, y: d.mark.y, radius: D.radius }; e.pachyPose = "drumRaise"; face(e, d.aim.x, d.aim.y); },
   pachyDomeRam(e, s) { const B = PACHY.butt; s.windupTotal = s.t; s.data.n = 0; s.data.next = 0; s.tele = { type: "arc", aim: s.data.aim, radius: K.bodyRadius(e) + B.reach, arc: B.arc }; e.pachyPose = "chargeReady"; face(e, s.data.aim.x, s.data.aim.y); },
   pachyBoneSpikes(e, s, w) { s.windupTotal = s.t; e.pachyPose = "boneStamp"; s.tele = { type: "lane", aim: s.data.aim, length: K.bodyRadius(e) + PACHY.bones.count * PACHY.bones.spacing, width: PACHY.bones.radius * 2 }; face(e, s.data.aim.x, s.data.aim.y); },
   pachySkullLaunch(e, s) { s.windupTotal = s.t; s.data.n = 0; s.data.next = 0; e.pachyPose = "skullReady"; s.tele = { type: "brace" }; face(e, s.data.aim.x, s.data.aim.y); },
   pachyAmbush(e, s) { s.windupTotal = s.t; e.pachyPose = "burst"; s.tele = { type: "ring", radius: PACHY.ambush.radius }; },
   pachyClash(e, s) { s.windupTotal = s.t; s.data.n = 0; s.data.next = 0; e.pachyPose = "chargeReady"; s.tele = { type: "arc", aim: s.data.aim, radius: K.bodyRadius(e) + PACHY.butt.reach, arc: 70 }; face(e, s.data.aim.x, s.data.aim.y); },
 };
+// Dome Drum's mark: it follows the quarry while the head is up, holding once `lock`; the circle drawn on it and the body facing it.
+function drumFollow(e, s, w, lock) { const D = PACHY.drum, d = s.data, q = quarry(w, s);
+  if (!lock) { const k = Math.min(1, w.dt * D.follow); P0.x = d.mark.x + (q.x - d.mark.x) * k; P0.y = d.mark.y + (q.y - d.mark.y) * k; aimPoint(e, P0, D.reach, d.mark); }
+  if (s.tele) { s.tele.x = d.mark.x; s.tele.y = d.mark.y; s.tele.locked = lock; } face(e, d.mark.x - e.x, d.mark.y - e.y); }
+// Dome Drum's knock count for this beast's move `seq` (hashed: the same every time, between PACHY.drum.knocks).
+export function pachyDrumKnocks(e, seq) { const [lo, hi] = PACHY.drum.knocks; return lo + hashSeed(`${e?.id}:pachy-drum:${seq}`) % (hi - lo + 1); }
 function rockMarks(e, s, w) {
   const R = PACHY.rocks, t = s.data.target, out = [{ x: t.x, y: t.y }];
   for (let i = 1; i < R.count; i++) { const k = `${e.id}:pachy-rock:${s.seq}:${i}`, a = frac(k) * TAU, r = R.ring[0] + (R.ring[1] - R.ring[0]) * frac(`${k}:r`), x = t.x + Math.cos(a) * r, y = t.y + Math.sin(a) * r; if (open(w, x, y)) out.push({ x, y }); }
@@ -284,7 +312,7 @@ export const PACHY_RUN = {
     const A = PACHY.slam, d = s.data;
     if (s.phase === "windup") { const q = quarry(w, s); if (s.t > A.lockAt) { const k = Math.min(1, w.dt * A.follow); P0.x = d.mark.x + (q.x - d.mark.x) * k; P0.y = d.mark.y + (q.y - d.mark.y) * k; aimPoint(e, P0, A.reach, d.mark); } else s.tele.locked = true;
       s.tele.x = d.mark.x; s.tele.y = d.mark.y; face(e, d.mark.x - e.x, d.mark.y - e.y);
-      if (s.t <= 0) { e.pachyPose = "slam"; s.tele = null; strike(e, s, w, "pachyHeadSlam", d.mark.x, d.mark.y, A.radius + .15); wave(e, w, d.mark.x, d.mark.y, A.ring, dmg(e, "pachyHeadSlam", A.ringShare), d.prey); K.cue(w, e, "land", "pachyHeadSlam", d.mark); K.toPhase(s, "active", A_("pachyHeadSlam").active); }
+      if (s.t <= 0) { e.pachyPose = "slam"; s.tele = null; strike(e, s, w, "pachyHeadSlam", d.mark.x, d.mark.y, A.radius + .15); wave(e, w, d.mark.x, d.mark.y, A.ring, dmg(e, "pachyHeadSlam", A.ringShare), d.prey, youHit); K.cue(w, e, "land", "pachyHeadSlam", d.mark); K.toPhase(s, "active", A_("pachyHeadSlam").active); }
       return; }
     if (s.phase === "active" && s.t <= 0) K.toPhase(s, "recover", A_("pachyHeadSlam").recover);
   },
@@ -316,7 +344,7 @@ export const PACHY_RUN = {
     if (s.phase === "recover") { e.pachyAir = 0; if (s.t <= 0) e.pachyPose = null; return; }
     if (d.left > 0) { d.left -= w.dt; const k = Math.min(1, 1 - Math.max(0, d.left) / J.time); e.x = d.from.x + (d.to.x - d.from.x) * k; e.y = d.from.y + (d.to.y - d.from.y) * k; e.pachyAir = Math.sin(Math.PI * k) * J.height;
       if (d.left <= 0) { e.x = d.to.x; e.y = d.to.y; e.pachyAir = 0; e.aloft = false; e.pachyPose = "land"; s.tele = null;
-        strike(e, s, w, "pachyJumpSlam", d.to.x, d.to.y, J.radius + .15); wave(e, w, d.to.x, d.to.y, J.ring, dmg(e, "pachyJumpSlam", J.ringShare), d.prey); K.cue(w, e, "land", "pachyJumpSlam", d.to); }
+        strike(e, s, w, "pachyJumpSlam", d.to.x, d.to.y, J.radius + .15); wave(e, w, d.to.x, d.to.y, J.ring, dmg(e, "pachyJumpSlam", J.ringShare), d.prey, youHit); K.cue(w, e, "land", "pachyJumpSlam", d.to); }
       return; }
     if (s.t <= 0) K.toPhase(s, "recover", A_("pachyJumpSlam").recover);
   },
@@ -329,6 +357,24 @@ export const PACHY_RUN = {
     const phase = d.k * B.kicks; e.pachyAir = Math.abs(Math.sin(Math.PI * phase)) * B.height; e.pachyPose = Math.floor(phase) % 2 ? "kickR" : "kickL";
     if (Math.floor(phase) >= d.kick && d.kick < B.kicks && phase - Math.floor(phase) >= .5) { d.kick++; strike(e, s, w, "pachyBicycle", e.x, e.y, K.bodyRadius(e) * .4 + B.radius); K.cue(w, e, "swing", "pachyBicycle"); }
     if (d.k >= 1 || s.t <= 0) { e.pachyAir = 0; e.aloft = false; e.pachyPose = "land"; K.cue(w, e, "land", "pachyBicycle"); K.toPhase(s, "recover", A_("pachyBicycle").recover); }
+  },
+  // Dome Drum: the head up (the mark following, then holding), the knock (a head blow and a burst ring), beat after beat.
+  pachyDomeDrum(e, s, w) {
+    const D = PACHY.drum, d = s.data;
+    if (s.phase === "windup") { drumFollow(e, s, w, s.t <= D.lockAt); if (s.t <= 0) { d.n = 0; d.next = 0; K.toPhase(s, "active", A_("pachyDomeDrum").active); } return; }
+    if (s.phase === "recover") { if (s.t <= 0) e.pachyPose = null; return; }
+    d.next -= w.dt;
+    if (D.endOnDaze && pachyPools(e).dazed !== d.dazed) d.n = d.count; // she is down (a knock or a ring dazed her): the drum is done
+    if (d.n < d.count && d.next <= 0) { // the knock
+      strike(e, s, w, "pachyDomeDrum", d.mark.x, d.mark.y, D.radius + .15); const dazed = youDazed;
+      wave(e, w, d.mark.x, d.mark.y, D.ring, dmg(e, "pachyDomeDrum", D.ringShare), d.prey, youHit, D.ringTime);
+      K.cue(w, e, "land", "pachyDomeDrum", d.mark); d.n++; d.next = D.every; e.pachyPose = "drum";
+      if (dazed && D.endOnDaze) d.n = d.count; // she is down: no knock after this one
+    }
+    const down = d.next > D.every * (1 - D.down);
+    if (d.n < d.count) { e.pachyPose = down ? "drum" : "drumRaise"; if (!down) drumFollow(e, s, w, d.next <= D.lockAt); if (s.tele == null && !down) s.tele = { type: "circle", x: d.mark.x, y: d.mark.y, radius: D.radius }; else if (down) s.tele = null; }
+    else { s.tele = null; e.pachyPose = "drum"; }
+    if (d.n >= d.count && d.next <= D.every * (1 - D.down) || s.t <= 0) { e.pachyPose = null; s.tele = null; K.toPhase(s, "recover", A_("pachyDomeDrum").recover); }
   },
   pachyDomeRam(e, s, w) { butts(e, s, w, "pachyDomeRam", PACHY.butt.butts, PACHY.butt.every, "butt", 0); },
   pachyClash(e, s, w) { butts(e, s, w, "pachyClash", PACHY.clash.shoves, PACHY.clash.every, "clash", PACHY.clash.push); },
@@ -352,7 +398,7 @@ export const PACHY_RUN = {
   },
   pachyAmbush(e, s, w) {
     const A = PACHY.ambush;
-    if (s.phase === "windup") { if (s.t <= 0) { s.tele = null; e.pachyPose = "burst"; strike(e, s, w, "pachyAmbush", e.x, e.y, K.bodyRadius(e) + A.radius * .6); wave(e, w, e.x, e.y, A.ring, dmg(e, "pachyAmbush", A.ringShare), null); K.cue(w, e, "roar", "pachyAmbush"); w.shake?.(.4, .4); K.toPhase(s, "active", A_("pachyAmbush").active); } return; }
+    if (s.phase === "windup") { if (s.t <= 0) { s.tele = null; e.pachyPose = "burst"; strike(e, s, w, "pachyAmbush", e.x, e.y, K.bodyRadius(e) + A.radius * .6); wave(e, w, e.x, e.y, A.ring, dmg(e, "pachyAmbush", A.ringShare), null, youHit); K.cue(w, e, "roar", "pachyAmbush"); w.shake?.(.4, .4); K.toPhase(s, "active", A_("pachyAmbush").active); } return; }
     if (s.phase === "active" && s.t <= 0) K.toPhase(s, "recover", A_("pachyAmbush").recover);
     if (s.phase === "recover" && s.t <= 0) e.pachyPose = null;
   },
