@@ -110,7 +110,7 @@ function rockSkin(C, p, n) {
   const [f, r, u] = p, nz = n[2];
   let c = lerpHex(C.rockDark, C.rock, sm(-.5, .1, nz));
   c = lerpHex(c, C.rockLight, sm(.4, .9, nz - n[1] * .4 - n[0] * .2) * .6);
-  const moss = Math.sin(f * 7 + 1.3) * Math.sin(r * 6 - .4); if (moss > .6 && u < .3) c = lerpHex(c, C.moss, sm(.4, .7, moss) * .8);
+  const moss = Math.sin(f * 7 + 1.3) * Math.sin(r * 6 - .4); if (moss > .6 && u < .3) c = lerpHex(c, C.moss, sm(.6, .9, moss) * .5);
   return c;
 }
 function paintMesh(m, C, form) {
@@ -175,7 +175,7 @@ function legs(B, C, tier, form) {
   const low = tier === 'low', bone = form === 'fossil', steel = form === 'armor';
   for (const L of LEGS) {
     const W = PACHY_SKELETON.bindWorld, t = BI[L.top] * 3, x = W[t], y = W[t + 1], z = W[t + 2], name = (c) => c === 'p' ? 'pelvis' : c === 't' ? L.top : c === 'm' ? L.mid : L.low;
-    let rows = (low ? LEG.filter((_, i) => i % 2 === 0 || i === LEG.length - 1) : LEG).map(([u, rx, rz, a, b, w]) => bone ? [u, rx * .28, rz * .28, a, b, w] : [u, rx, rz, a, b, w]), kinds = rows.map(() => 'plate');
+    let rows = (low ? LEG.filter((_, i) => i % 2 === 0 || i === LEG.length - 1) : LEG).filter((r) => !bone || r[0] < .1).map(([u, rx, rz, a, b, w]) => bone ? [u, rx * (u > -.25 ? .36 : .3), rz * (u > -.25 ? .22 : .3), a, b, w] : [u, rx, rz, a, b, w]), kinds = rows.map(() => 'plate');
     if (steel) { // plated: the thigh plate, a shin guard flared at the knee, an ankle cuff; each lapping the one below it over a dark seam
       const R2 = [], K2 = []; for (const r of rows) { const lip = r[0] === -.24 || r[0] === -.03 || r[0] === -.58 || (low && (r[0] === -.35 || r[0] === -.67));
         if (lip) { R2.push([r[0], r[1] * 1.16, r[2] * 1.12, r[3], r[4], r[5]]); K2.push('lip'); R2.push([r[0] - .014, r[1], r[2], r[3], r[4], r[5]]); K2.push('seam'); }
@@ -230,16 +230,19 @@ function buildMesh(tier, form) {
     return paintMesh(B.done(), C, form);
   }
   if (bone) {
-    // the column: a vertebra on every section from the tail tip to the neck, joined by a thin bone; ribs off the trunk; the pelvis
-    for (let i = 1; i < BODY.length; i++) { const [f, u, rx, rz, a, b, w] = BODY[i], bn = (w || 0) >= .5 && b ? b : a, r = Math.max(.02, Math.min(.06, rz * .32));
-      B.bone(bn).color(i % 2 ? C.boneShade : C.bone).ellipsoid({ at: at(bn, [f, 0, u + rz * .55]), radius: [r * .9, r * 1.2, r * 1.1], rings: 2, seg: low ? 5 : 6 }); void rx; }
-    B.color(C.bone).loft({ seg: low ? 4 : 5, minSeg: 4, sections: BODY.slice(1).map(([f, u, , rz, a, b, w]) => ({ at: [f, 0, u + rz * .55], rx: .018, rz: .018, bones: [a, b ?? a, w || 0] })) });
-    for (const [f, bn] of [[.02, 'pelvis'], [.12, 'pelvis'], [.2, 'spine'], [.28, 'spine'], [.36, 'chest']].filter((_, i) => !low || i % 2 === 0)) for (const s of [-1, 1]) {
-      const [u, rx, rz] = sectionAt(f), pts = [[f, s * .02, u + rz * .5], [f + .02, s * rx * .9, u + rz * .1], [f + .04, s * rx * .75, u - rz * .55], [f + .06, s * .03, u - rz * .85]];
-      B.color(C.boneShade).loft({ seg: 4, minSeg: 3, sections: pts.map((p, j) => ({ at: p, rx: .012, rz: .012, bones: [bn, bn, 0] })) }); }
-    B.bone('pelvis').color(C.bone).ellipsoid({ at: at('pelvis', [0, 0, .68]), radius: [.14, .12, .07], rings: low ? 3 : 4, seg: low ? 6 : 8 });
-    // the tail's chevrons, a few
-    if (!low) for (const n of ['tail2', 'tail3']) B.bone(n).color(C.boneShade).lathe({ at: [0, 0, -.02], F: [-.3, 0, -1], rings: [[0, .016], [.08, .004]], seg: 3, caps: false });
+    // the column: a rounded vertebra (with its spine) on every section from the tail tip to the neck, threaded on one bone; the ribs as
+    // hoops following the trunk's own section; the pelvis over the hips where the femurs meet it; chevrons under the tail
+    for (let i = 1; i < BODY.length; i++) { const [f, u, , rz, a, b, w] = BODY[i], bn = (w || 0) >= .5 && b ? b : a, r = Math.max(.018, Math.min(.05, rz * .27));
+      B.bone(bn).color(i % 2 ? C.boneShade : C.bone).ellipsoid({ at: at(bn, [f, 0, u + rz * .5]), radius: [r * .85, r * 1.1, r], rings: low ? 2 : 3, seg: low ? 5 : 6 });
+      if (!low && f > -.8 && f < .45) B.color(C.bone).lathe({ at: at(bn, [f, 0, u + rz * .5 + r * .6]), F: [-.25, 0, 1], rings: [[0, r * .45], [r * 1.6, r * .12]], seg: 3, caps: false }); }
+    B.color(C.bone).loft({ seg: low ? 4 : 5, minSeg: 4, sections: BODY.slice(1).map(([f, u, , rz, a, b, w]) => ({ at: [f, 0, u + rz * .5], rx: .016, rz: .018, bones: [a, b ?? a, w || 0] })) });
+    for (const [f, bn] of [[.12, 'spine'], [.19, 'spine'], [.26, 'spine'], [.33, 'chest'], [.4, 'chest']].filter((_, i) => !low || i % 2 === 0)) for (const sd of [-1, 1]) {
+      const [u, rx, rz] = sectionAt(f), pts = []; for (let j = 0; j < 6; j++) { const th = Math.PI * (.42 - j * .19), rr = .9 - (j > 3 ? (j - 3) * .1 : 0); pts.push([f + .015 * j, sd * Math.max(.02, Math.cos(th) * rx * rr), u + .02 + Math.sin(th) * rz * .88]); }
+      B.color(C.boneShade).loft({ seg: 4, minSeg: 3, sections: pts.map((p, j) => ({ at: p, rx: .012, rz: j === 0 ? .016 : .011, bones: [bn, bn, 0] })) }); }
+    B.bone('pelvis').color(C.bone).ellipsoid({ at: at('pelvis', [.02, 0, .7]), radius: [.17, .085, .06], rings: low ? 3 : 4, seg: low ? 6 : 8 }); // the ilium blades
+    for (const sd of [-1, 1]) B.color(C.boneShade).ellipsoid({ at: at('pelvis', [.02, sd * G0.hipWidth, G0.hip]), radius: [.05, .04, .05], rings: low ? 2 : 3, seg: low ? 5 : 6 }); // the hip sockets
+    B.color(C.boneShade).loft({ seg: 4, minSeg: 3, sections: [[.0, .68, .02], [.05, .58, .018], [.12, .5, .014], [.14, .48, .02]].map(([f, u, r]) => ({ at: [f, 0, u], rx: r, rz: r, bones: ['pelvis', 'pelvis', 0] })) }); // the pubis
+    if (!low) for (const n of ['tail1', 'tail2', 'tail3']) B.bone(n).color(C.boneShade).lathe({ at: [0, 0, -.025], F: [-.3, 0, -1], rings: [[0, .016], [.08, .004]], seg: 3, caps: false });
   } else {
     // the hide: one loft from the tail tip to the back of the head. Green over the top (lighter along the back), gray beneath with a
     // soft blend up into the green, a few gray markings along the flank; the armor: steel, darker below, with plate seams

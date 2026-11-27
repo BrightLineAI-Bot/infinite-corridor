@@ -130,6 +130,9 @@ function hide(ctx, A, R, V, t, form, breathe, hd) {
     for (let i = 3; i >= 0; i--) P2(ctx, R(L[i][0], L[i][1] - L[i][2] * .35 + lift * .5)); P2(ctx, R(-.1, lift - .02)); P2(ctx, R(.25, lift - .02)); P2(ctx, R(.42, lift + .06)); P2(ctx, HP(hd, -.1, -.03 + lift * .5));
     P2(ctx, HP(hd, 0, -.4)); P2(ctx, R(.5, -.5)); P2(ctx, R(-1.3, -.5)); ctx.closePath(); ctx.fill(); }
   ctx.globalAlpha = 1;
+  if (!steel) { // the yellow of the head blending down the nape into the green (no hard collar where the head meets the neck)
+    ctx.fillStyle = A.head; for (const [a, f, r] of [[.25, -.3, .2], [.4, -.24, .14], [.6, -.18, .09]]) { ctx.globalAlpha = a; const c = HP(hd, f, .02); ctx.beginPath(); ctx.ellipse(c[0], c[1], r, r * .8, -hd.ha, 0, TAU); ctx.fill(); }
+    ctx.globalAlpha = 1; }
   if (!steel) {
     ctx.fillStyle = A.bodyLight; ctx.globalAlpha = .4; let h = R(.02, .17); ctx.beginPath(); ctx.ellipse(h[0], h[1], .24, .05, 0, 0, TAU); ctx.fill(); h = R(-.5, .13 + L[1][1] - .06); ctx.beginPath(); ctx.ellipse(h[0], h[1], .16, .025, 0, 0, TAU); ctx.fill();
     ctx.fillStyle = A.knob; ctx.globalAlpha = .4; for (const [f, g, r] of [[-.2, .06, .05], [.06, .1, .045], [.26, .04, .04], [-.48, .1, .035], [-.7, .07, .025]]) { const m = R(f, g); ctx.beginPath(); ctx.ellipse(m[0], m[1], r, r * .55, 0, 0, TAU); ctx.fill(); } // gray markings
@@ -155,7 +158,7 @@ function body(ctx, A, R, form, breathe) { // the fossil's trunk: ribs and the co
   ctx.strokeStyle = A.boneShade; ctx.lineWidth = .035; ctx.lineCap = "round";
   for (let i = 0; i < 6; i++) { const f = -.12 + i * .095, a = R(f, .2 - Math.abs(f - .1) * .25), c = R(f - .05, -.17 + Math.abs(f - .1) * .1); ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.quadraticCurveTo(...R(f + .07, 0), c[0], c[1]); ctx.stroke(); }
   ctx.strokeStyle = A.bone; ctx.lineWidth = .06; ctx.beginPath(); let p = R(top[0][0], top[0][1]); ctx.moveTo(p[0], p[1]); for (const q of top) P2(ctx, R(q[0], q[1] - .02)); ctx.stroke();
-  ctx.fillStyle = A.bone; for (let i = 0; i < 7; i++) { const q = R(-.3 + i * .12, .2 - Math.abs(-.3 + i * .12 - .05) * .3); ctx.beginPath(); ctx.arc(q[0], q[1], .035, 0, TAU); ctx.fill(); }
+  ctx.fillStyle = A.bone; ctx.strokeStyle = A.bone; ctx.lineWidth = .022; for (let i = 0; i < 7; i++) { const f = -.3 + i * .12, h = .2 - Math.abs(f - .05) * .3, q = R(f, h); ctx.beginPath(); ctx.arc(q[0], q[1], .035, 0, TAU); ctx.fill(); const sp = R(f - .02, h + .08); ctx.beginPath(); ctx.moveTo(q[0], q[1]); ctx.lineTo(sp[0], sp[1]); ctx.stroke(); } // vertebrae and their spines
   ctx.fillStyle = A.boneShade; const pv = R(-.08, 0); ctx.beginPath(); ctx.ellipse(pv[0], pv[1], .13, .09, 0, 0, TAU); ctx.fill();
   void form;
 }
@@ -199,7 +202,8 @@ function arms(ctx, A, R, V, form, far) {
 }
 function head(ctx, A, R, V, pitch, form, t, name, hd) {
   const H = (fx, fy) => HP(hd, fx, fy), ha = hd.ha, bone = form === "fossil", steel = form === "armor";
-  if (bone) { ctx.strokeStyle = A.bone; ctx.lineCap = "round"; ctx.lineWidth = .05; ctx.beginPath(); ctx.moveTo(hd.nx, hd.ny); ctx.lineTo(hd.hx, hd.hy); ctx.stroke(); }
+  if (bone) { ctx.strokeStyle = A.boneShade; ctx.lineCap = "round"; ctx.lineWidth = .03; ctx.beginPath(); ctx.moveTo(hd.nx, hd.ny); ctx.lineTo(hd.hx, hd.hy); ctx.stroke();
+    ctx.fillStyle = A.bone; for (let i = 0; i < 4; i++) { const w = (i + .5) / 4; ctx.beginPath(); ctx.arc(hd.nx + (hd.hx - hd.nx) * w, hd.ny + (hd.hy - hd.ny) * w, .03, 0, TAU); ctx.fill(); } } // the neck's vertebrae
   const open = name === "burst" || name === "feed" ? .5 : name === "skullReady" ? .3 : 0;
   // the lower jaw: gray, the mouth's dark inside above it
   ctx.fillStyle = bone ? A.boneShade : steel ? A.steelDark : A.snout; ctx.strokeStyle = bone ? A.boneDark : steel ? A.seam : A.outline; ctx.lineWidth = .02;
@@ -222,8 +226,8 @@ function head(ctx, A, R, V, pitch, form, t, name, hd) {
   // the black stripe over the crown of the dome to the brow
   if (!bone) { ctx.strokeStyle = A.stripe; ctx.lineWidth = .032; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(...H(-.13, .08)); ctx.quadraticCurveTo(...H(-.165, .16), ...H(-.08, .25)); ctx.quadraticCurveTo(...H(-.01, .275), ...H(.05, .245)); ctx.stroke(); }
   // the knobs ringing the dome's rim (larger round the back), a few down the snout (gray; rivets in the steel; bone on the fossil)
-  ctx.fillStyle = bone ? A.boneShade : steel ? A.rivet : A.knob; ctx.strokeStyle = bone ? A.boneDark : A.knobDark; ctx.lineWidth = .01;
-  for (let i = 0; i < A.knobs; i++) { const s = i / (A.knobs - 1), kp = H(-.17 + s * .29, .1 + Math.sin(s * Math.PI) * .045 - s * .01); ctx.beginPath(); ctx.arc(kp[0], kp[1], .015 + (1 - s) * .013, 0, TAU); ctx.fill(); ctx.stroke(); }
+  ctx.fillStyle = bone ? A.boneShade : steel ? A.rivet : A.knob; ctx.strokeStyle = bone ? A.boneDark : steel ? A.seam : A.headDark; ctx.lineWidth = .008;
+  for (let i = 0; i < A.knobs; i++) { const s = i / (A.knobs - 1), kp = H(-.17 + s * .29, .1 + Math.sin(s * Math.PI) * .045 - s * .01); ctx.beginPath(); ctx.arc(kp[0], kp[1], .013 + (1 - s) * .012, 0, TAU); ctx.fill(); ctx.stroke(); }
   for (let i = 0; i < 3; i++) { const kp = H(.17 + i * .035, .03 - i * .012); ctx.beginPath(); ctx.arc(kp[0], kp[1], .013, 0, TAU); ctx.fill(); }
   // the eye under the dome's brow (a visor band in the armor; embers in the fossil's socket)
   const ey = H(.07, .07);
@@ -240,14 +244,19 @@ function flakes(ctx, A, R, k, t) { // the shed: pieces of green hide falling awa
 export function drawPachyRock(ctx, k, b, u, t = 0, reduce = false) {
   const A = PACHY_ART, br = reduce ? 0 : Math.sin(t * 1.3) * .012;
   ctx.save(); ctx.translate(k, b); ctx.scale(u, u);
-  ctx.fillStyle = "rgba(0,0,0,.35)"; ctx.beginPath(); ctx.ellipse(0, 0, .6, .12, 0, 0, TAU); ctx.fill();
-  ctx.fillStyle = A.rock; ctx.strokeStyle = A.rockDark; ctx.lineWidth = .03;
-  ctx.beginPath(); ctx.moveTo(-.56, 0); ctx.bezierCurveTo(-.6, -.38 - br, -.3, -.62 - br, .02, -.62 - br); ctx.bezierCurveTo(.36, -.62 - br, .6, -.36 - br, .55, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = A.rockDark; ctx.globalAlpha = .5; ctx.beginPath(); ctx.ellipse(.05, -.08, .48, .1, 0, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
-  ctx.fillStyle = A.rockLight; ctx.beginPath(); ctx.ellipse(-.2, -.38 - br, .14, .06, -.4, 0, TAU); ctx.fill();
-  ctx.fillStyle = A.rockCap; ctx.strokeStyle = A.rockDark; ctx.beginPath(); ctx.ellipse(.06, -.56 - br, .22, .1, 0, Math.PI, TAU); ctx.closePath(); ctx.fill(); ctx.stroke(); // the dome, if you look
-  ctx.fillStyle = A.knob; for (let i = 0; i < 7; i++) { const a = Math.PI * (1 + i / 6); ctx.beginPath(); ctx.arc(.06 + Math.cos(a) * .25, -.55 - br + Math.sin(a) * .12 + .02, .028, 0, TAU); ctx.fill(); }
-  ctx.fillStyle = A.moss; ctx.globalAlpha = .6; ctx.beginPath(); ctx.ellipse(-.32, -.12, .12, .04, .3, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
+  ctx.fillStyle = "rgba(0,0,0,.35)"; ctx.beginPath(); ctx.ellipse(0, -.01, .62, .13, 0, 0, TAU); ctx.fill();
+  // one boulder, too round and too smooth, settled into the ground (its base hidden), the dome's cap set into its top
+  const shape = () => { ctx.beginPath(); ctx.moveTo(-.58, -.02); ctx.bezierCurveTo(-.64, -.36 - br, -.34, -.6 - br, .02, -.6 - br); ctx.bezierCurveTo(.38, -.6 - br, .64, -.38 - br, .58, -.02); ctx.quadraticCurveTo(0, .05, -.58, -.02); ctx.closePath(); };
+  shape(); ctx.fillStyle = A.rock; ctx.fill();
+  ctx.save(); ctx.clip();
+  ctx.fillStyle = A.rockDark; for (const [a, y] of [[.18, -.32], [.22, -.2], [.28, -.1]]) { ctx.globalAlpha = a; ctx.beginPath(); ctx.ellipse(.04, y + .3, .75, .3, 0, 0, TAU); ctx.fill(); }
+  ctx.fillStyle = A.rockLight; ctx.globalAlpha = .55; ctx.beginPath(); ctx.ellipse(-.24, -.4 - br, .2, .08, -.45, 0, TAU); ctx.fill();
+  ctx.fillStyle = A.moss; ctx.globalAlpha = .55; ctx.beginPath(); ctx.ellipse(-.34, -.06, .16, .06, .2, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.ellipse(.36, -.04, .1, .04, -.2, 0, TAU); ctx.fill();
+  ctx.globalAlpha = 1; ctx.fillStyle = A.rockCap; ctx.beginPath(); ctx.ellipse(.07, -.55 - br, .24, .09, 0, 0, TAU); ctx.fill(); // the dome, if you look
+  ctx.fillStyle = A.headLight; ctx.globalAlpha = .35; ctx.beginPath(); ctx.ellipse(.03, -.58 - br, .12, .035, 0, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
+  ctx.restore();
+  shape(); ctx.strokeStyle = A.rockDark; ctx.lineWidth = .028; ctx.stroke();
+  ctx.fillStyle = A.knob; ctx.strokeStyle = A.knobDark; ctx.lineWidth = .008; for (let i = 0; i < 7; i++) { const a = Math.PI * (.08 + i / 6 * .84); ctx.beginPath(); ctx.arc(.07 + Math.cos(a) * .24, -.55 - br + Math.sin(a) * .085, .026, 0, TAU); ctx.fill(); ctx.stroke(); } // the knob ring, its front half
   ctx.restore();
   return true;
 }
