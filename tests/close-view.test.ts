@@ -86,19 +86,21 @@ test('Proving Ground isolation: the Close View lab runs on scratch state only an
   const renderer = readFileSync(new URL('../src/renderer.ts', import.meta.url), 'utf8'); assert.equal((renderer.match(/CLOSE VIEW \(\d\/3\)/g) || []).length, 3, 'three small hooks in renderer.ts');
 });
 
-test('open air keeps the ordinary view: the overworld, the finale walk among the stars, and yard tiles inside a floor', () => {
+test('open air: the finale walk among the stars is no interior; yard tiles inside a floor keep Close View, in its open-air scene (one switch, 2026-11-27)', () => {
   const { game: g } = lab('building'); assert.equal(CV.closeViewApplies(g), true);
   assert.equal(CV.interiorMap({ ...g.map, building: { ...g.map.building, finale: true } }), false, 'the Pentagon finale is open to the sky');
   const w = g.map.width, at = Math.floor(g.player.y + .75) * w + Math.floor(g.player.x + .5), was = g.map.tiles[at];
-  g.map.tiles[at] = { ...was, kind: 'yardGrass' }; assert.equal(CV.openAirAt(g.map, g.player.x, g.player.y), true); assert.equal(CV.closeViewApplies(g), false);
-  g.map.tiles[at] = { ...was, courtyard: true }; assert.equal(CV.closeViewApplies(g), false); g.map.tiles[at] = was; assert.equal(CV.closeViewApplies(g), true);
+  // before 2026-11-27 these took the ordinary view with only the indoor switch on; Close View is now one switch, everywhere allowed
+  g.map.tiles[at] = { ...was, kind: 'yardGrass' }; assert.equal(CV.openAirAt(g.map, g.player.x, g.player.y), true); assert.equal(CV.closeViewApplies(g), true); assert.equal(CV.overworldCloseViewApplies(g), true, 'the open-air scene');
+  g.map.tiles[at] = { ...was, courtyard: true }; assert.equal(CV.closeViewApplies(g), true); g.map.tiles[at] = was; assert.equal(CV.closeViewApplies(g), true); assert.equal(CV.overworldCloseViewApplies(g), false, 'under the roof: the interior scene');
 });
 
 test('between the cameras: a short blend from a one-copy snapshot, never both views; instant with reduced motion', () => {
   const f = createLabFixture({ lab: 'close-view', scenario: 'cellar', now: 1000 }), g = f.game, canvas = { width: 780, height: 1688 }, id = g.areaId(), back = g.save.session.dungeonReturn, at = { x: g.player.x, y: g.player.y };
   const frame = (t) => { const r = recorder(canvas); render(r.ctx, g, W, H, t); return r; };
-  const outside = () => { g.rx = back.rx; g.ry = back.ry; g.loadArea('overworld', false); g.player.x = 16; g.player.y = 16; assert.equal(g.area, 'overworld'); };
-  const inside = () => { g.save.session.activeDungeonId = id; g.loadArea('dungeon', false); g.player.x = at.x; g.player.y = at.y; assert.equal(g.area, 'dungeon'); };
+  // Close View is one switch since 2026-11-27 (it would hold outside too): leaving turns it off, entering on, so the cameras change at the door
+  const outside = () => { g.rx = back.rx; g.ry = back.ry; g.loadArea('overworld', false); g.player.x = 16; g.player.y = 16; g.save.closeView = false; assert.equal(g.area, 'overworld'); };
+  const inside = () => { g.save.session.activeDungeonId = id; g.loadArea('dungeon', false); g.player.x = at.x; g.player.y = at.y; g.save.closeView = true; assert.equal(g.area, 'dungeon'); };
   let t = 1000; for (let i = 0; i < 3; i++) frame(t += 16); assert.equal(CV.closeViewBlend().mode, 'close');
   outside(); g.save.closeView = false; const plain = recorder(canvas); render(plain.ctx, g, W, H, t += 16); g.save.closeView = true; // the ordinary view's cost out here
   inside(); for (let i = 0; i < 40; i++) frame(t += 16); assert.equal(CV.closeViewBlend().blending, false);

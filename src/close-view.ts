@@ -834,9 +834,9 @@ export const CLOSE_VIEW = Object.freeze({
 // Hooks the hosts fill in: a canvas factory (tests give a recording one), extra ground layers (main.ts's traps, aperture marks
 // and ranged effects; the Proving Ground's ranged effects), drawn onto the ground texture after the renderer, and `art`, a map
 // from creature kind to a phase-2 close-view drawer.
-export const CLOSE_VIEW_HOOKS = { makeCanvas: null, groundLayers: [], art: Object.create(null), navigationDoors: null, gl: null, orbit: null }; // orbit: false runs the collision rig that the fixed-distance orbit replaced (2026-11-18; its own regression tests) // gl: false keeps the 2D view (the lab's ?cvGL=0)
+export const CLOSE_VIEW_HOOKS = { makeCanvas: null, groundLayers: [], art: Object.create(null), navigationDoors: null, gl: null, orbit: null, places: null }; // orbit: false runs the collision rig that the fixed-distance orbit replaced (2026-11-18; its own regression tests) // gl: false keeps the 2D view (the lab's ?cvGL=0)
 
-// Save (additive, schema 14): save.closeView, true when the player has chosen Close View for interiors. Off by default.
+// Save (additive, schema 14): save.closeView, true when the player has chosen Close View (with save.overworldCloseView: closeViewOn). Off by default.
 // save.closeViewPreset: one of CLOSE_VIEW.presets' keys (the standard one unless chosen).
 // save.closeViewAutoFollow: false when the player has turned the view's auto-follow off (it is on unless chosen off).
 // save.closeViewCamera (version 4): "drag" (drag anywhere on the right, the default) or "crescent" (the pan crescent).
@@ -844,6 +844,11 @@ export const CLOSE_VIEW_HOOKS = { makeCanvas: null, groundLayers: [], art: Objec
 // save.closeViewZoom (2026-11-18, Tim's review): the Wayfarer's normal Close View distance, set by Look mode's pinch on her, in
 // Look's zoom units ([CLOSE_VIEW.camera.look.minZoom, 1]; 0, the preset's own, unless chosen; CLOSE_VIEW.camera.orbit.zoom).
 export const closeViewZoomOf = (v) => { const k = Number(v), L = CLOSE_VIEW.camera.look; return Number.isFinite(k) ? Math.max(L.minZoom, Math.min(1, k)) : 0; };
+// One Close View switch (Tim, 2026-11-27: "Close View everywhere, except the dungeons you find in the world"): the two save fields
+// release 867 kept apart (save.closeView indoors, save.overworldCloseView outside) are read as one setting, on when either is on,
+// so a journey saved with either on (Tim's: indoor off, overworld on) has Close View everywhere it is allowed, interiors included,
+// with no field rewritten. Options writes both; the Oculus turns both off. Both stay booleans at schema 14; unknown fields kept.
+export const closeViewOn = (s) => s?.closeView === true || s?.overworldCloseView === true;
 export function ensureCloseView(s) { if (s && typeof s === "object") { s.closeView = s.closeView === true; s.overworldCloseView = s.overworldCloseView === true;
   { const D = CLOSE_VIEW.defaults; if (!(Number(s.closeViewDefaults) >= D.version)) { if (s.closeViewPreset === D.legacyPreset && closeViewZoomOf(s.closeViewZoom) === 0) s.closeViewPreset = CLOSE_VIEW.defaultPreset; s.closeViewDefaults = D.version; } } // a camera never chosen takes the new default; a chosen one is kept
   if (!Object.hasOwn(CLOSE_VIEW.presets, s.closeViewPreset)) s.closeViewPreset = CLOSE_VIEW.defaultPreset; s.closeViewAutoFollow = s.closeViewAutoFollow !== false;
@@ -1004,15 +1009,22 @@ export function closeViewTheme(map) { let id = map && THEME_OF.get(map); if (!id
 const themeOf = (map) => { let id = map && THEME_OF.get(map); if (!id) { id = mapThemeId(map); if (map && typeof map === "object") THEME_OF.set(map, id); } return CLOSE_VIEW.themes[id]; };
 const indoorCloseViewMap = g => !!g?.player && g.area === "dungeon" && interiorMap(g.map);
 const indoorCloseViewTile = g => indoorCloseViewMap(g) && !openAirAt(g.map, g.player.x, g.player.y);
-// Where Close View may be used (Tim, 2026-11-11: "Close View is for closer exploration and souls-like combat when
+// Where Close View may be used. Version 2 (Tim, 2026-11-27): everywhere except the dungeons you find in the world, which are
+// always Standard View. Allowed: the overworld (towns, courts, roofs), every building interior (keeps, castles, compounds, great
+// buildings, houses, hives, arcologies, the Pentagon's chambers, courts and arenas), the Stillworks, seed realms, the Skylands
+// (and a great tree's canopy) and the Proving Ground's scratch fixtures. Dungeons, refused: ordinary dungeons and crossings
+// (`crossing`: their annexes, the Threefold Deep and other deep dungeons, the Starfield Deep Annex, hunts, portals, non-Pentagon
+// arenas), the Deep (`deep`: Deep Shafts and the Listener's Descent), labyrinths (`cube`: a Cube's maze of chambers) and dive
+// sites and grottoes (`underwater`). A dungeon is a whole map, so the camera changes only at its door, never inside it.
+// Version 1 (Tim, 2026-11-11: "Close View is for closer exploration and souls-like combat when
 // you want it"): the overworld, every building interior (keeps, castles, compounds, great buildings, hives, arcologies, the
 // Pentagon and its arenas, a keep's Cube labyrinth), the Stillworks, seed realms, the Skylands (and a great tree's canopy),
 // the Deep's endless descent (the Listener's Descent too), and the Proving Ground's scratch fixtures. Dive sites and grottoes,
 // and ordinary dungeons and crossings (their annexes, the Threefold Deep, the Starfield Deep Annex, hunts and portals), are
 // refused: there the Oculus answers with `occluded`, the same words show once as you walk in with Close View on
 // (closeViewOccludedOnEntry), and both save switches are left exactly as they were, so Close View comes back on leaving.
-export const CLOSE_VIEW_PLACES = Object.freeze({ version: 1, occluded: "The view is occluded.",
-  allowed: Object.freeze({ overworld: true, keep: true, pentagon: true, cube: true, hive: true, arcology: true, stillworks: true, seedRealm: true, deep: true, sky: true, lab: true, underwater: false, crossing: false }) });
+export const CLOSE_VIEW_PLACES = Object.freeze({ version: 2, occluded: "The view is occluded.",
+  allowed: Object.freeze({ overworld: true, keep: true, pentagon: true, cube: false, hive: true, arcology: true, stillworks: true, seedRealm: true, deep: false, sky: true, lab: true, underwater: false, crossing: false }) });
 // What kind of place the Game stands in, for the table above. Pure.
 export function closeViewPlace(g) {
   if (!g || g.area !== "dungeon") return "overworld";
@@ -1026,19 +1038,27 @@ export function closeViewPlace(g) {
   if (String(m.id || "").startsWith("proving:")) return "lab";
   return "crossing";
 }
-export const closeViewPlaceAllowed = (g) => CLOSE_VIEW_PLACES.allowed[closeViewPlace(g)] === true;
+// CLOSE_VIEW_HOOKS.places (tests and the lab only; null in play): a table to read instead, e.g. to draw the Deep's themes.
+export const closeViewPlaceAllowed = (g) => (CLOSE_VIEW_HOOKS.places || CLOSE_VIEW_PLACES.allowed)[closeViewPlace(g)] === true;
 // On entering a place (Game.loadArea, once per entry): the HUD's words when Close View is on and this place refuses it, else null.
-export const closeViewOccludedOnEntry = (g) => g?.area === "dungeon" && (g.save?.overworldCloseView === true || g.save?.closeView === true) && !closeViewPlaceAllowed(g) ? CLOSE_VIEW_PLACES.occluded : null;
-export function overworldCloseViewApplies(g) {
-  if (g?.save?.overworldCloseView !== true || !g.player || indoorCloseViewTile(g) || !closeViewPlaceAllowed(g)) return false;
+export const closeViewOccludedOnEntry = (g) => g?.area === "dungeon" && closeViewOn(g.save) && !closeViewPlaceAllowed(g) ? CLOSE_VIEW_PLACES.occluded : null;
+// The open-air (outdoor-rules) scene's map budget: a map Close View's world scene may draw.
+function openSceneFits(g) {
   const map = g.map, count = map?.tiles?.length, width = Number(map?.width) || (g.area === "dungeon" ? 24 : 32);
   const height = Number(map?.height) || count / width;
   return Number.isSafeInteger(count) && count > 0 && count <= 16384
     && Number.isSafeInteger(width) && width > 0 && width <= 128
     && Number.isSafeInteger(height) && height > 0 && height <= 128 && width * height === count;
 }
-export function closeViewWanted(g) { return (g?.save?.closeView === true && indoorCloseViewMap(g)) || overworldCloseViewApplies(g); }
-export function closeViewApplies(g) { return (g?.save?.closeView === true && indoorCloseViewTile(g)) || overworldCloseViewApplies(g); }
+// Close View's open-air scene applies (the name is release 867's): Close View on, an allowed place, not under an interior's
+// roof, a map within the budget. Under a roof the interior scene applies instead (closeViewApplies).
+export function overworldCloseViewApplies(g) {
+  if (!closeViewOn(g?.save) || !g.player || indoorCloseViewTile(g) || !closeViewPlaceAllowed(g)) return false;
+  return openSceneFits(g);
+}
+// Wanted: on an interior's floor, roofed or open; applies: this tile (an interior's court past the budget keeps the top-down view).
+export function closeViewWanted(g) { return (closeViewOn(g?.save) && indoorCloseViewMap(g) && closeViewPlaceAllowed(g)) || overworldCloseViewApplies(g); }
+export function closeViewApplies(g) { return (closeViewOn(g?.save) && indoorCloseViewTile(g) && closeViewPlaceAllowed(g)) || overworldCloseViewApplies(g); }
 // The indoor rule's open-air test (openAirAt) gives one answer for the whole square `e` tiles round the Wayfarer: they are well
 // past a roof's or court's edge, not on it. Elsewhere (no per-tile rule) always firm. Four tile reads; nothing allocated.
 function thresholdFirm(g, e) {
@@ -1046,7 +1066,28 @@ function thresholdFirm(g, e) {
   return openAirAt(m, x - e, y - e) === o && openAirAt(m, x + e, y - e) === o && openAirAt(m, x - e, y + e) === o && openAirAt(m, x + e, y + e) === o;
 }
 const openWorldScene = g => g.area !== "dungeon" || !!(g.map.skyCloud || g.map.canopy || g.map.underwater || g.map.stillworks)
-  || openAirAt(g.map, g.player.x, g.player.y);
+  || heldOpenAir(g);
+// The scene across an interior's roof or court edge (2026-11-27). With one switch Close View holds across the edge, and what
+// changes there is the scene it draws: the interior's ceiling and light, or the open air. It changes with the camera's own
+// hysteresis (CLOSE_VIEW.blend: `settle`, `dwell`, thresholdFirm at `edge`), cross-faded; a new floor takes its answer at once.
+// Read by renderCloseView and closeViewSteer; game rules (shots, actions) keep the tile underfoot. No allocation.
+const SCENE = { map: null, open: false, pendAt: -1, at: -1e9, flips: 0 };
+function heldOpenAir(g) { return SCENE.map === g.map ? SCENE.open : openAirAt(g.map, g.player.x, g.player.y); }
+function sceneFrame(g, now, floor) {
+  if (!indoorCloseViewMap(g)) { SCENE.map = null; return false; }
+  const raw = openAirAt(g.map, g.player.x, g.player.y);
+  if (SCENE.map !== g.map || !floor) { SCENE.map = g.map; SCENE.open = raw; SCENE.pendAt = -1; SCENE.at = now; return false; }
+  if (raw === SCENE.open) { SCENE.pendAt = -1; return false; }
+  const B = CLOSE_VIEW.blend; if (SCENE.pendAt < 0 || SCENE.pendAt > now) SCENE.pendAt = now;
+  if (now - SCENE.pendAt < B.settle || now - SCENE.at < B.dwell || !thresholdFirm(g, B.edge)) return false;
+  SCENE.open = raw; SCENE.pendAt = -1; SCENE.at = now; SCENE.flips++; return true;
+}
+// Close View's open-air scene as drawn: overworldCloseViewApplies with the held answer for an interior's edge.
+function sceneExtended(g) {
+  if (!indoorCloseViewMap(g) || SCENE.map !== g.map) return overworldCloseViewApplies(g);
+  return SCENE.open && closeViewOn(g.save) && closeViewPlaceAllowed(g) && openSceneFits(g);
+}
+export const closeViewScene = () => ({ open: SCENE.open, flips: SCENE.flips, pending: SCENE.pendAt >= 0 }); // tests and diagnostics
 
 // ------------------------------------------------------------------------------------------------ state, all preallocated
 const CAM = { fitOff: NaN, fitOffV: 0, zoomS: NaN, zoomV: 0, recV: 0, orbitBase: NaN, orbitR: 0, orbitElev: 0, rigActive: false, rigIndex: 0, rigPending: 0, rigHold: 0, rigOffset: 0, rigOffsetV: 0, shoulderRoom: 0, shoulderClearFor: 0, pausedAt: NaN, pausedTotal: 0, qtFrom: 0, qtTo: 0, qtT0: -1, qtDur: 0, qtAt: -1e9, fpx: NaN, fpy: NaN, fvx: 0, fvy: 0, yawV: 0, headX: 0, headY: 0, bodyYaw: NaN, bodyDesiredYaw: NaN, bodyTransient: false, bodyRevision: 0, targetRevision: 0, targetRecentre: false, lockId: null, lostFor: 0, targetMode: false, tmScan: 0, tmHeld: 0, tmManual: false, lockW: 0, lockWAt: -1e9, markId: null, markAt: -1e9, strafeR: NaN, strafeId: null, basisHold: false, basisFollow: false, stickYaw: NaN, distV: 0, crane: 1.6, craneV: 0, shoulderV: 0, turnHeld: 0, pitchUser: 0, panAt: -1e9, recentre: NaN, centeredRear: false, map: null, yaw: 0, inputYaw: 0, dist: 2.6, shoulder: 0, lastX: 0, lastY: 0, lastNow: 0, dt: 0, drawn: false, steered: false, sx: 0, sy: 0,
@@ -1766,7 +1807,7 @@ export function closeViewSteer(g, state, now = NaN) {
     // Without a current input/render clock, conservatively preserve restored action aim.
     const timedBusy = !Number.isFinite(clock) || p.actionVisualUntil > clock || p.attackUntil > clock ||
       p.castUntil > clock || p.dodgeUntil > clock || p.stunnedUntil > clock;
-    if (!overworldCloseViewApplies(g) && !CAM.bodyTransient && !timedBusy && !g.fistCharge && !g.pendingToolUse && !g.pendingMeleeContact) {
+    if (!sceneExtended(g) && !CAM.bodyTransient && !timedBusy && !g.fistCharge && !g.pendingToolUse && !g.pendingMeleeContact) {
       const yaw = Number.isFinite(CAM.bodyYaw) ? CAM.bodyYaw : FACING_YAW[p.facing];
       if (Number.isFinite(yaw)) {
         const a = g.save.lastAim, fx = Math.cos(yaw), fy = Math.sin(yaw);
@@ -2066,7 +2107,7 @@ globalThis.__closeViewCam = { get: () => closeViewCamera(), pan: (dx, dy) => clo
 // ground texture through CLOSE_VIEW_HOOKS.groundLayers).
 // Showing: the camera this frame drew, on this map, with a switch still on. It follows the view closeViewFrame chose (its
 // hysteresis included, 2026-11-27), not the tile underfoot, so the HUD, taps and controls never disagree with the screen.
-const closeViewSwitchedOn = (g) => g?.save?.closeView === true || g?.save?.overworldCloseView === true;
+const closeViewSwitchedOn = (g) => closeViewOn(g?.save);
 export function closeViewShowing(g) { return CAM.drawn && CAM.map === g?.map && MODE.cur === 1 && MODE.map === g?.map && closeViewSwitchedOn(g); }
 
 // ------------------------------------------------------------------------------------------------ choosing the camera, and the blend
@@ -2115,6 +2156,7 @@ export function closeViewFrame(ctx, g, w, h, now, baseRender) {
     if (now - MODE.pendAt < B.settle || now - MODE.switchedAt < B.dwell || !thresholdFirm(g, B.edge)) want = MODE.cur;
   } else MODE.pend = want;
   const retrying = MODE.failed && floor && overworldCloseViewApplies(g);
+  if (sceneFrame(g, now, floor) && MODE.cur === 1 && same && !reduce) xfadeBegin(ctx, now, CLOSE_VIEW_POLISH.crossfade.transitionSec); // an interior's edge: the other scene, cross-faded
   if (want !== MODE.cur) { MODE.cur = want; MODE.to = -1; MODE.switchedAt = now; closeViewSwitchStats.switches++;
     if (same && !reduce && !retrying && snapshot(ctx)) { MODE.to = want; MODE.t0 = now; } }
   MODE.g = g; MODE.map = g.map; MODE.lastNow = now; MODE.wanted = wanted; MODE.sw = sw;
@@ -2444,7 +2486,7 @@ function framingFit(z, playerZ, bodyForward, side, F, w, h, free = false) { // f
 }
 export function renderCloseView(ctx, g, w, h, now, baseRender, mix = 1) {
   const Q = qualityOf(g), C = CLOSE_VIEW.camera, A = CLOSE_VIEW.actors, Wl = CLOSE_VIEW.walls, Fg = CLOSE_VIEW.fog, Lt = CLOSE_VIEW.light, p = g.player, E = CLOSE_VIEW.blend.from;
-  const extended = overworldCloseViewApplies(g), flatWorld = extended && !interiorTerrain(g.map), outdoor = extended && openWorldScene(g);
+  const extended = sceneExtended(g), flatWorld = extended && !interiorTerrain(g.map), outdoor = extended && openWorldScene(g);
   const plainWorld = outdoor && flatWorld && !g.map.building;
   cameraScene(g);
   VIS.field = orbitOn() && !outdoor ? sightField(g, now) : null; // the sight field (Tim's review, 2026-11-18): indoors, what the Wayfarer cannot see is not drawn

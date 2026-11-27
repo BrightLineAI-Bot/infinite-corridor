@@ -127,7 +127,7 @@ import { CANYON, canyonIdFor, isCanyonId, canyonHere, isClod, ensureCanyonHistor
 import { KEEPS, keepHere, buildKeep, ARCOLOGY, arcologyHere, buildArcology, exitsOpen } from "./keeps.ts";
 import { TALL_TOWERS, towerHere, placeTower, isTowerId, parseTowerId, generateTowerInterior, tierOf as towerTierOf, lookOut, towerCachePay, ensureSeedHunts, seedHuntCandidates, seedHuntKind, seedHuntWeights, seedHuntWhere, seedHuntPick, seedHuntAt, huntHeading, huntText } from "./tall-towers.ts"; // tall towers (the Upwells)
 import { BUILDINGS, INTERIOR_TERRAIN, buildingHere, buildingHereV2, placeBuilding, placeBuildingV2, isBuildingId, generateBuildingFloor, buildingArrival, buildingScale, parseBuildingId, ROOF_EXIT, roofExitSpot, roofLanding, TOWER_SEAL, towerUnsealed, towerSealText } from "./great-buildings.ts";
-import { closeViewOccludedOnEntry, closeViewShowing, closeViewApplies, overworldCloseViewApplies } from "./close-view.ts"; // Close View places (2026-11-11): "The view is occluded." on entering a refused place
+import { closeViewOccludedOnEntry, closeViewShowing, closeViewApplies, overworldCloseViewApplies, closeViewOn, closeViewPlaceAllowed } from "./close-view.ts"; // Close View places (2026-11-11): "The view is occluded." on entering a refused place
 import { outdoorLevelHeight } from "./close-view-outdoor.ts"; // Close View terrain occlusion (tool-forms.ts RANGED_OCCLUSION): a level's drawn height outdoors
 import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance, roomPaddingFootprint, applyRoomPadding } from "./close-view-room-routing.ts";
 import { COMPOUNDS, compoundHere, placeCompound, isCompoundId, generateCompoundFloor, parseCompoundId, compoundVersionOf } from "./compounds.ts";
@@ -9671,7 +9671,7 @@ export class Game {
   penned(now = 0) { if (this.area !== "overworld" || !playerEnclosure(this)) return false; if (now > (this.penNoticeAt || 0)) { this.penNoticeAt = now + 2500; this.message = "No room to fight in the enclosure: dodge out of its open side (items still work)."; } return true; }
   closeViewActionEligible() {
     const m=this.map,b=m?.building,p=this.player,interior=!!b&&!b.finale&&(!m.landscape||(interiorTerrain(m)&&m.tiles?.length<=4096&&m.width<=64&&m.height<=64))&&!m.stillworks&&!m.skyCloud&&!m.movers?.length&&!m.canopy;
-    if(this.save.closeView!==true||this.area!=="dungeon"||!interior||!p||!(p.hp>0))return false;
+    if(!closeViewOn(this.save)||this.area!=="dungeon"||!interior||!p||!(p.hp>0)||!closeViewPlaceAllowed(this))return false;/* 2026-11-27: one switch; a dungeon is Standard View */
     const w=Math.max(1,Number(m.width)||32),t=m.tiles?.[Math.floor(p.y+.75)*w+Math.floor(p.x+.5)];return !(t&&(t.courtyard===true||t.openAir===true||t.pentRoof===true||t.pentBalcony===true||t.kind==="yardGrass"));
   }
   closeViewAttackBufferEligible(now = 0) {
