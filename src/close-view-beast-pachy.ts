@@ -96,8 +96,8 @@ function fleshSkin(C, p, n) {
 }
 function steelSkin(C, p, n) {
   const [f, , u] = p, nz = n[2];
-  let c = lerpHex(C.steel, C.steelLight, sm(.4, .95, nz) * .7);
-  c = lerpHex(c, C.steelDark, sm(0, -.7, nz) * .8);
+  let c = lerpHex(C.steel, C.steelLight, sm(.45, .95, nz) * .5);
+  c = lerpHex(c, C.steelDark, sm(.05, -.65, nz) * .9);
   if (f > .74) c = lerpHex(c, C.steelDark, sm(.74, .79, f) * .85); // the muzzle plate
   return lerpHex(c, C.steelDark, sm(.22, .05, u) * .5);
 }
@@ -141,7 +141,8 @@ function headParts(B, C, low, full, form) {
   }
   // the dome: the great crown above and behind the eye, banded in the armor
   B.color(bone ? C.bone : MARK.dome).ellipsoid({ at: hb(DOME.f, 0, DOME.u), F: DOME.F, radius: DOME.r, rings: low ? 5 : full ? 9 : 7, seg: low ? 8 : full ? 14 : 11 });
-  if (steel) for (const f of [-.06, .04]) B.color(C.seam).lathe({ at: hb(DOME.f + f, 0, DOME.u - .07), F: [0, 0, 1], U: [1, 0, 0], rings: [[0, .124], [.1, .094], [.17, .02]], seg: low ? 8 : 12, caps: false, rs: .82 });
+  if (steel) { // the steel dome: a seamed rim band and a raised crest from the nape to the brow
+    B.color(C.steelLight).loft({ seg: 4, minSeg: 4, sections: [[-.14, .018, .01], [-.08, .022, .014], [-.01, .022, .014], [.06, .016, .01], [.1, .004, .004]].map(([df, rx, rz]) => ({ at: [HEAD[0] + DOME.f + df, 0, HEAD[1] + DOME.u + domeTop(df) - .004], rx, rz, bones: ['head', 'head', 0] })) }); }
   // the knobs ringing the dome's rim, larger round the back of the skull (gray; rivets on the steel dome; bone on the fossil), a few down the snout
   const nk = low ? 8 : full ? 14 : 11, knob = bone ? C.boneShade : steel ? C.rivet : C.knob;
   for (let i = 0; i < nk; i++) { const a = i / nk * Math.PI * 2, back = Math.max(0, -Math.cos(a)), r = (i % 2 ? .02 : .025) + back * .01;
@@ -174,21 +175,51 @@ function legs(B, C, tier, form) {
   const low = tier === 'low', bone = form === 'fossil', steel = form === 'armor';
   for (const L of LEGS) {
     const W = PACHY_SKELETON.bindWorld, t = BI[L.top] * 3, x = W[t], y = W[t + 1], z = W[t + 2], name = (c) => c === 'p' ? 'pelvis' : c === 't' ? L.top : c === 'm' ? L.mid : L.low;
-    const rows = (low ? LEG.filter((_, i) => i % 2 === 0 || i === LEG.length - 1) : LEG).map(([u, rx, rz, a, b, w]) => bone ? [u, rx * .28, rz * .28, a, b, w] : [u, rx, rz, a, b, w]);
-    B.color(bone ? C.bone : MARK.hide).loft({ seg: G0.seg.leg[tier], up: [1, 0, 0], sections: rows.map(([u, rx, rz, a, b, w]) => ({ at: [x, y, z + u], rx, rz, bones: [name(a), name(b ?? a), w || 0] })) });
+    let rows = (low ? LEG.filter((_, i) => i % 2 === 0 || i === LEG.length - 1) : LEG).map(([u, rx, rz, a, b, w]) => bone ? [u, rx * .28, rz * .28, a, b, w] : [u, rx, rz, a, b, w]), kinds = rows.map(() => 'plate');
+    if (steel) { // plated: the thigh plate, a shin guard flared at the knee, an ankle cuff; each lapping the one below it over a dark seam
+      const R2 = [], K2 = []; for (const r of rows) { const lip = r[0] === -.24 || r[0] === -.03 || r[0] === -.58 || (low && (r[0] === -.35 || r[0] === -.67));
+        if (lip) { R2.push([r[0], r[1] * 1.16, r[2] * 1.12, r[3], r[4], r[5]]); K2.push('lip'); R2.push([r[0] - .014, r[1], r[2], r[3], r[4], r[5]]); K2.push('seam'); }
+        else { R2.push([r[0], r[1] * 1.05, r[2] * 1.05, r[3], r[4], r[5]]); K2.push('plate'); } }
+      rows = R2; kinds = K2; }
+    B.color(bone ? C.bone : MARK.hide).loft({ seg: G0.seg.leg[tier], up: [1, 0, 0], sections: rows.map(([u, rx, rz, a, b, w]) => ({ at: [x, y, z + u], rx, rz, bones: [name(a), name(b ?? a), w || 0] })),
+      tone: steel ? (i, k, st) => kinds[i] === 'seam' ? C.seam : kinds[i] === 'lip' ? C.steelLight : MARK.hide : undefined });
     if (bone) for (const n of [L.mid, L.low]) B.bone(n).color(C.boneShade).ellipsoid({ at: [0, 0, 0], radius: [.035, .035, .035], rings: 2, seg: 5 });
-    if (steel) { // plating: a knee cap and a shin guard, the foot plated
-      B.bone(L.mid).color(C.steelLight).ellipsoid({ at: [.06, 0, 0], radius: [.06, .07, .06], rings: 3, seg: low ? 6 : 8 });
-      B.bone(L.mid).color(C.steelDark).slab({ at: [.05, 0, -.13], F: [0, 0, 1], U: [1, 0, 0], points: [[-.12, 0], [.12, 0], [.1, .05], [-.1, .05]], thick: .09 });
-      if (!low) for (const u of [-.06, -.2]) B.bone(L.mid).color(C.rivet).ellipsoid({ at: [.1, 0, u], radius: [.012, .012, .012], rings: 2, seg: 4 });
+    if (steel) { // a knee cap set into the guard, rivets down the shin
+      B.bone(L.mid).color(C.steelLight).ellipsoid({ at: [.045, 0, .01], radius: [.045, .06, .05], rings: 3, seg: low ? 6 : 8 });
+      if (!low) for (const u of [-.07, -.17]) B.bone(L.mid).color(C.rivet).ellipsoid({ at: [.07, 0, u], radius: [.011, .011, .011], rings: 2, seg: 4 });
+      B.bone(L.mid).color(C.seam).lathe({ at: [-.055, 0, -.02], F: [0, 0, -1], rings: [[0, .018], [.22, .014]], seg: low ? 4 : 6, caps: false }); // a piston down the back of the shin
+      if (!low) B.color(C.steelLight).lathe({ at: [-.055, 0, -.14], F: [0, 0, -1], rings: [[0, .009], [.14, .009]], seg: 4, caps: false });
     }
-    B.bone(L.foot).color(bone ? C.boneShade : steel ? C.steelDark : C.bodyDark).ellipsoid({ at: [.04, 0, .01], radius: [.1, .06, .03], rings: 3, seg: low ? 6 : 8 });
+    B.bone(L.foot).color(bone ? C.boneShade : steel ? C.steelDark : MARK.hide).ellipsoid({ at: [.04, 0, .01], radius: [.1, .06, .03], rings: 3, seg: low ? 6 : 8 });
     for (let c = 0; c < 3; c++) { const s = c - 1; B.color(C.claw).lathe({ at: [.12, s * .03, .01], F: [1, s * .3, -.3], rings: [[0, .014], [.05, .002]], seg: low ? 3 : 4, caps: false }); }
   }
   // the little arms: a short loft on each arm, three small claws
   for (const s of [-1, 1]) { const tag = s < 0 ? 'L' : 'R', a = BI['arm' + tag] * 3, f = BI['fore' + tag] * 3, W = PACHY_SKELETON.bindWorld;
     B.color(bone ? C.bone : MARK.hide).loft({ seg: low ? 5 : 7, sections: [[W[a] - .07, W[a + 2] + .06, .055], [W[a], W[a + 2], .042], [W[f], W[f + 2], .03], [W[f] + .04, W[f + 2] - .05, .022]].map(([x, z, r], i) => ({ at: [x, W[a + 1] + s * (i ? .01 : 0), z], rx: bone ? r * .4 : r, rz: bone ? r * .4 : r, bones: [i < 2 ? 'arm' + tag : 'fore' + tag, i < 2 ? 'arm' + tag : 'fore' + tag, 0] })) });
     B.bone('fore' + tag); for (let c = 0; c < 2; c++) B.color(C.claw).lathe({ at: at('fore' + tag, [W[f] + .04, W[f + 1] + (c - .5) * .02, W[f + 2] - .05]), F: [.5, 0, -.8], rings: [[0, .01], [.035, 0]], seg: 3, caps: false }); }
+}
+// The armor's hide: the same body as one stepped loft of overlapping steel plates (shingled tail to head: at each joint the plate in
+// front laps over the one behind it, a dark seam under its lit rear lip), a gold-trimmed gorget at the neck, rivets along each lip and
+// a raised steel ridge down the back. One skin, so the plating is built onto the body, never floating bands.
+const PLATE_JOINTS = [-.87, -.63, -.39, -.15, .07, .28, .45], PLATE = Object.freeze({ lap: 1.075, body: 1.03, tuck: 1.0, gap: .016 });
+function armorHide(B, C, tier) {
+  const rows = [], kinds = [], low = tier === 'low';
+  for (const [f, u, rx, rz, a, b, w] of HIDE) {
+    const bones = [a, b ?? a, w || 0];
+    if (PLATE_JOINTS.includes(f)) { const [u0] = sectionAt(f - PLATE.gap);
+      rows.push({ at: [f - PLATE.gap, 0, u0], rx: rx * PLATE.tuck, rz: rz * PLATE.tuck, bones }); kinds.push('seam');
+      rows.push({ at: [f, 0, u], rx: rx * PLATE.lap, rz: rz * PLATE.lap, bones }); kinds.push('lip'); }
+    else { const s = f > .5 ? 1 : PLATE.body; rows.push({ at: [f, 0, u], rx: rx * s, rz: rz * s, bones }); kinds.push('plate'); }
+  }
+  B.color(MARK.hide).loft({ seg: G0.seg.hide[tier], sections: rows, tone: (i, k, st) => kinds[i] === 'seam' ? C.seam : kinds[i] === 'gold' ? (st > -.6 ? C.gold : C.steelDark) : kinds[i] === 'lip' && st > -.2 ? C.steelLight : MARK.hide });
+  // rivets just behind each lip, over the top half
+  if (!low) for (const f of PLATE_JOINTS) { const i = HIDE.findIndex((q) => q[0] === f), [, u, rx, rz, a] = HIDE[i], n = tier === 'full' ? 5 : 3;
+    for (let j = 0; j < n; j++) { const th = Math.PI * (.12 + .76 * j / (n - 1)); B.bone(a).color(C.rivet).ellipsoid({ at: at(a, [f + .03, Math.cos(th) * rx * PLATE.lap, u + Math.sin(th) * rz * PLATE.lap]), radius: [.011, .011, .011], rings: 2, seg: 4 }); } }
+  // the machine showing through: glowing vents on the chest plate, each side
+  for (const sd of [-1, 1]) for (let j = 0; j < (low ? 2 : 3); j++) { const f = .31 + j * .045, [u, rx] = sectionAt(f), uu = u + .01 - j * .012;
+    B.bone('chest').color(C.visor, E_VISOR).ellipsoid({ at: at('chest', [f, sd * rx * PLATE.body * .985, uu]), radius: [.032, .008, .007], rings: 2, seg: 5 }); }
+  // the steel ridge down the back, raised over the lips
+  B.color(C.steelLight).loft({ seg: 4, minSeg: 4, sections: BODY.slice(3, -3).map(([f, u, , rz, a, b, w]) => ({ at: [f, 0, u + rz * PLATE.lap + .004], rx: .014, rz: .018 + rz * .06, bones: [a, b ?? a, w || 0] })) });
 }
 function buildMesh(tier, form) {
   const C = palette(), B = meshBuilder(PACHY_SKELETON, TIER_DETAIL[tier]), low = tier === 'low', full = tier === 'full', bone = form === 'fossil', steel = form === 'armor';
@@ -219,18 +250,9 @@ function buildMesh(tier, form) {
       if (st > -.1 && st < .45 && (i * 7 + k * 3) % 11 === 0 && i > 2) c = lerpHex(c, C.knob, .55);
       return c;
     };
-    void tone; B.color(MARK.hide).loft({ seg: G0.seg.hide[tier], sections: HIDE.map(([f, u, rx, rz, a, b, w]) => ({ at: [f, 0, u], rx: rx * (steel ? 1.03 : 1), rz: rz * (steel ? 1.03 : 1), bones: [a, b ?? a, w || 0] })) });
-    if (!steel) stripe(B, C, tier);
-    if (steel) { // the plating: back plates on each trunk bone (overlapping slabs, their edges seamed), rivets along them, collar plates
-      // steel bands round the body, each on its own bone, a rivet line along each band's edge, and a steel ridge down the back
-      const bands = [[-.7, 'tail3'], [-.5, 'tail2'], [-.3, 'tail1'], [-.1, 'pelvis'], [.1, 'pelvis'], [.28, 'spine']];
-      for (const [f, bn] of bands.filter((_, i) => !low || i % 2 === 1)) { const [u, rx, rz] = sectionAt(f), r = Math.max(rx, rz) * 1.08;
-        B.bone(bn).color(C.steelDark).lathe({ at: at(bn, [f - .04, 0, u]), F: [1, 0, 0], U: [0, 0, 1], rings: [[0, r * .97], [.015, r], [.07, r * 1.01], [.085, r * .97]], seg: G0.seg.hide[tier], caps: false, rs: rz / rx });
-        if (full) for (let i = 0; i < 6; i++) { const a = -Math.PI / 2 + (i - 2.5) * .45; B.color(C.rivet).ellipsoid({ at: at(bn, [f + .03, Math.sin(a) * rx * 1.12, u + Math.cos(a) * rz * 1.12]), radius: [.01, .01, .01], rings: 2, seg: 4 }); } }
-      B.color(C.steelLight).loft({ seg: 4, minSeg: 4, sections: BODY.slice(2, -2).map(([f, u, , rz, a, b, w]) => ({ at: [f, 0, u + rz * 1.02], rx: .018, rz: .03 + rz * .08, bones: [a, b ?? a, w || 0] })) });
-      B.bone('chest').color(C.steelDark).lathe({ at: at('chest', [.45, 0, .745]), F: [1, 0, .35], rings: [[0, .16], [.05, .155]], seg: G0.seg.hide[tier], caps: false, rs: .9 });
-      B.color(C.gold).lathe({ at: at('chest', [.47, 0, .752]), F: [1, 0, .35], rings: [[0, .148], [.012, .146]], seg: G0.seg.hide[tier], caps: false, rs: .9 });
-    }
+    void tone;
+    if (!steel) { B.color(MARK.hide).loft({ seg: G0.seg.hide[tier], sections: HIDE.map(([f, u, rx, rz, a, b, w]) => ({ at: [f, 0, u], rx, rz, bones: [a, b ?? a, w || 0] })) }); stripe(B, C, tier); }
+    else armorHide(B, C, tier);
   }
   headParts(B, C, low, full, form);
   legs(B, C, tier, form);

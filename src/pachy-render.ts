@@ -140,6 +140,7 @@ function hide(ctx, A, R, V, t, form, breathe, hd) {
       ctx.strokeStyle = A.seam; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(c[0], c[1]); ctx.stroke();
       ctx.strokeStyle = A.steelLight; ctx.globalAlpha = .7; ctx.beginPath(); const a2 = R(f + .025, base + h * .95), c2 = R(f + .04, base); ctx.moveTo(a2[0], a2[1]); ctx.lineTo(c2[0], c2[1]); ctx.stroke(); ctx.globalAlpha = 1;
       ctx.fillStyle = A.rivet; const rv = R(f + .05, base + h * .55); ctx.beginPath(); ctx.arc(rv[0], rv[1], .014, 0, TAU); ctx.fill(); }
+    ctx.strokeStyle = A.visor; ctx.lineWidth = .014; ctx.globalAlpha = .9; for (let j = 0; j < 3; j++) { const a = R(.3 + j * .04, .04 - j * .03), c = R(.36 + j * .04, .04 - j * .03); ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(c[0], c[1]); ctx.stroke(); } ctx.globalAlpha = 1; // the glowing vents
     ctx.strokeStyle = A.steelLight; ctx.lineWidth = .03; ctx.beginPath(); let q = R(-.24, .15); ctx.moveTo(q[0], q[1]); P2(ctx, R(.06, .22)); P2(ctx, R(.28, .18)); ctx.stroke();
   }
   ctx.restore();
