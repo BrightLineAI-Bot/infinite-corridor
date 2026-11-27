@@ -17,7 +17,7 @@ import {
 const hex = (s) => parseInt(s.slice(1), 16);
 export const PACHY_RIG = Object.freeze({
   closeViewScale: 1.2,
-  hip: .66, crouchDrop: .2, femur: .31, tibia: .3, meta: .15, foot: .035, hipWidth: .14,
+  hip: .66, crouchDrop: .2, femur: .31, tibia: .3, meta: .15, foot: .035, hipWidth: .09,
   walk: Object.freeze({ stride: .55, stance: .6 }),
   settle: 6, stepAt: .08, stepTime: .28, turnRate: 4.5, attackTurnRate: 10, footLift: .14, bob: .02,
   ease: 12, strikeEase: 24, deathMs: 2200, hitMs: 320, landMs: 500,
@@ -42,6 +42,10 @@ const BODY = [
   [.18, .725, .214, .21, 'spine'], [.28, .722, .2, .198, 'spine', 'chest', .5], [.37, .727, .175, .175, 'chest'], [.45, .745, .14, .142, 'chest', 'neck', .5],
   [.52, .775, .112, .114, 'neck'], [.57, .808, .1, .102, 'neck', 'head', .5], [.61, .84, .098, .098, 'head'],
 ];
+// The head continues the same hide (no seam at the throat): the skull under the dome, then the gray snout tapering to its tip.
+const HEAD_ROWS = [[.66, .855, .1, .098, 'head'], [.71, .85, .09, .088, 'head'], [.76, .836, .074, .07, 'head'], [.805, .818, .058, .054, 'head'],
+  [.845, .804, .042, .038, 'head'], [.872, .796, .025, .022, 'head'], [.888, .792, .009, .008, 'head'], [.892, .792, 0, 0, 'head']];
+const HIDE = BODY.concat(HEAD_ROWS);
 function sectionAt(f) { for (let i = 1; i < BODY.length; i++) if (BODY[i][0] >= f) { const a = BODY[i - 1], b = BODY[i], t = (f - a[0]) / (b[0] - a[0]); return [a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, a[3] + (b[3] - a[3]) * t]; } return BODY[BODY.length - 1].slice(1, 4); }
 const BONES = (() => {
   const W = {}, out = [], add = (name, parent, w) => { W[name] = w; const p = parent ? W[parent] : [0, 0, 0]; out.push({ name, parent, at: [w[0] - p[0], w[1] - p[1], w[2] - p[2]] }); };
@@ -69,55 +73,109 @@ const palette = () => PALETTE ||= Object.fromEntries(Object.entries(A).filter(([
 const lerpHex = (a, b, t) => { t = Math.max(0, Math.min(1, t)); const ch = (sh) => Math.round(((a >> sh) & 255) + ((((b >> sh) & 255) - ((a >> sh) & 255)) * t)); return (ch(16) << 16) | (ch(8) << 8) | ch(0); };
 const at = (bone, p) => { const i = BI[bone] * 3, w = PACHY_SKELETON.bindWorld; return [p[0] - w[i], p[1] - w[i + 1], p[2] - w[i + 2]]; };
 const HEAD = SPINE_AT.head;
-// The head on its bone (model offsets from the head's bind point): the skull, the dome above and behind the eye, the gray snout, the jaw.
-const DOME = { f: -.01, u: .1, r: [.15, .13, .12] };
+// Paint markers: parts built in one of these colours are painted afterwards (paintMesh) by one skin function of bind-space position and
+// normal, so the hide, the head, the legs and the arms share one continuous colouring across every join (no part reads stuck on).
+const MARK = Object.freeze({ hide: 0x010203, dome: 0x010204, rock: 0x010205 });
+const sm = (a, b, x) => smooth(clamp01((x - a) / (b - a)));
+// The flesh's skin at a bind-space point p (f, r, u) with normal n: green over the top (lighter along the back), gray beneath with a soft
+// blend up into the green, gray markings on the flanks; the head yellow from behind the eye, the snout and mouth gray; the feet darker.
+function fleshSkin(C, p, n) {
+  const [f, r, u] = p, nz = n[2];
+  let c = lerpHex(C.body, C.bodyLight, sm(.45, .95, nz) * .55);
+  const inner = r * n[1] < 0 && u < .62 ? sm(.2, .8, -Math.sign(r) * n[1]) * .45 : 0; // the inside of the thighs a little paler
+  c = lerpHex(c, C.belly, Math.max(sm(.05, -.6, nz), inner) * .92);
+  const blot = Math.sin(f * 29 + u * 11) * Math.sin(f * 17 - u * 23 + Math.abs(r) * 9); // soft gray markings, continuous in space
+  if (f < .5 && u > .45 && Math.abs(nz) < .6 && blot > .55) c = lerpHex(c, C.knob, sm(.55, .85, blot) * .55);
+  c = lerpHex(c, C.bodyDark, sm(.2, .04, u) * .7); // the feet
+  // the head: yellow from the back of the skull (the throat stays gray), the snout gray, the mouth's line darker
+  const head = sm(.57, .64, f) * (nz > -.35 ? 1 : .25);
+  if (head > 0) c = lerpHex(c, lerpHex(C.head, C.headLight, sm(.5, 1, nz) * .5), head);
+  const snout = sm(.79, .84, f) * (nz > -.2 ? 1 : 0) + sm(.72, .78, f) * (nz <= -.2 ? 1 : 0); if (snout > 0) c = lerpHex(c, C.snout, snout);
+  if (f > .7 && nz < -.25) c = lerpHex(c, C.mouth, sm(-.25, -.6, nz) * sm(.7, .76, f));
+  return c;
+}
+function steelSkin(C, p, n) {
+  const [f, , u] = p, nz = n[2];
+  let c = lerpHex(C.steel, C.steelLight, sm(.4, .95, nz) * .7);
+  c = lerpHex(c, C.steelDark, sm(0, -.7, nz) * .8);
+  if (f > .74) c = lerpHex(c, C.steelDark, sm(.74, .79, f) * .85); // the muzzle plate
+  return lerpHex(c, C.steelDark, sm(.22, .05, u) * .5);
+}
+function domeSkin(C, p, n, steel) {
+  const nz = n[2];
+  if (steel) return lerpHex(lerpHex(C.steelDark, C.steel, sm(-.3, .2, nz)), C.steelLight, sm(.5, .95, nz));
+  return lerpHex(lerpHex(C.headDark, C.head, sm(-.4, .15, nz)), C.headLight, sm(.55, .95, nz) * .8);
+}
+function rockSkin(C, p, n) {
+  const [f, r, u] = p, nz = n[2];
+  let c = lerpHex(C.rockDark, C.rock, sm(-.5, .1, nz));
+  c = lerpHex(c, C.rockLight, sm(.4, .9, nz - n[1] * .4 - n[0] * .2) * .6);
+  const moss = Math.sin(f * 7 + 1.3) * Math.sin(r * 6 - .4); if (moss > .6 && u < .3) c = lerpHex(c, C.moss, sm(.4, .7, moss) * .8);
+  return c;
+}
+function paintMesh(m, C, form) {
+  const P = m.positions, N = m.normals, K = m.colors, mk = (h) => [((h >> 16) & 255) / 255, ((h >> 8) & 255) / 255, (h & 255) / 255];
+  const H = mk(MARK.hide), D = mk(MARK.dome), R = mk(MARK.rock), eq = (i, q) => Math.abs(K[i] - q[0]) < 1e-3 && Math.abs(K[i + 1] - q[1]) < 1e-3 && Math.abs(K[i + 2] - q[2]) < 1e-3;
+  for (let i = 0; i < m.vertexCount; i++) { const j = i * 3, p = [P[j], P[j + 1], P[j + 2]], n = [N[j], N[j + 1], N[j + 2]];
+    const h = eq(j, H) ? (form === 'armor' ? steelSkin(C, p, n) : fleshSkin(C, p, n)) : eq(j, D) ? domeSkin(C, p, n, form === 'armor') : eq(j, R) ? rockSkin(C, p, n) : null;
+    if (h != null) { K[j] = ((h >> 16) & 255) / 255; K[j + 1] = ((h >> 8) & 255) / 255; K[j + 2] = (h & 255) / 255; } }
+  return m;
+}
+// The head on its bone (model offsets from the head's bind point): the skull and snout are the hide itself; here the dome above and
+// behind the eye, its knobs, the eyes and the jaw.
+const DOME = { f: .03, u: .075, r: [.16, .112, .105], F: [1, 0, -.32] };
+// The dome's top at a forward offset df from its centre (its outline in the mid plane, tilted along DOME.F).
+function domeTop(df) {
+  const l = Math.hypot(...DOME.F), cf = DOME.F[0] / l, sf = DOME.F[2] / l; let best = -1, near = Infinity;
+  for (let i = 0; i <= 96; i++) { const t = i / 96 * Math.PI, a = Math.cos(t) * DOME.r[0], c = Math.sin(t) * DOME.r[2], x = a * cf - c * sf, z = a * sf + c * cf, d = Math.abs(x - df); if (d < near) { near = d; best = z; } }
+  return best;
+}
 function headParts(B, C, low, full, form) {
   const bone = form === 'fossil', steel = form === 'armor', hb = (f, r, u) => at('head', [HEAD[0] + f, r, HEAD[1] + u]);
-  const skull = bone ? C.bone : steel ? C.steel : C.head, dome = bone ? C.bone : steel ? C.steelLight : C.head, snout = bone ? C.boneShade : steel ? C.steelDark : C.snout;
+  const W = PACHY_SKELETON.bindWorld;
   B.bone('head');
-  B.color(skull).ellipsoid({ at: hb(.03, 0, .01), radius: [.13, .095, .1], rings: low ? 4 : 6, seg: low ? 7 : 10 });
-  // the snout: a short tapering loft forward and a little down, gray (the mouth's line under it)
-  const W = PACHY_SKELETON.bindWorld, h = BI.head * 3;
-  B.color(snout).loft({ seg: low ? 6 : full ? 10 : 8, sections: [[.05, -.01, .08, .075], [.12, -.03, .068, .064], [.18, -.045, .052, .05], [.225, -.055, .036, .034], [.25, -.06, .016, .016], [.258, -.061, .004, .004]].map(([f, u, rx, rz]) => ({ at: [W[h] + f, 0, W[h + 2] + u], rx, rz, bones: ['head', 'head', 0] })),
-    tone: (i, k, st) => st < -.35 ? (bone ? C.boneDark : C.mouth) : snout });
+  if (bone) { // the bare skull and its beak (the fossil has no hide)
+    B.color(C.bone).ellipsoid({ at: hb(.04, 0, .0), radius: [.12, .085, .085], rings: low ? 4 : 6, seg: low ? 7 : 10 });
+    const h = BI.head * 3;
+    B.color(C.boneShade).loft({ seg: low ? 6 : full ? 10 : 8, sections: HEAD_ROWS.slice(2).map(([f, u, rx, rz]) => ({ at: [f, 0, u], rx: rx * .85, rz: rz * .85, bones: ['head', 'head', 0] })), tone: (i, k, st) => st < -.35 ? C.boneDark : C.boneShade }); void h;
+  }
   // the dome: the great crown above and behind the eye, banded in the armor
-  B.color(dome).ellipsoid({ at: hb(DOME.f, 0, DOME.u), radius: DOME.r, rings: low ? 5 : full ? 9 : 7, seg: low ? 8 : full ? 14 : 11 });
-  if (!bone && !steel && !low) B.color(C.headLight).ellipsoid({ at: hb(DOME.f - .01, 0, DOME.u + .075), radius: [.08, .07, .05], rings: 3, seg: 8 });
-  if (steel) for (const f of [-.06, .04]) B.color(C.seam).lathe({ at: hb(DOME.f + f, 0, DOME.u - .07), F: [0, 0, 1], U: [1, 0, 0], rings: [[0, .132], [.1, .1], [.17, .02]], seg: low ? 8 : 12, caps: false, rs: .2 });
-  // the knobs ringing the dome (gray; rivets on the steel dome; bone on the fossil), and a few down the snout
+  B.color(bone ? C.bone : MARK.dome).ellipsoid({ at: hb(DOME.f, 0, DOME.u), F: DOME.F, radius: DOME.r, rings: low ? 5 : full ? 9 : 7, seg: low ? 8 : full ? 14 : 11 });
+  if (steel) for (const f of [-.06, .04]) B.color(C.seam).lathe({ at: hb(DOME.f + f, 0, DOME.u - .07), F: [0, 0, 1], U: [1, 0, 0], rings: [[0, .124], [.1, .094], [.17, .02]], seg: low ? 8 : 12, caps: false, rs: .82 });
+  // the knobs ringing the dome's rim, larger round the back of the skull (gray; rivets on the steel dome; bone on the fossil), a few down the snout
   const nk = low ? 8 : full ? 14 : 11, knob = bone ? C.boneShade : steel ? C.rivet : C.knob;
-  for (let i = 0; i < nk; i++) { const a = i / nk * Math.PI * 2, r = i % 2 ? .022 : .028;
-    B.color(knob).ellipsoid({ at: hb(DOME.f + Math.cos(a) * DOME.r[0] * .95, Math.sin(a) * DOME.r[1] * .95, DOME.u - .045), radius: [r, r, r * .9], rings: 2, seg: low ? 4 : 6 }); }
-  if (!low) for (let i = 0; i < 3; i++) for (const s of [-1, 1]) B.color(knob).ellipsoid({ at: hb(.13 + i * .04, s * (.05 - i * .008), .02 - i * .018), radius: [.014, .014, .012], rings: 2, seg: 4 });
+  for (let i = 0; i < nk; i++) { const a = i / nk * Math.PI * 2, back = Math.max(0, -Math.cos(a)), r = (i % 2 ? .02 : .025) + back * .01;
+    B.color(knob).ellipsoid({ at: hb(DOME.f + Math.cos(a) * DOME.r[0] * .93, Math.sin(a) * DOME.r[1] * .93, DOME.u - .045 - Math.cos(a) * DOME.r[0] * .93 * .3 - back * .01), radius: [r, r, r * .85], rings: 2, seg: low ? 4 : 6 }); }
+  if (!low) for (let i = 0; i < 3; i++) for (const s of [-1, 1]) B.color(knob).ellipsoid({ at: hb(.15 + i * .045, s * (.05 - i * .01), .0 - i * .016), radius: [.013, .013, .011], rings: 2, seg: 4 });
   // the eyes: dark under the dome's brow; a red visor band in the armor; embers in the fossil's sockets
   for (const s of [-1, 1]) {
-    if (steel) B.color(C.seam).ellipsoid({ at: hb(.085, s * .078, .03), radius: [.05, .014, .022], rings: 2, seg: 6 });
-    if (bone) B.color(C.socket).ellipsoid({ at: hb(.08, s * .074, .03), radius: [.03, .018, .026], rings: 3, seg: 6 });
-    B.color(steel ? C.visor : bone ? C.ember : C.eye, steel ? E_VISOR : E_EYE).ellipsoid({ at: hb(.085, s * (steel ? .088 : .082), .03), radius: steel ? [.036, .006, .01] : [.016, .01, .014], rings: 2, seg: 6 });
-    if (!steel && !bone && !low) B.color(C.eyeShine).ellipsoid({ at: hb(.09, s * .09, .036), radius: [.004, .003, .004], rings: 2, seg: 4 });
+    if (steel) B.color(C.seam).ellipsoid({ at: hb(.095, s * .079, .018), radius: [.05, .014, .02], rings: 2, seg: 6 });
+    if (bone) B.color(C.socket).ellipsoid({ at: hb(.09, s * .068, .02), radius: [.03, .018, .026], rings: 3, seg: 6 });
+    B.color(steel ? C.visor : bone ? C.ember : C.eye, steel ? E_VISOR : E_EYE).ellipsoid({ at: hb(.095, s * (steel ? .088 : bone ? .074 : .083), .02), radius: steel ? [.036, .006, .01] : [.017, .01, .014], rings: 2, seg: 6 });
+    if (!steel && !bone && !low) B.color(C.eyeShine).ellipsoid({ at: hb(.1, s * .092, .026), radius: [.004, .003, .004], rings: 2, seg: 4 });
   }
   // the lower jaw (opens on the jaw bone): gray, the mouth's dark inside on it
   const J = BI.jaw * 3; B.bone('jaw');
-  B.color(snout).loft({ seg: low ? 6 : 8, sections: [[0, 0, .06, .03], [.07, -.004, .052, .026], [.13, -.008, .036, .018], [.17, -.008, .02, .01], [.185, -.007, .005, .004]].map(([f, u, rx, rz]) => ({ at: [W[J] + f, 0, W[J + 2] + u], rx, rz, bones: ['jaw', 'jaw', 0] })),
-    tone: (i, k, st) => st > .3 ? (bone ? C.boneDark : C.mouth) : snout });
+  B.color(bone ? C.boneShade : steel ? C.steelDark : C.snout).loft({ seg: low ? 6 : 8, sections: [[-.02, .01, .07, .035], [.05, -.002, .06, .03], [.12, -.008, .045, .022], [.17, -.008, .026, .013], [.19, -.006, .006, .005]].map(([f, u, rx, rz]) => ({ at: [W[J] + f, 0, W[J + 2] + u], rx, rz, bones: ['jaw', 'jaw', 0] })),
+    tone: (i, k, st) => st > .3 ? (bone ? C.boneDark : C.mouth) : (bone ? C.boneShade : steel ? C.steelDark : lerpHex(C.snout, C.belly, .3)) });
 }
 // The black stripe: a thin ridge along the top of the hide, from the crown down the neck and back to the tail tip.
 function stripe(B, C, tier) {
   const rows = [];
-  for (const [f, u, , rz, a, b, w] of BODY) rows.push({ at: [f, 0, u + rz * .96], rx: Math.min(.034, .006 + rz * .2), rz: Math.min(.012, .003 + rz * .05), bones: [a, b ?? a, w || 0] });
-  rows.push({ at: [HEAD[0] - .03, 0, HEAD[1] + DOME.u + DOME.r[2] * .9], rx: .03, rz: .012, bones: ['head', 'head', 0] }, { at: [HEAD[0] + .02, 0, HEAD[1] + DOME.u + DOME.r[2] * .98], rx: .02, rz: .01, bones: ['head', 'head', 0] }, { at: [HEAD[0] + .05, 0, HEAD[1] + DOME.u + DOME.r[2] * .9], rx: .004, rz: .004, bones: ['head', 'head', 0] });
+  for (const [f, u, , rz, a, b, w] of BODY.filter((q) => q[0] < .5)) rows.push({ at: [f, 0, u + rz * .96], rx: Math.min(.034, .006 + rz * .2), rz: Math.min(.012, .003 + rz * .05), bones: [a, b ?? a, w || 0] });
+  // up the back of the dome and over its crown (the dome is tilted forward: its top falls toward the snout) to the brow
+  for (const [df, rx, rz] of [[-.15, .024, .008], [-.12, .024, .008], [-.07, .022, .008], [-.01, .019, .007], [.05, .013, .006], [.09, .004, .004]]) rows.push({ at: [HEAD[0] + DOME.f + df, 0, HEAD[1] + DOME.u + domeTop(df) - .007], rx, rz, bones: ['head', 'head', 0] });
   B.color(C.stripe).loft({ seg: G0.seg.stripe[tier], minSeg: 4, sections: rows });
 }
 // The legs: each one loft grown out of the body (from inside the hips) through the thigh and shin to the foot, then a foot with three
 // claws; rows: [u below the hip, half width, half height, bone code (p pelvis, t thigh, m shin, l metatarsus), bone b, weight].
-const LEG = [[.18, .13, .2, 'p'], [.08, .15, .21, 'p', 't', .5], [-.03, .145, .19, 't'], [-.13, .115, .15, 't'], [-.24, .085, .1, 't', 'm', .5], [-.35, .064, .072, 'm'], [-.48, .052, .058, 'm'], [-.58, .048, .052, 'm', 'l', .5], [-.67, .043, .046, 'l'], [-.75, .046, .046, 'l']];
+const LEG = [[.18, .1, .2, 'p'], [.08, .112, .215, 'p', 't', .5], [-.03, .11, .195, 't'], [-.13, .094, .15, 't'], [-.24, .085, .1, 't', 'm', .5], [-.35, .064, .072, 'm'], [-.48, .052, .058, 'm'], [-.58, .048, .052, 'm', 'l', .5], [-.67, .043, .046, 'l'], [-.75, .046, .046, 'l']];
 function legs(B, C, tier, form) {
   const low = tier === 'low', bone = form === 'fossil', steel = form === 'armor';
   for (const L of LEGS) {
     const W = PACHY_SKELETON.bindWorld, t = BI[L.top] * 3, x = W[t], y = W[t + 1], z = W[t + 2], name = (c) => c === 'p' ? 'pelvis' : c === 't' ? L.top : c === 'm' ? L.mid : L.low;
     const rows = (low ? LEG.filter((_, i) => i % 2 === 0 || i === LEG.length - 1) : LEG).map(([u, rx, rz, a, b, w]) => bone ? [u, rx * .28, rz * .28, a, b, w] : [u, rx, rz, a, b, w]);
-    B.color(bone ? C.bone : steel ? C.steel : C.body).loft({ seg: G0.seg.leg[tier], up: [1, 0, 0], sections: rows.map(([u, rx, rz, a, b, w]) => ({ at: [x, y, z + u], rx, rz, bones: [name(a), name(b ?? a), w || 0] })),
-      tone: bone ? undefined : (i, k, st) => steel ? lerpHex(C.steel, C.steelDark, Math.max(0, -st) * .6) : lerpHex(lerpHex(C.body, C.belly, smooth(clamp01((.15 - st) / .9)) * .85), C.bodyDark, i / rows.length * .35) });
+    B.color(bone ? C.bone : MARK.hide).loft({ seg: G0.seg.leg[tier], up: [1, 0, 0], sections: rows.map(([u, rx, rz, a, b, w]) => ({ at: [x, y, z + u], rx, rz, bones: [name(a), name(b ?? a), w || 0] })) });
     if (bone) for (const n of [L.mid, L.low]) B.bone(n).color(C.boneShade).ellipsoid({ at: [0, 0, 0], radius: [.035, .035, .035], rings: 2, seg: 5 });
     if (steel) { // plating: a knee cap and a shin guard, the foot plated
       B.bone(L.mid).color(C.steelLight).ellipsoid({ at: [.06, 0, 0], radius: [.06, .07, .06], rings: 3, seg: low ? 6 : 8 });
@@ -129,19 +187,16 @@ function legs(B, C, tier, form) {
   }
   // the little arms: a short loft on each arm, three small claws
   for (const s of [-1, 1]) { const tag = s < 0 ? 'L' : 'R', a = BI['arm' + tag] * 3, f = BI['fore' + tag] * 3, W = PACHY_SKELETON.bindWorld;
-    B.color(bone ? C.bone : steel ? C.steel : C.body).loft({ seg: low ? 5 : 7, sections: [[W[a] - .04, W[a + 2] + .04, .05], [W[a], W[a + 2], .042], [W[f], W[f + 2], .03], [W[f] + .04, W[f + 2] - .05, .022]].map(([x, z, r], i) => ({ at: [x, W[a + 1] + s * (i ? .01 : 0), z], rx: bone ? r * .4 : r, rz: bone ? r * .4 : r, bones: [i < 2 ? 'arm' + tag : 'fore' + tag, i < 2 ? 'arm' + tag : 'fore' + tag, 0] })) });
+    B.color(bone ? C.bone : MARK.hide).loft({ seg: low ? 5 : 7, sections: [[W[a] - .07, W[a + 2] + .06, .055], [W[a], W[a + 2], .042], [W[f], W[f + 2], .03], [W[f] + .04, W[f + 2] - .05, .022]].map(([x, z, r], i) => ({ at: [x, W[a + 1] + s * (i ? .01 : 0), z], rx: bone ? r * .4 : r, rz: bone ? r * .4 : r, bones: [i < 2 ? 'arm' + tag : 'fore' + tag, i < 2 ? 'arm' + tag : 'fore' + tag, 0] })) });
     B.bone('fore' + tag); for (let c = 0; c < 2; c++) B.color(C.claw).lathe({ at: at('fore' + tag, [W[f] + .04, W[f + 1] + (c - .5) * .02, W[f + 2] - .05]), F: [.5, 0, -.8], rings: [[0, .01], [.035, 0]], seg: 3, caps: false }); }
 }
 function buildMesh(tier, form) {
   const C = palette(), B = meshBuilder(PACHY_SKELETON, TIER_DETAIL[tier]), low = tier === 'low', full = tier === 'full', bone = form === 'fossil', steel = form === 'armor';
-  if (form === 'rock') { // the disguise: one boulder, too round and too smooth, a pale cap ringed with knobs, a smear of moss
-    B.bone('rock').color(C.rock).ellipsoid({ at: [0, 0, 0], radius: [.5, .42, .34], rings: low ? 5 : 8, seg: low ? 9 : 14 });
-    B.color(C.rockDark).ellipsoid({ at: [.03, .02, -.2], radius: [.47, .4, .16], rings: low ? 3 : 4, seg: low ? 9 : 14 });
-    B.color(C.rockCap).ellipsoid({ at: [.1, 0, .3], radius: [.25, .23, .16], rings: low ? 3 : 5, seg: low ? 8 : 12 });
-    for (let i = 0; i < (low ? 7 : 11); i++) { const a = i / (low ? 7 : 11) * Math.PI * 2; B.color(C.knob).ellipsoid({ at: [.1 + Math.cos(a) * .25, Math.sin(a) * .23, .31], radius: [.045, .045, .04], rings: 2, seg: 5 }); }
-    if (!low) B.color(C.rockLight).ellipsoid({ at: [-.25, -.3, .18], radius: [.16, .1, .06], rings: 3, seg: 8 });
-    B.color(C.moss).ellipsoid({ at: [-.35, .25, .05], radius: [.16, .14, .1], rings: 3, seg: 7 });
-    return B.done();
+  if (form === 'rock') { // the disguise: one boulder, too round and too smooth (shaded and mossed by rockSkin), a pale cap ringed with knobs
+    B.bone('rock').color(MARK.rock).ellipsoid({ at: [0, 0, 0], radius: [.5, .42, .36], rings: low ? 6 : 9, seg: low ? 10 : 16 });
+    B.color(C.rockCap).ellipsoid({ at: [.1, 0, .25], radius: [.24, .22, .13], rings: low ? 3 : 5, seg: low ? 8 : 12 });
+    for (let i = 0; i < (low ? 7 : 11); i++) { const a = i / (low ? 7 : 11) * Math.PI * 2; B.color(C.knob).ellipsoid({ at: [.1 + Math.cos(a) * .23, Math.sin(a) * .21, .29], radius: [.04, .04, .034], rings: 2, seg: 5 }); }
+    return paintMesh(B.done(), C, form);
   }
   if (bone) {
     // the column: a vertebra on every section from the tail tip to the neck, joined by a thin bone; ribs off the trunk; the pelvis
@@ -164,7 +219,7 @@ function buildMesh(tier, form) {
       if (st > -.1 && st < .45 && (i * 7 + k * 3) % 11 === 0 && i > 2) c = lerpHex(c, C.knob, .55);
       return c;
     };
-    B.color(steel ? C.steel : C.body).loft({ seg: G0.seg.hide[tier], sections: BODY.map(([f, u, rx, rz, a, b, w]) => ({ at: [f, 0, u], rx: rx * (steel ? 1.03 : 1), rz: rz * (steel ? 1.03 : 1), bones: [a, b ?? a, w || 0] })), tone });
+    void tone; B.color(MARK.hide).loft({ seg: G0.seg.hide[tier], sections: HIDE.map(([f, u, rx, rz, a, b, w]) => ({ at: [f, 0, u], rx: rx * (steel ? 1.03 : 1), rz: rz * (steel ? 1.03 : 1), bones: [a, b ?? a, w || 0] })) });
     if (!steel) stripe(B, C, tier);
     if (steel) { // the plating: back plates on each trunk bone (overlapping slabs, their edges seamed), rivets along them, collar plates
       // steel bands round the body, each on its own bone, a rivet line along each band's edge, and a steel ridge down the back
@@ -179,7 +234,7 @@ function buildMesh(tier, form) {
   }
   headParts(B, C, low, full, form);
   legs(B, C, tier, form);
-  return B.done();
+  return paintMesh(B.done(), C, form);
 }
 const MESHES = new Map();
 function meshFor(tier, form) { const k = `${form}:${tier}`; let m = MESHES.get(k); if (!m) { m = buildMesh(tier, form); MESHES.set(k, m); } return m; }
