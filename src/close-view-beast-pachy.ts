@@ -99,6 +99,7 @@ function steelSkin(C, p, n) {
   let c = lerpHex(C.steel, C.steelLight, sm(.45, .95, nz) * .5);
   c = lerpHex(c, C.steelDark, sm(.05, -.65, nz) * .9);
   if (f > .74) c = lerpHex(c, C.steelDark, sm(.74, .79, f) * .85); // the muzzle plate
+  c = lerpHex(c, C.steelDark, .16); // the plates a shade darker than their lit lips
   return lerpHex(c, C.steelDark, sm(.22, .05, u) * .5);
 }
 function domeSkin(C, p, n, steel) {
@@ -145,15 +146,15 @@ function headParts(B, C, low, full, form) {
     B.color(C.steelLight).loft({ seg: 4, minSeg: 4, sections: [[-.14, .018, .01], [-.08, .022, .014], [-.01, .022, .014], [.06, .016, .01], [.1, .004, .004]].map(([df, rx, rz]) => ({ at: [HEAD[0] + DOME.f + df, 0, HEAD[1] + DOME.u + domeTop(df) - .004], rx, rz, bones: ['head', 'head', 0] })) }); }
   // the knobs ringing the dome's rim, larger round the back of the skull (gray; rivets on the steel dome; bone on the fossil), a few down the snout
   const nk = low ? 8 : full ? 14 : 11, knob = bone ? C.boneShade : steel ? C.rivet : C.knob;
-  for (let i = 0; i < nk; i++) { const a = i / nk * Math.PI * 2, back = Math.max(0, -Math.cos(a)), r = (i % 2 ? .02 : .025) + back * .01;
+  for (let i = 0; i < nk; i++) { const a = i / nk * Math.PI * 2; if (Math.cos(a) > .55) continue; const back = Math.max(0, -Math.cos(a)), r = (i % 2 ? .02 : .025) + back * .01;
     B.color(knob).ellipsoid({ at: hb(DOME.f + Math.cos(a) * DOME.r[0] * .93, Math.sin(a) * DOME.r[1] * .93, DOME.u - .045 - Math.cos(a) * DOME.r[0] * .93 * .3 - back * .01), radius: [r, r, r * .85], rings: low ? 2 : 3, seg: low ? 4 : 6 }); }
-  if (!low) for (let i = 0; i < 3; i++) for (const s of [-1, 1]) B.color(knob).ellipsoid({ at: hb(.15 + i * .045, s * (.05 - i * .01), .0 - i * .016), radius: [.013, .013, .011], rings: 2, seg: 4 });
+  if (!low) for (let i = 0; i < 3; i++) for (const s of [-1, 1]) B.color(knob).ellipsoid({ at: hb(.17 + i * .04, s * (.05 - i * .01), -.002 - i * .014), radius: [.016, .016, .013], rings: 2, seg: 4 });
   // the eyes: dark under the dome's brow; a red visor band in the armor; embers in the fossil's sockets
   for (const s of [-1, 1]) {
     if (steel) B.color(C.seam).ellipsoid({ at: hb(.095, s * .079, .018), radius: [.05, .014, .02], rings: 2, seg: 6 });
     if (bone) B.color(C.socket).ellipsoid({ at: hb(.09, s * .068, .02), radius: [.03, .018, .026], rings: 3, seg: 6 });
-    B.color(steel ? C.visor : bone ? C.ember : C.eye, steel ? E_VISOR : E_EYE).ellipsoid({ at: hb(.095, s * (steel ? .088 : bone ? .074 : .083), .02), radius: steel ? [.036, .006, .01] : [.017, .01, .014], rings: 2, seg: 6 });
-    if (!steel && !bone && !low) B.color(C.eyeShine).ellipsoid({ at: hb(.1, s * .092, .026), radius: [.004, .003, .004], rings: 2, seg: 4 });
+    B.color(steel ? C.visor : bone ? C.ember : C.eye, steel ? E_VISOR : E_EYE).ellipsoid({ at: steel || bone ? hb(.095, s * (steel ? .088 : .074), .02) : hb(.125, s * .077, -.014), radius: steel ? [.036, .006, .01] : bone ? [.017, .01, .014] : [.02, .012, .017], rings: 2, seg: 6 });
+    if (!steel && !bone && !low) B.color(C.eyeShine).ellipsoid({ at: hb(.13, s * .088, -.008), radius: [.004, .003, .004], rings: 2, seg: 4 });
   }
   // the lower jaw (opens on the jaw bone): gray, the mouth's dark inside on it
   const J = BI.jaw * 3; B.bone('jaw');
@@ -165,7 +166,7 @@ function stripe(B, C, tier) {
   const rows = [];
   for (const [f, u, , rz, a, b, w] of BODY.filter((q) => q[0] < .55)) rows.push({ at: [f, 0, u + rz * .96], rx: Math.min(.026, .006 + rz * .16), rz: Math.min(.011, .003 + rz * .05), bones: [a, b ?? a, w || 0] });
   // up the back of the dome and over its crown (the dome is tilted forward: its top falls toward the snout) to the brow
-  for (const [df, rx, rz, w] of [[-.11, .024, .008, .75], [-.07, .022, .008, 1], [-.01, .017, .007, 1], [.04, .008, .005, 1], [.065, .003, .003, 1]]) rows.push({ at: [HEAD[0] + DOME.f + df, 0, HEAD[1] + DOME.u + domeTop(df) - .002], rx, rz, bones: ['neck', 'head', w] });
+  for (const [df, rx, rz, w] of [[-.11, .024, .008, .75], [-.07, .022, .008, 1], [-.01, .017, .007, 1], [.04, .008, .005, 1], [.065, .003, .003, 1]]) rows.push({ at: [HEAD[0] + DOME.f + df, 0, HEAD[1] + DOME.u + domeTop(df) - .006], rx, rz: rz + .002, bones: ['neck', 'head', w] });
   B.color(C.stripe).loft({ seg: G0.seg.stripe[tier], minSeg: 4, sections: rows });
 }
 // The legs: each one loft grown out of the body (from inside the hips) through the thigh and shin to the foot, then a foot with three
