@@ -426,7 +426,8 @@ export function compassMenuModel({ area = "overworld", here = {}, quests = [], o
 // ================================================================ the compass, rebuilt (Tim, 2026-11-25)
 // "Fix the compass so it's consistent, shows all the things, and just works; it needs to be reliable." One target, resolved once
 // (main.ts navigationTargets → compassGuidance, or the dungeon's door point), and one readout of it per HUD frame (compassReadout,
-// a small object changed in place): the dial's needle, the Close View Ribbon's gold diamond, the standard view's edge arrow, the
+// a small object changed in place): the dial's needle, the Close View Ribbon's gold diamond (the standard view's edge arrow went
+// 2026-11-27: the dial shows the target and distance there), the
 // arrival banner and the distance all read that readout, so no two views can disagree. The Journal's Leads, Paths and the quick
 // menu say which row is followed through one matcher (types.ts compassChoiceIs). Every kind of target and how it resolves:
 // COMPASS_TARGET_KINDS (also the field guide's table). Pure: no DOM, no allocation per frame (the readout and the marks are reused).
@@ -459,7 +460,6 @@ export const COMPASS_RIBBON = Object.freeze({
   minDist: 6, // tiles: a place closer than this (the one being stood in) is not marked
   sense: Object.freeze({ base: 1, perBand: 1, max: 4 }), // sections sensed: base + Aperture band index × perBand, at most max
   hint: Object.freeze({ maxDeg: 70, minDeg: 12, fullAt: 10, maxRadius: 16, siteRadius: 2 }), // the uncertainty arc (sections)
-  edge: Object.freeze({ top: 92, bottom: 196, side: 16 }), // the standard view's edge arrow keeps clear of the HUD and the controls (px)
   collapseMs: 480, haptic: 14, discovered: "DISCOVERED",
 });
 // Math.sqrt, not Math.hypot, in the per-frame helpers: V8's hypot allocates on every call.
@@ -560,22 +560,6 @@ export function ribbonLayout(places, here, marks) {
   return places;
 }
 function placeOf(a) { a = (a + Math.PI) % TAU; if (a < 0) a += TAU; a -= Math.PI; return a > SPAN || a < -SPAN ? NaN : .5 + a / (2 * SPAN); }
-// The standard view's edge arrow: where the ray from the Wayfarer (the screen's centre) toward the target leaves the safe inner
-// rectangle. Hidden (on: false) while the target is on screen; a hinted target's glow is `spread` px wide (its arc), a warm one
-// none (main.ts shows a soft all-round glow instead). Changes `out` in place.
-export function compassEdge(out, r, w, h, tile) {
-  const E = COMPASS_RIBBON.edge; out.on = false; out.spread = 0;
-  if (!r?.on || r.dormant || r.warm || !(w > 0) || !(h > 0)) return out;
-  const sx = r.dx * tile, sy = r.dy * tile, cx = w / 2, cy = h / 2;
-  const left = cx - E.side, right = w - E.side - cx, up = cy - E.top, down = h - E.bottom - cy;
-  if (sx > -left && sx < right && sy > -up && sy < down && !r.hinted) return out; // on screen: the target itself is in view
-  // 1e9, not Infinity: a constant Infinity in a ternary with a division makes V8 box the result (a heap number a frame)
-  const kx = sx > 0 ? right / sx : sx < 0 ? -left / sx : 1e9, ky = sy > 0 ? down / sy : sy < 0 ? -up / sy : 1e9; let k = kx < ky ? kx : ky; if (!r.hinted && k > 1) k = 1;
-  if (k >= 1e9) return out;
-  out.on = true; out.x = Math.round(cx + sx * k); out.y = Math.round(cy + sy * k); out.deg = Math.round(Math.atan2(sy, sx) * 180 / Math.PI) + 90; // whole pixels and degrees (0: up)
-  out.spread = r.hinted ? Math.round(Math.min(w, h) * r.halfDeg / 180) : 0;
-  return out;
-}
 
 // ---------------------------------------------------------------- nearby places (the Ribbon's marks)
 // Tim (2026-11-26): "the compass may sense only Pentagons, Skyways (Sky Stairs), great trees, Waystations / teleport shrines /

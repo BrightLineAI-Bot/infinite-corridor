@@ -1237,9 +1237,9 @@ body.training-yard #provingGroundPanel,body.training-yard #pgIdentity{display:no
 /* The compass, rebuilt (Tim, 2026-11-25; main.ts renderCompassViews, atlas-view.ts compassReadout). Close View: the Ribbon, a thin
    bar under the HUD, 56% of the safe width, ±75° of facing, faded ends; the chosen target is a gold diamond with its distance,
    held at the bar's edge when it is behind; up to 4 nearby places (filled known, hollow sensed); a hinted lead is a soft arc, and
-   inside its area a warm glow with no direction. Standard view: a small gold chevron at the screen edge toward the target. */
+   inside its area a warm glow with no direction. Standard view: the dial alone (2026-11-27: no edge arrow). */
 .compass-ribbon { position: fixed; z-index: 4; left: 50%; top: calc(env(safe-area-inset-top) + 84px); width: calc((100vw - env(safe-area-inset-left) - env(safe-area-inset-right)) * .56); height: 18px; transform: translateX(-50%); pointer-events: none; }
-.compass-ribbon[hidden], .compass-edge[hidden] { display: none; }
+.compass-ribbon[hidden] { display: none; }
 .cr-track { position: absolute; inset: 0; border-block: 1px solid #c8a96a55; background: linear-gradient(#0e0f0cb0, #0e0f0c70); -webkit-mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent); mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent); overflow: hidden; }
 .cr-card { position: absolute; top: 0; width: 1px; height: 5px; margin-left: -.5px; background: #9a8a66; font-style: normal; }
 .cr-card.major { top: 2px; width: 16px; height: 12px; margin-left: -8px; background: none; color: #e6d3a3; font: 700 10px/12px ui-monospace, monospace; text-align: center; text-shadow: 0 1px 2px #000; }
@@ -1263,18 +1263,10 @@ body.training-yard #provingGroundPanel,body.training-yard #pgIdentity{display:no
 .cr-target.at-right .cr-dist { transform: translateX(calc(-100% + 6px)); }
 .cr-target.behind.at-left .cr-dist::before { content: "‹ "; }
 .cr-target.behind.at-right .cr-dist::after { content: " ›"; }
-.compass-edge { position: fixed; left: 0; top: 0; z-index: 4; width: 0; height: 0; pointer-events: none; opacity: .85; }
-.ce-rot { position: absolute; left: 0; top: 0; width: 0; height: 0; }
-.ce-chev { position: absolute; left: -8px; top: -9px; width: 16px; height: 14px; background: #ffd34d; clip-path: polygon(50% 0, 100% 100%, 50% 72%, 0 100%); filter: drop-shadow(0 0 2px #000); }
-.ce-glow { position: absolute; left: calc(var(--spread, 0px) / -2 - 12px); top: -14px; width: calc(var(--spread, 0px) + 24px); height: 22px; border-radius: 12px; background: radial-gradient(ellipse at 50% 30%, #ffd34d40, #ffd34d00 70%); }
-.compass-edge.hinted .ce-chev { opacity: .55; }
-.ce-dist { position: absolute; left: 0; top: 10px; transform: translateX(-50%); white-space: nowrap; font: 700 10px ui-monospace, monospace; color: #ffe08a; text-shadow: 0 1px 2px #000, 0 0 3px #000; }
 .compass-warm { position: fixed; inset: 0; z-index: 3; pointer-events: none; opacity: 0; transition: opacity .6s; box-shadow: inset 0 0 80px 12px #ffb54d30; }
 .compass-warm.on { opacity: 1; }
 .guidance-arrow.hinted { opacity: .7; }
 .guidance-arrow.warm { color: #ffb54d; box-shadow: 0 0 6px 2px #ffb54d88; }
 body.reduce-motion .cr-diamond { transition: none; }
 body.reduce-motion .compass-ribbon.warm .cr-warm { animation: none; }
-body.proving-ground .compass-ribbon, body.viewport-closed .compass-ribbon, body.viewport-closed .compass-edge { display: none; }
-.compass-edge.at-left .ce-dist { transform: none; left: 2px; }
-.compass-edge.at-right .ce-dist { transform: translateX(-100%); left: -2px; }
+body.proving-ground .compass-ribbon, body.viewport-closed .compass-ribbon { display: none; }
