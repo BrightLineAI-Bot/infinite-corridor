@@ -4,8 +4,8 @@
 // Oculus"). Release 874 put it on the utility button; since 2026-11-15 it has its own button under the compass (pressOculusButton).
 //
 // Pressing it opens a dais one tile ahead of where the Wayfarer faces (release 875: eight directions) (the nearest free walkable tile when that one is blocked).
-// Stepping onto it switches the camera through the existing Close View settings: inside interiors the indoor switch
-// (save.closeView), everywhere else the release-867 Overworld Close View switch (save.overworldCloseView). Close View's own
+// Stepping onto it switches the camera through the Close View setting (since 2026-11-27 one switch, on when either save field is:
+// close-view.ts closeViewOn): on sets save.closeView inside interiors, else save.overworldCloseView; off clears both. Close View's own
 // blend (close-view.ts closeViewFrame) is the warp, with a short flash in the HUD; both are skipped under Reduced Motion.
 // The dais is presentation and a toggle only: no combat effect. It lives on the Game as runtime state (`game.oculus`), is
 // never saved, and is dropped on a change of map or when a pause outlasts it.
@@ -42,8 +42,8 @@ export const oculusTarget = (g) => (closeViewWanted(g) ? "top" : "close");
 export function oculusAvailable(g) {
   if (!g?.player || !g.map?.tiles?.length) return { ok: false, why: "The Oculus cannot open here." };
   if (oculusTarget(g) === "top") return { ok: true, to: "top", setting: indoorMap(g) && g.save?.closeView === true ? "closeView" : "overworldCloseView" };
-  // Tim, 2026-11-11: Close View is for the overworld, buildings, the Pentagon, the Stillworks, seed realms and the
-  // Deep (close-view.ts CLOSE_VIEW_PLACES); in an ordinary dungeon or crossing the Oculus stays shut, and no setting changes.
+  // Tim, 2026-11-27: Close View everywhere but the dungeons of the world (close-view.ts CLOSE_VIEW_PLACES version 2); in a
+  // dungeon (a crossing, the Deep, a labyrinth, a dive site) the Oculus stays shut, and no setting changes.
   if (!closeViewPlaceAllowed(g)) return { ok: false, why: CLOSE_VIEW_PLACES.occluded };
   if (indoorMap(g)) return { ok: true, to: "close", setting: "closeView" }; // the interior view keeps its own fallbacks (2D view, overhead camera)
   if (!overworldCloseViewApplies({ save: { overworldCloseView: true }, player: g.player, map: g.map, area: g.area })) return { ok: false, why: "Close View cannot show this place; the Oculus stays shut." };
@@ -102,8 +102,9 @@ export function pressOculusButton(g, now, open) {
 // Switches the view as a step onto the dais does. Returns the view it switched to.
 export function oculusSwitch(g, to) {
   const s = g.save; if (!s) return null;
+  // One switch (2026-11-27, close-view.ts closeViewOn: on when either field is): on sets the field for where you stand, off clears both.
   if (to === "close") { if (indoorMap(g)) s.closeView = true; else s.overworldCloseView = true; }
-  else { if (indoorMap(g)) s.closeView = false; if (overworldCloseViewApplies(g)) s.overworldCloseView = false; }
+  else s.closeView = s.overworldCloseView = false;
   return to;
 }
 // Each update: the dais ends with its time, its map, or a step onto it (which switches the view). Returns "warp" on a step.

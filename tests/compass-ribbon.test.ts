@@ -12,7 +12,7 @@ import { freshSave, migrateSave, normalizeGuidance, setCompassChoice, setCompass
 import { serializeSave, deserializeSave } from '../src/save-codec.ts';
 import {
   COMPASS_TARGET_KINDS, COMPASS_RIBBON, RIBBON_CARDINALS, compassReadoutState, compassReadout, compassDistanceText, compassDistanceKey, ribbonX, ribbonArc, ribbonPlace, ribbonLayout, RIBBON_SLOTS,
-  compassEdge, nearbyPlaces, compassDiscovery, senseRadius, NEARBY_KINDS, compassGuidance, compassTargetArrived, compassArrivalState, compassArrivalStep, compassArrivalReset,
+  nearbyPlaces, compassDiscovery, senseRadius, NEARBY_KINDS, compassGuidance, compassTargetArrived, compassArrivalState, compassArrivalStep, compassArrivalReset,
   compassMenuModel, MOUTH_PINS, seedHuntObjectives, objectiveKey,
 } from '../src/atlas-view.ts';
 import { closeViewCompassRotation } from '../src/close-view.ts';
@@ -70,7 +70,7 @@ test('every target kind resolves once and the dial, the Ribbon, the edge arrow a
     for (const yaw of [NaN, 0, -Math.PI / 2, 2.4]) {
       const r = compassReadout(compassReadoutState(), t, facing(h, yaw));
       assert.ok(r.on && !r.dormant, kind);
-      // the same bearing everywhere: the dial (north-up), the Ribbon (facing), the edge arrow (screen, north-up)
+      // the same bearing everywhere: the dial (north-up), the Ribbon (facing)
       const arrow = {}; dial(game)(arrow, t.local ? null : t, r);
       if (!t.local) assert.equal(arrow.transform, `rotate(${closeViewCompassRotation(r.dx, r.dy)}deg)`, `${kind}: the dial turns by the readout`);
       const legacy = {}; if (!t.local) { dial(game)(legacy, t); assert.equal(legacy.transform, arrow.transform, `${kind}: and that is what the needle always showed`); }
@@ -79,8 +79,6 @@ test('every target kind resolves once and the dial, the Ribbon, the edge arrow a
       const rel = Math.atan2(Math.sin(want - (Number.isFinite(yaw) ? yaw : -Math.PI / 2)), Math.cos(want - (Number.isFinite(yaw) ? yaw : -Math.PI / 2)));
       assert.ok(Math.abs(r.rel - rel) < 1e-9, `${kind}: the Ribbon's bearing`);
       assert.equal(r.x, ribbonX(r.rel));
-      const e = compassEdge({}, r, 390, 844, 32);
-      if (e.on) assert.equal(e.deg, Math.round(want * DEG) + 90, `${kind}: the edge arrow's bearing`);
     }
   }
   // the dungeon's door point: the same vector the dungeon needle uses (main.ts pointDungeonCompass: point - player)
@@ -94,7 +92,7 @@ test('every target kind resolves once and the dial, the Ribbon, the edge arrow a
 test('a target outside this area is dormant in every view (a pick as much as a pin or a follow), and in other sections reads in seconds', () => {
   const t = compassGuidance(journey(), { pin: { rx: 2, ry: 0, name: 'P' } });
   const r = compassReadout(compassReadoutState(), t, here(0, 0, 16, 16, 'dungeon'));
-  assert.equal(r.dormant, true); assert.equal(compassDistanceText(r), 'outside'); assert.equal(compassEdge({}, r, 390, 844, 32).on, false);
+  assert.equal(r.dormant, true); assert.equal(compassDistanceText(r), 'outside');
   assert.match(MAIN, /function dormantPick\(\)\{if\(game\.area==="overworld"\|\|compassPin\|\|compassFollow\|\|compassPick===null\)return null;/);
   const o = compassReadout(compassReadoutState(), t, here(0, 0));
   assert.equal(compassDistanceText(o), `${Math.round(64 / COMPASS_RIBBON.walk)} sec`, 'two sections east: seconds of walking');
@@ -121,22 +119,19 @@ test('behind you: the diamond holds the bar\'s nearer edge; the cardinals and ma
 });
 
 // ---------------------------------------------------------------- the uncertainty arc
-test('a hinted lead: an arc that narrows as the Wayfarer nears, a warm glow with no direction inside, the edge glow widening the same way', () => {
+test('a hinted lead: an arc that narrows as the Wayfarer nears, a warm glow with no direction inside', () => {
   const zone = { rx: 10, ry: 0, r: 3, site: false }, t = { area: 'overworld', rx: 7, ry: 0, kind: 'guidance', name: 'Bells', zone };
-  let last = Infinity; const widths = [];
+  let last = Infinity;
   for (const rx of [-20, -8, 0, 4, 6]) {
     const r = compassReadout(compassReadoutState(), t, here(rx, 0)); assert.ok(r.hinted && !r.warm, `${rx}`);
     assert.ok(r.halfDeg <= last + 1e-9, `narrows: ${r.halfDeg} at ${rx}`); last = r.halfDeg;
     assert.ok(r.halfDeg >= COMPASS_RIBBON.hint.minDeg && r.halfDeg <= COMPASS_RIBBON.hint.maxDeg);
     assert.ok(Math.abs(r.bearing) < 1e-9, 'aimed at the zone, not the pinned edge section');
     const a = ribbonArc(r); assert.ok(a.x0 < r.x && a.x1 > r.x || a.x0 === 0 || a.x1 === 1);
-    widths.push(compassEdge({}, r, 390, 844, 32).spread);
     assert.match(compassDistanceText(r), /^≈/, 'only roughly how far');
   }
-  assert.ok(widths[0] >= widths[widths.length - 1] && widths[0] > 0, 'the edge glow narrows with the arc');
   const inside = compassReadout(compassReadoutState(), t, here(9, 1));
   assert.equal(inside.warm, true); assert.equal(ribbonArc(inside), null, 'no arc'); assert.equal(compassDistanceText(inside), 'close');
-  assert.equal(compassEdge({}, inside, 390, 844, 32).on, false, 'no arrow: the soft all-round glow instead');
   const game = { area: 'overworld', rx: 9, ry: 1, player: { x: 16, y: 16 } }, arrow = {};
   dial(game)(arrow, t, inside); assert.equal(arrow['class:warm'], true); assert.equal(arrow.transform, '', 'the dial gives no direction either');
   // arriving at a hint with no site is entering its zone; with a site, its section
@@ -230,8 +225,8 @@ test('the tap still cycles, the hold still opens the quick menu, and accepting a
   assert.match(MAIN, /const compassHold=wireHold\(navCompass,navCompassSlot,\{can:\(\)=>!game\.paused,fire:\(\)=>openCompassMenu\(\)\}\)/);
   assert.match(MAIN, /compassPick=objectiveKey\(next\);compassPin=null;compassFollow=null;rememberGuidance\(\);/);
   assert.match(MAIN, /if\(r\.ok\)chooseGuidance\(\{follow:\{kind:'hunt',id:q\.id\}\}\)/);
-  // the Ribbon and the edge arrow take no input: the dial stays the one thing to tap and hold
-  assert.match(CSS, /\.compass-ribbon \{[^}]*pointer-events: none;/); assert.match(CSS, /\.compass-edge \{[^}]*pointer-events: none;/);
+  // the Ribbon takes no input: the dial stays the one thing to tap and hold
+  assert.match(CSS, /\.compass-ribbon \{[^}]*pointer-events: none;/);
 });
 
 // ---------------------------------------------------------------- one matcher
@@ -291,7 +286,7 @@ test('exact resume: the overworld choice, a hint zone and the dungeon door point
 });
 
 // ---------------------------------------------------------------- cost
-test('cost: the readout, the Ribbon\'s places and the edge arrow allocate nothing a frame', () => {
+test('cost: the readout and the Ribbon\'s places allocate nothing a frame', () => {
   // measured in a fresh process: the other tests here feed the helpers many shapes, which a real frame loop never does
   const AV = new URL('../src/atlas-view.ts', import.meta.url).href;
   const code = `import v8 from 'node:v8'; import vm from 'node:vm'; import * as A from ${JSON.stringify(AV)};
@@ -299,7 +294,7 @@ test('cost: the readout, the Ribbon\'s places and the edge arrow allocate nothin
     const r = A.compassReadoutState(), e = { on: false, x: 0, y: 0, deg: 0, spread: 0 }, arc = { x0: 0, x1: 0 }, places = new Float64Array(A.RIBBON_SLOTS);
     const t = { area: 'overworld', rx: 3, ry: -2, x: 4, y: 7, kind: 'guidance', name: 'T' }, hint = { area: 'overworld', rx: 3, ry: -2, kind: 'guidance', name: 'H', zone: { rx: 6, ry: -3, r: 2, site: false } };
     const h = { area: 'overworld', rx: 0, ry: 0, x: 10.5, y: 12.5, yaw: NaN, elev: NaN, targetElev: NaN }, marks = [{ rx: 1, ry: 0, x: 4, y: 5, known: true }, { rx: -1, ry: 1, x: 15.5, y: 15.5, known: false }];
-    const T = { now: t }, frame = (i) => { h.x = 10 + (i & 7) * .25; h.yaw = (i & 3) - 1.5; A.compassReadout(r, T.now, h); A.ribbonArc(r, arc); A.compassEdge(e, r, 390, 844, 32); A.ribbonLayout(places, h, marks); A.compassDistanceKey(r); };
+    const T = { now: t }, frame = (i) => { h.x = 10 + (i & 7) * .25; h.yaw = (i & 3) - 1.5; A.compassReadout(r, T.now, h); A.ribbonArc(r, arc); A.ribbonLayout(places, h, marks); A.compassDistanceKey(r); };
     const run = (n) => { for (let i = 0; i < n; i++) frame(i); }, out = [];
     for (const target of [t, hint]) { T.now = target; for (let k = 0; k < 10; k++) run(5000); }
     for (const target of [t, hint]) { T.now = target; run(2000); gc(); const b = v8.getHeapStatistics().used_heap_size; run(20000); out.push(v8.getHeapStatistics().used_heap_size - b); }
@@ -314,6 +309,5 @@ test('cost: the readout, the Ribbon\'s places and the edge arrow allocate nothin
   assert.match(views, /ribbonLayout\(P,compassHere,compassMarks\)/); assert.match(lift('readCompass'), /h\.yaw=[^;]*;[^\n]*\n  return compassReadout\(compassNow,t,h\);/);
   const p = ribbonLayout(new Float64Array(RIBBON_SLOTS), { area: 'overworld', rx: 0, ry: 0, x: 16, y: 16, yaw: -Math.PI / 2 }, [{ rx: 0, ry: -1, x: 15.5, y: 15.5 }]);
   assert.equal(p[0], .5, 'N dead ahead'); assert.equal(p[8], .5, 'a place due north, dead ahead'); assert.ok(Number.isNaN(p[4]), 'S behind');
-  assert.match(views, /if\(x!==compassEdgeOut\.lx\|\|y!==compassEdgeOut\.ly\)/);
   assert.doesNotMatch(views, /nearbyPlaces\(/, 'the places are never rebuilt in the frame itself');
 });

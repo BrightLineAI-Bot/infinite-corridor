@@ -15,12 +15,16 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1080 (this merge, #751); production serves `r1076-4dec3446cb5b` (Publish run 196, 45836612440, succeeded 2026-11-26; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1084 (this merge, #756); production serves `r1080-888123c078ea` (Publish run 197, 46008629967, succeeded 2026-11-27; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 1084 | Claude | claude/close-view-indoors / #756 | Close View everywhere but dungeons | Merged (#756); preview follows. |
+| 1083 | Claude | claude/daily-region-1127 / #754 | The Great Ranges | Merged (#754); preview follows. |
+| 1082 | Claude | claude/female-sample-cost / #755 | Faster Wayfarer posing in Close View | Merged (#755); preview follows. |
+| 1081 | Claude | claude/town-view-flicker-arrow / #753 | No Close View flicker in towns; the edge arrow removed | Merged (#753); preview follows. |
 | 1080 | Claude | claude/female-hips-shape / #751 | The female Wayfarer's shape, refined | Merged (#751); preview follows. |
 | 1079 | Claude | claude/crown-vertical-separation / #752 | The crown is its own space | Merged (#752); preview follows. |
 | 1078 | Claude | claude/wayfarer-posture-bust / #750 | The Wayfarers stand up straight; a fuller bust | Merged (#750); preview follows. |
