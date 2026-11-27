@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { Game } from '../src/game.ts';
 import { freshSave, migrateSave, SAVE_VERSION } from '../src/types.ts';
 import { ACTION_MOTION } from '../src/action-motion.ts';
-import { closeViewApplies } from '../src/close-view.ts';
+import { closeViewApplies, interiorMap, openAirAt } from '../src/close-view.ts';
 import { snapshotSave, splitSnapshot, assembleSave, validateJourney } from '../src/persistence.ts';
 
 const DT = 1 / 60;
@@ -200,7 +200,9 @@ test('the presentation gate agrees with Close View for legacy floors, bounded te
       if (mode === 'stillworks') g.map.stillworks = true;
       if (mode === 'canopy') g.map.canopy = {};
       if (mode === 'movers') g.map.movers = [{}];
-      assert.equal(g.closeViewAttackBufferEligible(1000), closeViewApplies(g), `${mode}/${sky}`);
+      // Close View is one switch since 2026-11-27, so it now also applies on open air and in the excluded scenes (their open-air
+      // scene); the action gate keeps the interior rule: Close View under an interior's roof
+      assert.equal(g.closeViewAttackBufferEligible(1000), closeViewApplies(g) && interiorMap(g.map) && !openAirAt(g.map, g.player.x, g.player.y), `${mode}/${sky}`);
     }
   }
 });

@@ -48,5 +48,5 @@ test('the game holds one frame per new floor and builds its walls in a task of t
   assert.match(main, /const holdForWalls = !viewportStage && game\.map !== prewarmHeld && closeViewPrewarmDue\(game\);/);
   assert.match(main, /if \(holdForWalls\) \{ const g0 = game; prewarmHeld = game\.map; setTimeout\(\(\) => \{ try \{ if \(g0 === game\) prewarmCloseView\(game\);/);
   assert.match(main, /if \(!holdForWalls\) measured\("render"/);
-  assert.match(main, /if \(save\.closeView === true\) prewarmCloseViewGL\(\);/);
+  assert.match(main, /if \(closeViewOn\(save\)\) prewarmCloseViewGL\(\);/); // one switch (2026-11-27): either save field
 });

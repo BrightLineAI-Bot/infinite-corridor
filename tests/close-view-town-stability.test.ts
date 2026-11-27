@@ -76,20 +76,20 @@ function courtFloor(indoor: boolean) {
   return { g, x0, y0: g.player.y };
 }
 
-test("a court's edge with Overworld Close View on and the indoor switch off: weaving along it never switches; crossing it switches once", () => withGPU(({ frame }) => {
+test("a court's edge with Overworld Close View on and the indoor switch off: Close View holds (one switch, 2026-11-27); the scene changes once a crossing", () => withGPU(({ frame }) => {
   const { g, x0, y0 } = courtFloor(false); g.player.x = x0 - 2; let seq = '';
   for (let i = 0; i < 30; i++) seq += frame(g);
-  assert.equal(seq.at(-1), 's', 'under the roof, the indoor switch off: the standard view (the existing rule)');
+  assert.equal(seq.at(-1), 'C', 'under the roof with the indoor switch off: Close View all the same (before 2026-11-27, the standard view)');
   // openAirAt samples x + .5: the edge is at x = x0 + .5. Weave ±.3 tiles across it at walking pace, for five seconds.
-  let raw = 0, last: any = null; seq = '';
-  for (let i = 0; i < 300; i++) { g.player.x = x0 + .5 + .3 * Math.sin(i / 6); g.player.y = y0 + Math.sin(i / 50); seq += frame(g); const a = CV.closeViewApplies(g); if (last !== null && a !== last) raw++; last = a; }
-  assert.ok(raw >= 10, `the tile rule alone toggles ${raw} times`); assert.equal(switches(seq), 0, `weaving: ${seq}`);
-  // walk into the court and stay: one switch, a moment after the edge
-  seq = ''; for (let i = 0; i < 80; i++) { g.player.x = x0 - 1 + i * .05; g.player.y = y0; seq += frame(g); }
-  assert.equal(switches(seq), 1, seq); assert.equal(seq.at(-1), 'C');
-  // and back under the roof: one more
-  seq = ''; for (let i = 0; i < 80; i++) { g.player.x = x0 + 3 - i * .05; seq += frame(g); }
-  assert.equal(switches(seq), 1, seq); assert.equal(seq.at(-1), 's');
+  let raw = 0, last: any = null; seq = ''; const f0 = CV.closeViewScene().flips;
+  for (let i = 0; i < 300; i++) { g.player.x = x0 + .5 + .3 * Math.sin(i / 6); g.player.y = y0 + Math.sin(i / 50); seq += frame(g); const a = CV.openAirAt(g.map, g.player.x, g.player.y); if (last !== null && a !== last) raw++; last = a; }
+  assert.ok(raw >= 10, `the tile rule alone toggles ${raw} times`); assert.equal(switches(seq), 0, `weaving: ${seq}`); assert.equal(CV.closeViewScene().flips, f0, 'the scene holds while weaving');
+  // walk into the court and stay: no camera switch, one scene change
+  seq = ''; let f = CV.closeViewScene().flips; for (let i = 0; i < 80; i++) { g.player.x = x0 - 1 + i * .05; g.player.y = y0; seq += frame(g); }
+  assert.equal(switches(seq), 0, seq); assert.equal(seq.at(-1), 'C'); assert.equal(CV.closeViewScene().flips - f, 1); assert.equal(CV.closeViewScene().open, true);
+  // and back under the roof: one more scene change
+  seq = ''; f = CV.closeViewScene().flips; for (let i = 0; i < 80; i++) { g.player.x = x0 + 3 - i * .05; seq += frame(g); }
+  assert.equal(switches(seq), 0, seq); assert.equal(seq.at(-1), 'C'); assert.equal(CV.closeViewScene().flips - f, 1); assert.equal(CV.closeViewScene().open, false);
 }));
 
 test('with both switches on, Close View holds across the edge: no switch at all', () => withGPU(({ frame }) => {

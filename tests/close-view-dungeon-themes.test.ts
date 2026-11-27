@@ -157,7 +157,9 @@ test('Close View is allowed by place kind; ordinary dungeons refuse it, saying t
   assert.equal(place('dungeon', { id: 'dungeon:S:g1:4:5:x:annex3', theme: 'geode' }), 'crossing', 'a Starfield Deep Annex floor');
   assert.equal(place('dungeon', { id: 'proving:combat:ashling:0' }), 'lab');
   for (const id of ['dungeon:S:1:2:hollow', 'the-deep-v1:x', 'hunt-instance:x', 'elite-portal:x', 'x:annex2']) assert.equal(place('dungeon', { id, theme: 'fungal' }), 'crossing', id);
-  for (const [k, v] of Object.entries(P.allowed)) assert.equal(v, k !== 'crossing' && k !== 'underwater', k);
+  // version 2 (Tim, 2026-11-27): the Deep and labyrinths are dungeons of the world too, always Standard View
+  assert.equal(P.version, 2);
+  for (const [k, v] of Object.entries(P.allowed)) assert.equal(v, !['crossing', 'underwater', 'deep', 'cube'].includes(k), k);
   assert.equal(P.occluded, 'The view is occluded.');
   // in a crossing: the switch stays on but does not apply; the Oculus refuses with the HUD message and changes nothing
   const { g, save } = crossing(), before = JSON.stringify({ c: save.closeView, w: save.overworldCloseView });
@@ -170,12 +172,14 @@ test('Close View is allowed by place kind; ordinary dungeons refuse it, saying t
     // the same switch, back on the overworld (or in the Deep), applies again
     const out = { ...g, area: 'overworld', map: { width: 32, height: 32, tiles: Array.from({ length: 1024 }, () => ({ kind: 'grass' })) } };
     assert.equal(CV.overworldCloseViewApplies(out), true);
-    const deep = deepGame('fungal'); assert.equal(CV.overworldCloseViewApplies(deep), true);
-    assert.equal(oculusAvailable(deep).ok, true); assert.equal(oculusAvailable(deep).setting, 'overworldCloseView');
+    const deep = deepGame('fungal'); assert.equal(CV.overworldCloseViewApplies(deep), false, 'the Deep: Standard View (2026-11-27)');
+    assert.deepEqual(oculusAvailable(deep), { ok: false, why: 'The view is occluded.' });
   } finally { OCULUS_HOOKS.gpu = null; }
 });
 
-test('Close View draws in the Deep with its theme; a crossing with the switch on shows the top-down view', () => withGPU({}, (h: any) => {
+// The Deep is Standard View in play since 2026-11-27; its themes still draw where a table allows it (CLOSE_VIEW_HOOKS.places).
+const deepAllowed = (run: () => void) => { CLOSE_VIEW_HOOKS.places = { ...CV.CLOSE_VIEW_PLACES.allowed, deep: true }; try { run(); } finally { CLOSE_VIEW_HOOKS.places = null; } };
+test('Close View draws in the Deep with its theme; a crossing with the switch on shows the top-down view', () => withGPU({}, (h: any) => deepAllowed(() => {
   const g = deepGame('fungal'), frame = (game: any) => { h.log.length = 0; render(h.screen, game, 390, 844, game.lastUpdateNow); return closeViewShowing(game); };
   assert.equal(frame(g), true); assert.equal(closeViewGLStats.theme, 'deepFungal');
   const lab = createLabFixture({ lab: 'combat', scenario: '', now: 100000 }).game as any; lab.presentation = { effectiveQuality: 'low', reduceMotion: true }; lab.save.overworldCloseView = true;
@@ -183,7 +187,7 @@ test('Close View draws in the Deep with its theme; a crossing with the switch on
   const { game } = crossing(); const save = game.save; save.session.activeDungeonId = 'dungeon:DEEP-885:3:4:hollow';
   game.area = 'dungeon'; game.map = { ...crossing().g.map }; game.player.x = 5; game.player.y = 5; game.presentation = { effectiveQuality: 'low', reduceMotion: true };
   assert.equal(frame(game), false, 'refused in a crossing'); assert.equal(save.overworldCloseView, true, 'the setting is kept');
-}));
+})));
 
 test('Aperture crystals float as emissive models, bob bounded, turn slowly, still under Reduced Motion', () => {
   const P = CV.CLOSE_VIEW_PROPS, C = P.crystal, E = new Set(CLOSE_VIEW_ACTOR_LOOK.emissive);
@@ -199,7 +203,7 @@ test('Aperture crystals float as emissive models, bob bounded, turn slowly, stil
   assert.ok(CV.closeViewPropPose('apertureCrystal', o, 0).scale > CV.closeViewPropPose('apertureCrystal', { ...o, visualTier: 1 }, 0).scale, 'the relic is larger');
 });
 
-test('in the GPU scene the crystals, the Ember Door and the Oculus\'s dais are models, and their flat marks are left off', () => withGPU({}, (h: any) => {
+test('in the GPU scene the crystals, the Ember Door and the Oculus\'s dais are models, and their flat marks are left off', () => withGPU({}, (h: any) => deepAllowed(() => {
   const g = deepGame('fungal'), p = g.player, near = (kind: string, dx: number, dy: number) => { const o = g.map.objects.find((q: any) => q.kind === kind); assert.ok(o, kind); o.x = Math.floor(p.x) + dx; o.y = Math.floor(p.y) + dy; return o; };
   // clear a little room round the Wayfarer so every prop is in plain sight
   const W = g.map.width; for (let y = -3; y <= 3; y++) for (let x = -3; x <= 3; x++) { const t = g.map.tiles[(Math.floor(p.y) + y) * W + Math.floor(p.x) + x]; if (t) Object.assign(t, { blocked: false, kind: 'fungusFloor', environment: undefined }); }
@@ -211,7 +215,7 @@ test('in the GPU scene the crystals, the Ember Door and the Oculus\'s dais are m
   assert.ok(closeViewGLStats.props >= 3, `props drawn as models (${closeViewGLStats.props})`); assert.ok(closeViewGLStats.props <= CV.CLOSE_VIEW_PROPS.cap);
   // the floor under a standing glowcap shows its neighbour, not the glowcap's flat top-down art
   assert.ok(h.log.some((q: any) => q[0] === 'ground' && q[1] === 'drawImage'), 'feature tiles re-floored on the ground texture');
-}));
+})));
 
 test('the Oculus\'s dais in Close View is the standard view\'s blue, whichever way it leads', () => {
   const { seen } = colours('oculusDais'), E = new Set(CLOSE_VIEW_ACTOR_LOOK.emissive), blue = (c: number) => (c & 255) > (c >> 16) && (c & 255) >= ((c >> 8) & 255) * .9;
@@ -232,6 +236,6 @@ test('walking into a refused place with Close View on says the view is occluded,
   for (let i = 0; i < 20; i++) g.update(.016, { state: { x: 0, y: 0 }, consume: () => false, held: () => false }, 100000 + i * 16);
   assert.equal(String(g.message).split(C).length - 1 <= 1, true, 'not repeated every frame');
   g.message = ''; g.loadArea('overworld', false); assert.equal(String(g.message).includes(C), false, 'nothing on the overworld');
-  const deep = deepGame('fungal'); assert.equal(String(deep.message).includes(C), false, 'nothing in the Deep');
+  const deep = deepGame('fungal'); assert.equal(String(deep.message).split(C).length - 1, 1, 'the Deep is a dungeon too (2026-11-27): said once');
   save.overworldCloseView = false; save.closeView = false; assert.equal(enter(deepDungeonId('DEEP-885')).includes(C), false, 'nothing with Close View off');
 });
