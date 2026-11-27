@@ -98,7 +98,7 @@ import { GREAT_SWEEP_SWING, GREAT_SWEEP_RECORD_VERSION, sweepTempo, sweepTimes, 
 import { generateItem, spellOpen, explorationGateOpen, primaryCarryKind, ORRERY_LOOT, BRAWLER_LOOT, FOURFOLD_DAGGERS, isFourfoldDaggers, QUANDRIX_STAFF, isQuandrixStaff, SCALING_STATS, SCALING_STRENGTH, weaponScaling, toolScaling } from "./items.ts";
 import { itemCap, upgradeLimit, upgradedItem, unlockRefinement, toolKey } from "./items.ts"; import { socketCount } from "./glyphs.ts"; // 2026-11-18: gearReadout
 import { SMITHY, paySalvage, salvagePaidText, salvageYieldMode, reforgeRoll, SPARE_GEAR_STATE } from "./smithy.ts"; // release 607: one salvage table; 2026-11-18: its yield (SALVAGE_YIELD)
-import { earthResolvePlant, earthResolveHit, tickEarthResolve } from "./echoes.ts"; // Earth Resolve, the Earth Apatosaurus's Echo
+import { earthResolvePlant, earthResolveHit, tickEarthResolve, golemGuard } from "./echoes.ts"; // Earth Resolve, the Earth Apatosaurus's Echo; Dome Rush's Earth Golem guard
 import { echoEvent, tickEchoes, echoDrop, noteRoomBeastKill, pounceBonus, ECHOES, hasEcho, WALL_CLING, plungeAfterimage } from "./echoes.ts";
 import { skillMeleeBonus, skillReachBonus, riftStep, riftStepTo, riftStepReady, riftReachOf, RIFT_AIM, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, SANCTUARY, sanctuaryOn, altOn, ALT_PASSIVES, altChosen, aerialChargesNow, tickAerialCharges, aerialStepBlocked } from "./constellation.ts";
 import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.ts";
@@ -219,7 +219,7 @@ const CLONE_HIT = Object.freeze({ melee: true, clone: true }); // the Shadow Clo
 // Wayfarer or the Game keeps, in one place. setPaused shifts all of them by the paused time, so nothing runs out while
 // paused; the RESUME lists are also saved as time remaining (playerRuntime.clocks) and restored on reload (exact resume).
 // Message throttles (…MessageAt, …HintAt) are left out on purpose: they only space out messages.
-export const PLAYER_CLOCKS = ["landRollUntil" /* FALL.rollPose, drawn only */, "castUntil", "attackReadyAt", "attackUntil", "actionVisualUntil", "primaryVisualUntil", "fistVisualUntil", "meleeUntil", "dodgeReadyAt", "invulnerableUntil", "dodgeUntil", "heldUntil", "stunnedUntil", "stunnedAt", "shockAt", "slowUntil", "confusedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoResolveReadyAt", "echoMirrorReadyAt"];
+export const PLAYER_CLOCKS = ["landRollUntil" /* FALL.rollPose, drawn only */, "castUntil", "attackReadyAt", "attackUntil", "actionVisualUntil", "primaryVisualUntil", "fistVisualUntil", "meleeUntil", "dodgeReadyAt", "invulnerableUntil", "dodgeUntil", "heldUntil", "stunnedUntil", "stunnedAt", "shockAt", "slowUntil", "confusedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoResolveReadyAt", "echoMirrorReadyAt", "echoGolemArmUntil", "echoGolemUntil", "echoGolemReadyAt" /* Dome Rush (echoes.ts PACHY_ECHO) */];
 export const GAME_CLOCKS = ["jumpUntil", "jumpStart", "kiSlamJump" /* the Ki Blast leap the slam belongs to: shifts with jumpStart (r946 review) */, "toolReadyAt", "golemReadyAt", "orreryLockUntil" /* the Aether Orrery overload */, "aegisUntil", "aegisLockUntil", "aegisPerfectUntil", "powerAegisUntil", "parryFlashAt", "reflectFlashAt" /* Power Aegis: the perfect window, the empowerment, the flashes (drawn only) */, "boxingUntil", "imbueUntil", "essenceUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "unstickReadyAt", "_inkShieldAt", "lastCrownAt", "plungeRecoverUntil" /* jump attacks */];
 // Timers inside runtime objects: { owner: [fields] } on the Game, and on the player.
 export const GAME_NESTED_CLOCKS = { lockSeen: ["at"] /* AIM_RESOLVE: a pause keeps a hidden lock's last seen spot */, triceratopsDash: ["until"], triceratopsJump: ["start", "until", "drillUntil", "nextAt"] /* mounted contacts follow the same paused dodge/leap */, golem: ["start", "nextAt", "sinkAt"], orbit: ["start"], fistCharge: ["start"], fistCombo: ["until"], fistBeat: ["at", "opens", "closes"] /* the rhythm window and its ball */, fistFlash: ["at"], fistQueued: ["until"], fistReleaseIntent: ["expiresAt"], shadowClone: ["until"], pendingToolUse:["acceptedAt","releaseAt"], aimMark: ["until"], rite: ["started", "until", "nextAt"], treeRise: ["start", "end", "nextRubble"], fracState: ["nextAt"], stalkFog: ["until"], ledgeHint: ["until"], fallen: ["until"], edgeHold: ["at"] /* perf pack P6 EDGE_HOLD: a wall-clock stamp */, plunge: ["start", "until"] /* jump attacks */, cycloneHold: ["start"] /* the Cyclone Heel's held press */ };
@@ -227,7 +227,7 @@ export const PLAYER_NESTED_CLOCKS = { echoCharge: ["until"], echoMist: ["until"]
 // Timers inside lists of runtime objects on the player: { list: [fields] } (release 737: the haunt curses).
 export const PLAYER_LIST_CLOCKS = { curses: ["until", "at"] };
 // Saved as ms remaining and restored on reload (the other player timers above are saved by their own playerRuntime fields).
-export const RESUME_PLAYER_CLOCKS = ["castUntil", "slowUntil", "confusedUntil", "heldUntil", "stunnedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoResolveReadyAt", "echoMirrorReadyAt"];
+export const RESUME_PLAYER_CLOCKS = ["castUntil", "slowUntil", "confusedUntil", "heldUntil", "stunnedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoResolveReadyAt", "echoMirrorReadyAt", "echoGolemArmUntil", "echoGolemUntil", "echoGolemReadyAt"];
 export const RESUME_GAME_CLOCKS = ["toolReadyAt", "golemReadyAt", "orreryLockUntil", "aegisUntil", "aegisLockUntil", "aegisPerfectUntil", "powerAegisUntil", "boxingUntil", "imbueUntil", "essenceUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "_inkShieldAt", "plungeRecoverUntil"];
 export function shiftClocks(game, d) {
   if (!(d > 0)) return;
@@ -4637,6 +4637,7 @@ export class Game {
       stunnedFor: clocks.stunnedUntil && Number.isFinite(p.stunnedAt) ? Math.max(0, clock - p.stunnedAt) : null,
       fire: copy(this.playerFire),
       frenzy: copy(this.frenzy),
+      golemHits: clocks.echoGolemArmUntil ? Math.max(0, Math.min(9, Math.floor(Number(p.echoGolemHits) || 0))) : 0, // Dome Rush: the blows counted toward the golem (additive, schema 14)
       rite: R ? { key: R.key, at: { ...R.at }, elapsed: Math.max(0, clock - R.started), left: remaining(R.until, clock), next: remaining(R.nextAt, clock), n: R.n } : null,
       sailVx: Number(p.sailVx) || 0,
       sailVy: Number(p.sailVy) || 0,
@@ -4826,6 +4827,7 @@ export class Game {
     if (!r || typeof r !== "object") return;
     const p = this.player, c = r.clocks && typeof r.clocks === "object" ? r.clocks : {}, ms = (v) => Number.isFinite(Number(v)) && Number(v) > 0 ? Math.min(Number(v), 864e5) : 0;
     for (const k of RESUME_PLAYER_CLOCKS) if (ms(c[k])) p[k] = now + ms(c[k]);
+    if (p.echoGolemArmUntil) { p.echoGolemHits = Math.max(0, Math.min(9, Math.floor(Number(r.golemHits) || 0))); p.echoGolemHitAt = p.echoGolemHits ? now - 1e3 : 0; } // Dome Rush's count resumes
     for (const k of RESUME_GAME_CLOCKS) if (ms(c[`game.${k}`])) this[k] = now + ms(c[`game.${k}`]);
     p.curses = cursesIn(r.curses, now); // release 737
     this.hitStop = normalizeHitStop(r.hitStop); // hitstop-actors.ts: the same ms left, never longer
@@ -13427,7 +13429,7 @@ export class Game {
     { const b = tickBleed(this.save, dt, Math.hypot(x, y) > .15 || now < (p.dodgeUntil || 0) || now < (p.attackUntil || 0) || now < (this.jumpUntil || 0), Number(this.save.maxHp) || p.maxHp || 100); if (b.damage > 0 && p.hp > 0) p.hp -= b.damage; if (b.cured) this.message = BLEED.text.cured; } // the Spinosaurus's bleed (bleed.ts): only moving hurts; standing still cures it
     { const v = tickPoison(this.save, dt, Number(this.save.maxHp) || p.maxHp || 100); if (v.damage > 0 && p.hp > 0) p.hp -= v.damage; if (v.gone && p.hp > 0) this.message = POISON.text.gone; } // the Earth Apatosaurus's root venom (apato-poison.ts)
     if (this.apatoPin) this.apatoLatchSlip();
-    RESOLVE_GUARD.set(this.save, tickEarthResolve(this, now)); // Earth Resolve: its time, its cooldown, and the guard while she stands in it // a Rift Step or the Shadow Clone's step out of the clones' coils
+    RESOLVE_GUARD.set(this.save, tickEarthResolve(this, now) * golemGuard(this.player, now)); /* and Dome Rush's Earth Golem (echoes.ts PACHY_ECHO) */ // Earth Resolve: its time, its cooldown, and the guard while she stands in it // a Rift Step or the Shadow Clone's step out of the clones' coils
     if (this.spinoBiteMark > 0) this.spinoBiteMark = Math.max(0, this.spinoBiteMark - dt * 1000 / SPINO_SCREEN.bite.ms); // the bite mark over the screen fades
     this.spinoInterloperTick(dt, now); // the Spinosaurus comes in on a stego or stag fight (spino-rex.ts)
     this.dinoDuelTick(dt); // the dino duel (dino-duel.ts): the verdict, the eaten loser, the escape

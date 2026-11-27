@@ -34,6 +34,8 @@ import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT, DUELIST_SLOT, TR
 import { createTriceratopsTrack, sampleTriceratops, triceratopsMesh, TRICERATOPS_RIG } from "./close-view-beast-triceratops.ts";
 import { MOUNT_DRAW } from "./beast-mounts-render.ts";
 import { HATCH_DRAW, hatchlingPresentation } from "./hatchling-render.ts"; // the Triceratops hatchling's skinned body
+import { drawPachyGolemClose } from "./close-view-beast-pachy.ts"; // Dome Rush's Earth Golem (cards)
+import { golemScale } from "./echoes.ts"; // Dome Rush's Earth Golem: the Wayfarer drawn larger
 import { drawApatoCloseFx, admitApatoProps } from "./close-view-beast-apato.ts"; // the Earth Apatosaurus's standing hazards (cards)
 import { stageDuel } from "./close-view-duel.ts"; // the dino duel: the two bodies spaced and the held one in the other's jaws // release 891: world beasts' skinned bodies (and the Gaunt's)
 import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, prepareCloseViewBeastMesh, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, glProps, closeViewPropsAvailable, glRelief, closeViewReliefAvailable, closeViewOutdoorAvailable, closeViewOccluderAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
@@ -4558,7 +4560,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     const actor = { kind: (pose==='shovelDig'?'playerShovel':formKind) || activeKind || (tool || (who === player && g.save.activeWeaponSlot === "secondary" && !attack && !cast) ? "playerTool" : presentation?.modelKey || kind),
       x: boardWX[it] - recoil * Math.cos(track.yaw) + dashDX, y: boardWY[it] - recoil * Math.sin(track.yaw) + dashDY, z: surfaceZ(g.map, who.x + .5 + dashDX, who.y + .75 + dashDY) + closeViewActorLift(d, true) + (presentation?.bodyLift || 0) + waterZ, yaw: track.yaw,
       phase: watched ? 0 : track.phase + ((presentation?.bodyLift > 0 || presentation?.action === 'pack' && ['hover', 'fly', 'phase'].includes(who.movement)) && !reduce ? now / 500 : 0), pace: carried ? 0 : track.pace, pose, amount, turn: stunned || watched ? 0 : turn, reduceMotion: reduce,
-      scale: who === player && form ? form.scale : presentation?.scale ?? 1, stagger: presentation?.stagger || 0,
+      scale: (who === player && form ? form.scale : presentation?.scale ?? 1) * (who === player ? golemScale(player, now, reduce) : 1) /* Dome Rush's Earth Golem (echoes.ts PACHY_ECHO) */, stagger: presentation?.stagger || 0,
       primaryStep: visualRecord?.primaryStep, primaryMotion: visualRecord?.primaryMotion, primaryStage, meleeAction, cleaverFrame,
       jumpAir: who===player&&pose==='jump'?ordinaryJumpPresentation(g,now,d.jumpLift,d.jumpBaseMs):null,
       toolAction: who===player&&visualAttack&&acceptedTool&&visualRecord?.toolUse&&!stunned&&!bodyHit&&now>=(player.dodgeUntil||0)?visualRecord:null,
@@ -5284,6 +5286,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   for (const f of g.packEffects || []) { if (f.kind !== "dinoRock" || !(f.arming > 0) || !finite(f.x) || !finite(f.y)) continue;
     const k = 1 - Math.max(0, f.arming) / (f.armTotal || 1), r = Math.max(.25, (f.radius || .7) * DINO_ROCK_DRAW.size), z = reduce ? DINO_ROCK_DRAW.still : DINO_ROCK_DRAW.from * (1 - k * k);
     card(f.x + .5, f.y + .62, z, z + r * 2, r, 0, DINO_ROCK_DRAW.alpha, 0, 0); }
+  drawPachyGolemClose(g.player, card, reduce, now); // Dome Rush's Earth Golem: rocky plates and an amber glow round the Wayfarer (close-view-beast-pachy.ts)
   drawApatoCloseFx(g.enemies, card, reduce, now, g.earthResolve || null); // the Earth Apatosaurus: its spires, hands, rocks, leaves, seeds, roots and beam stand up from the floor (close-view-beast-apato.ts)
   { const A = CONTINUOUS_ASSAULT; for (const fx of g.effects) { if (fx.kind !== "assault-lance" || !(fx.life > 0) || !finite(fx.x) || !finite(fx.y)) continue; // Continuous Assault: columns of light from high above (tool-forms.ts; the rings and scorch are on the floor)
     if (fx.delay > 0) { const fall = 1 - Math.min(1, fx.delay / A.lead); if (fall > 0) card(fx.x, fx.y, A.height * (1 - fall), A.height, A.width * .55, 11, .35 + .45 * fall, A.colors.glow, 0); continue; }

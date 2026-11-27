@@ -7,7 +7,7 @@ import { arena, beast, pachy, run } from './pachy-harness.ts';
 import { MONSTER_PACK, ATTACK_MODULES, PACK_KINDS, validateMonster, resetPackRuntime, updatePackMonster } from '../src/monster-pack.ts';
 import { PACHY, PACHY_ATTACKS, PACHY_START, PACHY_RUN, PACHY_ROOMS, PACHY_AMBUSH, PACHY_PROFILE, pachyRoomSpawn, pachyAmbushSpawn, ensurePachyState, notePachySlain, pachySlain, pachyTuned } from '../src/pachy.ts';
 import { stegoBaitLures } from '../src/stego-bait.ts';
-import { ECHOES, PACHY_ECHO, domeRush, ROOM_BEAST_KILL } from '../src/echoes.ts';
+import { ROOM_BEAST_KILL } from '../src/echoes.ts';
 import { behaviourProfile } from '../src/enemy-behaviour.ts';
 import { freshSave, migrateSave } from '../src/types.ts';
 import { generatePinnedDungeon, tunePachy } from '../src/game.ts';
@@ -138,11 +138,4 @@ test('tuned to the Wayfarer like the room beasts (no hunt), and its disguise rid
   assert.ok(pachyTuned(c) && !c.worldBeast && !c.boss && c.hp > 100 && c.pachyDisguised && c.pachyHpSeen === c.hp);
 });
 
-test('Dome Rush (its Echo): the first blow after a dodge butts (more damage, a stagger), once, then rests', () => {
-  assert.ok(ECHOES.pachy && ECHOES.pachy.trigger === 'dodge');
-  const s = freshSave(); s.echoes.owned.pachy = true; s.echoes.equipped = ['pachy']; const foe = { x: 5, y: 5, hp: 100, maxHp: 100 };
-  const game = { save: s, player: { x: 3, y: 5, echoDomeUntil: 1000 }, glyphVisuals: [], defeatEnemy() {} };
-  assert.ok(domeRush(game, 500, foe, 40)); assert.equal(foe.hp, 100 - Math.round(40 * PACHY_ECHO.share)); assert.equal(foe.hitStun, PACHY_ECHO.stagger);
-  assert.equal(domeRush(game, 600, foe, 40), false, 'once'); assert.equal(game.player.echoDomeReadyAt, 500 + PACHY_ECHO.cooldown);
-  game.player.echoDomeUntil = 9000; assert.equal(domeRush({ ...game, save: freshSave() }, 700, foe, 40), false, 'not without the Echo');
-});
+// Dome Rush (its Echo) was redesigned into the Earth Golem (Tim, 2026-11-27): tests/pachy-golem.test.ts.

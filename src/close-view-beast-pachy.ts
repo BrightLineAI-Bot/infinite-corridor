@@ -9,6 +9,7 @@
 // standard view's own pose table (PACHY_POSES), so both views agree; nothing here reads attack timing or changes the game.
 // Body units u are the standard view's (a tile times the actor's scale); the root carries S = env.scale.
 import { PACHY_ART, PACHY_POSES, pachyPoseName, pachyLook } from "./pachy-render.ts";
+import { PACHY_ECHO } from "./echoes.ts"; // Dome Rush's Earth Golem (drawPachyGolemClose)
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, boneLocalToWorld, writeSkin, poseAnimalLeg,
   createGait, stepGait, meshBuilder, clamp01, smooth, kick, wobble, TIER_DETAIL,
@@ -363,3 +364,18 @@ export function samplePachy(tr, e, env) {
   return F;
 }
 export const pachyBone = (tr, name) => { const i = BI[name]; return [tr.pose.wp[i * 3], tr.pose.wp[i * 3 + 1], tr.pose.wp[i * 3 + 2]]; };
+
+// Dome Rush's Earth Golem on the Wayfarer in Close View (echoes.ts PACHY_ECHO): draw-time only, round the figure (close-view.ts draws
+// the figure golemScale larger): stone shards jutting from the shoulders, back and hips (stone spike cards), an amber seam glowing at
+// each one's root, and an earthen glow about the body that fades with the time left (the status cue). Cards only; no allocation.
+// plates: [angle round the body, height of the root, reach out, length, half width]
+export const GOLEM_CLOSE = Object.freeze({ plates: Object.freeze([[.3, .98, .22, .44, .12], [2.85, .98, .22, .44, .12], [1.0, 1.05, .2, .4, .11], [2.15, 1.05, .2, .4, .11], [4.4, 1.0, .2, .46, .12], [5.0, 1.0, .2, .46, .12], [5.7, .72, .24, .34, .1], [3.6, .72, .24, .34, .1], [.9, .45, .24, .28, .09], [2.25, .45, .24, .28, .09]]),
+  seam: 0xffb347, glow: 0xc8803a, spin: .25, stone: .45 });
+export function drawPachyGolemClose(p, card, reduce = false, now = 0) {
+  if (!p || !(now < (Number(p.echoGolemUntil) || 0))) return false;
+  const G = GOLEM_CLOSE, left = Math.max(0, Math.min(1, (p.echoGolemUntil - now) / (PACHY_ECHO.seconds * 1000))), t = reduce ? 0 : now / 1000, x = p.x + .5, y = p.y + .75, S = PACHY_ECHO.scale;
+  card(x, y, 0, 1.9, .55, 11, .12 + .12 * left, G.glow, 0);
+  for (let i = 0; i < G.plates.length; i++) { const [a0, z, r, h, w] = G.plates[i], a = a0 + t * G.spin, px = x + Math.cos(a) * r, py = y + Math.sin(a) * r, zz = z * S + (reduce ? 0 : .015 * Math.sin(t * 3 + i));
+    card(px, py, zz - h * .3, zz + h * .7, w, 7, .95, 0, G.stone); card(px, py, zz - w * .5, zz + w * .5, w * .8, 11, .6 + (reduce ? 0 : .3 * Math.sin(t * 6 + i)), G.seam, 0); }
+  return true;
+}

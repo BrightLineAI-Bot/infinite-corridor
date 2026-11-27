@@ -265,6 +265,25 @@ export function drawPachyRock(ctx, k, b, u, t = 0, reduce = false) {
   return true;
 }
 
+// ---------------------------------------------------------------- Dome Rush's Earth Golem on the Wayfarer (echoes.ts PACHY_ECHO)
+// Draw-time only, over the Wayfarer's figure (renderer.ts draws the figure `scale` larger first): rocky plates on the shoulders, chest
+// and fists with glowing amber seams, and under the feet a ring that drains with the time left (`left`, 1 to 0): the status cue.
+// (cx, foot): the figure's centre line and feet in pixels; `s` pixels a tile. No allocation.
+export const GOLEM_ART = Object.freeze({ seam: "#ffb347", ring: "rgba(255,179,71,.85)", ringBack: "rgba(40,30,20,.45)", height: .78,
+  plates: Object.freeze([[-.25, .7, .19, .13, -.3], [.25, .7, .19, .13, .3], [0, .5, .22, .17, 0], [-.36, .4, .13, .12, -.2], [.36, .4, .13, .12, .2], [-.11, .13, .11, .08, 0], [.11, .13, .11, .08, 0]]) });
+export function drawPachyGolem(ctx, cx, foot, s, scale = 1, left = 1, now = 0, reduce = false) {
+  const A = PACHY_ART, G = GOLEM_ART, h = G.height * s * scale, t = reduce ? 0 : now / 1000, L = Math.max(0, Math.min(1, left));
+  ctx.save();
+  ctx.lineWidth = Math.max(2, s * .05); ctx.strokeStyle = G.ringBack; ctx.beginPath(); ctx.ellipse(cx, foot, s * .46 * scale, s * .16 * scale, 0, 0, TAU); ctx.stroke();
+  ctx.strokeStyle = G.ring; ctx.beginPath(); ctx.ellipse(cx, foot, s * .46 * scale, s * .16 * scale, 0, -Math.PI / 2, -Math.PI / 2 + TAU * L); ctx.stroke();
+  for (let i = 0; i < G.plates.length; i++) { const [x, y, w, hh, rot] = G.plates[i], px = cx + x * h, py = foot - y * h + (reduce ? 0 : Math.sin(t * 3 + i) * h * .006);
+    ctx.fillStyle = i % 2 ? A.rock : A.rockLight; ctx.strokeStyle = A.rockDark; ctx.lineWidth = Math.max(1, s * .025);
+    ctx.beginPath(); for (let j = 0; j < 6; j++) { const a = j / 6 * TAU + rot, r = 1 - (j % 2) * .18, qx = px + Math.cos(a) * w * h * r, qy = py + Math.sin(a) * hh * h * r; j ? ctx.lineTo(qx, qy) : ctx.moveTo(qx, qy); } ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = G.seam; ctx.globalAlpha = .75 + (reduce ? 0 : .25 * Math.sin(t * 6 + i)); ctx.lineWidth = Math.max(1, s * .018); ctx.beginPath(); ctx.moveTo(px - w * h * .5, py - hh * h * .1); ctx.lineTo(px, py + hh * h * .25); ctx.lineTo(px + w * h * .4, py - hh * h * .2); ctx.stroke(); ctx.globalAlpha = 1; }
+  ctx.restore();
+  return true;
+}
+
 // ---------------------------------------------------------------- the ground: rocks in flight, skulls, bone spikes and rings
 // `s` pixels a tile; drawn in the world's tile space (as apato-render.ts drawApatoGround). No allocation.
 export function drawPachyGround(ctx, e, s, now = 0, { quiet = false } = {}) {

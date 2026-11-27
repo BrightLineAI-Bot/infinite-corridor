@@ -13,7 +13,8 @@ import { shakeOffset } from "./spino-rex.ts";
 import { drawBleedIcon } from "./bleed.ts";
 import { drawPoisonIcon } from "./apato-poison.ts";
 import { drawEarthResolveSigil } from "./apato-render.ts";
-import { insideResolve } from "./echoes.ts"; // the Earth Apatosaurus's root venom
+import { insideResolve, golemOn, golemScale, PACHY_ECHO } from "./echoes.ts"; // the Earth Apatosaurus's root venom; Dome Rush's Earth Golem
+import { drawPachyGolem } from "./pachy-render.ts"; // Dome Rush's Earth Golem on the Wayfarer
 import { drawRealmTile, drawRealmCosmos, drawRealmObject } from "./seed-realm-render.ts"; // seed realms
 import { biomechanicalKeep } from "./close-view-room-routing.ts";
 import { PENTAGON_MURALS } from "./pentagon-halls.ts"; // release 795: the grand halls' murals, drawn small
@@ -3398,8 +3399,9 @@ export function render(ctx, g, w, h, now) {
         "player",
         p.facing,
         Math.floor(p.walkPhase || 0),
-        now < (p.attackUntil || 0) ? "attack" : "walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1,
+        now < (p.attackUntil || 0) ? "attack" : "walk",false,(g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1)*golemScale(p,now,!!(g.presentation?.reduceMotion||g.presentation?.safeMode)), // Dome Rush's Earth Golem: larger
       ); STD_HANDS_FREE = false; STD_SALVAGE = false; STD_BODY = "male";
+      if (!suited && !mech && golemOn(p, now)) drawPachyGolem(ctx, (p.x + .5) * s, (p.y + .82) * s - lift - seat, s, golemScale(p, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)), (p.echoGolemUntil - now) / (PACHY_ECHO.seconds * 1000), now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)); // its rocky plates and its time (pachy-render.ts)
       if (aerialK > 0 && p.facing !== "down") drawAerialArmsStd(ctx, p.x, p.y - (lift + seat) / s, s, p.facing, aerialK); // inside the lean
       if (rushLean) { ctx.restore(); if (cleaverRushLean(g)) drawCleaverRushBlade(ctx, g, s, lift); } // the blade carried low and trailing
       if (!suited && !mech) drawAerialRingsStd(ctx, g, (p.x + .5) * s, (p.y + .82) * s - lift - seat, s, now, 1); // Aerial Step: the near halves, over them
@@ -3580,7 +3582,7 @@ export function render(ctx, g, w, h, now) {
   const frontShelter=objectLists.shelters.find(o=>!worldCapture&&!roofUnder&&renderableObject(g,o)&&seenInDungeon(g,o)&&p.x>=o.bounds.x-.6&&p.x<=o.bounds.x+o.bounds.w-.4&&p.y>=o.bounds.y+o.bounds.h-1&&p.y<=o.bounds.y+o.bounds.h+1.35);
   // roof report 2026-11-04: not from a roof's front row (it drew a second Wayfarer on the ground below), and at the ground's own height
   const shelterRaise=frontShelter?groundLift(p.x,p.y):0;if(shelterRaise){ctx.save();ctx.translate(0,-shelterRaise*s)}
-  if(frontShelter)actor(ctx,p.x,p.y-lift/s,s,"player",p.facing,Math.floor(p.walkPhase||0),now<(p.attackUntil||0)?"attack":"walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1);
+  if(frontShelter)actor(ctx,p.x,p.y-lift/s,s,"player",p.facing,Math.floor(p.walkPhase||0),now<(p.attackUntil||0)?"attack":"walk",false,(g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1)*golemScale(p,now,!!(g.presentation?.reduceMotion||g.presentation?.safeMode)));
   if(shelterRaise)ctx.restore();
   if(roofUnder){ // roof report 2026-11-04: on a roof, the Wayfarer stands over it, at the roof's height (the one draw), and the roof's lethal edges near them are marked over it
     if(roofDeckDrawn)drawRoofDeckCue(ctx,g,mw,s); else drawTraversalCues(ctx,g.map,mw,p,s,now,null,(x,y)=>g.map.tiles[y*mw+x]?.structure==="buildingRoof");

@@ -77,11 +77,15 @@ export const SPINO_ECHO = { delay: .32, share: .5, stunShare: 1 };
 // It stays where it was planted. When it ends, a new one can be planted `cooldown` ms later. Runtime only (game.earthResolve): a reload
 // drops the sigil; only its cooldown clock (player.echoResolveReadyAt) resumes, as the other Echo clocks do.
 export const APATO_ECHO = { still: .25, radius: 1.6, maxRadius: 4, grow: .2, seconds: 4, extend: .6, cap: 10, guard: .15, lifesteal: .08, cooldown: 4000 }; // Tim (2026-11-25): guard .25 → .15, lifesteal .1 → .08; the heal stays its own, outside the shared heal-on-hit cap
-// Dome Rush (the Pachycephalosaurus's Echo; Tim, 2026-11-27). After a dodge, the first blow you land within `window` ms is a dome
-// butt: it deals `share` more of that blow's damage, staggers the foe `stagger` s (bosses and elites `bossStagger` of it, as every
-// Wayfarer stagger; the stagger governor still holds) and knocks an ordinary foe back `push` tiles. Then none for `cooldown` ms.
-// Runtime only: its clocks are on the player (echoDomeUntil, echoDomeReadyAt), as the other Echo clocks are.
-export const PACHY_ECHO = { window: 1100, share: .45, stagger: .5, bossStagger: .3, push: 1.1, cooldown: 2500 };
+// Dome Rush (the Pachycephalosaurus's Echo; Tim, 2026-11-27, redesigned the same day: "after a dodge, if you then connect three hits,
+// you transform into an earth golem"). A dodge arms it for `window` ms; landing `hits` blows inside that window (each attack counts
+// once: blows landing within `perAttackMs` of the last counted one, as a swing's several foes or a tool's sub-hits do, are the same
+// attack; proc damage is no blow, as it never calls landHit) turns the Wayfarer into an EARTH GOLEM for `seconds` s: drawn `scale`
+// larger in rocky plates, every blow she lands deals `damage` more (straight to health, so it is no hit and starts no proc), and she
+// takes `guard` less damage. A new dodge re-arms it (the count starts again). It cannot arm while the golem lasts, nor until
+// `cooldown` ms after the golem ends. Its clocks (echoGolemArmUntil, echoGolemUntil, echoGolemReadyAt) are player clocks (paused
+// with the game, saved as time remaining for exact resume); the count and its last blow are saved beside them (game.ts).
+export const PACHY_ECHO = { window: 3000, hits: 3, perAttackMs: 200, seconds: 3, damage: .25, guard: .3, scale: 1.25, cooldown: 10000 };
 export const ECHOES = {
   thunderhorn: { name: "Thunderhorn's Charge", cost: 2, trigger: "dodge", module: "ramCharge", text: "Your dodge becomes a charge: foes you pass through are trampled and staggered." },
   riftLynx: { name: "Lynx Pounce", cost: 2, trigger: "dodge", module: "blinkStrike", text: "Your first strike within 1.2 s of a dodge deals +60%." },
@@ -134,7 +138,7 @@ export const ECHOES = {
   earthApato: { name: "Earth Resolve", cost: 2, trigger: "still", module: "apatoSeeds",
     text: `Attack while standing still and a root sigil grows under you. Standing inside it you take ${Math.round(APATO_ECHO.guard * 100)}% less damage and heal ${Math.round(APATO_ECHO.lifesteal * 100)}% of the damage you deal; each hit you land from inside grows it and makes it last longer (at most ${APATO_ECHO.cap} s). It stays where it grew, and returns ${APATO_ECHO.cooldown / 1000} s after it fades.` },
   pachy: { name: "Dome Rush", cost: 2, trigger: "dodge", module: "pachyDomeRam",
-    text: `After a dodge, your first blow within ${PACHY_ECHO.window / 1000} s is a dome butt: +${Math.round(PACHY_ECHO.share * 100)}% damage, a stagger and a knock back (then a ${PACHY_ECHO.cooldown / 1000} s rest).` },
+    text: `After a dodge, land ${PACHY_ECHO.hits} blows within ${PACHY_ECHO.window / 1000} s and you become an Earth Golem for ${PACHY_ECHO.seconds} s: +${Math.round(PACHY_ECHO.damage * 100)}% damage dealt and ${Math.round(PACHY_ECHO.guard * 100)}% less damage taken (then a ${PACHY_ECHO.cooldown / 1000} s rest).` },
   spinoRex: { name: "Spinosaur's Echo", cost: 2, trigger: "plunge", module: "spinoLeapSlam",
     text: `Your jump-attack slams echo: an afterimage of you slams the same ground ${SPINO_ECHO.delay} s later for ${Math.round(SPINO_ECHO.share * 100)}% of the damage.` },
 };
@@ -356,14 +360,14 @@ function emberBurst(game, now, at, damage) {
 }
 
 export function echoEvent(game, event, now, data = {}) {
-  if (event === "hit") { domeRush(game, now, data.enemy, data.damage); return void echoHit(game, now, data.enemy, data.damage); }
+  if (event === "hit") { domeRushHit(game, now, data.enemy, data.damage); return void echoHit(game, now, data.enemy, data.damage); }
   if (event === "spell") game.passiveCast?.(now); // hit-cast-passives.ts: Arcane Edge, Glyph Mine, Casting Wind, Echoing Cast (with or without Echoes set)
   const save = game.save, p = game.player, eq = activeEchoes(save), world = game.glyphWorld(now), dmg = echoDamage(save), me = centre(p);
   if (!eq.length) return;
   if (event === "dodge") {
     if (eq.includes("thunderhorn")) p.echoCharge = { until: p.dodgeUntil || now + 300, hit: {} };
     if (eq.includes("riftLynx")) p.echoPounceUntil = now + 1200;
-    if (eq.includes("pachy") && now >= (p.echoDomeReadyAt || 0)) p.echoDomeUntil = now + PACHY_ECHO.window; // Dome Rush
+    if (eq.includes("pachy")) golemArm(p, now); // Dome Rush: arms the Earth Golem
     if (eq.includes("briarStag")) { (game.echoPatches ||= []).push({ kind: "web", x: me.x, y: me.y, radius: 1.6, until: now + 3000, slow: .5 }); const foe = nearest(game, me.x, me.y, 3)[0]; if (foe) { world.arc(p, foe, "#9cff6a"); world.damage(foe, Math.round(dmg * .6)); } } // release 705
     if (eq.includes("pallidCrawler")) p.stamina = Math.min(save.maxStamina, p.stamina + 5);
     if (eq.includes("veilSpinner")) (game.echoPatches ||= []).push({ kind: "web", x: me.x, y: me.y, radius: 1.4, until: now + 3000, slow: .5 });
@@ -449,18 +453,39 @@ export function tickEchoes(game, dt, now, moving) {
   game.echoPatches = keep;
 }
 // Lynx Pounce: consumed by the next melee strike.
-// Dome Rush (PACHY_ECHO): the first blow after a dodge, inside its window, butts. True when it did.
-export function domeRush(game, now, enemy, damage) {
+// ---------------------------------------------------------------- Dome Rush (PACHY_ECHO): the Earth Golem
+export const golemOn = (p, now) => !!p && now < (Number(p.echoGolemUntil) || 0);
+// The golem's share of the Wayfarer's size (draw-time only: both views scale the figure by it), 1 when it is not on; it swells in and
+// out over `ease` ms (none with reduced motion).
+export function golemScale(p, now, reduce = false) { if (!golemOn(p, now)) return 1; const D = PACHY_ECHO, start = p.echoGolemUntil - D.seconds * 1000, k = reduce ? 1 : Math.min(1, (now - start) / 180, (p.echoGolemUntil - now) / 180); return 1 + (D.scale - 1) * Math.max(0, k); }
+// The damage-taken scale while the golem lasts (game.ts hurtScale multiplies it in).
+export const golemGuard = (p, now) => golemOn(p, now) ? 1 - PACHY_ECHO.guard : 1;
+// A dodge: arms it (the count from nought), unless the golem is on or resting.
+export function golemArm(p, now) {
+  if (!p || golemOn(p, now) || now < (Number(p.echoGolemReadyAt) || 0)) return false;
+  p.echoGolemArmUntil = now + PACHY_ECHO.window; p.echoGolemHits = 0; p.echoGolemHitAt = 0; return true;
+}
+// A blow the Wayfarer landed (game.ts landHit, through echoEvent "hit"). While the golem lasts: its extra damage, straight to health.
+// While armed: counts the attack (once per attack) and, at the last of `hits`, wakes the golem. Returns "bonus", "count", "golem" or null.
+export function domeRushHit(game, now, enemy, damage) {
   const p = game?.player, D = PACHY_ECHO;
-  if (!p || !enemy || enemy.dead || !(damage > 0) || !(now < (p.echoDomeUntil || 0)) || !hasEcho(game.save, "pachy")) return false;
-  p.echoDomeUntil = 0; p.echoDomeReadyAt = now + D.cooldown;
-  const extra = Math.max(1, Math.round(damage * D.share * (game.vulnScale?.(enemy, now) ?? 1))), before = Math.max(0, enemy.hp), big = !!(enemy.boss || enemy.eliteId || enemy.elite);
-  enemy.hp -= extra; enemy.hitFlash = .18; enemy.hitStun = Math.max(enemy.hitStun || 0, big ? D.stagger * D.bossStagger : D.stagger);
-  game.astralPlayerHit?.(enemy, Math.max(0, before - Math.max(0, enemy.hp)));
-  if (!big) { const c = centre(enemy), me = centre(p), dx = c.x - me.x, dy = c.y - me.y, m = Math.hypot(dx, dy) || 1; game.glyphWorld?.(now)?.nudge?.(enemy, dx / m * D.push, dy / m * D.push); }
-  (game.glyphVisuals ||= []).push({ kind: "burst", x: enemy.x + .5, y: enemy.y + .45, radius: .8, life: .3, max: .3 });
-  if (enemy.hp <= 0 && !enemy.dead) { enemy.dead = true; game.defeatEnemy?.(enemy); }
-  return true;
+  if (!p || !enemy || !(damage > 0) || !hasEcho(game.save, "pachy")) return null;
+  if (golemOn(p, now)) {
+    if (enemy.dead || !(enemy.hp > 0)) return null;
+    const extra = Math.max(1, Math.round(damage * D.damage * (game.vulnScale?.(enemy, now) ?? 1))), before = Math.max(0, enemy.hp);
+    enemy.hp -= extra; enemy.hitFlash = .18; game.astralPlayerHit?.(enemy, Math.max(0, before - Math.max(0, enemy.hp)));
+    if (enemy.hp <= 0 && !enemy.dead) { enemy.dead = true; game.defeatEnemy?.(enemy); }
+    return "bonus";
+  }
+  if (!(now < (Number(p.echoGolemArmUntil) || 0))) return null;
+  const last = Number(p.echoGolemHitAt) || 0;
+  if ((p.echoGolemHits || 0) > 0 && now - last < D.perAttackMs) return null; // the same attack
+  p.echoGolemHits = (p.echoGolemHits || 0) + 1; p.echoGolemHitAt = now;
+  if (p.echoGolemHits < D.hits) return "count";
+  p.echoGolemArmUntil = 0; p.echoGolemHits = 0; p.echoGolemHitAt = 0; p.echoGolemUntil = now + D.seconds * 1000; p.echoGolemReadyAt = p.echoGolemUntil + D.cooldown;
+  const c = centre(p); (game.glyphVisuals ||= []).push({ kind: "burst", x: c.x, y: c.y, radius: 1.2, life: .4, max: .4 });
+  game.message = `Dome Rush: Earth Golem (${D.seconds} s).`;
+  return "golem";
 }
 export function pounceBonus(game, now) {
   if (!hasEcho(game.save, "riftLynx") || now >= (game.player.echoPounceUntil || 0)) return 1;
