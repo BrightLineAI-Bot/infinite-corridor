@@ -23,6 +23,9 @@ export const DIRECTOR = {
   dwell: [120, 240], bossLinger: 5,
   // Sea bosses keep no aggro flag (sea-creatures.ts runs their hunt): within seaRange of the Wayfarer they count as fought.
   seaBosses: ["tyrantMosasaur"], seaRange: 14,
+  // Big beasts with no roaming world beast that still bring their own theme when fought (Tim, 2026-11-27: the Pachycephalosaurus of a
+  // big room or an ambush), by kind; never while it lies disguised.
+  themedBeasts: ["pachy"],
   cooldowns: { region: 90, beast: 45, rest: 20, departure: Infinity },
 };
 // Chapters of the journey, from progress the save already holds. The first matching row, from the top, wins.
@@ -69,6 +72,7 @@ export const BOSS_THEMES = {
   morphingBlob: "shapeless", mountainTurtle: "mountainWalks", nanobotKnight: "clockworkOath", psychicCrystal: "glassMind",
   tremorWorm: "underTheFloor", voidWalker: "walkerBetween", wildStego: "fernsAndPlates",
   spinoRex: "riverStalker", "spinoRex:fossil": "bonesHunt", earthApato: "rootedColossus", /* the Earth Apatosaurus (Tim, 2026-11-18) */
+  pachy: "skullDrum", /* the Pachycephalosaurus (Tim, 2026-11-27), of a big room or an ambush (DIRECTOR.themedBeasts) */
   astralWorm: "coilOfStars", questingBeast: "quarryBays", stalker: "eyesBehind", listener: "whatListens",
   gloomvast: "gloomRises", gateRevenant: "revenantsReturn", tyrantMosasaur: "deepTide",
 };
@@ -128,7 +132,7 @@ export function sampleMusic(game, memo = {}) {
     if (!e || e.dead || !(e.hp > 0) || e.ambient) continue;
     const d = Math.hypot((e.x || 0) - (p.x || 0), (e.y || 0) - (p.y || 0));
     // Also the Gate Revenants' hunt (gatePredator) and the Ashen Moth's chrysalis, whose quiet theme waits for the hatching.
-    const bossLike = e.boss || e.worldBeast || e.questingBeast || e.gatePredator || e.mothChrysalis;
+    const bossLike = e.boss || e.worldBeast || e.questingBeast || e.gatePredator || e.mothChrysalis || (D.themedBeasts.includes(e.kind) && (e.pachyRoom || e.pachyAmbush) && !e.pachyDisguised);
     const fought = e.aggro || e.pentArenaAwake || (D.seaBosses.includes(e.seaKind) && d < D.seaRange);
     if (bossLike && fought && d < D.bossRange && d < bossD) { boss = e; bossD = d; }
     if (e.aggro && d < D.engagedRange) { engaged++; foeHp += Number(e.hp) || 0; }
@@ -139,7 +143,7 @@ export function sampleMusic(game, memo = {}) {
   let bossDefeated = false;
   const was = memo.boss;
   // A duellist felled by the other beast (its kill pays nothing: noRewards) is no victory of the Wayfarer's either.
-  if (was && was !== boss && (was.dead || !(was.hp > 0)) && (game?.enemies || []).includes(was) && !was.mothChrysalis && !was.gatePredator && !(DUEL.kinds.includes(was.kind) && was.noRewards)) bossDefeated = true;
+  if (was && was !== boss && (was.dead || !(was.hp > 0)) && (game?.enemies || []).includes(was) && !was.mothChrysalis && !was.gatePredator && !((DUEL.kinds.includes(was.kind) || DUEL.later.includes(was.kind)) && was.noRewards)) bossDefeated = true;
   memo.boss = boss;
   // The dino duel: the pair (kept in memo for battle-sfx.ts), and a fall of one of the last pair: by the Wayfarer, or by a beast.
   const pair = sampleDuel(game), last = memo.duelPair;
