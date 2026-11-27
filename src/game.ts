@@ -2425,6 +2425,7 @@ export function updateProjectiles(
           (!mountedPeerId || e.id === mountedPeerId) &&
           !e.untargetable &&
           (p.hostile || !unharmablePerson(e)) && // Tim (2026-11-20): no shot of the Wayfarer's (tools, spells, reflects, mounts, companions) touches a person
+          (p.hostile || !e.farBelow || strikesBelow(p)) && // VERTICAL_SEPARATION: the Wayfarer's shots pass over a creature far below, but a full Carbine charge
           (!p.triceratopsHorn || triceratopsAttackTarget(e)) &&
           !p.hits?.[e.id] &&
           !(p.burst && (p.burst.hits[e.id] || 0) >= p.burst.cap) &&
@@ -2548,7 +2549,7 @@ export function daggerCutHits(player, enemies, map, width, profile, direction, c
 export function pickMeleeTarget(player, enemies, map, width, reach, core = reach) {
   const out = [];
   for (const e of enemies) {
-    if (!autoAimable(e)) continue; // release 419
+    if (!autoAimable(e) || e.farBelow) continue; // release 419; VERTICAL_SEPARATION: never a creature far below
     const x = e.x + 0.5 - (player.x + 0.5),
       y = e.y + 0.45 - (player.y + 0.45),
       distance = Math.hypot(x, y);
@@ -2584,9 +2585,9 @@ export function pickMeleeTarget(player, enemies, map, width, reach, core = reach
   return out[0] ? { e: out[0].e, d: out[0].d } : null;
 }
 export function selectMeleeAim(player, enemies, map, width, reach, core = reach) { return pickMeleeTarget(player, enemies, map, width, reach, core)?.d || null; }
-export function selectRangedAim(player, enemies, map, width, range = Infinity) {
+export function selectRangedAim(player, enemies, map, width, range = Infinity, reachBelow = false) { // reachBelow: the Carbine (VERTICAL_SEPARATION)
   return enemies
-    .filter(autoAimable) // release 419 (was: not dead, not ambient)
+    .filter((e) => autoAimable(e) && (reachBelow || !e.farBelow)) // release 419 (was: not dead, not ambient)
     .map((e) => ({
       e,
       distance: Math.max(0, Math.hypot(e.x + 0.5 - (player.x + 0.5), e.y + 0.45 - (player.y + 0.45)) - autoAimBody(e)),
@@ -2656,7 +2657,7 @@ export function updateEffects(effects, enemies, dt, onDefeat = () => {}, damageF
       for (const e of enemies) {
         if (fx.only && !fx.only.includes(e)) continue; // great-sweep.ts: a swing's blow lands only on the foes its blade crossed
         if (
-          e.dead || e.untargetable || unharmablePerson(e) /* Tim (2026-11-20): no pulse, blast, punch or field of the Wayfarer's touches a person */ ||
+          e.dead || e.untargetable || unharmablePerson(e) /* Tim (2026-11-20): no pulse, blast, punch or field of the Wayfarer's touches a person */ || e.farBelow /* VERTICAL_SEPARATION */ ||
           (fx.clap ? !hammerClapCatches(fx, e.x + 0.5, e.y + 0.45, Math.max(0, enemyBodyRadius(e) - 0.38)) || (admits && !admits(fx, e)) /* the awakened Hammerfall's clap: the rectangle between its closing lines (brawler-spells.ts HAMMER_CLAP) */ :
           Math.hypot(e.x + 0.5 - fx.x, e.y + 0.45 - fx.y) >
             fx.radius + Math.max(0, enemyBodyRadius(e) - 0.38))
@@ -2912,6 +2913,30 @@ export function bodyBlowReaches(map, width, a, b, aLevel = null, bLevel = null) 
   const la = aLevel ?? elevationAt(map, width, a.x, a.y), lb = bLevel ?? elevationAt(map, width, b.x, b.y);
   return Math.abs(la - lb) < ELEVATION_REACH.levels || fliesHigh(a) || fliesHigh(b);
 }
+// VERTICAL_SEPARATION (Tim, 2026-11-26, on a great tree's crown: "creatures on the ground floor can still attack him and even jump up
+// to him"): the Wayfarer `levels` or more above a creature that does not fly (fliesHigh) are in separate spaces. Game.markFarBelow
+// sets `e.farBelow` on each creature once a frame (only written when it changes). A creature far below:
+// - loses interest: it does not notice the Wayfarer, any attack under way ends (a leap, a teleport, a windup) and it wanders, waits
+//   or goes home (updateEnemyAI, monster-pack.ts updatePackMonster, elite and affix moves); it starts no shot either. A shot already
+//   in flight resolves as before. When the Wayfarer comes back down it notices them again in the ordinary way.
+// - is not picked by the Wayfarer's swings, spells or tools (pickMeleeTarget, selectRangedAim, the lock: Game.reachLock), and the
+//   Wayfarer's shots fly over it and blasts, pulses and fields miss it (updateProjectiles, updateEffects),
+// - except with `below.weapon` (the Carbine) equipped: auto aim and the lock may take any creature in reach, as the Carbine does,
+//   and only a shot that passes through terrain (`below.shot` "pierce": tool-forms.ts shotPiercesTerrain, the Carbine's full
+//   charge) strikes one far below. A tap, a part charge and every other weapon pass over.
+// Fliers still reach the crown, and are reached. The threshold is above any ordinary landscape height (0-5), roof deck (2-3) or
+// one-level ledge, ramp or stair, so those fights are unchanged; a great tree's crown (and its upper branches) are well over it.
+export const VERTICAL_SEPARATION = { // not frozen at the top, as ELEVATION_REACH: a test lifts the rule to show what it stops
+  levels: 6, // the Wayfarer this many levels or more above a creature's ground: separate spaces
+  below: Object.freeze({ weapon: "carbine", shot: "pierce" }), // the one weapon that still targets below, and the shot that strikes there
+  messages: Object.freeze({ lock: "Too far below to take aim at from up here." }),
+};
+export function farBelow(map, width, foe, playerLevel) {
+  if (!map?.landscape || !foe || foe.dead || fliesHigh(foe) || !Number.isFinite(playerLevel)) return false;
+  return playerLevel - (Number(elevationAt(map, width, foe.x, foe.y)) || 0) >= VERTICAL_SEPARATION.levels;
+}
+// Does a shot of the Wayfarer's strike a creature far below? (VERTICAL_SEPARATION.below.shot)
+export function strikesBelow(shot) { return VERTICAL_SEPARATION.below.shot === "pierce" && shotPiercesTerrain(shot); }
 export function hasLineOfSight(enemy, player, map, width, projectile=false, allowMarineTerrain=false) {
   const dx = player.x - enemy.x,
     dy = player.y - enemy.y,
@@ -3083,10 +3108,11 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   e.recoil = Math.max(0, (e.recoil || 0) - dt);
   e.hitStun = Math.max(0, (e.hitStun || 0) - dt);
   staggerGovernor(e, dt); // release 377: bosses and elites cannot be stagger-locked
+  if (e.farBelow) { e.aggro = false; e.telegraph = 0; e.windupStagger = null; e.meleePhase = null; e.threatRange = null; } // VERTICAL_SEPARATION: the Wayfarer far above is out of its world: no notice, no windup, no shot
   const B = squad ? behaviourProfile(e) : null, b = B ? behaviourState(e, squad) : null;
   if (B) {
     squad.w = null; squad.disp = displace;
-    if (!e.aggro && toPlayer < 6 && hasLineOfSight(e, player, map, width)) e.aggro = true; // it sees the Wayfarer (review 975: in sight, not through a wall): the notice beat comes first (behaviourGate)
+    if (!e.aggro && !e.farBelow && toPlayer < 6 && hasLineOfSight(e, player, map, width)) e.aggro = true; // it sees the Wayfarer (review 975: in sight, not through a wall): the notice beat comes first (behaviourGate)
     if (behaviourGate(e, b, B, squad, legacyDrop)) { if (!(e.telegraph > 0)) { e.meleePhase = null; e.threatRange = null; } ai.mode = e.aggro ? "alert" : ai.mode; return false; }
     if (e.aggro && behaviourReact(e, b, B, squad, toPlayer, e.telegraph > 0, false, legacyDrop)) { ai.mode = "react"; return false; }
   }
@@ -3127,7 +3153,7 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   let tx,
     ty,
     speed = 0.42;
-  if (e.aggro || !B && toPlayer < 6) { // review 975: an ordinary creature (B) notices the Wayfarer only in sight, above
+  if (!e.farBelow && (e.aggro || !B && toPlayer < 6)) { // review 975: an ordinary creature (B) notices the Wayfarer only in sight, above
     e.aggro=true;
     ai.mode = "chase";
     tx = player.x - e.x;
@@ -3166,7 +3192,7 @@ export function updateEnemyAI(e, player, map, width, dt, now, sanctuary=null,onR
   const moves=B&&B.moves&&e.range<2.5&&e.meleePatterns?.length?B.moves:e.meleePatterns,patternStartRange=e.range<2.5&&moves?.length?Math.max(...moves.map(id=>MELEE_PATTERNS[id]?.range||0)):0;
   if (B && b.comboLeft > 0 && !(e.cooldown > 0) && !(toPlayer <= patternStartRange + enemyBodyRadius(e) + .6 && hasLineOfSight(e, player, map, width))) { b.comboLeft = 0; afterBlow(e, b, B); } // out of reach: the chain ends
   const spaced=!!(B&&B.spacing&&e.range<2.5&&moves?.length&&!(b.comboLeft>0)),nextBlow=spaced&&MELEE_PATTERNS[moves[(e.meleePatternIndex||0)%moves.length]]; // review 975: a creature on its ring winds up only once its next blow can land (BEHAVIOUR.spacing.reach), not from the ring's edge
-  const inReach=(nextBlow?toPlayer<=legacyBlowReach(e,nextBlow)*BEHAVIOUR.spacing.reach:(attackInRange(e, player)||toPlayer<=patternStartRange+enemyBodyRadius(e))) && e.cooldown <= 0 && hasLineOfSight(e, player, map, width, e.range>=2.5&&!e.instantStrike);
+  const inReach=!e.farBelow&&(nextBlow?toPlayer<=legacyBlowReach(e,nextBlow)*BEHAVIOUR.spacing.reach:(attackInRange(e, player)||toPlayer<=patternStartRange+enemyBodyRadius(e))) && e.cooldown <= 0 && hasLineOfSight(e, player, map, width, e.range>=2.5&&!e.instantStrike);
   if (B && !inReach && B.spacing && e.range < 2.5 && ai.mode === "circle" && !(e.cooldown > 0) && !(b.press > 0) && !(b.rest > 0) && !(b.retreat > 0) && squadRequest(squad, e, b, B.pool)) b.press = B.press; // its turn: close in
   if (B && inReach && !(b.comboLeft > 0) && (b.rest > 0 || b.retreat > 0 || !(b.press > 0 && b.pool === (e.range >= 2.5 && !e.instantStrike ? "ranged" : B.pool)) && !squadRequest(squad, e, b, e.range >= 2.5 && !e.instantStrike ? "ranged" : B.pool))) return false; // no token: it waits
   if (
@@ -8253,7 +8279,7 @@ export class Game {
     if (!persistentMount(m) || !(this.player.hp > 0) || !(now < this.jumpUntil)) return false;
     this.triceratopsJump = { mount: m.id, start: this.jumpStart, until: this.jumpUntil };
     if (m.variant === "silly") {
-      const C = TRICERATOPS_ATTACKS.drill, p = this.player, locked = this.lockedTarget();
+      const C = TRICERATOPS_ATTACKS.drill, p = this.player, locked = this.reachLock();
       let target = this.enemies.includes(locked) && this.triceratopsDrillTarget(locked, C.acquire) ? locked : null, distance = C.acquire;
       if (!target) for (const e of this.enemies) { const d = Math.hypot(e.x - p.x, e.y - p.y); if (d <= distance && this.triceratopsDrillTarget(e, C.acquire)) { if (d === distance && target && String(e.id) >= String(target.id)) continue; target = e; distance = d; } }
       const aim = projectileDirection(target ? target.x - p.x : this.save.lastAim?.x || 0, target ? target.y - p.y : this.save.lastAim?.y || 0, p.facing);
@@ -10156,7 +10182,7 @@ export class Game {
   }
   // The awakened recall's target (quandrix-staff.ts QUANDRIX.recall): the lock, else the foe auto aim picks within `reach`.
   quandrixTarget() {
-    const t = this.lockedTarget(); if (t && !t.dead && !t.untargetable && !t.hidden) return t;
+    const t = this.reachLock(); if (t && !t.dead && !t.untargetable && !t.hidden) return t;
     return pickMeleeTarget(this.player, this.enemies, this.map, mapWidth(this.map, this.area), QUANDRIX.recall.reach * (1 + characterStats(this.save).attackReach))?.e || null;
   }
   // One blow of a hand, a slam tick or a burst: magic, carrying the weapon's glyphs, through the Wayfarer's damage scale.
@@ -10203,7 +10229,7 @@ export class Game {
   // Lava Slash: a dash toward the lock (else the nearest foe within `reach`), stopping `stop` short, in quarter-tile steps that
   // stop at walls and lethal ground; straight along the aim with no foe. Returns the heading.
   artDash(now, reach, stop) {
-    const p = this.player, w = this.glyphWorld(now), t = this.lockedTarget(), locked = t && !t.dead && !t.untargetable && !t.hidden && Math.hypot(t.x - p.x, t.y - p.y) <= reach + 1 ? t : null;
+    const p = this.player, w = this.glyphWorld(now), t = this.reachLock(), locked = t && !t.dead && !t.untargetable && !t.hidden && Math.hypot(t.x - p.x, t.y - p.y) <= reach + 1 ? t : null;
     const foe = locked || pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), reach)?.e;
     let d = null, dist = reach;
     if (foe) { d = projectileDirection(foe.x - p.x, foe.y - p.y, p.facing); dist = Math.max(0, Math.hypot(foe.x - p.x, foe.y - p.y) - stop); this.aimMark = { id: foe.id, until: now + AIM_MARK.ms }; }
@@ -10252,9 +10278,9 @@ export class Game {
   }
   // Its foe: the lock, else the nearest within `range` (no allocation).
   cycloneTarget() {
-    const p = this.player, t = this.lockedTarget(); if (t && autoAimable(t)) return t;
+    const p = this.player, t = this.reachLock(); if (t && autoAimable(t)) return t;
     let best = null, bd = Infinity;
-    for (const e of this.enemies) { if (!autoAimable(e)) continue; const d = Math.hypot(e.x - p.x, e.y - p.y) - Math.max(0, enemyBodyRadius(e) - .38); if (d <= CYCLONE_HEEL.range && d < bd) { bd = d; best = e; } }
+    for (const e of this.enemies) { if (!autoAimable(e) || e.farBelow) continue; /* VERTICAL_SEPARATION */ const d = Math.hypot(e.x - p.x, e.y - p.y) - Math.max(0, enemyBodyRadius(e) - .38); if (d <= CYCLONE_HEEL.range && d < bd) { bd = d; best = e; } }
     return best;
   }
   // The Shadow Boxing blink (Tim, 2026-11-15: "a true teleport"), by Rift Step's rules (constellation.ts riftStep): along the line
@@ -10506,7 +10532,7 @@ export class Game {
     { const aim = this.lockedDirection() || this.save.lastAim, m = aim ? Math.hypot(aim.x, aim.y) : 0; if (m > 1e-3) { c.dir.x = aim.x / m; c.dir.y = aim.y / m; } } // the muzzle follows the lock, else the aim
     if (!this.cloneCarbineEligible(now)) c.clone = null; // CLONE_CARBINE: the clone ended (or was stepped into): its charge is gone
     if (held) { const was = c.held; c.held = Math.min(c.held + (c.held < C.charge.grace ? dt : dt / this.chargeQuicken(C.charge.full - C.charge.grace)), C.charge.full + C.charge.grace); /* Gathered Breath: past the grace */ if (this.cloneCarbineEligible(now)) c.clone = Math.min(c.held, (c.clone ?? 0) + (c.held - was)); /* the clone charges with her, from when it stood out */ if (attackVisualDeadline(this.player, normalizeAttackVisual(this.player.attackVisual)) - now < C.charge.restampMs) this.carbinePose(now, c.dir); return; } // past full adds nothing: the cap
-    K.charge = null; const w = mapWidth(this.map, this.area), auto = this.lockedDirection() || selectRangedAim(this.player, this.enemies, this.map, w, C.range * (1 + characterStats(this.save).attackReach));
+    K.charge = null; const w = mapWidth(this.map, this.area), auto = this.lockedDirection() || selectRangedAim(this.player, this.enemies, this.map, w, C.range * (1 + characterStats(this.save).attackReach), true); // VERTICAL_SEPARATION: the Carbine takes aim far below
     this.carbineFire(now, auto ? projectileDirection(auto.x, auto.y, this.player.facing) : { x: c.dir.x, y: c.dir.y }, c.held, c.clone);
   }
   // Spell slots A and B (release 115): each button casts whatever its slot holds. Release 309: or builds, or uses the item.
@@ -10629,7 +10655,7 @@ export class Game {
     // enemy then tap"): a target you locked first; then auto target, the foe nearest you (and ahead) within
     // AUTO_AIM.spellScale × the spell's range; then a spot you tapped just now (while its reticle shows). With none of them,
     // the spell lands where you stand, as before.
-    { const now = this.lastUpdateNow || 0, t = this.lockedTarget(); let foe = t && !t.untargetable && !t.hidden ? t : null;
+    { const now = this.lastUpdateNow || 0, t = this.reachLock(); let foe = t && !t.untargetable && !t.hidden ? t : null;
       if (this.reticle && !(this.reticle.life > 0)) this.save.pendingAim = null; // the tap's reticle has faded: the aim is stale
       if (!foe) foe = pickMeleeTarget(this.player, this.enemies, this.map, mapWidth(this.map, this.area), spell.maxRange * AUTO_AIM.spellScale)?.e || null;
       if (foe) { this.save.pendingAim = { x: foe.x + .5, y: foe.y + .45 }; this.aimMark = { id: foe.id, until: now + AIM_MARK.ms }; } }
@@ -10675,7 +10701,7 @@ export class Game {
   // you face; each bursts (the projectile detonation) where it lands or on the first foe it meets.
   castFireBurst(spell, cds, key, now = this.lastUpdateNow || 0) {
     if ((cds[key] || 0) > 0) { this.message = `${spell.name} recovers in ${Math.ceil(cds[key])}s.`; return false; }
-    const p = this.player, cx = p.x + .5, cy = p.y + .45, t = this.lockedTarget(), foe = t && !t.untargetable && !t.hidden ? t : pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), spell.maxRange * AUTO_AIM.spellScale)?.e || null;
+    const p = this.player, cx = p.x + .5, cy = p.y + .45, t = this.reachLock(), foe = t && !t.untargetable && !t.hidden ? t : pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), spell.maxRange * AUTO_AIM.spellScale)?.e || null;
     const d = foe ? projectileDirection(foe.x + .5 - cx, foe.y + .45 - cy, p.facing) : projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing), glyphs = this.glyphLoadout("spell", spell.id), F = FIRE_BURST;
     if (foe) this.aimMark = { id: foe.id, until: now + AIM_MARK.ms };
     const damage = Math.max(1, Math.round(this.spellPower(spell) * glyphs.mods.damage * (1 + pairingMods(this.save).spellDamage) * (1 + armorGlyphBonus(this.save).spellDamage)));
@@ -10703,7 +10729,7 @@ export class Game {
     const o = this.orbit, spell = SPELLS["orbit-volley"]; if (!o || o.flight) return false;
     const held = (now - o.start) / 1000, L = orbitLaunch(held, timedOut), glyphs = this.glyphLoadout("spell", spell.id), p = this.player, cx = p.x + .5, cy = p.y + .45, cds = this.save.magicSkills.cooldowns;
     const power = this.spellPower(spell) * glyphs.mods.damage * (1 + pairingMods(this.save).spellDamage) * (1 + armorGlyphBonus(this.save).spellDamage);
-    const t = this.lockedTarget(), foe = t && !t.untargetable && !t.hidden ? t : pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), ORBIT.reach)?.e, d = foe ? projectileDirection(foe.x - p.x, foe.y - p.y, p.facing) : projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing);
+    const t = this.reachLock(), foe = t && !t.untargetable && !t.hidden ? t : pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), ORBIT.reach)?.e, d = foe ? projectileDirection(foe.x - p.x, foe.y - p.y, p.facing) : projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing);
     const at = foe ? { x: foe.x + .5, y: foe.y + .45 } : { x: cx + d.x * ORBIT.reach, y: cy + d.y * ORBIT.reach };
     if (foe) this.aimMark = { id: foe.id, until: now + AIM_MARK.ms };
     o.flight = { x: cx, y: cy, tx: at.x, ty: at.y, radius: L.radius, perfect: L.perfect, damage: Math.max(1, Math.round(power * L.share)), rr: !timedOut && (orbitPerfect(held) || orbitCharge(held) >= RAPID_RELOAD.orbitFill) ? chargedRelease(this) : 0 }; // Rapid Reload: a charged launch
@@ -10758,10 +10784,10 @@ export class Game {
   }
   // The dive's foe: the lock if it is in range, else the nearest foe within PLUNGE_DIVE.range (no allocation).
   plungeDiveTarget() {
-    const p = this.player, R = PLUNGE_DIVE.range, t = this.lockedTarget();
+    const p = this.player, R = PLUNGE_DIVE.range, t = this.reachLock();
     if (t && autoAimable(t) && Math.hypot(t.x - p.x, t.y - p.y) - Math.max(0, enemyBodyRadius(t) - .38) <= R) return t;
     let best = null, bd = Infinity;
-    for (const e of this.enemies) { if (!autoAimable(e)) continue; const d = Math.hypot(e.x - p.x, e.y - p.y) - Math.max(0, enemyBodyRadius(e) - .38); if (d <= R && d < bd) { bd = d; best = e; } }
+    for (const e of this.enemies) { if (!autoAimable(e) || e.farBelow) continue; /* VERTICAL_SEPARATION */ const d = Math.hypot(e.x - p.x, e.y - p.y) - Math.max(0, enemyBodyRadius(e) - .38); if (d <= R && d < bd) { bd = d; best = e; } }
     return best;
   }
   // Each frame before the move: the dive flies on toward its foe in quarter-tile steps through the collision mover (as Shadow
@@ -10827,7 +10853,7 @@ export class Game {
   shadowDashBegin(reach, now = this.lastUpdateNow || 0) {
     const B = BRAWLER["shadow-boxing"], p = this.player;
     if (now < (this.jumpUntil || 0) || this.fall || this.glide || this.droneLift) { this.shadowBoxStep(reach, now); return false; }
-    const t = this.lockedTarget(), foe = t && !t.untargetable && !t.hidden ? t : pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), reach + B.stick)?.e;
+    const t = this.reachLock(), foe = t && !t.untargetable && !t.hidden ? t : pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), reach + B.stick)?.e;
     if (!foe) return false;
     const gap = Math.hypot(foe.x - p.x, foe.y - p.y), stop = Math.max(.8, reach * .7);
     if (!(gap > reach * .9) || gap > reach + B.stick + 1) return false;
@@ -10901,7 +10927,7 @@ export class Game {
   artRushBegin(now, reach, stop, power) {
     const p = this.player, R = LAVA_RUSH;
     if (this.fall || this.glide || this.droneLift) return this.artDash(now, reach, stop);
-    const t = this.lockedTarget(), locked = t && !t.dead && !t.untargetable && !t.hidden && Math.hypot(t.x - p.x, t.y - p.y) <= reach + 1 ? t : null;
+    const t = this.reachLock(), locked = t && !t.dead && !t.untargetable && !t.hidden && Math.hypot(t.x - p.x, t.y - p.y) <= reach + 1 ? t : null;
     const foe = locked || pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), reach)?.e;
     let d, dist = reach, gap = 0;
     if (foe) { d = projectileDirection(foe.x - p.x, foe.y - p.y, p.facing); gap = Math.hypot(foe.x - p.x, foe.y - p.y); dist = Math.max(0, gap - stop); this.aimMark = { id: foe.id, until: now + AIM_MARK.ms }; }
@@ -10942,7 +10968,7 @@ export class Game {
     this.markDashAfter(q, "cleaver", now); refundArtCharge(this, q.art);
   }
   shadowBoxStep(reach, now = this.lastUpdateNow || 0) {
-    const B = BRAWLER["shadow-boxing"], p = this.player, w = this.glyphWorld(now), t = this.lockedTarget(), foe = t && !t.untargetable && !t.hidden ? t : pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), reach + B.stick)?.e;
+    const B = BRAWLER["shadow-boxing"], p = this.player, w = this.glyphWorld(now), t = this.reachLock(), foe = t && !t.untargetable && !t.hidden ? t : pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), reach + B.stick)?.e;
     if (!foe) return false;
     const gap = () => Math.hypot(foe.x - p.x, foe.y - p.y), stop = Math.max(.8, reach * .7);
     if (gap() <= reach * .9 || gap() > reach + B.stick + 1) return false;
@@ -10966,7 +10992,7 @@ export class Game {
   // Where a brawler spell goes: the swing's own aim (the lock, else auto aim within `reach`, else the way you face). Returns
   // { d: unit direction, foe }.
   brawlerAim(reach) {
-    const w = mapWidth(this.map, this.area), t = this.lockedTarget(), locked = t && !t.untargetable && !t.hidden ? t : null, pick = locked ? null : pickMeleeTarget(this.player, this.enemies, this.map, w, reach), foe = locked || pick?.e || null;
+    const w = mapWidth(this.map, this.area), t = this.reachLock(), locked = t && !t.untargetable && !t.hidden ? t : null, pick = locked ? null : pickMeleeTarget(this.player, this.enemies, this.map, w, reach), foe = locked || pick?.e || null;
     const d = foe ? projectileDirection(foe.x - this.player.x, foe.y - this.player.y, this.player.facing) : projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, this.player.facing);
     if (foe) this.aimMark = { id: foe.id, until: (this.lastUpdateNow || 0) + AIM_MARK.ms };
     return { d, foe };
@@ -12293,7 +12319,7 @@ export class Game {
     p.attackUntil = now + 200; stampAttackVisual(p, "mirage", 200, d); this.message = "Mirage of Blades!";
     return true;
   }
-  mirageFoe(range = MIRAGE.range) { const t = this.lockedTarget(), p = this.player; return t && !t.untargetable && !t.hidden && Math.hypot(t.x - p.x, t.y - p.y) <= range ? t : pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), range)?.e || null; }
+  mirageFoe(range = MIRAGE.range) { const t = this.reachLock(), p = this.player; return t && !t.untargetable && !t.hidden && Math.hypot(t.x - p.x, t.y - p.y) <= range ? t : pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), range)?.e || null; }
   // One frame of the mirage blades: out for `outFor` s, then home on the Wayfarer until caught or `back` s have passed.
   tickMirage(dt) {
     const M = MIRAGE, p = this.player, px = p.x + .5, py = p.y + .45;
@@ -12418,9 +12444,9 @@ export class Game {
     const F = IRON_FISTS, P = this.fistStepSpec(step), p = this.player, w = this.glyphWorld(now), reach = (P.dash || 0) + (P.chargeDash || 0) + 1, boxing = now < (this.boxingUntil || 0) ? BRAWLER["shadow-boxing"] : null;
     const logicalNow = now - (this.presentationPausedMs || 0), prior = recentHeroPresentation(p, logicalNow, p.x, p.y);
     const fistLead = 'right'; // Tim, 2026-11-13: right cross, left jab, right uppercut (the jab's hand is the other one)
-    let d = direction && Math.hypot(direction.x, direction.y) > .01 && !this.lockedTarget() ? projectileDirection(direction.x, direction.y, p.facing) : null, dist = P.dash || 0;
+    let d = direction && Math.hypot(direction.x, direction.y) > .01 && !this.reachLock() ? projectileDirection(direction.x, direction.y, p.facing) : null, dist = P.dash || 0;
     if (P.rush) { // release 491: the cross rushes to the targeted foe in range, else lands in place
-      const rush = P.rush + (boxing ? boxing.stick : 0), t = this.lockedTarget(), locked = t && !t.untargetable && !t.hidden && Math.hypot(t.x - p.x, t.y - p.y) <= rush + 1 ? t : null, foe = locked || pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), rush)?.e;
+      const rush = P.rush + (boxing ? boxing.stick : 0), t = this.reachLock(), locked = t && !t.untargetable && !t.hidden && Math.hypot(t.x - p.x, t.y - p.y) <= rush + 1 ? t : null, foe = locked || pickMeleeTarget(p, this.enemies, this.map, mapWidth(this.map, this.area), rush)?.e;
       if (foe) { d = projectileDirection(foe.x - p.x, foe.y - p.y, p.facing); dist = Math.max(0, Math.hypot(foe.x - p.x, foe.y - p.y) - P.stop); this.aimMark = { id: foe.id, until: now + AIM_MARK.ms }; }
       else d ||= projectileDirection(this.save.lastAim?.x || 0, this.save.lastAim?.y || 0, p.facing);
     } else { if (boxing && !d) this.shadowBoxStep(P.radius + .4, now); d ||= this.brawlerAim(reach).d; } // release 493: boxing carries the later steps to the foe
@@ -12581,13 +12607,23 @@ export class Game {
     // is left behind, or with lockTarget(null).
     if (!id) { this.targetId = null; if (!keepSeen && this.lockSeen) this.lockSeen.id = ""; this.message = "Target released."; return null; } // AIM_RESOLVE: a lock let go on purpose leaves no aim behind; one that hid (Close View, keepSeen) does
     const e = this.enemies.find((q) => q.id === id && !q.dead); if (!e) return null;
+    if (e.farBelow && !this.reachesBelow()) { this.message = VERTICAL_SEPARATION.messages.lock; return null; } // VERTICAL_SEPARATION: far below, only the Carbine takes aim
     const fresh = this.targetId !== id; this.targetId = id; if (fresh) this.message = `Targeting ${e.name || e.kind}.`; this.noteLockSeen(); return e;
   }
   lockedTarget() {
     if (!this.targetId) return null;
     const e = this.enemies.find((q) => q.id === this.targetId), p = this.player;
-    if (!e || e.dead || e.noRewards && e.merged || Math.hypot(e.x - p.x, e.y - p.y) > TARGET_LOCK.range) { this.targetId = null; return null; }
+    if (!e || e.dead || e.noRewards && e.merged || Math.hypot(e.x - p.x, e.y - p.y) > TARGET_LOCK.range || e.farBelow && !this.reachesBelow()) { this.targetId = null; return null; } // VERTICAL_SEPARATION: a lock far below holds only with the Carbine
     return e;
+  }
+  // VERTICAL_SEPARATION: the lock for anything but the Carbine (a swing, a spell, a skill): never a creature far below.
+  reachLock() { const t = this.lockedTarget(); return t && !t.farBelow ? t : null; }
+  // Is VERTICAL_SEPARATION.below.weapon (the Carbine) the ranged weapon equipped?
+  reachesBelow() { return !!rangedWeapon(this.save.equipment?.secondary)?.[VERTICAL_SEPARATION.below.weapon]; }
+  // VERTICAL_SEPARATION: once a frame, which creatures stand far below the Wayfarer (`e.farBelow`, written only when it changes).
+  markFarBelow() {
+    const map = this.map, w = mapWidth(map, this.area), level = map?.landscape && this.player ? this.playerLevel() : NaN;
+    for (const e of this.enemies) { const f = farBelow(map, w, e, level); if (f !== (e.farBelow === true)) e.farBelow = f; }
   }
   // Release 469: where a swing goes. Release 471 (Tim: "I like the lock targets... we can keep them the way it is... just
   // moving past targets, the auto lock... has been a little bit wonky"): a target you locked by tapping wins as far as it did
@@ -12595,7 +12631,7 @@ export class Game {
   // the nearest it can reach for. The foe chosen is marked briefly (aimMark) so you can see where the blow went.
   meleeAimAt(range, width) {
     const core = range + TARGET_LOCK.meleeSlack, now = this.lastUpdateNow || 0, mark = (e, d) => { if (e) this.aimMark = { id: e.id, until: now + AIM_MARK.ms }; return d; };
-    const locked = this.lockedDirection(range + TARGET_LOCK.meleeReach); if (locked) return mark(this.lockedTarget(), locked);
+    const locked = this.reachLock() && this.lockedDirection(range + TARGET_LOCK.meleeReach); if (locked) return mark(this.lockedTarget(), locked); // VERTICAL_SEPARATION: a swing never goes for a lock far below
     const pick = pickMeleeTarget(this.player, this.enemies, this.map, width, range + AUTO_AIM.meleeExtra, core);
     return pick ? mark(pick.e, pick.d) : null;
   }
@@ -12876,6 +12912,7 @@ export class Game {
     this._consumeVisualAcceptedHp = null;
     this.markWalked(); // DIG_GATES: the floor walked in an interior
     this.riderDown(); this.tickMount(dt); // release 748 (riderDown: never carry a rider lift over a frame)
+    this.markFarBelow(); // VERTICAL_SEPARATION: who stands far below, for this frame's aim, blows, shots and creatures
     this._astralDrainCredits=[];
     this.guardRemaining = Math.max(0, this.guardRemaining - dt);
     this.magicBuffRemaining = Math.max(0, this.magicBuffRemaining - dt);
@@ -12910,7 +12947,7 @@ export class Game {
       this.save.toolMode = true;
       let toolAccepted=false;const bt = rangedWeapon(this.save.equipment.secondary)?.brawlerTool; if (bt) toolAccepted=this.brawlerTool(bt, now); else { // release 493: Hammerfall and Great Sweep
       const weapon=rangedWeapon(this.save.equipment.secondary),width=mapWidth(this.map,this.area),
-        aim=weapon&&(this.lockAim()||this.lockSeenDirection()||selectRangedAim(this.player,this.enemies,this.map,width,(weapon.carbine?CARBINE.range:weapon.speed*weapon.lifetime*AUTO_AIM.rangedScale)*(1+characterStats(this.save).attackReach))); // release 343; 347: a locked target first; the Carbine looks as far as its beam reaches
+        aim=weapon&&(this.lockAim()||this.lockSeenDirection()||selectRangedAim(this.player,this.enemies,this.map,width,(weapon.carbine?CARBINE.range:weapon.speed*weapon.lifetime*AUTO_AIM.rangedScale)*(1+characterStats(this.save).attackReach),!!weapon.carbine)); // release 343; 347: a locked target first; the Carbine looks as far as its beam reaches
       toolAccepted=this.fireSecondary(now, aim || this.save.lastAim, "tool"); // the Aether Orrery charges while Tool is held
     } if(toolAccepted)this.cancelPendingMeleeContact('tool'); }this._toolInputUpdate=false;
     if (this.shadowClone?.charging) this.tickCloneCharge(!!input.held?.(this.shadowClone.charging.action), now); // release 417
@@ -13379,8 +13416,8 @@ export class Game {
     this.spinoInterloperTick(dt, now); // the Spinosaurus comes in on a stego or stag fight (spino-rex.ts)
     this.dinoDuelTick(dt); // the dino duel (dino-duel.ts): the verdict, the eaten loser, the escape
     const eliteStatus=eliteStateInPlace(this.save).status;tickEliteStatus(eliteStatus,dt,n=>{if(now>(p.invulnerableUntil||0)){p.hp-=n;p.invulnerableUntil=now+350}});for(const h of this.eliteHazards)h.arming=Math.max(0,(h.arming||0)-dt);this.eliteHazards=tickEliteHazards(this.eliteHazards,dt);for(const h of this.eliteHazards)if(!(h.arming>0)&&Math.hypot(p.x-h.x,p.y-h.y)<=h.radius&&now>(h.nextHit||0)){p.hp-=h.damage;h.nextHit=now+1000;if(h.poison){const fresh=!(eliteStatus.poison>0);applyStrongPoison(eliteStatus,this.save.maxHp);if(fresh)this.message='The ooze burns. Strong poison — a Clearroot Ampoule ends it.'}}
-    for(const e of this.enemies){if(e.dead||!e.eliteId||!activeEnemySet.has(e)||sweepFrozen(e)||e.hitStop>0)continue;/* frozen: its elite moves wait (SWEEP_FREEZE) */e.eliteCooldown=Math.max(0,(e.eliteCooldown||0)-dt);const distance=Math.hypot(e.x-p.x,e.y-p.y);if(e.eliteModules.includes('gravity')&&distance<6){if(e.eliteWindup>0){e.eliteWindup-=dt;if(e.eliteWindup<=0)e.eliteActive=1.15}else if(e.eliteActive>0){e.eliteActive-=dt;gravityPull(p,e,dt,1.65,6,(dx,dy)=>this.moveGrounded(p,dx,dy))/* release 734 (F1): through the collision mover */}else if(e.eliteCooldown<=0){e.eliteWindup=1.1;e.eliteCooldown=7}}if(e.eliteModules.some(m=>m==='trail'||m==='oozePool')&&e.eliteCooldown<=0){addEliteHazard(this.eliteHazards,{id:`elite-hazard-${e.id}-${now}`,owner:e.id,kind:'ooze',x:e.x,y:e.y,life:6,radius:1.15,damage:4,poison:true,nextHit:0},8);e.eliteCooldown=3.5}if(e.eliteModules.includes('summon')&&e.eliteCooldown<=0){const adds=this.enemies.filter(q=>!q.dead&&q.summonedBy===e.id);if(adds.length<3&&this.enemies.filter(q=>!q.dead&&q.summonedBy).length<6){const add=createCombatant(e.kind==='knifeChoir'?'glassMite':'ashling',e.x+1,e.y,false,[]);add.id=`summon-${e.id}-${now}-${adds.length}`;add.summonedBy=e.id;add.noRewards=true;this.enemies.push(add)}e.eliteCooldown=8}}
-    for(const e of this.enemies){if(e.dead||e.domainFamily!=='rootbound'||!activeEnemySet.has(e)||sweepFrozen(e)||e.hitStop>0)continue;const previous=e.rootLastHp??e.hp;if(e.hp<previous)e.rootHealLock=3;e.rootLastHp=e.hp;e.rootHealLock=Math.max(0,(e.rootHealLock||0)-dt);if(e.rootboundRegeneration&&e.rootHealLock<=0&&e.hp<e.maxHp)e.hp=Math.min(e.maxHp,e.hp+dt*(e.domainBoss?2.4:1.1));e.rootAttackCooldown=Math.max(0,(e.rootAttackCooldown||0)-dt);if(e.rootGroundAttack&&e.rootAttackCooldown<=0&&Math.hypot(e.x-p.x,e.y-p.y)<7){addEliteHazard(this.eliteHazards,{id:`root-eruption-${e.id}-${now}`,owner:e.id,kind:'root-eruption',x:p.x,y:p.y,life:2.4,arming:1.05,radius:e.domainManifestation?1.8:1.35,damage:e.domainBoss?10:6,nextHit:0},3);e.rootAttackCooldown=e.domainManifestation?4.5:6.5}}
+    for(const e of this.enemies){if(e.dead||!e.eliteId||!activeEnemySet.has(e)||sweepFrozen(e)||e.hitStop>0)continue;/* frozen: its elite moves wait (SWEEP_FREEZE) */e.eliteCooldown=Math.max(0,(e.eliteCooldown||0)-dt);const distance=Math.hypot(e.x-p.x,e.y-p.y);if(e.eliteModules.includes('gravity')&&distance<6&&!e.farBelow/* VERTICAL_SEPARATION */){if(e.eliteWindup>0){e.eliteWindup-=dt;if(e.eliteWindup<=0)e.eliteActive=1.15}else if(e.eliteActive>0){e.eliteActive-=dt;gravityPull(p,e,dt,1.65,6,(dx,dy)=>this.moveGrounded(p,dx,dy))/* release 734 (F1): through the collision mover */}else if(e.eliteCooldown<=0){e.eliteWindup=1.1;e.eliteCooldown=7}}if(e.eliteModules.some(m=>m==='trail'||m==='oozePool')&&e.eliteCooldown<=0){addEliteHazard(this.eliteHazards,{id:`elite-hazard-${e.id}-${now}`,owner:e.id,kind:'ooze',x:e.x,y:e.y,life:6,radius:1.15,damage:4,poison:true,nextHit:0},8);e.eliteCooldown=3.5}if(e.eliteModules.includes('summon')&&e.eliteCooldown<=0){const adds=this.enemies.filter(q=>!q.dead&&q.summonedBy===e.id);if(adds.length<3&&this.enemies.filter(q=>!q.dead&&q.summonedBy).length<6){const add=createCombatant(e.kind==='knifeChoir'?'glassMite':'ashling',e.x+1,e.y,false,[]);add.id=`summon-${e.id}-${now}-${adds.length}`;add.summonedBy=e.id;add.noRewards=true;this.enemies.push(add)}e.eliteCooldown=8}}
+    for(const e of this.enemies){if(e.dead||e.domainFamily!=='rootbound'||!activeEnemySet.has(e)||sweepFrozen(e)||e.hitStop>0)continue;const previous=e.rootLastHp??e.hp;if(e.hp<previous)e.rootHealLock=3;e.rootLastHp=e.hp;e.rootHealLock=Math.max(0,(e.rootHealLock||0)-dt);if(e.rootboundRegeneration&&e.rootHealLock<=0&&e.hp<e.maxHp)e.hp=Math.min(e.maxHp,e.hp+dt*(e.domainBoss?2.4:1.1));e.rootAttackCooldown=Math.max(0,(e.rootAttackCooldown||0)-dt);if(e.rootGroundAttack&&e.rootAttackCooldown<=0&&!e.farBelow&&Math.hypot(e.x-p.x,e.y-p.y)<7){addEliteHazard(this.eliteHazards,{id:`root-eruption-${e.id}-${now}`,owner:e.id,kind:'root-eruption',x:p.x,y:p.y,life:2.4,arming:1.05,radius:e.domainManifestation?1.8:1.35,damage:e.domainBoss?10:6,nextHit:0},3);e.rootAttackCooldown=e.domainManifestation?4.5:6.5}}
     // Blight mire (landscape version 2): its murk lowers maximum health until the Wayfarer rests. Release 165: every
     // poisoned ground (MIRE.rotKinds) in any area; at the rot cap, lingering MIRE.poisonDelay seconds poisons.
     const underKind = this.fall && this.fallArea() && this.fall.z > this.elevationHere(p.x, p.y) + FALL.minDrop ? null : tileUnder(this.map, mapWidth(this.map, this.area), p.x, p.y)?.kind; // FALL: in the air, the ground's murk is not touched

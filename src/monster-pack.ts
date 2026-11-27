@@ -5089,11 +5089,15 @@ export function updatePackMonster(e, w) {
   const calmCrystal = roaming && e.kind === "psychicCrystal";
   const B = w.squad && !friendlyTriceratops ? behaviourProfile(e) : null, b = B ? behaviourState(e, w.squad) : null; // enemy-behaviour.ts: its record, before it looks for the Wayfarer
   if (calmCrystal && !e.aggro) { if (d < CRYSTAL.touchAggro || (Number.isFinite(s.calmHp) && e.hp < s.calmHp)) e.aggro = true; s.calmHp = e.hp; }
-  else if (!friendlyTriceratops && !e.aggro && d < (hunting ? CRYSTAL.roamSight : brain?.hiddenUntilAggro ? 4.2 : 7) && (!hunting || w.los(e, w.player)) && (!brain?.cone || advSees(e, w, p, d))) e.aggro = true; // a patrol sees only in its lamp's cone
+  else if (!friendlyTriceratops && !e.aggro && !e.farBelow && d < (hunting ? CRYSTAL.roamSight : brain?.hiddenUntilAggro ? 4.2 : 7) && (!hunting || w.los(e, w.player)) && (!brain?.cone || advSees(e, w, p, d))) e.aggro = true; // a patrol sees only in its lamp's cone
   e.hidden = !!(brain?.hiddenUntilAggro && !e.aggro) || (s.attack === "burrowAmbush" && ["travel", "erupt"].includes(s.phase)) || (e.kind === "sinkmaw" ? e.advBuried !== false : !!e.advBuried);
   if (e.kind === "spinoRex" && !e.aggro && spinoPreferred(e, w)) e.aggro = true; // it scents its prey before it sees you
   if (e.kind === "wildStego" && !e.aggro && stegoRivalNear(e, w)) e.aggro = true; // the dino duel: it rises to the Spinosaurus in sight
   if (e.kind === "earthApato" && !e.aggro && apatoRivalNear(e, w)) e.aggro = true; // the dino duel: it rises to the Spinosaurus or the Wild Stegosaurus in sight
+  // game.ts VERTICAL_SEPARATION (Tim, 2026-11-26): with the Wayfarer far above (a great tree's crown), a creature that does not fly
+  // (`e.farBelow`, set by the game each frame) loses interest: an attack under way ends (a leap, a teleport, a windup) and it
+  // wanders, waits or goes home below. A shot already loosed flies on. When the Wayfarer comes down it notices them as ever.
+  if (e.farBelow) { e.aggro = false; if (s.attack) endAttack(e, s); s.tele = null; }
   // enemy-behaviour.ts (Tim, 2026-11-14): ordinary creatures, when the game hands a squad board: arrival, blows, calls, the alert beat.
   if (B) { w.squad.w = w; w.squad.disp = null; if (behaviourGate(e, b, B, w.squad, packDrop)) return; }
   if (!e.aggro) {
