@@ -38,7 +38,7 @@ import { ROOF_KINDS, ROOF_DWELLERS } from "./roof-dwellers.ts";
 import { curseDef } from "./haunts.ts"; // release 737: the haunt curses on the HUD
 import { activeFarQuest, farQuestInfo } from "./far-realms.ts"; // release 716 // release 403: staggerClass marks bosses on the dungeon map
 import { drawPackPortrait } from "./monster-render.ts";
-import { landscapeAtlasColor } from "./landscape-render.ts";
+import { landscapeAtlasColor, drawRockslides } from "./landscape-render.ts";
 import { hashSeed } from "./random.ts";
 import { ensureReciters, libraryBooks, setReciterMode, resetReciter } from "./travelers.ts";
 import { compendium } from "./progression.ts"; // the progression table and its compendium (docs/progression-design.md, Phase 1)
@@ -1438,6 +1438,7 @@ function drawTruthfulCombatGeometry(layer = null) {
     g = combatIndicatorGeometry(game);
   ctx.save();
   drawNewTraps(s, sx, sy, ctx); // release 523
+  if (game.area === "overworld") drawRockslides(ctx, game.map, sx, sy, s, performance.now()); // the Great Ranges' rockslides
   for (const q of g.traps) {
     ctx.fillStyle = q.active ? "#a43c2638" : "#17151288";
     ctx.strokeStyle = q.active ? "#ef8158" : "#8c806d";

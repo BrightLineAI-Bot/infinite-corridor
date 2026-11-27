@@ -6,9 +6,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { freshSave } from '../src/types.ts';
+import { freshSave, migrateSave } from '../src/types.ts';
 import { Game, REGION_BANNER, footprintOpen } from '../src/game.ts';
 import { generateRegion, sectionExits } from '../src/world.ts';
+import { slideReach, slideCarry, tickRockslides, rockAlong, rockslideFallTime, rockslideDamage } from '../src/landscape.ts';
+import { drawRockslides } from '../src/landscape-render.ts';
+import { trapShareScale } from '../src/dungeon-traps.ts';
 import { RANGES, RANGES_BLOCKED, REGIONS_V30, REGION_GROUNDS, REGION_NAMES, REGIONS, applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionAt, regionName, reachableFromPlaza, trappedTiles,
   coherenceCore, joinsCore, cohereSection, isLandscapeKind, canStep, LETHAL_KINDS, fallDamage, rangesAt, rangeFlow, LANDSCAPE_VERSION, DEEP_WATER, MAX_LEVEL, creatureRegions, COHERENCE } from '../src/landscape.ts';
 import { ATLAS_TILE_COLORS, sectionAtlasColor } from '../src/atlas-colors.ts';
@@ -19,7 +22,7 @@ import { closeViewHazardCode } from '../src/close-view-gl.ts';
 import { mireSpeed, MIRE } from '../src/water-traversal.ts';
 
 const SEED = 'RANGE30', W = 32, idx = (x, y) => y * W + x, N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-const KINDS = ['alpineMeadow', 'alpineLake', 'foothillGrass', 'rangeRock', 'rangeSnow', 'summitSnow', 'talusSlope', 'colTrail', 'rangeTrail', 'crestPinnacle'];
+const KINDS = ['alpineMeadow', 'alpineLake', 'foothillGrass', 'rangeRock', 'rangeSnow', 'summitSnow', 'talusSlope', 'colTrail', 'rangeTrail', 'chuteSlope', 'rockfallSlope', 'crackedCrag', 'crestPinnacle'];
 const make = (x, y, version = 30, opts = {}, seed = SEED) => { const m = generateRegion(seed, x, y); applyLandscape(m, seed, x, y, { version, ...opts }); return m; };
 const walk = (t) => !!t && !t.blocked && !LETHAL_KINDS.has(t.kind);
 const inside = (x, y) => x >= 0 && y >= 0 && x < W && y < W;
@@ -126,6 +129,7 @@ function solve(m, from, reverse = false) {
   const go = new Uint8Array(1024), q = [idx(from.x, from.y)]; go[q[0]] = 1;
   for (let h = 0; h < q.length; h++) { const i = q[h], x = i % W, y = (i - x) / W; for (const [dx, dy] of N4) { const nx = x + dx, ny = y + dy, j = idx(nx, ny); if (!inside(nx, ny) || go[j] || !walk(m.tiles[j])) continue;
     const [a, b] = reverse ? [j, i] : [i, j], ax = a % W, ay = (a - ax) / W, bx = b % W, by = (b - bx) / W;
+    const sl = m.tiles[a].slide; if (sl && (sl.dx !== bx - ax || sl.dy !== by - ay)) continue; // a scree chute is one way: down its fall line
     if (!canStep({ isPlayer: true, jumping: true }, m, W, ax, ay, bx, by)) continue; if (fallDamage((m.tiles[a].elev || 0) - (m.tiles[b].elev || 0), 100) === Infinity) continue;
     if (![.25, .5, .75].every((f) => footprintOpen(m, W, ax + (bx - ax) * f, ay + (by - ay) * f, true))) continue; go[j] = 1; q.push(j); } }
   return go;
@@ -291,3 +295,105 @@ const PINS = [
   ['LUNA25', 29, -308, -278, 'f72d3e7895430872'], // mountains
   ['LUNA25', 28, -308, -278, 'fe38d043de754cea'], // mountains
 ];
+
+// ---------------------------------------------------------------- scree chutes and rockslides (Tim, 2026-11-27)
+const idle = { state: { x: 0, y: 0 }, consume: () => false, held: () => false, reset() {} };
+const loaded = () => { const out = []; for (const { seed, x, y } of sections()) { if (out.length >= 14) break; const { g, s } = visit(seed, x, y); if (g.map.hamlet) continue; out.push({ seed, x, y, g, s }); } return out; };
+let games = null; const gameSections = () => games ||= loaded();
+const chain = (m, top) => { const run = [top]; let t = top; while (t.slide && run.length < 12) { t = m.tiles[idx(t.x + t.slide.dx, t.y + t.slide.dy)]; run.push(t); } return run; }; // the chute's tiles, then where it ends
+const tops = (m) => m.tiles.filter((t) => t.slide && !N4.some(([dx, dy]) => { const q = inside(t.x - dx, t.y - dy) && m.tiles[idx(t.x - dx, t.y - dy)]; return q && q.slide && q.slide.dx === dx && q.slide.dy === dy; }));
+const footTile = (g) => g.map.tiles[Math.floor(g.player.y + .75) * W + Math.floor(g.player.x + .5)];
+
+test('scree chutes: down the fall line one level at a time, ending on open ground inside the section; at most a few a section; drawn with chevrons; streaked on the Atlas', () => {
+  let chutes = 0, tiles = 0, sectionsWith = 0;
+  for (const { m, x, y } of sections()) { const S = RANGES.slide, mine = tops(m); assert.ok(mine.length <= S.max, `${x},${y}: ${mine.length} chutes`); assert.equal(m.chutes || 0, mine.length); if (mine.length) sectionsWith++;
+    for (const top of mine) { const run = chain(m, top), end = run[run.length - 1]; chutes++; tiles += run.length - 1;
+      assert.ok(run.length - 1 >= S.len[0] && run.length - 1 <= S.len[1], `${x},${y}: a chute of ${run.length - 1}`);
+      for (let k = 0; k < run.length - 1; k++) { const a = run[k], b = run[k + 1]; assert.equal(a.kind, 'chuteSlope'); assert.ok(a.slope, 'a chute is walked by anyone, so a dodge climbs it');
+        assert.ok(Math.abs(a.slide.dx) + Math.abs(a.slide.dy) === 1); assert.ok((b.elev || 0) <= (a.elev || 0) && (a.elev || 0) - (b.elev || 0) <= 1, 'one level down at most, never up');
+        assert.ok(a.x >= 1 && a.y >= 1 && a.x <= 30 && a.y <= 30, 'never on the border'); }
+      assert.ok(walk(end) && !end.slide && !LETHAL_KINDS.has(end.kind) && end.x >= 1 && end.y >= 1 && end.x <= 30 && end.y <= 30, `${x},${y}: it ends on open ground inside the section`);
+      assert.ok((end.elev || 0) < (top.elev || 0), 'it goes down');
+      assert.ok(!m.objects.some((o) => Math.round(o.x) === end.x && Math.round(o.y) === end.y), 'nothing stands where it ends'); } }
+  console.log(`  ${chutes} chutes (${tiles} tiles) in ${sectionsWith} of ${sections().length} sections`);
+  assert.ok(sectionsWith > sections().length * .5 && chutes >= sections().length, `${chutes} chutes`);
+  assert.ok(ATLAS_TILE_COLORS.chuteSlope && ATLAS_TILE_COLORS.rockfallSlope && ATLAS_TILE_COLORS.crackedCrag);
+  const c = [1, 3, 5].map((i) => parseInt(ATLAS_TILE_COLORS.chuteSlope.slice(i, i + 2), 16)), t = [1, 3, 5].map((i) => parseInt(ATLAS_TILE_COLORS.talusSlope.slice(i, i + 2), 16)); assert.ok(Math.hypot(c[0] - t[0], c[1] - t[1], c[2] - t[2]) > 40, 'a chute reads apart from talus');
+  let marks = 0; const ctx = new Proxy({}, { get: (_, k) => k === 'createLinearGradient' || k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : k === 'lineTo' ? () => { marks++; } : () => {}, set: () => true });
+  const { m } = sections().find((q) => q.m.chutes); const top = tops(m)[0]; const plain = { ...top }; delete plain.slide; drawLandscapeTile(ctx, plain, top.x, top.y, 32, m.tiles, W); const without = marks; marks = 0; drawLandscapeTile(ctx, top, top.x, top.y, 32, m.tiles, W); assert.ok(marks > without, 'downhill chevrons');
+});
+
+test('scree chutes in the game: standing carries you down to its foot, walking up still goes down (slower), repeated dodges climb it, and you are never held', () => {
+  const pick = gameSections().map((q) => ({ ...q, run: tops(q.g.map).map((t) => chain(q.g.map, t)).find((r) => r.length >= 4 && r.every((t, k) => k === r.length - 1 || (t.slide.dx === r[0].slide.dx && t.slide.dy === r[0].slide.dy))) })).find((q) => q.run);
+  assert.ok(pick, 'a straight chute of three or more'); const { g, run } = pick, p = g.player, top = run[0], end = run[run.length - 1], fx = top.slide.dx, fy = top.slide.dy; g.enemies = [];
+  const put = (t) => { p.x = t.x; p.y = t.y; p.stamina = p.maxStamina = 1e6; p.invulnerableUntil = 0; }, along = () => (p.x - top.x) * fx + (p.y - top.y) * fy; let now = 5000;
+  const run1 = (secs, input) => { for (let t = 0; t < secs; t += 1 / 30) g.update(1 / 30, input, now += 33); };
+  put(top); run1(.5, idle); const idleGain = along(); run1(3, idle); assert.equal(footTile(g), end, `carried down to the foot of the chute (${footTile(g).x},${footTile(g).y} vs ${end.x},${end.y})`);
+  put(top); run1(.5, { ...idle, state: { x: -fx, y: -fy } }); const walkGain = along(); assert.ok(walkGain > 0 && walkGain < idleGain * .8, `walking up it still goes down, slower: ${walkGain.toFixed(2)} vs ${idleGain.toFixed(2)} standing`);
+  put(top); run1(.4, { ...idle, state: { x: fy, y: fx } }); assert.ok(!footTile(g).slide || along() < idleGain, 'stepping aside is free');
+  // dodges up it: one press every 0.3 s, the stick pointing up the chute
+  put(end); let dashes = 0; for (; dashes < 12 && footTile(g) !== top && !(along() < 0); dashes++) { let pressed = false; g.update(1 / 30, { ...idle, state: { x: -fx, y: -fy }, consume: (k) => k === 'dodge' && !pressed ? (pressed = true) : false }, now += 33); run1(.27, { ...idle, state: { x: -fx, y: -fy } }); }
+  assert.ok(footTile(g) === top || along() < 0, `dodges climbed it (${dashes} dodges; at ${along().toFixed(2)})`); assert.ok(dashes >= 2 && dashes <= run.length + 4, `${dashes} dodges for ${run.length - 1} tiles`);
+  // never held: on every chute tile the carry leads to open, lower ground, and slideCarry allocates nothing
+  const out = { dx: 0, dy: 0 }; for (const t of run.slice(0, -1)) { const r = slideCarry(g.map, t.x, t.y, 0, 0, .1, out); assert.equal(r, out); assert.ok(Math.hypot(r.dx, r.dy) > 0); }
+  assert.equal(slideCarry(g.map, end.x, end.y, 0, 0, .1, out), false, 'off the chute, nothing carries you');
+});
+
+test('scree chutes never trap: with every chute one-way down, the plaza reaches every exit, cache and summit both ways, and every chute\'s foot leads back', () => {
+  let n = 0;
+  for (const { seed, x, y } of sections().filter((q) => q.m.chutes).slice(0, 30)) { const m = make(x, y, 30, { coherence: 1 }, seed); cohereSection(m); n++;
+    const go = slideReach(m), back = slideReach(m, undefined, true), sgo = solve(m, { x: 16, y: 16 }), sback = solve(m, { x: 16, y: 16 }, true), ex = sectionExits(seed, x, y);
+    for (const [ax, ay] of [[ex.north, 0], [ex.south, 31], [0, ex.west], [31, ex.east]]) if (walk(m.tiles[idx(ax, ay)])) { assert.ok(go[idx(ax, ay)] && back[idx(ax, ay)], `${x},${y}: exit ${ax},${ay}`); assert.ok(sgo[idx(ax, ay)] && sback[idx(ax, ay)], `${x},${y}: solver exit ${ax},${ay}`); }
+    for (const o of m.objects.filter((q) => String(q.id).startsWith('ranges-cache'))) assert.ok(sgo[idx(o.x, o.y)] && sback[idx(o.x, o.y)], `${x},${y}: the cache`);
+    for (const t of m.tiles) if (t.slide && sgo[idx(t.x, t.y)]) { const run = chain(m, t), end = run[run.length - 1]; assert.ok(sback[idx(end.x, end.y)], `${x},${y}: from the foot of the chute at ${t.x},${t.y} back to the plaza`); } }
+  assert.ok(n >= 20, `${n} sections`);
+});
+
+test('rockslides: a cracked crag over a lane of loose stones; at most three a section, one rolling at a time; nothing allocated as they run', () => {
+  let zones = 0, periodic = 0; const K = RANGES.rockslide;
+  for (const { m, x, y } of sections()) { const Z = m.rockslides || []; assert.ok(Z.length <= K.max, `${x},${y}: ${Z.length}`); zones += Z.length;
+    for (const z of Z) { if (z.period) periodic++; assert.equal(m.tiles[idx(z.x, z.y)].kind, 'crackedCrag'); assert.ok(z.len >= K.len[0] && z.len <= K.len[1]); assert.equal(z.phase, 'armed');
+      let prev = m.tiles[idx(z.x, z.y)]; for (let d = 1; d <= z.len; d++) { const t = m.tiles[idx(z.x + z.dx * d, z.y + z.dy * d)]; assert.equal(t.kind, 'rockfallSlope'); assert.equal(t.rockslide, z.id); assert.ok(walk(t) && (t.elev || 0) <= (prev.elev || 0), 'the lane runs down'); prev = t; }
+      for (const q of Z) if (q !== z) assert.ok(Math.hypot(q.x - z.x, q.y - z.y) >= K.spacing); } }
+  console.log(`  ${zones} rockslides (${periodic} periodic) in ${sections().length} sections`); assert.ok(zones >= sections().length * .5 && periodic >= 3, `${zones} zones, ${periodic} periodic`);
+  for (let k = 0; k < K.rocks; k++) assert.ok(rockAlong({ len: 4 }, k, k * K.gap + .1) >= 0);
+  assert.equal(rockAlong({ len: 4 }, 0, rockslideFallTime({ len: 4 }) + 1), -1);
+});
+
+test('rockslides: they trigger, warn, hit in their lane, miss outside it, reset; a periodic one goes off alone; one at a time', () => {
+  const K = RANGES.rockslide, zone = (o = {}) => ({ id: 'z', x: 10, y: 5, dx: 0, dy: 1, len: 4, period: 0, phase: 'armed', timer: 0, hits: {}, ...o });
+  const map = (zs) => { const tiles = []; for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) tiles.push({ x, y, kind: 'foothillGrass' }); for (const z of zs) for (let d = 0; d <= z.len; d++) tiles[idx(z.x + z.dx * d, z.y + z.dy * d)].rockslide = z.id; return { tiles, rockslides: zs }; };
+  let warned = 0; const world = (player, o = {}) => ({ player, guarded: false, level: 10, maxHp: 200, scale: trapShareScale(10), warn: () => warned++, ...o });
+  const run = (m, w, secs, each = () => {}) => { let hurt = 0; for (let t = 0; t < secs; t += 1 / 30) { hurt += tickRockslides(m, w, 1 / 30); each(); } return hurt; };
+  const dmg = rockslideDamage(10, 200, trapShareScale(10)); assert.ok(dmg >= Math.round(K.share * 200), `${dmg}`);
+  // in the lane: warned, then hit once
+  { const z = zone(), m = map([z]), p = { x: 10, y: 7.25, hp: 200 }, w = world(p); tickRockslides(m, w, 1 / 30); assert.equal(z.phase, 'warning'); assert.equal(warned, 1);
+    const hurt = run(m, w, K.warn + rockslideFallTime(z) + .1); assert.equal(hurt, dmg); assert.equal(p.hp, 200 - dmg); assert.equal(z.phase, 'rest');
+    run(m, w, K.rest + .1); assert.equal(z.phase, 'warning', 'rested, it wakes again for one still standing on it'); }
+  // stepping out of the lane while it warns: missed
+  { const z = zone(), m = map([z]), p = { x: 10, y: 7.25, hp: 200 }, w = world(p); tickRockslides(m, w, 1 / 30); p.x = 12; assert.equal(run(m, w, K.warn + rockslideFallTime(z) + .1), 0); run(m, w, K.rest + .1); assert.equal(z.phase, 'armed', 'and reset'); }
+  // a jump (or a dodge's guard) clears the stones
+  { const z = zone(), m = map([z]), p = { x: 10, y: 7.25, hp: 200 }, w = world(p, { guarded: true }); assert.equal(run(m, w, K.warn + rockslideFallTime(z) + .1), 0); }
+  // a periodic one goes off with no one near
+  { const z = zone({ period: 10, timer: 10 }), m = map([z]), p = { x: 25, y: 25, hp: 200 }, w = world(p); run(m, w, 9.8); assert.equal(z.phase, 'armed'); run(m, w, .4); assert.equal(z.phase, 'warning'); }
+  // one at a time
+  { const a = zone(), b = zone({ id: 'b', x: 20 }), m = map([a, b]), p = { x: 10, y: 7.25, hp: 200 }, w = world(p); tickRockslides(m, w, 1 / 30); p.x = 20; run(m, w, 1); assert.equal(b.phase, 'armed', 'the second waits while the first rolls'); }
+  // drawing: shadows while it warns, stones while it falls
+  { const z = zone(), m = map([z]); let fills = 0; const ctx = new Proxy({}, { get: (_, k) => k === 'fill' ? () => { fills++; } : () => {}, set: () => true });
+    drawRockslides(ctx, m, (x) => x * 32, (y) => y * 32, 32, 0); assert.equal(fills, 0, 'nothing while armed'); z.phase = 'warning'; z.timer = .5; drawRockslides(ctx, m, (x) => x * 32, (y) => y * 32, 32, 0); assert.ok(fills >= z.len + 3, 'dust and shadows');
+    fills = 0; z.phase = 'falling'; z.timer = rockslideFallTime(z) / 2; drawRockslides(ctx, m, (x) => x * 32, (y) => y * 32, 32, 0); assert.ok(fills >= 3, 'stones'); }
+});
+
+test('rockslides in the game: walking onto the lane wakes it with a warning; the stones hurt in the lane; a save in place keeps it rolling, leaving resets it', () => {
+  const pick = gameSections().find((q) => q.g.map.rockslides?.some((z) => !z.period)); assert.ok(pick); const { g, seed, x, y } = pick, p = g.player, z = g.map.rockslides.find((q) => !q.period); g.enemies = [];
+  for (const q of g.map.rockslides) if (q !== z) q.period = 0;
+  let now = 5000; p.x = z.x + z.dx * 2; p.y = z.y + z.dy * 2; p.invulnerableUntil = 0; g.jumpUntil = 0; const hp0 = p.hp = p.maxHp = g.save.maxHp;
+  g.update(1 / 30, idle, now += 33); assert.equal(z.phase, 'warning'); assert.match(g.message, /Stones shift/);
+  for (let t = 0; t < RANGES.rockslide.warn + .2; t += 1 / 30) g.update(1 / 30, idle, now += 33); assert.equal(z.phase, 'falling');
+  const saved = JSON.parse(JSON.stringify(g.exportSnapshot(now))); assert.equal(saved.session.areas[g.areaStateId()].rockslides[z.id].phase, 'falling', 'a save in place keeps it');
+  const g2 = new Game(migrateSave(saved), now); assert.equal(g2.rx, x); const z2 = g2.map.rockslides.find((q) => q.id === z.id); assert.equal(z2.phase, 'falling'); assert.ok(Math.abs(z2.timer - z.timer) < 1e-9, 'exactly where it was');
+  for (let t = 0; t < rockslideFallTime(z) + .2; t += 1 / 30) g.update(1 / 30, idle, now += 33); assert.ok(p.hp < hp0, `the stones hit (${hp0} -> ${p.hp})`); assert.equal(z.phase, 'rest');
+  g.snapshotArea(true); assert.equal(g.save.session.areas[g.areaStateId()].rockslides, undefined, 'leaving resets it');
+  const g3 = new Game(structuredClone(g.save), 0); g3.rx = x; g3.ry = y; g3.loadArea('overworld'); assert.ok(g3.map.rockslides.every((q) => q.phase === 'armed'));
+  assert.equal(seed.length > 0, true);
+});

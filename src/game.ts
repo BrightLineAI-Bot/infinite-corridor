@@ -150,7 +150,7 @@ useRoof({ roofAt: pentagonRoofAt, roofSpots: pentagonRoofSpots }); // release 75
 import { THE_DEEP, DEEP_FLOOR_GEN, deepFloorGen, ensureTheDeep, deepIdFor, isDeepId, deepShaft, shaftHere, startFloors, floorPlan, floorScale, floorAffixShare, guardianAffixes, lootBonus, floorSpecial, deepSpecialRow, lairScale, DEEP_SPECIALS } from "./the-deep.ts";
 import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExit } from "./deep-annex.ts";
 import { trackSeason, noteSeasonDiscovery } from "./seasons.ts";
-import { growRiteTree, riteTreeFits, COHERENCE, bridgeLanes, cohereSection, joinToLand, joinsCore, coherenceCore, creatureSpot, creatureRegions, settleSpawns } from "./landscape.ts";
+import { growRiteTree, riteTreeFits, COHERENCE, bridgeLanes, cohereSection, joinToLand, joinsCore, coherenceCore, creatureSpot, creatureRegions, settleSpawns, slideCarry, tickRockslides } from "./landscape.ts";
 import { GREAT_MUSHROOMS } from "./great-mushrooms.ts";
 import { interiorTerrain, interiorSurfaceLevel, interiorSurfaceHeight, LIFT_PER_LEVEL, applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt, tileLiftScale, mendCanopy, HOT_SPRINGS, springMend, reachableFromPlaza, reachableFrom, crownBarred } from "./landscape.ts";
 import { markArrival, createSquad, squadFrame, squadRequest, behaviourProfile, behaviourState, behaviourGate, behaviourReact, ringVector, shapeBlow, startFeint, afterBlow, BEHAVIOUR } from "./enemy-behaviour.ts"; // ordinary creature behaviour (Tim, 2026-11-14)
@@ -3490,6 +3490,7 @@ export class Game {
       update(dt, input, now);
       const hpBeforeInstalledTraps=this.player.hp;
       updateTraps(this.map.objects, this.player, dt, now < this.jumpUntil, this.save.maxHp, this.save.level);
+      if (this.area === "overworld" && this.map.rockslides) this.tickRockslides(dt, now); // the Great Ranges' rockslides (landscape.ts RANGES.rockslide)
       if (this.area === "dungeon") tickNewTraps(this.map.objects, { player: this.player, level: this.save.level, maxHp: this.save.maxHp, airborne: now < (this.jumpUntil || 0) || this.mechBoosting === true || (this.save.magicSkills?.active?.id === 'aerial-step' && this.save.magicSkills.active.remaining > 0) /* release 527 */, pull: (dx, dy) => this.moveGrounded(this.player, dx, dy), fall: () => { if (this.player.hp > 0 && now > (this.player.invulnerableUntil || 0)) { this.player.hp = 0; this.message = "The floor gives way, and the Wayfarer falls into the dark."; } }, now, projectiles: this.projectiles, effects: this.effects, seeds: (this.trapSeeds ||= []), open: (x, y) => { const w = mapWidth(this.map, this.area), q = this.map.tiles[Math.floor(y) * w + Math.floor(x)]; return !!q && !q.blocked && !(this.map.tiles.length && Math.floor(x) >= w); } }, dt); // release 523
       if(this.player.hp<hpBeforeInstalledTraps)this.cancelConsumeVisual(this.player.hp<=0?'death':'hurt');
       if (this.player.hp <= 0 || this.area !== "dungeon") this.traversal = null;
@@ -3867,6 +3868,13 @@ export class Game {
       hamlet:!seen||seen.hamletVersion||town?.mouth?[seen?.hamletVersion||HAMLET_VERSION,!!town,legacyMouthHamlet(save,rx,ry)]:null,
       trails:!seen||!!seen.travelVersion,bridgeLanes:!!coh,...heartlandShackStep(seen,rx,ry)};}
   areaStateId(){const id=this.areaId();return this.area==="dungeon"&&this.map?.multiLevel&&this.save.session.activeDungeonLevelId?`${id}:level:${this.save.session.activeDungeonLevelId}`:id;}
+  // The Great Ranges' rockslides: the dungeon traps' rules (their damage share, growing with level), a jump or a dodge's guard clears
+  // the stones; the rumble is told once a wake.
+  tickRockslides(dt, now) {
+    const p = this.player, w = this._rockWorld ||= { warn: () => { this.message = "Stones shift on the slope above. Get out of their path!"; } }; // one record, reused: nothing allocated a frame
+    w.player = p; w.guarded = now < (this.jumpUntil || 0) || now < (p.invulnerableUntil || 0); w.level = this.save.level; w.maxHp = this.save.maxHp; w.scale = trapShareScale(this.save.level);
+    tickRockslides(this.map, w, dt);
+  }
   snapshotArea(leaving = true) {
     if (!this.map) return;
     if (leaving && this.area === "dungeon") this.tickCharting(); // DUNGEON_CHARTING: Aperture gained on the frame you leave still counts for the floor
@@ -3892,6 +3900,7 @@ export class Game {
       projectiles: this.projectiles.map((p) => ({ ...p })),
       effects: this.effects.map((f) => ({ ...f, hits: { ...f.hits } })),
       eliteHazards:this.eliteHazards.map(h=>({...h,hits:{...h.hits}})),
+      ...(!leaving && this.map.rockslides ? { rockslides: Object.fromEntries(this.map.rockslides.map((z) => [z.id, { phase: z.phase, timer: z.timer, hits: { ...z.hits } }])) } : {}), // the Great Ranges: a rockslide under way is kept with a save in place; leaving the section resets it
     };
     if (leaving) this.respawnState = null; // building respawns: the next visit reads its floor's record afresh
   }
@@ -4283,6 +4292,7 @@ export class Game {
         for (const saved of s.enemies || []) if ((EXTRA_FOE.test(String(saved.id)) || saved.apertureEncounter || (stalkId && saved.stalker && saved.id === stalkId)) && !saved.dead && !isTombstone(saved) && this.enemies.length < RESUME_KEEP.cap && !this.enemies.some((e) => e.id === saved.id)) { const restored = { ...saved, ai: { ...saved.ai } }; ensureAI(restored); resetPackRuntime(restored); this.enemies.push(restored); } }
       for (const o of this.map.objects)
         if (s.objects?.[o.id]) Object.assign(o, s.objects[o.id]);
+      if (s.rockslides && this.map.rockslides) for (const z of this.map.rockslides) { const k = s.rockslides[z.id]; if (k) Object.assign(z, { phase: k.phase, timer: Number(k.timer) || 0, hits: { ...k.hits } }); }
       if (area === "overworld" && this.rite?.key !== riteKey(this.rx, this.ry)) for (const o of this.map.objects) if (o.kind === "saplingDais" && o.state === "burning") { // release 736 (review F7): no rite burns here now
         o.state = "open"; delete o.burn; const rec = riteRecord(this.save, this.rx, this.ry);
         // A rite lost without being broken (a journey saved mid-rite before rites were kept) gives its attempt back; one broken
@@ -13102,6 +13112,7 @@ export class Game {
       carrier = raft ? { raft, old: platformPos(raft, ps - dt), current: platformPos(raft, ps) } : null,
       carried = carrier ? { x: carrier.current.x - carrier.old.x, y: carrier.current.y - carrier.old.y } : { x: 0, y: 0 }; // release 613: a raft carries whoever stands on it
     dx += carried.x; dy += carried.y;
+    if (this.area === "overworld" && this.map?.ranges && !dodging && !sailing && !swimming) { const sl = slideCarry(this.map, p.x, p.y, dx, dy, dt); if (sl) { dx = sl.dx; dy = sl.dy; } } // the Great Ranges' scree chutes carry you down (a dodge climbs)
     let
       nx = p.x + dx,
       ny = p.y + dy;

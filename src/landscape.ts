@@ -90,7 +90,7 @@ const FELLS_WALKABLE = ["fellGrass", "fellCrag", "screeSlope", "cloudMoss", "pea
 export const FELLS_BLOCKED = ["graniteTor"];
 // The Great Ranges (version 30): the walkable kinds (applyRanges); `crestPinnacle` is blocked. `talusSlope` is walkable but slow (water-traversal.ts
 // MIRE.slow); `alpineLake` is wadeable. No kind here may contain "sea", "pit", "hole", "void", "abyss", "lava", "magma", "cinder" or "ember".
-const RANGES_WALKABLE = ["alpineMeadow", "alpineLake", "foothillGrass", "rangeRock", "rangeSnow", "summitSnow", "talusSlope", "colTrail", "rangeTrail"];
+const RANGES_WALKABLE = ["alpineMeadow", "alpineLake", "foothillGrass", "rangeRock", "rangeSnow", "summitSnow", "talusSlope", "colTrail", "rangeTrail", "chuteSlope", "rockfallSlope", "crackedCrag"];
 export const RANGES_BLOCKED = ["crestPinnacle"];
 // Thresholds tuned so roughly a third of sections carry a landscape feature (see tests/landscape.test.ts).
 const T = { ocean: 0.70, beach: 0.675, mountain: 0.68, alien: 0.75, desert: 0.67 };
@@ -1695,6 +1695,19 @@ export const RANGES = {
   pinnacle: { scale: 1.5, above: .64, minLevel: 3, max: 6, tries: 16 },
   repairs: 40,
   cache: { chance: .45, minLevel: 3, tries: 6, name: "A climbers' cache under the summit cairn" },
+  // Scree chutes (Tim, 2026-11-27): a run of loose scree down a flank along its fall line (`chuteSlope`, a slope, so anyone walks it).
+  // Standing on one carries you down at `speed` tiles/s; walking up it is damped to `against` of your pace and never nets more than
+  // `netDown` of the carry back up, so you still go down; a dodge is not carried, so a few dodges in a row climb it. Each step of a chute is
+  // one level down at most, `len` tiles, ending on firm ground; at most `max` a section, each kept only if, with every chute one-way
+  // down, all the plaza reached both ways still is (slideReach).
+  slide: { scale: 3.6, above: .56, minLevel: 2, len: [2, 4], max: 3, tries: 14, speed: 2.2, against: .35, netDown: .4 },
+  // Rockslides (Tim, 2026-11-27): a lane of loose stones (`rockfallSlope`) running `len` tiles down from a cracked crag (`crackedCrag`).
+  // Walking onto the lane (or, for `periodic` of them, every `period` s) wakes it: a rumble, dust and shadows for `warn` s, then `rocks`
+  // stones roll down it `gap` s apart at `speed` tiles/s; one in your path within `half` of the lane's line hits for the dungeon traps'
+  // damage (at least `share` of maximum health, growing with level: dungeon-traps.ts trapShareScale; `base` + `perLevel` × level at
+  // least); a jump or a dodge's guard clears it. Then it rests `rest` s. At most `max` a section, one rolling at a time; nothing is
+  // allocated as it runs (the stones are a function of its clock), and its state is kept with a save in place (snapshotArea).
+  rockslide: { chance: .6, max: 3, tries: 30, len: [3, 5], minLevel: 3, minDrop: 2, spacing: 5, periodic: .34, period: [9, 15], warn: 1.2, rocks: 4, gap: .22, speed: 5, half: .62, reach: .55, rest: 7, base: 8, perLevel: .5, share: .12 },
 };
 const rangeFlows = new Map();
 export function rangeFlow(seed, id) {
@@ -1803,7 +1816,89 @@ function applyRanges(map, seed, rx, ry, held, hamlet, walls = false) {
       map.objects.push({ id: `ranges-cache-${rx}-${ry}`, kind: "chest", name: R.cache.name, x: at.x, y: at.y, state: "closed", actions: ["open"], rewardSource: "chest" }); map.summitTrail = path.length; break;
     }
   }
+  placeChutes(map, seed, rx, ry, mine, mask, walls, h, order);
+  placeRockslides(map, seed, rx, ry, mine, mask, h, order);
   return tally();
+}
+const RANGE_FIRM = new Set(["foothillGrass", "rangeRock", "rangeSnow", "summitSnow", "talusSlope"]); // ground a chute or a rockslide may be laid on
+const inMap = (x, y) => x >= 0 && y >= 0 && x < 32 && y < 32;
+function rangeFree(map) { // tiles no chute or rockslide may touch: objects (the cache too), spawns, and the trails
+  const taken = new Uint8Array(1024); for (const o of [...(map.objects || []), ...(map.enemySpawns || [])]) { const x = Math.round(o.x), y = Math.round(o.y); if (inMap(x, y)) taken[idx(x, y)] = 1; }
+  const free = (t) => !!t && !taken[idx(t.x, t.y)] && !t.blocked && !t.slope && !t.slide && !t.rockslide && t.landscape === "ranges" && RANGE_FIRM.has(t.kind);
+  free.open = (t) => walkable(t) && !taken[idx(t.x, t.y)] && !t.slide; return free; }
+// The plaza's reach with every scree chute one-way down (the real chutes can be climbed with dodges, and walked off sideways; this is
+// the strict rule generation keeps): from a chute tile the only step is to the tile it carries you to. `reverse`: what can reach `start`.
+export function slideReach(map, start = { x: 16, y: 16 }, reverse = false, walls = false) {
+  const T = map.tiles, seen = new Uint8Array(1024), s0 = idx(start.x, start.y); if (!walkable(T[s0])) return seen; const q = [s0]; seen[s0] = 1;
+  for (let h = 0; h < q.length; h++) { const i = q[h], x = i % 32, y = (i - x) / 32;
+    for (const [dx, dy] of N4) { const nx = x + dx, ny = y + dy, j = idx(nx, ny); if (!inMap(nx, ny) || seen[j] || !walkable(T[j])) continue;
+      const [a, b] = reverse ? [T[j], T[i]] : [T[i], T[j]], ddx = reverse ? -dx : dx, ddy = reverse ? -dy : dy;
+      if ((a.slide && (a.slide.dx !== ddx || a.slide.dy !== ddy)) || !step(a, b)) continue;
+      if (walls && sideWalled(T[i], T[j], dx, dy)) continue; seen[j] = 1; q.push(j); } }
+  return seen;
+}
+function slideBoth(map, walls) { const go = slideReach(map, undefined, false, walls), back = slideReach(map, undefined, true, walls); for (let i = 0; i < 1024; i++) go[i] &= back[i]; return go; }
+function placeChutes(map, seed, rx, ry, mine, mask, walls, h, order) {
+  const S = RANGES.slide, T = map.tiles, free = rangeFree(map), before = slideBoth(map, walls); let made = 0;
+  const near = (t) => N4.some(([dx, dy]) => !inMap(t.x + dx, t.y + dy) || mask[idx(t.x + dx, t.y + dy)]);
+  const tops = mine.filter((t) => free(t) && (t.elev || 0) >= S.minLevel && t.x >= 2 && t.y >= 2 && t.x <= 29 && t.y <= 29 && !near(t) && valueNoise(`${seed}:ranges:chute`, (rx * 32 + t.x) / S.scale, (ry * 32 + t.y) / S.scale) > S.above).sort(order("s")).slice(0, S.tries);
+  for (const top of tops) { if (made >= S.max) break; if (!free(top)) continue;
+    const run = [top]; let at = top, end = null;
+    while (run.length <= S.len[1]) { // follow the fall line: the lowest neighbour, one level down at most, never up
+      let next = null; for (const [dx, dy] of N4) { const n = inMap(at.x + dx, at.y + dy) && T[idx(at.x + dx, at.y + dy)]; if (!n || !walkable(n) || (n.elev || 0) > (at.elev || 0) || (at.elev || 0) - (n.elev || 0) > 1) continue; if (!next || (n.elev || 0) < (next.elev || 0)) next = n; }
+      if (!next || run.includes(next)) break;
+      if (run.length >= S.len[0] && (next.elev || 0) < (at.elev || 0) && (!free(next) || run.length === S.len[1] || (next.elev || 0) === 0)) { end = next; break; }
+      if (!free(next) || near(next) || next.x < 1 || next.y < 1 || next.x > 30 || next.y > 30) break;
+      run.push(next); at = next; }
+    if (!end || (end.elev || 0) >= (top.elev || 0) || !free.open(end) || end.x < 1 || end.y < 1 || end.x > 30 || end.y > 30) continue;
+    const was = run.map((t) => ({ kind: t.kind, slope: t.slope }));
+    for (let k = 0; k < run.length; k++) { const t = run[k], n = run[k + 1] || end; Object.assign(t, { kind: "chuteSlope", slope: true, slide: { dx: n.x - t.x, dy: n.y - t.y } }); }
+    const now = slideBoth(map, walls); let cut = false; for (let i = 0; i < 1024 && !cut; i++) if (before[i] && !now[i] && !T[i].slide) cut = true;
+    if (cut) { run.forEach((t, k) => { t.kind = was[k].kind; if (!was[k].slope) delete t.slope; delete t.slide; }); continue; }
+    made++; }
+  if (made) map.chutes = made;
+}
+function placeRockslides(map, seed, rx, ry, mine, mask, h, order) {
+  const K = RANGES.rockslide, T = map.tiles, free = rangeFree(map); if ((h("rockslide") % 1000) / 1000 >= K.chance) return;
+  const zones = [], want = 1 + (h("rockslides") % K.max);
+  const crags = mine.filter((t) => free(t) && (t.elev || 0) >= K.minLevel && t.x >= 1 && t.y >= 1 && t.x <= 30 && t.y <= 30 && (t.kind === "rangeRock" || t.kind === "rangeSnow" || t.kind === "summitSnow")).sort(order("r")).slice(0, K.tries);
+  for (const src of crags) { if (zones.length >= want) break; if (zones.some((z) => Math.hypot(z.x - src.x, z.y - src.y) < K.spacing)) continue;
+    for (const [dx, dy] of N4) { const lane = []; let prev = src;
+      for (let k = 1; k <= K.len[1]; k++) { const x = src.x + dx * k, y = src.y + dy * k; if (x < 1 || y < 1 || x > 30 || y > 30) break; const t = T[idx(x, y)]; if (!free(t) || mask[idx(x, y)] || (t.elev || 0) > (prev.elev || 0)) break; lane.push(t); prev = t; }
+      if (lane.length < K.len[0] || (src.elev || 0) - (lane[lane.length - 1].elev || 0) < K.minDrop) continue;
+      const n = zones.length, periodic = (h(`rp${n}`) % 1000) / 1000 < K.periodic, period = periodic ? K.period[0] + (h(`rq${n}`) % (K.period[1] - K.period[0] + 1)) : 0, id = `ranges-rockslide-${rx}-${ry}-${n}`;
+      src.kind = "crackedCrag"; src.rockslide = id; for (const t of lane) { t.kind = "rockfallSlope"; t.rockslide = id; }
+      zones.push({ id, x: src.x, y: src.y, dx, dy, len: lane.length, period, phase: "armed", timer: period, hits: {} }); break; } }
+  if (zones.length) map.rockslides = zones;
+}
+// A rockslide's stone `k` at `t` seconds into its fall: how far down its lane (tiles from the crag's middle), or -1 while not rolling.
+export function rockAlong(zone, k, t) { const K = RANGES.rockslide, d = (t - k * K.gap) * K.speed; return d < 0 || d > zone.len + .5 ? -1 : d; }
+export const rockslideFallTime = (zone) => (zone.len + .5) / RANGES.rockslide.speed + (RANGES.rockslide.rocks - 1) * RANGES.rockslide.gap;
+export const rockslideDamage = (level, maxHp, scale) => { const K = RANGES.rockslide; return Math.max(1, Math.round(Math.max(K.base + K.perLevel * Math.max(1, Number(level) || 1), K.share * scale * (Number(maxHp) || 0)))); };
+// One frame of a section's rockslides (game.ts). `world`: { player, guarded (jumping or a dodge's guard), level, maxHp, scale (trap
+// growth), warn(zone) }. Phases: armed (counting its period when it has one) -> warning -> falling -> rest -> armed. One rolls at a time.
+export function tickRockslides(map, world, dt) {
+  const zones = map?.rockslides; if (!zones) return 0; const K = RANGES.rockslide, p = world.player, fx = Math.floor(p.x + .5), fy = Math.floor(p.y + .75), under = map.tiles[fy * 32 + fx]; let busy = false, hurt = 0;
+  for (const z of zones) if (z.phase === "warning" || z.phase === "falling") busy = true;
+  for (const z of zones) { z.timer = (Number(z.timer) || 0) - dt;
+    if (z.phase === "armed") { if (!busy && ((under && under.rockslide === z.id) || (z.period > 0 && z.timer <= 0))) { z.phase = "warning"; z.timer = K.warn; z.hits = {}; busy = true; world.warn?.(z); } else if (z.period > 0 && z.timer <= 0) z.timer = z.period; else if (!(z.period > 0)) z.timer = 0; }
+    else if (z.phase === "warning") { if (z.timer <= 0) { z.phase = "falling"; z.timer = rockslideFallTime(z); } }
+    else if (z.phase === "falling") {
+      const t = rockslideFallTime(z) - Math.max(0, z.timer), ox = p.x + .5 - (z.x + .5), oy = p.y + .75 - (z.y + .5), along = ox * z.dx + oy * z.dy, side = Math.abs(ox * -z.dy + oy * z.dx);
+      if (!z.hits.player && !world.guarded && side < K.half) for (let k = 0; k < K.rocks; k++) { const d = rockAlong(z, k, t); if (d >= 0 && Math.abs(d - along) < K.reach) { z.hits.player = true; const dmg = rockslideDamage(world.level, world.maxHp, world.scale || 1); p.hp -= dmg; hurt += dmg; break; } }
+      if (z.timer <= 0) { z.phase = "rest"; z.timer = K.rest; } }
+    else if (z.phase === "rest" && z.timer <= 0) { z.phase = "armed"; z.timer = z.period || 0; } }
+  return hurt;
+}
+// The scree chutes' carry (game.ts, each grounded frame off a dodge): the step `dx, dy` the Wayfarer would take, carried down the
+// chute underfoot. Written into `out` (no allocation); false when not on a chute, or when the tile it carries to is not open and lower.
+const SLIDE_OUT = { dx: 0, dy: 0 };
+export function slideCarry(map, px, py, dx, dy, dt, out = SLIDE_OUT) {
+  const t = tileUnder(map, 32, px, py), s = t?.slide; if (!s || !map?.ranges) return false;
+  const n = map.tiles[idx(t.x + s.dx, t.y + s.dy)]; if (!inMap(t.x + s.dx, t.y + s.dy) || !walkable(n) || (n.elev || 0) > (t.elev || 0)) return false;
+  const S = RANGES.slide, carry = S.speed * dt, along = dx * s.dx + dy * s.dy;
+  const kept = along >= 0 ? along : Math.max(along * S.against, -carry * (1 - S.netDown)); // walking up it is damped, and never outruns the carry
+  out.dx = dx + (kept - along + carry) * s.dx; out.dy = dy + (kept - along + carry) * s.dy; return out;
 }
 // The palette regions (release 625, version 10): bare ground in such a region becomes its `ground`, with wadeable `pool`s where
 // one noise rises and impassable `block`s (never on protected ground) where another peaks; a jungle also grows dense trees

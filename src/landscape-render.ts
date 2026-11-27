@@ -2,7 +2,7 @@
 // size) in offscreen canvases, plus per-frame animation (surf, glow) and pseudo-3D elevation: a raised tile's top is
 // drawn shifted up by its level and a shaded cliff face fills the drop below it.
 import { SEASONS } from "./seasons.ts";
-import { LIFT_PER_LEVEL, safeVoidScarTransition, PALETTE_REGIONS, tileLiftScale } from "./landscape.ts";
+import { LIFT_PER_LEVEL, safeVoidScarTransition, PALETTE_REGIONS, tileLiftScale, RANGES, rockAlong, rockslideFallTime } from "./landscape.ts";
 import { TREES, canopyBehindTrunk, canopyAboveCrown, canopyRepaint } from "./trees.ts";
 import { DOMAIN_LOOKS, domainKinds, DOMAIN_MELTS } from "./domain-looks.ts";
 import { BIZARRO } from "./strange.ts"; // the bizarro pockets
@@ -416,6 +416,35 @@ function rangePath(c, s, r, steps) { c.fillStyle = grad(c, 0, 0, s, 0, [[0, RANG
 PAINT.colTrail = (c, s, r) => { PAINT.foothillGrass(c, s, r); rangePath(c, s, r, false); };
 PAINT.rangeTrail = (c, s, r) => { PAINT.rangeRock(c, s, r); rangePath(c, s, r, true); };
 PAINT.crestPinnacle = (c, s, r) => { PAINT.rangeSnow(c, s, r); c.fillStyle = "#0000004a"; c.beginPath(); c.ellipse(s * .6, s * .86, s * .4, s * .1, 0, 0, TAU); c.fill(); const lean = (r() - .5) * s * .14; c.fillStyle = grad(c, 0, 0, s, 0, [[0, RANGE.spireA], [1, RANGE.spireB]]); c.beginPath(); c.moveTo(s * .2, s * .9); c.lineTo(s * .44 + lean, s * .06); c.lineTo(s * .58 + lean, s * .2); c.lineTo(s * .82, s * .9); c.closePath(); c.fill(); c.strokeStyle = RANGE.strata + "99"; c.lineWidth = 1; for (let k = 1; k < 4; k++) { const y = s * (.2 + k * .17); c.beginPath(); c.moveTo(s * (.3 + k * .03), y); c.lineTo(s * (.72 - k * .02), y + s * .04); c.stroke(); } c.fillStyle = RANGE.spireSnow; c.beginPath(); c.moveTo(s * .4 + lean, s * .16); c.lineTo(s * .44 + lean, s * .06); c.lineTo(s * .56 + lean, s * .18); c.closePath(); c.fill(); };
+// Scree chutes and rockslides (the Great Ranges): a chute is pale streaked scree (its downhill chevrons are drawn per tile, along its fall
+// line, in drawLandscapeTile); a rockslide's lane is darker loose stones, and the crag above it is split by a pale crack.
+const CHUTE = { a: "#cbbd9f", b: "#a89a7e", streak: "#f2e8d2", stone: ["#e0d6c0", "#8c826e", "#6a6252"], mark: "#4a3f30", lane: ["#7d7a7e", "#5d5a60"], crack: "#efe6d2" };
+PAINT.chuteSlope = (c, s, r) => { c.fillStyle = grad(c, 0, 0, s, s, [[0, CHUTE.a], [1, CHUTE.b]]); c.fillRect(0, 0, s, s); c.strokeStyle = CHUTE.streak + "88"; c.lineWidth = Math.max(1, s * .03); for (let k = 0; k < 5; k++) { const x = r() * s; c.beginPath(); c.moveTo(x, 0); c.lineTo(x + (r() - .5) * s * .12, s); c.stroke(); } for (let k = 0; k < 8; k++) { c.fillStyle = CHUTE.stone[k % 3]; const w = s * (.03 + r() * .05); c.fillRect(r() * s, r() * s, w, w * .7); } };
+PAINT.rockfallSlope = (c, s, r) => { c.fillStyle = grad(c, 0, 0, s, s, [[0, CHUTE.lane[0]], [1, CHUTE.lane[1]]]); c.fillRect(0, 0, s, s); for (let k = 0; k < 9; k++) { const x = r() * s, y = r() * s, w = s * (.07 + r() * .09); c.fillStyle = "#00000040"; c.beginPath(); c.ellipse(x + w * .2, y + w * .25, w * .6, w * .35, 0, 0, TAU); c.fill(); c.fillStyle = RANGE.stone[k % 3]; c.beginPath(); c.moveTo(x, y - w * .5); c.lineTo(x + w * .6, y - w * .1); c.lineTo(x + w * .3, y + w * .4); c.lineTo(x - w * .5, y + w * .2); c.closePath(); c.fill(); } };
+PAINT.crackedCrag = (c, s, r) => { PAINT.rangeRock(c, s, r); c.strokeStyle = "#1c2030cc"; c.lineWidth = Math.max(1.5, s * .06); c.beginPath(); let x = s * .1, y = s * (.4 + r() * .2); c.moveTo(x, y); for (let k = 0; k < 4; k++) { x += s * .2; y += (r() - .5) * s * .3; c.lineTo(x, y); } c.stroke(); c.strokeStyle = CHUTE.crack + "aa"; c.lineWidth = 1; c.stroke(); };
+// a chute's chevrons, pointing down its fall line (drawn into the ground cache with the tile)
+function chuteMarks(ctx, t, px, py, s) {
+  const d = t.slide, ux = d.dx, uy = d.dy, cx = px + s / 2, cy = py + s / 2; ctx.strokeStyle = CHUTE.mark + "bb"; ctx.lineWidth = Math.max(1.5, s * .07);
+  for (const o of [-.22, .14]) { const bx = cx + ux * s * o, by = cy + uy * s * o; ctx.beginPath(); ctx.moveTo(bx - ux * s * .14 - uy * s * .2, by - uy * s * .14 + ux * s * .2); ctx.lineTo(bx + ux * s * .1, by + uy * s * .1); ctx.lineTo(bx - ux * s * .14 + uy * s * .2, by - uy * s * .14 - ux * s * .2); ctx.stroke(); }
+}
+// The rockslides of a section, on the live layer (main.ts drawTruthfulCombatGeometry, the Close View's floor too): while one warns, dust
+// at its crag and the shadows of what is coming along its lane; while it falls, its stones rolling down. Nothing allocated: each stone's
+// place is a function of the slide's clock (landscape.ts rockAlong).
+export function drawRockslides(ctx, map, sx, sy, s, now) {
+  const zones = map?.rockslides; if (!zones) return; const K = RANGES.rockslide, lift = (x, y) => (map.tiles[Math.floor(y) * 32 + Math.floor(x)]?.elev || 0) * LIFT_PER_LEVEL; // drawn on the raised ground it rolls over
+  for (const z of zones) {
+    if (z.phase !== "warning" && z.phase !== "falling") continue; const ox = z.x + .5, oy = z.y + .5;
+    if (z.phase === "warning") { const k = 1 - Math.max(0, z.timer) / K.warn, pulse = .5 + .5 * Math.sin(now / 70);
+      ctx.fillStyle = `rgba(214,200,170,${.25 + .35 * pulse})`; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(sx(ox + (i - 1) * .3 + Math.sin(now / 160 + i) * .1), sy(oy - .2 - k * .3 - lift(ox, oy)), s * (.2 + .1 * i * k), 0, TAU); ctx.fill(); }
+      ctx.fillStyle = `rgba(0,0,0,${.12 + .25 * k})`; for (let d = 1; d <= z.len; d++) { ctx.beginPath(); ctx.ellipse(sx(ox + z.dx * d), sy(oy + z.dy * d + .2 - lift(ox + z.dx * d, oy + z.dy * d)), s * .34 * (.6 + .4 * k), s * .16, 0, 0, TAU); ctx.fill(); } continue; }
+    const t = rockslideFallTime(z) - Math.max(0, z.timer);
+    for (let k = 0; k < K.rocks; k++) { const d = rockAlong(z, k, t); if (d < 0) continue; const x = sx(ox + z.dx * d), y = sy(oy + z.dy * d - lift(ox + z.dx * d, oy + z.dy * d)), r = s * (.26 + .05 * (k % 2)), a = d * 2.4;
+      ctx.fillStyle = "#00000055"; ctx.beginPath(); ctx.ellipse(x + s * .06, y + s * .22, r, r * .45, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = k % 2 ? "#8a8794" : "#6f6c78"; ctx.beginPath(); for (let i = 0; i < 6; i++) { const q = a + i * TAU / 6, rr = r * (.8 + .2 * ((i + k) % 3) / 2); if (i) ctx.lineTo(x + Math.cos(q) * rr, y - s * .12 + Math.sin(q) * rr); else ctx.moveTo(x + Math.cos(q) * rr, y - s * .12 + Math.sin(q) * rr); } ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#ffffff30"; ctx.beginPath(); ctx.arc(x - r * .3, y - s * .12 - r * .3, r * .3, 0, TAU); ctx.fill(); }
+    ctx.fillStyle = "rgba(214,200,170,.3)"; ctx.beginPath(); ctx.arc(sx(ox + z.dx * z.len), sy(oy + z.dy * z.len), s * .4, 0, TAU); ctx.fill(); // dust where they end
+  }
+}
 // Release 723: the Thornglass Caldera (far-domains.ts): black basalt seamed with fire, a worn fighting floor, ground strewn with
 // shards, and crystals as tall as towers bursting out of the rock (drawn whole on their tile, in the static ground cache).
 const crack = (c, s, r, n, col) => { c.strokeStyle = col; c.lineWidth = Math.max(1, s * .035); for (let i = 0; i < n; i++) { let x = r() * s, y = r() * s; c.beginPath(); c.moveTo(x, y); for (let k = 0; k < 3; k++) { x += (r() - .5) * s * .5; y += (r() - .5) * s * .5; c.lineTo(x, y); } c.stroke(); } };
@@ -685,6 +714,7 @@ export function drawLandscapeTile(ctx, t, x, y, s, tiles, w, flat = false) {
   const slot = slotOf(t), paint = slot || t.kind, tex = topTexture(paint, variant, s); // the Rimeglaciers: a crevasse is an icy slot, not the violet void (the Lunar Wastes: a rille a grey one)
   if (tex) ctx.drawImage(tex, px, py, s + .5, s + .5);
   else { ctx.save(); ctx.translate(px, py); PAINT[paint](ctx, s, rand(variant + 1)); ctx.restore(); } // no offscreen canvas (tests, old browsers)
+  if (t.slide) chuteMarks(ctx, t, px, py, s); // the Great Ranges: a scree chute's downhill chevrons
   if (!staticPass && !slot) animate(ctx, t, px, py, s);
   if (t.landscape === "thornglass") thornGlow(ctx, t, x, y, s, tiles, w); // release 723
   else if (t.landscape === "arena") arenaGlow(ctx, t, x, y, s, tiles, w); // release 724
