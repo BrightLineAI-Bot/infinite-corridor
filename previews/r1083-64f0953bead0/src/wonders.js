@@ -1,0 +1,85 @@
+// Wonders worth the walk (release 674; Tim, 2026-11-01: "I haven't seen any tall trees or skyways, or chasm (Starfield)
+// explorations"). A traveller who has heard of the nearest unexplored Sky Stair, great tree or Starfield crossing says which way
+// it lies (the Atlas no longer pins them by itself: Tim, 2026-11-26, "nothing should be pointed at or pinned unless the player
+// chose it or it belongs to a quest the player accepted"). Everything here is a hash of the seed and the section, read without building the
+// section (a few thousand cheap checks, kept per section): a Sky Stair exactly as the game places it on new ground
+// (placement 2); a great tree where the section's centre lies in a tree region and the version 14 roll grows one (a tree may
+// still find no room: from 2026-11-26 a tree is named only once game.ts greatTreeProbe has built its section's terrain and found
+// one, `treeChecks` candidates at most, nearest first); a Starfield crossing where the section's ordinary crossing would roll
+// one on first entry. Only sections with no Atlas entry are named, so all of this is new ground (placement 2, landscape 14).
+import { hashSeed, rng } from "./random.js?v=r1083-64f0953bead0";
+import { dungeonId } from "./world.js?v=r1083-64f0953bead0";
+import { sectionRegion, farSleepSection, dreamsHere, DREAM_VERSION } from "./landscape.js?v=r1083-64f0953bead0";
+import { skylandSection, SKY_PLACE } from "./skylands.js?v=r1083-64f0953bead0";
+import { TREES_V14 } from "./trees.js?v=r1083-64f0953bead0";
+import { guideHost } from "./waymark-guides.js?v=r1083-64f0953bead0";
+
+// Starfield rolls by placement (Tim, 2026-11-25: "Starfield should be relatively rare; it's just another dungeon, so it shouldn't
+// be prioritised for any reason"). A crossing's Starfield roll (one hash, `chasm-crossing:v1`) is made once, at its first entry, and
+// kept in its history; the chance it is made against is pinned per section in the Atlas (`starPlace`): sections first seen from now
+// on take `place`, sections seen before keep placement 1 (release 672's .2, raised from .12) for crossings not yet entered. The hash
+// is the same, so a placement 2 Starfield is also a placement 1 one. Placement 2 also makes a great tree's canopy door a Starfield
+// only at the same chance (game.ts canopyDoorDest; placement 1: half of them). game.ts CHASM reads this table.
+export const STARFIELD_ROLL = { place: 2, chances: { 1: .2, 2: .1 } };
+export const starfieldChance = (place = STARFIELD_ROLL.place) => STARFIELD_ROLL.chances[place] ?? STARFIELD_ROLL.chances[STARFIELD_ROLL.place];
+export const starfieldRolls = (seed, id, place = STARFIELD_ROLL.place) => (hashSeed(`${seed}:chasm-crossing:v1:${id}`) % 1000) / 1000 < starfieldChance(place);
+// The placement a section's crossings roll at: its Atlas pin; a section explored before the Atlas pinned it keeps 1; new ground, `place`.
+export function starPlaceAt(save, rx, ry) { const e = save?.atlas?.[`${rx},${ry}`]; return e ? Number(e.starPlace) || 1 : save?.explored?.[`${rx},${ry}`] ? 1 : STARFIELD_ROLL.place; }
+const SECTION_OF = /^dungeon:[^:]*:g\d+:(-?\d+):(-?\d+):/;
+// The same for a crossing's id (its section's placement); an id with no section (the Refuge's own crossing) keeps 1.
+export function starPlaceOfId(save, id) { const m = String(id || "").match(SECTION_OF); return m ? starPlaceAt(save, Number(m[1]), Number(m[2])) : 1; }
+
+export const WONDERS = {
+  radius: 24, // sections searched round the Wayfarer (Manhattan)
+  treeChecks: 3, // great-tree candidates (nearest first) whose terrain may be built to find one that really stands (each about a section's build)
+  chasmChance: starfieldChance(), // game.ts CHASM.chance on new ground (kept equal by a test; not imported, so this module stays free of the game)
+  kinds: {
+    skyway: { name: "a skyway", atlas: "Skyway (rumoured)", color: "#9fd8ff" },
+    tree: { name: "a great tree", atlas: "Great tree (said to stand)", color: "#7fd36a" },
+    starfield: { name: "a crossing that opens on stars", atlas: "Starfield crossing (rumoured)", color: "#c9a8ff" },
+  },
+};
+export const WONDER_KINDS = Object.keys(WONDERS.kinds);
+
+export function wonderAt(seed, rx, ry, kind, generation = 1, starPlace = STARFIELD_ROLL.place) {
+  if (rx === 0 && ry === 0) return false;
+  if (kind === "skyway") return skylandSection(seed, rx, ry, SKY_PLACE.version) || guideHost(seed, "skyway", rx, ry); // waymark guides: new ground also holds each cell's guided skyway
+  if (kind === "tree") { const type = sectionRegion(seed, rx, ry, 14).type, R = TREES_V14.regions[type]; return !!R && !dreamsHere(seed, rx, ry, DREAM_VERSION, 18) && (hashSeed(`${seed}:canopy-grow:v2:${type}:${ry * 7919 + rx}`) % 1000) / 1000 < R.chance; } // landscape 18: no tree where the Far Sleep dreams
+  if (kind === "starfield") {
+    if (farSleepSection(rx, ry)) return false; // a Far Sleep crossing may be a Sleeper's Hall instead
+    const r = rng(`${seed}:dungeon-entrance:v1:g${generation}:${rx}:${ry}`); if (r() >= .28) return false; r(); // world.ts addDungeonLandmark: the roll, the spot, the id
+    const id = dungeonId(seed, generation, rx, ry, `dungeon-g${generation}-${rx}-${ry}-${Math.floor(r() * 1e6)}`);
+    return starfieldRolls(seed, id, starPlace);
+  }
+  return false;
+}
+const memo = new Map();
+// game.ts installs the great-tree probe (greatTreeProbe) once it loads; with none, no tree is named (an unbuilt one may not stand).
+let treeProbe = null;
+export function setWonderTreeProbe(probe) { treeProbe = typeof probe === "function" ? probe : null; memo.clear(); }
+// The nearest unexplored section of each kind within `radius`, nearest first: [{ kind, rx, ry, d }].
+export function nearestWonders(save, rx, ry) {
+  const seed = save?.seed, gen = Number(save?.worldGeneration) || 1, atlas = save?.atlas || {}, key = `${seed}:${gen}:${rx}:${ry}:${Object.keys(atlas).length}`;
+  if (memo.has(key)) return memo.get(key);
+  const found = {}; let treeChecks = 0;
+  for (let d = 1; d <= WONDERS.radius && Object.keys(found).length + (!found.tree && treeChecks >= WONDERS.treeChecks ? 1 : 0) < WONDER_KINDS.length; d++)
+    for (let i = 0; i < 4 * d; i++) {
+      const k = i % d, side = Math.floor(i / d), x = rx + [d - k, -k, -d + k, k][side], y = ry + [k, d - k, -k, -d + k][side];
+      if (atlas[`${x},${y}`]) continue;
+      for (const kind of WONDER_KINDS) {
+        if (found[kind] || (kind === "tree" && treeChecks >= WONDERS.treeChecks) || !wonderAt(seed, x, y, kind, gen, starPlaceAt(save, x, y))) continue;
+        if (kind === "tree") { treeChecks++; if (!treeProbe || treeProbe(save, x, y) !== true) continue; } // the same candidates every time, whatever is already built
+        found[kind] = { kind, rx: x, ry: y, d };
+      }
+    }
+  const out = Object.values(found).sort((a, b) => a.d - b.d);
+  if (memo.size > 64) memo.clear(); memo.set(key, out);
+  return out;
+}
+export function compassWords(dx, dy) { const a = []; if (dy < 0) a.push("north"); if (dy > 0) a.push("south"); if (dx > 0) a.push("east"); if (dx < 0) a.push("west"); return a.join("-") || "here"; }
+// What a traveller has heard: one wonder (chosen by `who`, so each traveller tells the same one), or null.
+export function wonderRumour(save, rx, ry, who = "") {
+  const list = nearestWonders(save, rx, ry); if (!list.length) return null;
+  const w = list[hashSeed(`${save?.seed}:rumour:${who}`) % list.length], K = WONDERS.kinds[w.kind];
+  return `They speak of ${K.name} ${compassWords(w.rx - rx, w.ry - ry)}, about ${w.d} section${w.d === 1 ? "" : "s"} off.`;
+}
