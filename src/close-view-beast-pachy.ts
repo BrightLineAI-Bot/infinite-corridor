@@ -23,7 +23,7 @@ export const PACHY_RIG = Object.freeze({
   ease: 12, strikeEase: 24, deathMs: 2200, hitMs: 320, landMs: 500,
   breathe: Object.freeze({ rate: 1.6, chest: .014 }),
   // exact side counts (ring segments) per tier for the lofts: the hide, the legs, the stripe
-  seg: Object.freeze({ hide: Object.freeze({ full: 16, balanced: 12, low: 8 }), leg: Object.freeze({ full: 12, balanced: 9, low: 6 }), stripe: Object.freeze({ full: 6, balanced: 5, low: 4 }) }),
+  seg: Object.freeze({ hide: Object.freeze({ full: 20, balanced: 14, low: 8 }), leg: Object.freeze({ full: 14, balanced: 10, low: 6 }), stripe: Object.freeze({ full: 6, balanced: 5, low: 4 }) }),
 });
 const G0 = PACHY_RIG, A = PACHY_ART;
 const KEYS = ["pitch", "head", "crouch", "tuck", "kick", "arms", "dig", "tail", "daze"], K = KEYS.length;
@@ -81,11 +81,11 @@ const sm = (a, b, x) => smooth(clamp01((x - a) / (b - a)));
 // blend up into the green, gray markings on the flanks; the head yellow from behind the eye, the snout and mouth gray; the feet darker.
 function fleshSkin(C, p, n) {
   const [f, r, u] = p, nz = n[2];
-  let c = lerpHex(C.body, C.bodyLight, sm(.45, .95, nz) * .55);
-  const inner = r * n[1] < 0 && u < .62 ? sm(.2, .8, -Math.sign(r) * n[1]) * .45 : 0; // the inside of the thighs a little paler
-  c = lerpHex(c, C.belly, Math.max(sm(.05, -.6, nz), inner) * .92);
+  let c = lerpHex(C.body, C.bodyLight, sm(.45, .95, nz) * .55 * sm(.6, .7, u));
+  const inner = r * n[1] < 0 && u < .62 ? sm(.2, .8, -Math.sign(r) * n[1]) * .3 : 0; // the inside of the thighs a little paler
+  c = lerpHex(c, C.belly, Math.max(sm(-.04, -.62, nz) * (u > .5 ? 1 : .25 + .75 * sm(.3, .5, u)), inner) * .92); // the legs keep their green below the belly
   const blot = Math.sin(f * 29 + u * 11) * Math.sin(f * 17 - u * 23 + Math.abs(r) * 9); // soft gray markings, continuous in space
-  if (f < .5 && u > .45 && Math.abs(nz) < .6 && blot > .55) c = lerpHex(c, C.knob, sm(.55, .85, blot) * .55);
+  if (f < .5 && Math.abs(f) > .2 && u > .45 && Math.abs(nz) < .6 && blot > .55) c = lerpHex(c, C.knob, sm(.55, .85, blot) * .55);
   c = lerpHex(c, C.bodyDark, sm(.2, .04, u) * .7); // the feet
   // the head: yellow from the back of the skull (the throat stays gray), the snout gray, the mouth's line darker
   const head = sm(.57, .64, f) * (nz > -.35 ? 1 : .25);
@@ -146,7 +146,7 @@ function headParts(B, C, low, full, form) {
   // the knobs ringing the dome's rim, larger round the back of the skull (gray; rivets on the steel dome; bone on the fossil), a few down the snout
   const nk = low ? 8 : full ? 14 : 11, knob = bone ? C.boneShade : steel ? C.rivet : C.knob;
   for (let i = 0; i < nk; i++) { const a = i / nk * Math.PI * 2, back = Math.max(0, -Math.cos(a)), r = (i % 2 ? .02 : .025) + back * .01;
-    B.color(knob).ellipsoid({ at: hb(DOME.f + Math.cos(a) * DOME.r[0] * .93, Math.sin(a) * DOME.r[1] * .93, DOME.u - .045 - Math.cos(a) * DOME.r[0] * .93 * .3 - back * .01), radius: [r, r, r * .85], rings: 2, seg: low ? 4 : 6 }); }
+    B.color(knob).ellipsoid({ at: hb(DOME.f + Math.cos(a) * DOME.r[0] * .93, Math.sin(a) * DOME.r[1] * .93, DOME.u - .045 - Math.cos(a) * DOME.r[0] * .93 * .3 - back * .01), radius: [r, r, r * .85], rings: low ? 2 : 3, seg: low ? 4 : 6 }); }
   if (!low) for (let i = 0; i < 3; i++) for (const s of [-1, 1]) B.color(knob).ellipsoid({ at: hb(.15 + i * .045, s * (.05 - i * .01), .0 - i * .016), radius: [.013, .013, .011], rings: 2, seg: 4 });
   // the eyes: dark under the dome's brow; a red visor band in the armor; embers in the fossil's sockets
   for (const s of [-1, 1]) {
@@ -163,9 +163,9 @@ function headParts(B, C, low, full, form) {
 // The black stripe: a thin ridge along the top of the hide, from the crown down the neck and back to the tail tip.
 function stripe(B, C, tier) {
   const rows = [];
-  for (const [f, u, , rz, a, b, w] of BODY.filter((q) => q[0] < .5)) rows.push({ at: [f, 0, u + rz * .96], rx: Math.min(.034, .006 + rz * .2), rz: Math.min(.012, .003 + rz * .05), bones: [a, b ?? a, w || 0] });
+  for (const [f, u, , rz, a, b, w] of BODY.filter((q) => q[0] < .55)) rows.push({ at: [f, 0, u + rz * .96], rx: Math.min(.026, .006 + rz * .16), rz: Math.min(.011, .003 + rz * .05), bones: [a, b ?? a, w || 0] });
   // up the back of the dome and over its crown (the dome is tilted forward: its top falls toward the snout) to the brow
-  for (const [df, rx, rz] of [[-.15, .024, .008], [-.12, .024, .008], [-.07, .022, .008], [-.01, .019, .007], [.05, .013, .006], [.09, .004, .004]]) rows.push({ at: [HEAD[0] + DOME.f + df, 0, HEAD[1] + DOME.u + domeTop(df) - .007], rx, rz, bones: ['head', 'head', 0] });
+  for (const [df, rx, rz, w] of [[-.11, .024, .008, .75], [-.07, .022, .008, 1], [-.01, .017, .007, 1], [.04, .008, .005, 1], [.065, .003, .003, 1]]) rows.push({ at: [HEAD[0] + DOME.f + df, 0, HEAD[1] + DOME.u + domeTop(df) - .002], rx, rz, bones: ['neck', 'head', w] });
   B.color(C.stripe).loft({ seg: G0.seg.stripe[tier], minSeg: 4, sections: rows });
 }
 // The legs: each one loft grown out of the body (from inside the hips) through the thigh and shin to the foot, then a foot with three
