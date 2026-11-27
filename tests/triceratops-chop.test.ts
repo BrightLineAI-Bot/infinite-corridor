@@ -229,3 +229,17 @@ test('chopSwing guards: no Echo, a downed Wayfarer or a bad clock send nothing; 
   assert.equal(g.chopSpikes.length, C.cap); assert.equal(live(g).length, C.cap);
   assert.ok(Math.min(...live(g).map((q) => q.at)) >= 1008, 'the newest three sends held');
 });
+
+test('drawing: Close View\'s horn triangles end at the pose\'s tip and stay finite; Standard View draws every phase, the floor layer only its ground marks', async () => {
+  const { chopHornVerts } = await import('../src/echoes.ts'); const { drawChopSpikes } = await import('../src/renderer.ts');
+  const { g } = arena(); swing(g, 0); swing(g, 500); swing(g, 1000); const [l] = live(g), P = {}, V = new Float32Array(48);
+  for (let t = l.at; t <= l.endAt; t += 20) {
+    assert.ok(chopSpikePose(l, t, .6, .8, false, P)); assert.equal(chopHornVerts(P, .6, .8, .3, V), V);
+    for (const v of V) assert.ok(Number.isFinite(v));
+    for (let o = 0; o < 48; o += 12) assert.deepEqual([V[o], V[o + 1] - .3, V[o + 2]].map((x) => Math.round(x * 1e4)), [P.tx, P.ty, P.tz].map((x) => Math.round(x * 1e4)), 'each triangle starts at the tip');
+  }
+  const calls = { fill: 0, stroke: 0 }, ctx = new Proxy({}, { get: (o, k) => k in calls ? () => { calls[k]++; } : typeof k === 'string' && /^[a-z]/.test(k) && !['globalAlpha', 'fillStyle', 'strokeStyle', 'lineWidth', 'lineJoin', 'lineCap'].includes(k) ? () => {} : o[k], set: (o, k, v) => { o[k] = v; return true; } });
+  for (const t of [l.at + 50, l.fallAt + 40, l.hitAt + 30, l.hitAt + 200]) { const before = calls.fill + calls.stroke; drawChopSpikes(ctx, g, 48, t, false); assert.ok(calls.fill + calls.stroke > before, `drawn at ${t}`); }
+  calls.fill = calls.stroke = 0; drawChopSpikes(ctx, g, 48, l.at + 50, true); assert.ok(calls.fill >= 1 && calls.fill <= 2 && calls.stroke === 0, 'the floor layer: only the ground marks');
+  g.presentation = { reduceMotion: true }; drawChopSpikes(ctx, g, 48, l.fallAt + 40, false);
+});

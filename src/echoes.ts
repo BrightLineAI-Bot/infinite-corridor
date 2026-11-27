@@ -356,7 +356,7 @@ export const TRICERATOPS_CHOP = Object.freeze({
   cap: 6,
   // Appearance only: `height` and `side` (tiles) place the hanging spike's centre above and beside the target; `length` and
   // `radius` its horn; `strike` the height on the target it lands at; `dust` the impact ring's reach.
-  draw: Object.freeze({ height: 1.35, side: .8, length: .62, radius: .08, strike: .3, sink: .12, dust: .55, horn: "#efe6cf", edge: "#8a7a5c", flash: "#fff4d6", dustColor: "#c8b48a" }),
+  draw: Object.freeze({ height: 1.35, side: .8, length: .7, radius: .1, strike: .3, sink: .12, dust: .55, horn: "#efe6cf", edge: "#8a7a5c", flash: "#fff4d6", dustColor: "#c8b48a" }),
 });
 // The spike pool (game.chopSpikes): `cap` records made once, then reused.
 function chopPool(game) {
@@ -424,6 +424,18 @@ export function chopSpikePose(q, now, rx, ry, reduce = false, out = {}) {
   const impact = now >= q.hitAt ? Math.min(1, (now - q.hitAt) / C.impactMs) : 0;
   out.impact = impact; out.landed = q.landed; out.gx = q.tx; out.gy = q.ty; out.side = q.side;
   out.alpha = (reduce ? 1 : Math.min(1, .25 + grow)) * (impact > 0 ? 1 - impact : 1);
+  return out;
+}
+// The horn as Close View draws it, from a pose: 4 triangles (two crossed tapering blades, one across the viewer's right (rx, ry), one
+// across that in the plane of its fall), 12 vertices of x, y, z and a shade (1 the tip, .75 a base corner, .55 the base's centre),
+// written to `out` (a Float32Array of 48). `yo` moves it from the target's centre line to its feet. Returns `out`.
+export function chopHornVerts(P, rx, ry, yo = 0, out = new Float32Array(48)) {
+  const bx = P.bx, by = P.by + yo, bz = P.bz, tx = P.tx, ty = P.ty + yo, tz = P.tz, r = P.radius;
+  const wx = rx * r, wy = ry * r, hx = -P.ux * P.uz * r, hy = -P.uy * P.uz * r, hz = (1 - P.uz * P.uz) * r;
+  for (let i = 0, o = 0; i < 4; i++) { const k = i & 1 ? -1 : 1, ox = i < 2 ? wx : hx, oy = i < 2 ? wy : hy, oz = i < 2 ? 0 : hz;
+    out[o++] = tx; out[o++] = ty; out[o++] = tz; out[o++] = 1;
+    out[o++] = bx + ox * k; out[o++] = by + oy * k; out[o++] = bz + oz * k; out[o++] = .75;
+    out[o++] = bx; out[o++] = by; out[o++] = bz; out[o++] = .55; }
   return out;
 }
 

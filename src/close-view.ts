@@ -42,6 +42,8 @@ import { lanternReach, lanternNightReach } from "./spell-slots.ts"; // the Lante
 import { OUTDOOR, outdoorScene, outdoorInsideHouse, outdoorTreeObject, outdoorPropObject, propScene, outdoorRelief, outdoorSurfaceZ, outdoorLightning, LIGHTNING, outdoorRoofZ, outdoorRoofTopAt, OUTDOOR_FLOATS, outdoorTowerAir, outdoorMoodId } from "./close-view-outdoor.ts";
 import { CLOSE_VIEW_POLISH, smoothDamp, softTilt, recentreStep, fadeToward, smoothstep01, crossfadeAlpha, inertiaRelease, inertiaDecay, inertiaTravel } from "./close-view-polish.ts"; // the polish pass (2026-11-19): smooth pitch, zoom, recentre, fades, cross-fades and hit-stop
 import { roofDeckAt, roofDeckById } from "./roof-decks.ts"; // roof decks: the Wayfarer on a roof, the roof kept, the tap on a roof
+import { chopSpikePose, chopHornVerts, TRICERATOPS_CHOP } from "./echoes.ts"; // Triceratops Chop's spikes (drawn with the floor's decals)
+const CHOP_CV_POSE = {}, CHOP_CV_VERTS = new Float32Array(48), CHOP_CV_COLORS = Object.freeze({ horn: parseInt(TRICERATOPS_CHOP.draw.horn.slice(1), 16), flash: parseInt(TRICERATOPS_CHOP.draw.flash.slice(1), 16) });
 // The overworld's heightfield (OUTDOOR.terrain): while it is drawn, everything that stands on the ground (the Wayfarer, the
 // creatures, their shadows, shots, the camera's floor) stands at its height; elsewhere the interiors' own heights, as before.
 const RELIEF = { map: null, R: null };
@@ -5296,6 +5298,15 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     if(!reduce&&release.profile==='fan-release'&&age<=120){let shot=null;for(const e of shots?.entries||[])if(e.kind==='fire'&&e.source.id===release.sourceId){shot=e.source;break;}if(shot&&!shot.dead&&!shot.impact&&!shot.returning&&!shot.shadow&&!shot.echo){const X=shot.x,Y=shot.y,Z=surfaceZ(g.map,X,Y)+SHOT_DRAW.height,dx=X-at[0],dy=Y-at[1],dz=Z-at[2],forward=dx*release.aim.x+dy*release.aim.y;if(forward>0&&Math.hypot(dx,dy)<=.9&&Math.hypot(dx,dy,dz)<=.9&&toolCueSegmentOpen(g.map,at[0],at[1],X,Y)){const r=.014,a=.45*(1-age/120)*MODEL_STATE.spellAlpha;room(6);DV(at[0],at[1],at[2]-r,-1,-1,11,a,0xff9a4a,1,true);DV(X,Y,Z-r,1,-1,11,a,0xff9a4a,1,true);DV(X,Y,Z+r,1,1,11,a,0xff9a4a,1,true);DV(at[0],at[1],at[2]-r,-1,-1,11,a,0xff9a4a,1,true);DV(X,Y,Z+r,1,1,11,a,0xff9a4a,1,true);DV(at[0],at[1],at[2]+r,-1,1,11,a,0xff9a4a,1,true);}}}
   }
   // Project a latched launch offset, when present, into the same depth-tested flame batch. Physics stays untouched.
+  // Triceratops Chop (echoes.ts TRICERATOPS_CHOP): each spike a pale horn hanging beside its target on the camera's left or right,
+  // chopping down onto it at an angle: two crossed tapering blades (echoes.ts chopHornVerts), a flash where it lands. The ground mark and the dust
+  // ring are on the floor (renderer.ts drawChopSpikes). The pose is the shared sampler's; under reduced motion it neither grows nor falls.
+  if (g.chopSpikes) { const P = CHOP_CV_POSE, yo = .3 /* the target's centre line to its feet */;
+    for (const q of g.chopSpikes) { if (!chopSpikePose(q, now, RX, RY, reduce, P)) continue;
+      const V = chopHornVerts(P, RX, RY, yo, CHOP_CV_VERTS), a = P.alpha * .9;
+      room(12); for (let o = 0; o < 48; o += 4) DV(V[o], V[o + 1], V[o + 2], 0, 0, 11, a * V[o + 3], CHOP_CV_COLORS.horn, 0); // the shade fades the base into the air
+      if (P.landed && P.impact > 0 && P.impact < .6) { const f = 1 - P.impact / .6, w = .22 * (reduce ? 1 : .6 + .8 * P.impact); card(P.tx, P.ty + yo, P.tz - w, P.tz + w, w, 11, .9 * f, CHOP_CV_COLORS.flash, 0); }
+    } }
   // the Triceratops's Bash arc at its horns' height (glyphVisuals `z`: renderer.ts leaves it off the floor layer): two ribbon segments
   for (const v of g.glyphVisuals || []) { if (v?.kind !== "arc" || !(v.z > 0) || !(v.max > 0)) continue;
     const a = Math.max(0, v.life / v.max) * .8, t = reduce ? 0 : now / 1000, ax = v.x, ay = v.y + .37, bx = v.tx, by = v.ty + .37, mx = (ax + bx) / 2 + Math.sin(t * 40) * .15, my = (ay + by) / 2 + Math.cos(t * 37) * .15, w = .05, col = SHOT_COLORS.get(v.color) ?? (SHOT_COLORS.set(v.color, parseInt(String(v.color).slice(1), 16)), SHOT_COLORS.get(v.color));

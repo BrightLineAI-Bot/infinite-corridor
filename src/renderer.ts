@@ -13,7 +13,7 @@ import { shakeOffset } from "./spino-rex.ts";
 import { drawBleedIcon } from "./bleed.ts";
 import { drawPoisonIcon } from "./apato-poison.ts";
 import { drawEarthResolveSigil } from "./apato-render.ts";
-import { insideResolve } from "./echoes.ts"; // the Earth Apatosaurus's root venom
+import { insideResolve, chopSpikePose, TRICERATOPS_CHOP } from "./echoes.ts"; // the Earth Apatosaurus's root venom; Triceratops Chop's spikes
 import { drawRealmTile, drawRealmCosmos, drawRealmObject } from "./seed-realm-render.ts"; // seed realms
 import { biomechanicalKeep } from "./close-view-room-routing.ts";
 import { PENTAGON_MURALS } from "./pentagon-halls.ts"; // release 795: the grand halls' murals, drawn small
@@ -3555,6 +3555,7 @@ export function render(ctx, g, w, h, now) {
     }
   drawEchoPatches(ctx,g,s,now);
   drawGlyphStatus(ctx,g,s,now,(e)=>shownInDungeon(g,e)&&visibleInCamera(e,l,t,r,b,2)&&creatureInSight(g,e),bareFloor);
+  if(g.chopSpikes)drawChopSpikes(ctx,g,s,now,bareFloor||closeViewCapturing());
   if(g.damageNumbers)drawDamageNumbers(ctx,g,s,now); // release 461
   { const m=g.aimMark; if(m&&now<m.until){const e=g.enemies.find(q=>q.id===m.id&&!q.dead&&shownInDungeon(g,q)&&!q.gloomVeil/* never gives the Gloomvast away in its Dark */);if(e){const k=(m.until-now)/450,cx=(e.x+.5)*s,cy=(e.y+.45)*s,r=s*(.5+Math.max(0,Number(e.bodyRadius)||0)*.6+(1-k)*.12),a=r*.45;ctx.save();ctx.globalAlpha=Math.min(1,k*1.6);ctx.strokeStyle="#fff1c8";ctx.lineWidth=Math.max(2,s*.07);ctx.beginPath();for(const[sx,sy]of[[-1,-1],[1,-1],[1,1],[-1,1]]){ctx.moveTo(cx+sx*r,cy+sy*r-sy*a);ctx.lineTo(cx+sx*r,cy+sy*r);ctx.lineTo(cx+sx*r-sx*a,cy+sy*r)}ctx.stroke();ctx.restore()}}} // release 469: where the swing went
   if(skyA<.98){if(skyA>0){ctx.save();ctx.globalAlpha=1-skyA} // release 635: roofs far below fade into the sky
@@ -3809,6 +3810,29 @@ function drawEncumbered(ctx,cx,cy,s,left,fill,t,still){
     ctx.beginPath();ctx.moveTo(cx-s*.22,cy-s*.05);ctx.lineTo(bx-s*.08,by-s*.04);ctx.moveTo(cx+s*.22,cy-s*.05);ctx.lineTo(bx+s*.08,by-s*.04);ctx.stroke();
     ctx.fillStyle="#3a2a66";ctx.beginPath();ctx.moveTo(bx-s*.12,by-s*.02);ctx.lineTo(bx+s*.12,by-s*.02);ctx.lineTo(bx+s*.08,by-s*.16);ctx.lineTo(bx-s*.08,by-s*.16);ctx.closePath();ctx.fill();ctx.stroke()}
   else{ctx.globalAlpha=.7;ctx.strokeStyle="#9b7bff";ctx.beginPath();ctx.ellipse(cx,cy+s*.42,s*.44,s*.15,0,-Math.PI/2,-Math.PI/2+Math.min(1,fill)*Math.PI*2);ctx.stroke()}
+  ctx.restore();
+}
+// Triceratops Chop (echoes.ts TRICERATOPS_CHOP): each spike a pale horn hanging beside its target, the viewer's left or right, that
+// chops down onto it at an angle; a dark mark on the ground under the target while it hangs, and on landing a short flash and a
+// ring of dust. Standard View draws the horn lifted by its height; Close View draws the horn itself (close-view.ts) and takes only
+// the ground marks from this floor layer (`floorOnly`). One pooled pose record, no allocation; reduced motion: no growing, no fall.
+const CHOP_POSE={};
+export function drawChopSpikes(ctx,g,s,now,floorOnly){
+  const D=TRICERATOPS_CHOP.draw,reduce=!!(g.presentation?.reduceMotion||g.presentation?.safeMode),gy=.3/* the target's centre line to its feet */;
+  ctx.save();ctx.lineJoin="round";ctx.lineCap="round";
+  for(const q of g.chopSpikes){const P=chopSpikePose(q,now,1,0,reduce,CHOP_POSE);if(!P)continue;
+    const fx=P.gx*s,fy=(P.gy+gy)*s;
+    if(P.impact<=0){ctx.globalAlpha=.3*P.alpha;ctx.fillStyle="#1a1208";ctx.beginPath();ctx.ellipse(fx+P.side*s*.08,fy,s*.16,s*.06,0,0,7);ctx.fill()} // the mark it will land on
+    else{const k=P.impact,r=s*D.dust*(reduce?.8:.35+.65*k);ctx.globalAlpha=.6*(1-k);ctx.strokeStyle=D.dustColor;ctx.lineWidth=Math.max(1.5,s*.06*(1-k*.5));ctx.beginPath();ctx.ellipse(fx,fy,r,r*.38,0,0,7);ctx.stroke()
+      if(P.landed&&k<.5&&!floorOnly){const f=1-k*2,rr=s*.28*(reduce?.8:.6+.6*k);ctx.globalAlpha=.85*f;ctx.fillStyle=D.flash;ctx.beginPath();for(let i=0;i<8;i++){const a=i*Math.PI/4+P.side*.3,m=i%2?rr*.35:rr;ctx.lineTo(P.tx*s+Math.cos(a)*m,(P.ty-P.tz)*s+Math.sin(a)*m)}ctx.closePath();ctx.fill()}}
+    if(floorOnly)continue;
+    // the horn: base (wide) to tip, both lifted by their height; drawn as a tapered blade with a dark edge and a pale ridge
+    const bx=P.bx*s,by=(P.by-P.bz)*s,tx=P.tx*s,ty=(P.ty-P.tz)*s,dx=tx-bx,dy=ty-by,m=Math.hypot(dx,dy)||1,nx=-dy/m*P.radius*s,ny=dx/m*P.radius*s;
+    ctx.globalAlpha=P.alpha;ctx.fillStyle=D.horn;ctx.strokeStyle=D.edge;ctx.lineWidth=Math.max(1,s*.025);
+    ctx.beginPath();ctx.moveTo(bx+nx,by+ny);ctx.quadraticCurveTo(bx+dx*.55+nx*.7,by+dy*.55+ny*.7,tx,ty);ctx.quadraticCurveTo(bx+dx*.55-nx*.7,by+dy*.55-ny*.7,bx-nx,by-ny);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.globalAlpha=P.alpha*.7;ctx.strokeStyle=D.flash;ctx.beginPath();ctx.moveTo(bx+nx*.2,by+ny*.2);ctx.lineTo(bx+dx*.8,by+dy*.8);ctx.stroke();
+    if(!reduce&&P.impact<=0&&now>=q.fallAt){ctx.globalAlpha=.35*P.alpha;ctx.strokeStyle=D.flash;ctx.lineWidth=Math.max(1,s*.04);ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx-dx*.6,by-dy*.6);ctx.stroke()} // a streak behind it as it falls
+  }
   ctx.restore();
 }
 function drawGlyphStatus(ctx,g,s,now,visible,bareFloor=false){
