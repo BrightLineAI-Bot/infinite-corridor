@@ -17,7 +17,7 @@ export const PACHY_ART = Object.freeze({
   bone: "#e8dfc6", boneShade: "#c2b48f", boneDark: "#7d6f52", socket: "#2a1f14", ember: "#ff8a2a",
   rock: "#8a8780", rockLight: "#a9a69f", rockDark: "#5f5c56", rockCap: "#c9c08a", moss: "#6f8f4a",
   // shape, in body units (u: a tile times the actor's scale)
-  hip: .66, crouchDrop: .2, thigh: .3, shin: .3, foot: .16, stride: .2, settle: 6, ease: 12, knobs: 9, headScale: .86,
+  hip: .66, crouchDrop: .2, thigh: .3, shin: .3, foot: .16, stride: .2, settle: 6, ease: 12, knobs: 7, headScale: .86,
 });
 // How each contract pose shapes the body: pitch (+ nose up, about the hips), head (+ raises the head on its short neck), crouch, tuck
 // (legs folded under in the air), kick (+ near leg thrust forward, - the far one), arms (forward reach of the little arms), dig (the
@@ -116,7 +116,7 @@ function hide(ctx, A, R, V, t, form, breathe, hd) {
   pbN = 0;
   pb(R(L[4][0], L[4][1]));
   for (let i = 3; i >= 1; i--) pb(R(L[i][0], L[i][1] + L[i][2]));
-  pb(R(-.26, .22 + breathe)); pb(R(.06, .3 + breathe)); pb(R(.32, .25));
+  pb(R(-.32, .2 + breathe)); pb(R(.04, .3 + breathe)); pb(R(.32, .25));
   pb(HP(hd, -.24, .06)); pb(HP(hd, -.1, .07)); // the nape, into the back of the skull
   pb(HP(hd, -.02, -.07)); pb(HP(hd, -.14, -.1)); // the throat
   pb(R(.48, -.07)); pb(R(.32, -.25 - breathe)); pb(R(.02, -.28 - breathe)); pb(R(-.28, -.15));
@@ -207,28 +207,32 @@ function head(ctx, A, R, V, pitch, form, t, name, hd) {
   const open = name === "burst" || name === "feed" ? .5 : name === "skullReady" ? .3 : 0;
   // the lower jaw: gray, the mouth's dark inside above it
   ctx.fillStyle = bone ? A.boneShade : steel ? A.steelDark : A.snout; ctx.strokeStyle = bone ? A.boneDark : steel ? A.seam : A.outline; ctx.lineWidth = .02;
-  ctx.beginPath(); let p = H(-.02, -.07); ctx.moveTo(p[0], p[1]); P2(ctx, H(.21, -.075 - open * .03)); P2(ctx, H(.19, -.11 - open * .12)); P2(ctx, H(.0, -.12 - open * .05)); ctx.closePath(); ctx.fill(); ctx.stroke();
+  if (!bone && !steel) ctx.fillStyle = A.belly;
+  ctx.beginPath(); let p = H(-.06, -.06); ctx.moveTo(p[0], p[1]); P2(ctx, H(.22, -.07 - open * .03)); ctx.quadraticCurveTo(...H(.2, -.1 - open * .12), ...H(.1, -.105 - open * .1)); ctx.quadraticCurveTo(...H(-.02, -.11 - open * .05), ...H(-.08, -.08)); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); p = H(.22, -.07 - open * .03); ctx.moveTo(p[0], p[1]); ctx.quadraticCurveTo(...H(.2, -.1 - open * .12), ...H(.1, -.105 - open * .1)); ctx.quadraticCurveTo(...H(-.02, -.11 - open * .05), ...H(-.08, -.08)); ctx.stroke();
   if (open) { ctx.fillStyle = A.mouth; ctx.beginPath(); p = H(.02, -.07); ctx.moveTo(p[0], p[1]); P2(ctx, H(.2, -.07)); P2(ctx, H(.18, -.07 - open * .12)); ctx.closePath(); ctx.fill(); }
   // the skull and its dome as one shape: the back of the skull, the great dome over the eye (tilted forward), the brow, the snout
   const skull = bone ? A.bone : steel ? A.steel : A.head;
   const outline = () => { ctx.beginPath(); p = H(-.13, -.06); ctx.moveTo(p[0], p[1]); ctx.quadraticCurveTo(...H(-.2, .06), ...H(-.15, .14)); ctx.quadraticCurveTo(...H(-.08, .29), ...H(.06, .25));
-    ctx.quadraticCurveTo(...H(.16, .2), ...H(.15, .08)); ctx.quadraticCurveTo(...H(.24, .04), ...H(.28, -.025)); ctx.quadraticCurveTo(...H(.24, -.07), ...H(.18, -.07)); P2(ctx, H(-.06, -.075)); ctx.closePath(); };
+    ctx.bezierCurveTo(...H(.15, .22), ...H(.2, .09), ...H(.29, -.015)); ctx.quadraticCurveTo(...H(.25, -.07), ...H(.18, -.07)); P2(ctx, H(-.06, -.075)); ctx.closePath(); };
   outline(); ctx.fillStyle = skull; ctx.fill();
   ctx.save(); ctx.clip();
   if (!bone) { // the snout gray (the muzzle plate in steel), blended from the yellow; the dome lit on top, its rim darker
-    ctx.fillStyle = steel ? A.steelDark : A.snout; for (const [a, f] of [[.4, .13], [.7, .16], [1, .19]]) { ctx.globalAlpha = a; ctx.beginPath(); p = H(f, .3); ctx.moveTo(p[0], p[1]); P2(ctx, H(.4, .3)); P2(ctx, H(.4, -.3)); P2(ctx, H(f - .02, -.3)); ctx.closePath(); ctx.fill(); }
+    ctx.fillStyle = steel ? A.steelDark : A.snout; for (const [a, f] of [[.3, .12], [.5, .15], [.75, .18], [1, .21]]) { ctx.globalAlpha = a; ctx.beginPath(); p = H(f, .3); ctx.moveTo(p[0], p[1]); P2(ctx, H(.4, .3)); P2(ctx, H(.4, -.3)); P2(ctx, H(f - .02, -.3)); ctx.closePath(); ctx.fill(); }
     ctx.globalAlpha = 1; ctx.fillStyle = steel ? A.steelLight : A.headLight; ctx.globalAlpha = .75; p = H(-.04, .21); ctx.beginPath(); ctx.ellipse(p[0], p[1], .09, .04, -ha - .25, 0, TAU); ctx.fill();
     ctx.globalAlpha = .3; ctx.fillStyle = steel ? A.steelDark : A.headDark; ctx.beginPath(); p = H(-.25, .1); ctx.moveTo(p[0], p[1]); ctx.quadraticCurveTo(...H(-.04, .17), ...H(.14, .1)); P2(ctx, H(.14, -.2)); P2(ctx, H(-.25, -.2)); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
   } else { ctx.fillStyle = A.boneShade; ctx.globalAlpha = .6; p = H(.03, .0); ctx.beginPath(); ctx.ellipse(p[0], p[1], .16, .045, -ha + .2, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; }
   ctx.restore();
-  outline(); ctx.strokeStyle = bone ? A.boneDark : steel ? A.seam : A.headDark; ctx.lineWidth = .02; ctx.stroke();
+  // the outline over the crown, the brow and the snout only: the back of the skull flows into the neck with no collar line
+  ctx.strokeStyle = bone ? A.boneDark : steel ? A.seam : A.headDark; ctx.lineWidth = .02; ctx.beginPath(); p = H(-.15, .14); ctx.moveTo(p[0], p[1]); ctx.quadraticCurveTo(...H(-.08, .29), ...H(.06, .25));
+  ctx.bezierCurveTo(...H(.15, .22), ...H(.2, .09), ...H(.29, -.015)); ctx.quadraticCurveTo(...H(.25, -.07), ...H(.18, -.07)); P2(ctx, H(-.03, -.075)); ctx.stroke();
   if (steel) { ctx.strokeStyle = A.seam; ctx.lineWidth = .016; for (const f of [-.08, .03]) { ctx.beginPath(); ctx.moveTo(...H(f + .02, .06)); ctx.quadraticCurveTo(...H(f - .02, .18), ...H(f - .04, .26)); ctx.stroke(); } }
   // the black stripe over the crown of the dome to the brow
-  if (!bone) { ctx.strokeStyle = A.stripe; ctx.lineWidth = .032; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(...H(-.13, .08)); ctx.quadraticCurveTo(...H(-.165, .16), ...H(-.08, .25)); ctx.quadraticCurveTo(...H(-.01, .275), ...H(.05, .245)); ctx.stroke(); }
+  if (!bone) { ctx.strokeStyle = A.stripe; ctx.lineWidth = .036; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(...H(-.13, .08)); ctx.quadraticCurveTo(...H(-.165, .16), ...H(-.08, .25)); ctx.quadraticCurveTo(...H(-.01, .275), ...H(.05, .245)); ctx.stroke(); }
   // the knobs ringing the dome's rim (larger round the back), a few down the snout (gray; rivets in the steel; bone on the fossil)
   ctx.fillStyle = bone ? A.boneShade : steel ? A.rivet : A.knob; ctx.strokeStyle = bone ? A.boneDark : steel ? A.seam : A.headDark; ctx.lineWidth = .008;
-  for (let i = 0; i < A.knobs; i++) { const s = i / (A.knobs - 1), kp = H(-.17 + s * .29, .1 + Math.sin(s * Math.PI) * .045 - s * .01); ctx.beginPath(); ctx.arc(kp[0], kp[1], .013 + (1 - s) * .012, 0, TAU); ctx.fill(); ctx.stroke(); }
-  for (let i = 0; i < 3; i++) { const kp = H(.17 + i * .035, .03 - i * .012); ctx.beginPath(); ctx.arc(kp[0], kp[1], .013, 0, TAU); ctx.fill(); }
+  for (let i = 0; i < A.knobs; i++) { const s = i / (A.knobs - 1), kp = H(-.165 + s * .22, .085 + Math.sin(s * Math.PI * .8) * .05); ctx.beginPath(); ctx.arc(kp[0], kp[1], .011 + (1 - s) * .012, 0, TAU); ctx.fill(); ctx.stroke(); } // round the back and side of the dome's rim
+  for (let i = 0; i < 3; i++) { const kp = H(.16 + i * .035, .07 - i * .025); ctx.beginPath(); ctx.arc(kp[0], kp[1], .013, 0, TAU); ctx.fill(); }
   // the eye under the dome's brow (a visor band in the armor; embers in the fossil's socket)
   const ey = H(.07, .07);
   if (steel) { ctx.fillStyle = A.seam; ctx.beginPath(); ctx.ellipse(ey[0], ey[1], .06, .022, -ha, 0, TAU); ctx.fill(); ctx.fillStyle = A.visor; const g = ctx.globalAlpha; ctx.globalAlpha = g * (.85 + .15 * Math.sin(t * 6)); ctx.beginPath(); ctx.ellipse(ey[0], ey[1], .045, .012, -ha, 0, TAU); ctx.fill(); ctx.globalAlpha = g; }
