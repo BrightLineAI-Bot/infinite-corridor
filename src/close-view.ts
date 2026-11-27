@@ -816,7 +816,12 @@ export const CLOSE_VIEW = Object.freeze({
   // view is ever drawn per frame; the view being left is a snapshot of its last frame (one canvas copy), faded out.
   // Entering: the camera comes down from over the Wayfarer's shoulder (`from`) to its place behind them. Leaving: the top-down
   // view starts zoomed in (`leaveZoom`) and settles. `settle`: on the same floor, a change of tile must hold this long first.
-  blend: Object.freeze({ seconds: .42, fade: .65, leaveZoom: 1.7, settle: 120, gap: 500, fogShift: 1.6,
+  // 2026-11-27 (Tim: in a town the view flickered between Close View and the standard view), the hysteresis: on the same floor
+  // a place threshold (a roof's or a court's edge) switches the view only once the Wayfarer is `edge` tiles past it (every corner
+  // of a square that wide agrees) and has stayed `settle` ms, and never sooner than `dwell` ms after the last switch. A frame the
+  // device fails to draw falls back for that frame and is retried at once; a second failure within `failWindow` ms holds the
+  // standard view for `failHold` ms, doubling with each further one up to `failHoldMax` (a new place clears it).
+  blend: Object.freeze({ seconds: .42, fade: .65, leaveZoom: 1.7, settle: 250, dwell: 900, edge: .35, failWindow: 10000, failHold: 2000, failHoldMax: 60000, gap: 500, fogShift: 1.6,
     from: Object.freeze({ height: 2.2, distance: 1.1, lookAhead: .5, lookHeight: 0 }) }),
   // Taps on creatures: a billboard answers a tap this many CSS pixels beyond its drawn body, the nearest body centre winning.
   pick: Object.freeze({ pad: 34, bodyWidth: .8, bodyTop: 1.25 }),
@@ -1034,6 +1039,12 @@ export function overworldCloseViewApplies(g) {
 }
 export function closeViewWanted(g) { return (g?.save?.closeView === true && indoorCloseViewMap(g)) || overworldCloseViewApplies(g); }
 export function closeViewApplies(g) { return (g?.save?.closeView === true && indoorCloseViewTile(g)) || overworldCloseViewApplies(g); }
+// The indoor rule's open-air test (openAirAt) gives one answer for the whole square `e` tiles round the Wayfarer: they are well
+// past a roof's or court's edge, not on it. Elsewhere (no per-tile rule) always firm. Four tile reads; nothing allocated.
+function thresholdFirm(g, e) {
+  if (!indoorCloseViewMap(g)) return true; const m = g.map, x = g.player.x, y = g.player.y, o = openAirAt(m, x, y);
+  return openAirAt(m, x - e, y - e) === o && openAirAt(m, x + e, y - e) === o && openAirAt(m, x - e, y + e) === o && openAirAt(m, x + e, y + e) === o;
+}
 const openWorldScene = g => g.area !== "dungeon" || !!(g.map.skyCloud || g.map.canopy || g.map.underwater || g.map.stillworks)
   || openAirAt(g.map, g.player.x, g.player.y);
 
@@ -1737,7 +1748,7 @@ function clearanceOffset(g, fx, fy, ax, ay, centered, dt, mix) {
 // basis it had until it is let go (it keeps walking the same way). Returns true when it changed the state (restore it with
 // closeViewUnsteer after Game.update, so the input's own smoothing never sees the turned vector).
 export function closeViewSteer(g, state, now = NaN) {
-  CAM.steered = false; if (!state || !closeViewApplies(g) || MODE.cur !== 1) return false;
+  CAM.steered = false; if (!state || MODE.cur !== 1 || MODE.map !== g?.map || !closeViewSwitchedOn(g) || !(closeViewApplies(g) || CAM.drawn && CAM.map === g.map)) return false; // the view on screen steers (a held threshold included)
   ensureCam(g);
   // main keeps sampling input during pause but skips rendering. Remember that pause here too, so the
   // first resumed render can preserve the camera's timers even when there were no paused frames.
@@ -2053,7 +2064,10 @@ function lookHeroAlpha(g, base) {
 globalThis.__closeViewCam = { get: () => closeViewCamera(), pan: (dx, dy) => closeViewPan(dx, dy, 0), reset: () => resetCloseViewCamera(), stats: closeViewStats, cutout: () => ({ ...CUT }), gl: () => ({ props: GLF.props, terrain: GLF.terrain, cut: [...GLF.cut], cutB: [...GLF.cutB], cutC: [...GLF.cutC], cutZ: [...GLF.cutZ], near: GLF.cutNear }) }; // read by the browser harness and the lab's console (diagnostics only)
 // Close View drew the last frame of this area: the host then leaves out its own top-down overlays (they were drawn onto the
 // ground texture through CLOSE_VIEW_HOOKS.groundLayers).
-export function closeViewShowing(g) { return CAM.drawn && CAM.map === g?.map && closeViewWanted(g); }
+// Showing: the camera this frame drew, on this map, with a switch still on. It follows the view closeViewFrame chose (its
+// hysteresis included, 2026-11-27), not the tile underfoot, so the HUD, taps and controls never disagree with the screen.
+const closeViewSwitchedOn = (g) => g?.save?.closeView === true || g?.save?.overworldCloseView === true;
+export function closeViewShowing(g) { return CAM.drawn && CAM.map === g?.map && MODE.cur === 1 && MODE.map === g?.map && closeViewSwitchedOn(g); }
 
 // ------------------------------------------------------------------------------------------------ choosing the camera, and the blend
 // renderer.ts calls this first thing every frame. It decides which camera applies, eases between them, and returns true when
@@ -2077,7 +2091,10 @@ function xfadeOverlay(ctx, w, h, now) {
 export const closeViewCrossfade = () => ({ active: XF.t0 >= 0, t0: XF.t0, sec: XF.sec, below: XF.below }); // tests
 // Hit-stop: release 1023's presentation-only full-frame hold is gone (Tim, 2026-11-19): the struck foe and the Wayfarer pause in
 // game time instead (hitstop-actors.ts), and this view simply draws them not advancing while everything else moves on.
-const MODE = { cur: 0, wanted: false, failed: false, g: null, map: null, lastNow: -1e9, pend: 0, pendAt: 0, t0: 0, to: -1, snap: null, snapCtx: null, snapW: 0, snapH: 0, mix: 1 };
+const MODE = { cur: 0, wanted: false, failed: false, g: null, map: null, lastNow: -1e9, pend: 0, pendAt: 0, t0: 0, to: -1, snap: null, snapCtx: null, snapW: 0, snapH: 0, mix: 1,
+  sw: 0, switchedAt: -1e9, failAt: -1e9, failRun: 0, holdUntil: 0 }; // sw: the two save switches last frame; the rest: closeViewFrame's hysteresis (CLOSE_VIEW.blend)
+// How often the camera changed and why (2026-11-27): read by tests and Copy diagnostics (main.ts). Counts only, changed in place.
+export const closeViewSwitchStats = { switches: 0, failures: 0, holds: 0, held: false };
 let bypass = false;
 // True while the leave blend draws the ordinary view zoomed (renderer.ts drawGroundCache keeps its ground image through it).
 export const closeViewLeaving = () => bypass;
@@ -2085,17 +2102,30 @@ export const closeViewBlend = () => ({ mode: MODE.cur ? "close" : "ordinary", bl
 export function closeViewFrame(ctx, g, w, h, now, baseRender) {
   if (bypass || !g?.player) return false;
   const B = CLOSE_VIEW.blend, reduce = !!(g.presentation?.reduceMotion || g.presentation?.safeMode), same = MODE.g === g && now - MODE.lastNow < B.gap;
-  const wanted = closeViewWanted(g); let want = closeViewApplies(g) ? 1 : 0;
-  if (want !== MODE.cur && same && MODE.map === g.map && wanted && MODE.wanted) { // a threshold within one floor: it must hold a moment
+  const wanted = closeViewWanted(g), floor = same && MODE.map === g.map, sw = (g.save?.closeView === true ? 1 : 0) | (g.save?.overworldCloseView === true ? 2 : 0);
+  let want = closeViewApplies(g) ? 1 : 0;
+  const place = MODE.g === g && MODE.map === g.map; if (!place) { MODE.failRun = 0; MODE.holdUntil = 0; } // a new place: the device is given a fresh try
+  const held = want === 1 && place && now < MODE.holdUntil; closeViewSwitchStats.held = held;
+  if (held) want = 0; // it failed here again and again: the standard view holds, steadily, until the hold ends
+  // A threshold within one floor (a court's edge, a roof's): it must hold `settle` first, and never sooner than `dwell` after the
+  // last switch. Not a switch turned in Options, not the retry after a failed frame: those apply at once. (Before 2026-11-27 the
+  // pending state was reset every frame, and a threshold the save's switches disagreed about was never held at all.)
+  if (want !== MODE.cur && floor && sw === MODE.sw && !MODE.failed) {
     if (MODE.pend !== want || MODE.pendAt > now) { MODE.pend = want; MODE.pendAt = now; }
-    if (now - MODE.pendAt < B.settle) want = MODE.cur; }
-  const retrying = MODE.failed && same && MODE.map === g.map && overworldCloseViewApplies(g);
-  if (want !== MODE.cur) { MODE.cur = want; MODE.to = -1;
+    if (now - MODE.pendAt < B.settle || now - MODE.switchedAt < B.dwell || !thresholdFirm(g, B.edge)) want = MODE.cur;
+  } else MODE.pend = want;
+  const retrying = MODE.failed && floor && overworldCloseViewApplies(g);
+  if (want !== MODE.cur) { MODE.cur = want; MODE.to = -1; MODE.switchedAt = now; closeViewSwitchStats.switches++;
     if (same && !reduce && !retrying && snapshot(ctx)) { MODE.to = want; MODE.t0 = now; } }
-  MODE.g = g; MODE.map = g.map; MODE.lastNow = now; MODE.pend = MODE.cur; MODE.wanted = wanted;
+  MODE.g = g; MODE.map = g.map; MODE.lastNow = now; MODE.wanted = wanted; MODE.sw = sw;
   let k = 1; if (MODE.to >= 0) { k = Math.max(0, Math.min(1, (now - MODE.t0) / (B.seconds * 1000))); if (k >= 1) MODE.to = -1; }
   const e = k * k * (3 - 2 * k), blending = k < 1; MODE.mix = e;
-  if (MODE.cur === 1) { const ok = renderCloseView(ctx, g, w, h, now, baseRender, e); MODE.failed = !ok; if (!ok) { MODE.cur = 0; MODE.to = -1; return false; } if (blending) overlaySnapshot(ctx, w, h, k); return true; }
+  if (MODE.cur === 1) { const ok = renderCloseView(ctx, g, w, h, now, baseRender, e); MODE.failed = !ok;
+    if (!ok) { MODE.cur = 0; MODE.to = -1; MODE.pend = 0; closeViewSwitchStats.failures++; // this frame: the standard view (the safe fallback)
+      MODE.failRun = place && now - MODE.failAt < B.failWindow ? MODE.failRun + 1 : 1; MODE.failAt = now;
+      if (MODE.failRun >= 2) { MODE.holdUntil = now + Math.min(B.failHoldMax, B.failHold * 2 ** Math.min(16, MODE.failRun - 2)); closeViewSwitchStats.holds++; }
+      return false; }
+    if (blending) overlaySnapshot(ctx, w, h, k); return true; }
   MODE.failed = false;
   CAM.drawn = false;
   if (!blending) return false;
