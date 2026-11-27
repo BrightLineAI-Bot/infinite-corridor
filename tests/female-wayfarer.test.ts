@@ -83,12 +83,13 @@ test('rounder buttocks (Tim, 2026-11-26): smooth and round, fullest low, fuller 
   const S = HERO_FEMALE.sculpt, G = S.glutes, flat = { ...S, glutes: { ...G, depth: 0 } }, o = [0, 0, 0];
   const at = (sc, x, y, z) => sculptHeroPoint(sc, x, y, z, o).slice();
   const swell = (x, y, z) => at(flat, x, y, z)[2] - at(S, x, y, z)[2];
-  // clearly rounder, bounded: about 9 cm at the fullest in fitted space (release 1079's first swell 2.7 cm), never more than the parameter
+  // clearly rounder, bounded: about 8 cm at the fullest in fitted space (release 1079's first swell 2.7 cm), never more than the parameter
   const peak = swell(.088, .975, -.23);
   assert.ok(peak > .07 && peak <= G.depth + 1e-9 && G.depth <= .10, `fullest ${peak.toFixed(4)}`);
-  // the side: fullest at about the hip joint, rising gently to just below the belt (never a shelf at it), fuller below than above
+  // the side: fullest at about the hip joint, rising to just below the belt (never a shelf at it); a round dome (Tim, 2026-11-27:
+  // not pointy) that curves under into a soft fold
   assert.ok(peak > swell(0, 1.057, -.28) * 3 && swell(.1, 1.18, -.26) < .002, 'fullest low; the belt line (fitted y 1.18 up) barely moves');
-  assert.ok(swell(.1, G.y - .08, -.2) > swell(.1, G.y + .08, -.2), 'fuller below than above');
+  const crown = swell(.1, G.y, -.2); assert.ok(swell(.1, G.y - .06, -.2) > crown * .75 && swell(.1, G.y + .06, -.2) > crown * .75 && swell(.1, G.y - .2, -.2) < crown * .1, 'a round dome, then under into the fold');
   for (let y = .45; y < 1.3; y += .005) assert.ok(swell(.1, y, -.2) >= 0, `never pulled forward (${y.toFixed(3)})`);
   assert.ok(Math.abs(swell(.1, .55, -.2)) < 1e-4, 'the back of the thigh toward the knee is untouched');
   // the back: two masses, a little less on the centre line (a slight groove), easing toward the outer hip

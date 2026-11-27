@@ -63,12 +63,12 @@ Tim (2026-11-26), after the straight-on views of release 1078: make her thighs a
   - Pass 1 splits the body triangles whose fitted centroid lies behind z −.08 at y .72–1.10, |x| < .22 (buttocks), or ahead of z .08 at y 1.62–1.88, |x| < .24 (bust), 1→4 at edge midpoints. Their neighbours split 1→2 or 1→3, so there are no cracks or T-junctions.
   - Pass 2 splits again the buttock core (y .90–.98, |x| < .12, behind −.20).
   - Midpoints interpolate position, normal, uv, the four strongest joint weights (renormalised), and material and palette class.
-  - Two Laplacian passes (λ .5) round the inside of the buttocks patch, with its border held; seam copies move together.
+  - Two Laplacian passes (λ .5) round the buttocks patch and the ring of vertices around it, so it blends into the hips and thighs; the inner thighs (|x| < .08 below y 1.0) are held so the gap stays open, and seam copies move together.
   - The body mesh grows in place, and every later mesh, the braid and the collar indices shift.
   - Her body is +132 vertices and +220 triangles: 3489 vertices (his 3602) and 3276 triangles of the 3328 cap (his 3170, unchanged). Every body edge is still shared by two triangles; the same six open edges as the source remain.
 - `HERO_FEMALE.sculpt.thigh` 1.12 → 1.05: thigh width at y .75 .141 → .133 (his .14); the thigh gap .059 → .064, still open.
-- `sculpt.glutes {y .94, up .10, down .115, x .085, sx .14, z -.08, back .08, depth .10}`: behind fitted z −.08, a broad gaussian fullest at about hip-joint height. It rises gently to just below the belt (never a shelf on the back) and is fuller and softer below. It is fullest about each cheek, .69 on the centre line (a slight groove), easing to the outer hip.
-  - Standing (idle), the buttocks are fullest at y .94 (−.283). The side silhouette turns at most 27° per .02 step (the angular .055/.095 tries on the source mesh: 59°).
+- `sculpt.glutes {y .93, up .12, down .12, x .07, sx .17, z -.08, back .08, depth .085, power 3}`: behind fitted z −.08, a dome `exp(−|t|³)` fullest at about hip-joint height. It is rounder on top than a gaussian, so the side reads as a dome rather than a wedge. It rises to just below the belt (never a shelf on the back) and curves under into a soft fold. It is fullest about each cheek, .84 on the centre line (a subtle cleft, as Tim asked), easing to the outer hip.
+  - Standing (idle), the buttocks are fullest at y .95 (−.275). The side silhouette turns at most 22° per .02 step (the angular .055/.095 tries on the source mesh: 59°). Chosen from six rendered passes (hips-shots/r6).
 - `sculpt.waistDepth {y 1.24, sigma .11, back .05, backZ -.10, backSx .22, front .03, frontZ 0, frontSx .14, ease .08}`: a shift, not a squash, fitted y .91–1.57 only.
   - `back` takes out the source's 5 cm bulge at the waist. With `back` 0 that bulge is a hump behind the line from the shoulder blades to the hips. With it, the standing back is straight from the blades to the buttocks, within 8 mm.
   - `front` draws the belly in by up to 3 cm. Waist depth at fitted y 1.26 is .394 → .323.
@@ -80,10 +80,10 @@ Tim (2026-11-26), after the straight-on views of release 1078: make her thighs a
   - Tightest: suit pauldron near the chest in a cast 1.2 mm (was 2.3) and in a run 1.5 mm (was 2.7).
 - Tests: `female-wayfarer`.
   - Triangle bound "fewer than his" → "his − bun + braid + refined, at most cap − 40".
-  - The buttocks check: fullest low, the belt line (fitted y 1.18) under 2 mm, fuller below, never forward, the centre groove, untouched front, sides and thigh plates, the standing peak, no turn sharper than 35°, a straight back, the thigh gap.
+  - The buttocks check: fullest low, the belt line (fitted y 1.18) under 2 mm, never forward, a subtle centre cleft, untouched front, sides and thigh plates, the standing peak, no turn sharper than 35°, a straight back, the thigh gap.
   - The waist-depth and side-silhouette check.
 
-**BOUNDARY:** Looks only: no save, schema or generator change (schema 14), no new animation. The male Wayfarer is byte-identical. Her face, calves, shoulders, arms and braid are unchanged, and her waist width from the front is as before (only its depth changed). The refined mesh adds about 4% to her per-frame skinning, still less than his. The centre groove and the hollow at the outer hip are only hinted. The Standard View sprite is unchanged. No per-frame allocation. Not tested on a device.
+**BOUNDARY:** Looks only: no save, schema or generator change (schema 14), no new animation. The male Wayfarer is byte-identical. Her face, calves, shoulders, arms and braid are unchanged, and her waist width from the front is as before (only its depth changed). The refined mesh adds about 4% to her per-frame skinning, still less than his. The hollow at the outer hip is only hinted, and a small step remains where the inner cheek meets the inner thigh in the three-quarter back view. The Standard View sprite is unchanged. No per-frame allocation. Not tested on a device.
 
 ## Release 1078 — the Wayfarers stand up straight; a fuller bust
 

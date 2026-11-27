@@ -26,11 +26,12 @@ export const HERO_FEMALE = Object.freeze({
     thigh: 1.05, calf: .86, kneeY: .56, thighY: .82, hips: Object.freeze({ y: .98, sigma: .14, out: .03, edge: .06 }),
     // Her buttocks (Tim, 2026-11-26: clearly rounder and noticeable from the side and the back, shapely and smooth, never
     // angular; not exaggerated; tasteful, she's an armoured adventurer): behind fitted z `z` (easing in over `back`) the back
-    // of the hips swells back by `depth`, a broad gaussian fullest at `y` (about the hip joint), rising gently to just below
-    // the belt (`up`: never a shelf on the back) and fuller and softer below (`down`), easing into the back of the thigh in a
-    // soft fold. Across x it is fullest about each cheek (`x`, `sx`): a little less on the centre line (a slight groove) and
-    // easing toward the outer hip. On the refined mesh (HERO_FEMALE.refine) the swell is sampled finely enough to read round.
-    glutes: Object.freeze({ y: .94, up: .10, down: .115, x: .085, sx: .14, z: -.08, back: .08, depth: .10 }),
+    // of the hips swells back by `depth`, a dome exp(-|t|^power) fullest at `y` (about the hip joint; power 3 is rounder on
+    // top than a gaussian, so the side reads as a dome, not a wedge), rising to just below the belt (`up`: never a shelf on the
+    // back) and curving under (`down`) into the back of the thigh in a soft fold. Across x it is fullest about each cheek
+    // (`x`, `sx`): only a little less on the centre line (a subtle cleft) and easing toward the outer hip. On the refined mesh
+    // (HERO_FEMALE.refine) the swell is sampled finely enough to read round.
+    glutes: Object.freeze({ y: .93, up: .12, down: .12, x: .07, sx: .17, z: -.08, back: .08, depth: .085, power: 3 }),
     // A slimmer waist front to back (Tim, 2026-11-26), with a straight back: the source back bulges about 5 cm behind the
     // line from the shoulder blades to the hips at the waist; `back` takes out just that, so the back reads straight (within
     // about 8 mm) down to the top of the buttocks, and `front` draws the belly in. About `y` (`sigma`) the back moves forward by
@@ -51,12 +52,13 @@ export const HERO_FEMALE = Object.freeze({
   // Her buttocks and bust get more geometry (Tim, 2026-11-26: round and smooth, not angular), once when her asset is derived: each pass
   // splits the body triangles whose centroid (fitted bind) lies in one of its boxes (behind fitted z `back`, or ahead of `front`)
   // 1->4 at the edge midpoints, and their neighbours 1->2 or 1->3 so there are no cracks or T-junctions (the second pass only
-  // within triangles the first split); then `smooth` Laplacian passes (weight `lambda`) round the vertices inside the refined
-  // buttocks patch (the source's facet corners), its border held. The buttocks get two passes, the bust (Tim: the same treatment)
+  // within triangles the first split); then `smooth` Laplacian passes (weight `lambda`) round the vertices of the refined
+  // buttocks patch and the ring around it, so it blends into the hips and thighs (the inner thighs, |x| < `ring.x` below
+  // `ring.y`, held, so the gap stays open). The buttocks get two passes, the bust (Tim: the same treatment)
   // one, unsmoothed so the chest kit keeps its fit: its new vertices carry the smooth bust swell.
   refine: Object.freeze({ passes: Object.freeze([
     Object.freeze([Object.freeze({ y0: .72, y1: 1.10, x: .22, back: -.08 }), Object.freeze({ y0: 1.62, y1: 1.88, x: .24, front: .08, smooth: false })]),
-    Object.freeze([Object.freeze({ y0: .90, y1: .98, x: .12, back: -.20 })])]), smooth: 2, lambda: .5 }),
+    Object.freeze([Object.freeze({ y0: .90, y1: .98, x: .12, back: -.20 })])]), smooth: 2, lambda: .5, ring: Object.freeze({ x: .08, y: 1.0 }) }),
 });
 export const heroBodyProportions = (body) => body === 'female' ? HERO_FEMALE.proportions : HERO_PROPORTIONS;
 const gauss = (t) => Math.exp(-t * t);
@@ -75,7 +77,7 @@ export function sculptHeroPoint(S, x, y, z, out) {
     nx = c + (nx - c) * f; nz = S.legZ + (z - S.legZ) * f;
   }
   { const H = S.hips, c = S.legX * s; if (y < S.shoulderY && nx > c) nx += H.out * gauss((y - H.y) / H.sigma) * smoothstep((nx - c) / H.edge); } // the hip curve, outside only
-  { const G = S.glutes; if (z < G.z && y > G.y - 3 * G.down && y < G.y + 3 * G.up) nz -= G.depth * gauss((y - G.y) / (y < G.y ? G.down : G.up)) * gauss((nx - G.x) / G.sx) * smoothstep((G.z - z) / G.back); } // the buttocks, behind only
+  { const G = S.glutes; if (z < G.z && y > G.y - 3 * G.down && y < G.y + 3 * G.up) nz -= G.depth * Math.exp(-Math.pow(Math.abs(y - G.y) / (y < G.y ? G.down : G.up), G.power)) * gauss((nx - G.x) / G.sx) * smoothstep((G.z - z) / G.back); } // the buttocks, behind only
   { const D = S.waistDepth; if (y > D.y - 3 * D.sigma && y < D.y + 3 * D.sigma) { const g = gauss((y - D.y) / D.sigma); // the waist, front to back
     if (z < D.backZ) nz += D.back * g * gauss(nx / D.backSx) * smoothstep((D.backZ - z) / D.ease); else if (z > D.frontZ) nz -= D.front * g * gauss(nx / D.frontSx) * smoothstep((z - D.frontZ) / D.ease); } }
   const B = S.bust;
@@ -959,8 +961,10 @@ function refineHeroBody(asset) {
   // Laplacian rounding of the patch's inside: position groups (seam copies move together) touched only by fully split triangles.
   const groups = new Map(), gOf = []; for (let v = 0; v < pos.length / 3; v++) { const k = key(v); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(v); gOf[v] = k; }
   const inside = new Map(), nbr = new Map();
-  for (const t of tris) for (let k = 0; k < 3; k++) { const g = gOf[t[k]]; inside.set(g, (inside.get(g) ?? true) && t[3] === 1); if (!nbr.has(g)) nbr.set(g, new Set()); nbr.get(g).add(gOf[t[(k + 1) % 3]]); nbr.get(g).add(gOf[t[(k + 2) % 3]]); }
-  const movable = [...inside].filter(e => e[1]).map(e => e[0]), at = new Map(); for (const [g, vs] of groups) at.set(g, [pos[vs[0] * 3], pos[vs[0] * 3 + 1], pos[vs[0] * 3 + 2]]);
+  const touched = new Map(); // with R.ring, also the ring of vertices around the patch (touched by its border triangles), so it blends in
+  for (const t of tris) for (let k = 0; k < 3; k++) { const g = gOf[t[k]]; inside.set(g, (inside.get(g) ?? true) && t[3] === 1); touched.set(g, (touched.get(g) ?? 0) | (t[3] === 1 || t[3] === 2 ? 1 : t[3] === 4 ? 2 : 0)); if (!nbr.has(g)) nbr.set(g, new Set()); nbr.get(g).add(gOf[t[(k + 1) % 3]]); nbr.get(g).add(gOf[t[(k + 2) % 3]]); }
+  const crotch = (g) => { const v = groups.get(g)[0]; return Math.abs(pos[v * 3]) * W.width < R.ring.x && pos[v * 3 + 1] < R.ring.y; }; // the inner thighs keep their gap
+  const movable = R.ring ? [...touched].filter(e => e[1] === 1 && (inside.get(e[0]) || !crotch(e[0]))).map(e => e[0]) : [...inside].filter(e => e[1]).map(e => e[0]), at = new Map(); for (const [g, vs] of groups) at.set(g, [pos[vs[0] * 3], pos[vs[0] * 3 + 1], pos[vs[0] * 3 + 2]]);
   for (let it = 0; it < R.smooth; it++) {
     const moved = movable.map(g => { const c = [0, 0, 0], ns = nbr.get(g); for (const h of ns) { const q = at.get(h); c[0] += q[0]; c[1] += q[1]; c[2] += q[2]; } const p = at.get(g); return p.map((x, k) => x + R.lambda * (c[k] / ns.size - x)); });
     movable.forEach((g, i) => at.set(g, moved[i]));
