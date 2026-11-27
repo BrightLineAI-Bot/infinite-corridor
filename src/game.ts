@@ -87,7 +87,7 @@ import { stalkerCaught, stalkerTrapAttempt, cancelStalkerAct, STALKER, ensureSta
 import { applyBossKit, tickBossKit } from "./boss-kit.ts";
 import { wonderRumour, wonderAt, STARFIELD_ROLL, starfieldChance, starfieldRolls, starPlaceAt, starPlaceOfId, setWonderTreeProbe } from "./wonders.ts";
 import { firstJourneyLine, rumourTurn, noteWonderLead, RUMOUR_SPEAKERS } from "./leads.ts"; // progression Phase 4: first-journey lines, rumours and the lead floor
-import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
+import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, TRAP_REGION, trapShareScale, trapHit, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
 import { sectionAtlasColor } from "./atlas-colors.ts";
 import { SEED_REALMS, realmSeedKinds, realmOfSeed, seedRealmId, isSeedRealmId, generateSeedRealm, seedRealmFallback, realmDestination, dropSeedRealms, realmCacheFind, realmViscera } from "./seed-realms.ts"; // seed realms
 import { roofDeckAt, roofDeckById, roofDeckIndex, roofDeckLevelOfTile, roofDeckNear, roofDeckUnderBox, validRoofDeck, normalizeRoofDeck, roofDecksApply, markHeartlandDecks } from "./roof-decks.ts"; // roof decks (Tim, 2026-11-12)
@@ -2596,7 +2596,10 @@ export function selectRangedAim(player, enemies, map, width, range = Infinity, r
     .sort((a, b) => a.distance - b.distance || String(a.e.id).localeCompare(String(b.e.id)))
     .map((q) => projectileDirection(q.e.x - player.x, q.e.y - player.y, player.facing))[0] || null;
 }
-export function updateTraps(objects, player, dt, jumping = false, maxHp = 0, level = 1) {
+// `ring`: the trap's ring (TRAP_REGION; a dungeon's entrance section's); `sigil`: the Threat Sigil's damage factor (1 + THREAT_SIGIL.damage ×
+// step), as on a creature's blow, with the hit kept under TRAP_REGION.hardCap of maximum health.
+export const sigilTrapHit = (hit, sigil = 1, maxHp = 0) => { const n = Math.round(hit * (sigil || 1)), cap = Math.floor(TRAP_REGION.hardCap * (Number(maxHp) || 0)); return cap > 0 && sigil > 1 ? Math.max(1, Math.min(n, cap)) : n; };
+export function updateTraps(objects, player, dt, jumping = false, maxHp = 0, level = 1, ring = 0, sigil = 1) {
   for (const trap of objects.filter((o) => o.kind === "trap" && !o.newTrap /* release 523: tickNewTraps runs those */)) {
     trap.hits = trap.hits || {};
     trap.timer = Math.max(0, Number(trap.timer) || 0);
@@ -2628,7 +2631,7 @@ export function updateTraps(objects, player, dt, jumping = false, maxHp = 0, lev
         (inFire || inSpikes)
       ) {
         trap.hits.player = true;
-        player.hp -= Math.max(Number(trap.damage)||14, Math.round((Number(maxHp) || 0) * TRAP_DAMAGE_SHARE * trapShareScale(level))); // release 525: at least a share of maximum health; 557: growing with level
+        player.hp -= sigilTrapHit(trapHit(TRAP_DAMAGE_SHARE, Number(trap.damage)||14, level, maxHp, ring), sigil, maxHp); // release 525: at least a share of maximum health; 557: growing with level; 2026-11-27: and with the ring (TRAP_REGION)
       }
       if (trap.timer <= 0) {
         trap.phase = "recovery";
@@ -3489,9 +3492,9 @@ export class Game {
       }
       update(dt, input, now);
       const hpBeforeInstalledTraps=this.player.hp;
-      updateTraps(this.map.objects, this.player, dt, now < this.jumpUntil, this.save.maxHp, this.save.level);
+      updateTraps(this.map.objects, this.player, dt, now < this.jumpUntil, this.save.maxHp, this.save.level, this.trapRing(), this.trapSigil());
       if (this.area === "overworld" && this.map.rockslides) this.tickRockslides(dt, now); // the Great Ranges' rockslides (landscape.ts RANGES.rockslide)
-      if (this.area === "dungeon") tickNewTraps(this.map.objects, { player: this.player, level: this.save.level, maxHp: this.save.maxHp, airborne: now < (this.jumpUntil || 0) || this.mechBoosting === true || (this.save.magicSkills?.active?.id === 'aerial-step' && this.save.magicSkills.active.remaining > 0) /* release 527 */, pull: (dx, dy) => this.moveGrounded(this.player, dx, dy), fall: () => { if (this.player.hp > 0 && now > (this.player.invulnerableUntil || 0)) { this.player.hp = 0; this.message = "The floor gives way, and the Wayfarer falls into the dark."; } }, now, projectiles: this.projectiles, effects: this.effects, seeds: (this.trapSeeds ||= []), open: (x, y) => { const w = mapWidth(this.map, this.area), q = this.map.tiles[Math.floor(y) * w + Math.floor(x)]; return !!q && !q.blocked && !(this.map.tiles.length && Math.floor(x) >= w); } }, dt); // release 523
+      if (this.area === "dungeon") tickNewTraps(this.map.objects, { player: this.player, level: this.save.level, maxHp: this.save.maxHp, ring: this.trapRing() /* their hits then land as a creature's (the defence layers, the Threat Sigil) */, airborne: now < (this.jumpUntil || 0) || this.mechBoosting === true || (this.save.magicSkills?.active?.id === 'aerial-step' && this.save.magicSkills.active.remaining > 0) /* release 527 */, pull: (dx, dy) => this.moveGrounded(this.player, dx, dy), fall: () => { if (this.player.hp > 0 && now > (this.player.invulnerableUntil || 0)) { this.player.hp = 0; this.message = "The floor gives way, and the Wayfarer falls into the dark."; } }, now, projectiles: this.projectiles, effects: this.effects, seeds: (this.trapSeeds ||= []), open: (x, y) => { const w = mapWidth(this.map, this.area), q = this.map.tiles[Math.floor(y) * w + Math.floor(x)]; return !!q && !q.blocked && !(this.map.tiles.length && Math.floor(x) >= w); } }, dt); // release 523
       if(this.player.hp<hpBeforeInstalledTraps)this.cancelConsumeVisual(this.player.hp<=0?'death':'hurt');
       if (this.player.hp <= 0 || this.area !== "dungeon") this.traversal = null;
     };
@@ -3872,9 +3875,13 @@ export class Game {
   // the stones; the rumble is told once a wake.
   tickRockslides(dt, now) {
     const p = this.player, w = this._rockWorld ||= { warn: () => { this.message = "Stones shift on the slope above. Get out of their path!"; } }; // one record, reused: nothing allocated a frame
-    w.player = p; w.guarded = now < (this.jumpUntil || 0) || now < (p.invulnerableUntil || 0); w.level = this.save.level; w.maxHp = this.save.maxHp; w.scale = trapShareScale(this.save.level);
+    w.player = p; w.guarded = now < (this.jumpUntil || 0) || now < (p.invulnerableUntil || 0); w.level = this.save.level; w.maxHp = this.save.maxHp; w.ring = this.trapRing(); w.sigil = this.trapSigil();
     tickRockslides(this.map, w, dt);
   }
+  // Traps by distance (dungeon-traps.ts TRAP_REGION): the ring the Wayfarer's section lies in (in a dungeon, its entrance section's, as
+  // scaleFresh takes for its creatures), and the Threat Sigil's damage factor, as it multiplies a creature's blow.
+  trapRing() { return regionalThreat(this.rx, this.ry).ring; }
+  trapSigil() { return 1 + THREAT_SIGIL.damage * threatStep(this.save); }
   snapshotArea(leaving = true) {
     if (!this.map) return;
     if (leaving && this.area === "dungeon") this.tickCharting(); // DUNGEON_CHARTING: Aperture gained on the frame you leave still counts for the floor

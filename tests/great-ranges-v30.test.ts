@@ -363,9 +363,9 @@ test('rockslides: a cracked crag over a lane of loose stones; at most three a se
 test('rockslides: they trigger, warn, hit in their lane, miss outside it, reset; a periodic one goes off alone; one at a time', () => {
   const K = RANGES.rockslide, zone = (o = {}) => ({ id: 'z', x: 10, y: 5, dx: 0, dy: 1, len: 4, period: 0, phase: 'armed', timer: 0, hits: {}, ...o });
   const map = (zs) => { const tiles = []; for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) tiles.push({ x, y, kind: 'foothillGrass' }); for (const z of zs) for (let d = 0; d <= z.len; d++) tiles[idx(z.x + z.dx * d, z.y + z.dy * d)].rockslide = z.id; return { tiles, rockslides: zs }; };
-  let warned = 0; const world = (player, o = {}) => ({ player, guarded: false, level: 10, maxHp: 200, scale: trapShareScale(10), warn: () => warned++, ...o });
+  let warned = 0; const world = (player, o = {}) => ({ player, guarded: false, level: 10, maxHp: 200, warn: () => warned++, ...o });
   const run = (m, w, secs, each = () => {}) => { let hurt = 0; for (let t = 0; t < secs; t += 1 / 30) { hurt += tickRockslides(m, w, 1 / 30); each(); } return hurt; };
-  const dmg = rockslideDamage(10, 200, trapShareScale(10)); assert.ok(dmg >= Math.round(K.share * 200), `${dmg}`);
+  const dmg = rockslideDamage(10, 200); assert.equal(dmg, Math.round(K.share * trapShareScale(10) * 200), 'near the Refuge: the traps\' share, as before');
   // in the lane: warned, then hit once
   { const z = zone(), m = map([z]), p = { x: 10, y: 7.25, hp: 200 }, w = world(p); tickRockslides(m, w, 1 / 30); assert.equal(z.phase, 'warning'); assert.equal(warned, 1);
     const hurt = run(m, w, K.warn + rockslideFallTime(z) + .1); assert.equal(hurt, dmg); assert.equal(p.hp, 200 - dmg); assert.equal(z.phase, 'rest');

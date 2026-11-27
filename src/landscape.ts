@@ -17,6 +17,7 @@ import { activeFrame, frameFor, toFrame } from "./journey-start.ts";
 import { growTrees, TREES_V14, TREES_V18 } from "./trees.ts";
 import { growMushrooms, MUSHROOM_KINDS } from "./great-mushrooms.ts";
 import { DOMAIN_WALKABLE, DOMAIN_BLOCKED } from "./domain-looks.ts";
+import { trapHit, TRAP_REGION } from "./dungeon-traps.ts";
 
 // Version 1: release 94 landscape. Version 2 (Waterbodies, water world W1): seas spanning many sections with islands
 // and a deep-ocean band, inland lakes, swamps and poison swamps. Version 3 (the Skiff, W2): docks with a Shipwright.
@@ -1704,7 +1705,7 @@ export const RANGES = {
   // Rockslides (Tim, 2026-11-27): a lane of loose stones (`rockfallSlope`) running `len` tiles down from a cracked crag (`crackedCrag`).
   // Walking onto the lane (or, for `periodic` of them, every `period` s) wakes it: a rumble, dust and shadows for `warn` s, then `rocks`
   // stones roll down it `gap` s apart at `speed` tiles/s; one in your path within `half` of the lane's line hits for the dungeon traps'
-  // damage (at least `share` of maximum health, growing with level: dungeon-traps.ts trapShareScale; `base` + `perLevel` × level at
+  // damage (at least `share` of maximum health, growing with level and with the ring: dungeon-traps.ts trapHit, TRAP_REGION; the Threat Sigil too; `base` + `perLevel` × level at
   // least); a jump or a dodge's guard clears it. Then it rests `rest` s. At most `max` a section, one rolling at a time; nothing is
   // allocated as it runs (the stones are a function of its clock), and its state is kept with a save in place (snapshotArea).
   rockslide: { chance: .6, max: 3, tries: 30, len: [3, 5], minLevel: 3, minDrop: 2, spacing: 5, periodic: .34, period: [9, 15], warn: 1.2, rocks: 4, gap: .22, speed: 5, half: .62, reach: .55, rest: 7, base: 8, perLevel: .5, share: .12 },
@@ -1874,9 +1875,9 @@ function placeRockslides(map, seed, rx, ry, mine, mask, h, order) {
 // A rockslide's stone `k` at `t` seconds into its fall: how far down its lane (tiles from the crag's middle), or -1 while not rolling.
 export function rockAlong(zone, k, t) { const K = RANGES.rockslide, d = (t - k * K.gap) * K.speed; return d < 0 || d > zone.len + .5 ? -1 : d; }
 export const rockslideFallTime = (zone) => (zone.len + .5) / RANGES.rockslide.speed + (RANGES.rockslide.rocks - 1) * RANGES.rockslide.gap;
-export const rockslideDamage = (level, maxHp, scale) => { const K = RANGES.rockslide; return Math.max(1, Math.round(Math.max(K.base + K.perLevel * Math.max(1, Number(level) || 1), K.share * scale * (Number(maxHp) || 0)))); };
-// One frame of a section's rockslides (game.ts). `world`: { player, guarded (jumping or a dodge's guard), level, maxHp, scale (trap
-// growth), warn(zone) }. Phases: armed (counting its period when it has one) -> warning -> falling -> rest -> armed. One rolls at a time.
+export const rockslideDamage = (level, maxHp, ring = 0) => { const K = RANGES.rockslide; return trapHit(K.share, K.base + K.perLevel * Math.max(1, Number(level) || 1), level, maxHp, ring); }; // the traps' rule, by level and ring (dungeon-traps.ts TRAP_REGION)
+// One frame of a section's rockslides (game.ts). `world`: { player, guarded (jumping or a dodge's guard), level, maxHp, ring and sigil
+// (dungeon-traps.ts TRAP_REGION; game.ts trapRing, trapSigil), warn(zone) }. Phases: armed (counting its period when it has one) -> warning -> falling -> rest -> armed. One rolls at a time.
 export function tickRockslides(map, world, dt) {
   const zones = map?.rockslides; if (!zones) return 0; const K = RANGES.rockslide, p = world.player, fx = Math.floor(p.x + .5), fy = Math.floor(p.y + .75), under = map.tiles[fy * 32 + fx]; let busy = false, hurt = 0;
   for (const z of zones) if (z.phase === "warning" || z.phase === "falling") busy = true;
@@ -1885,7 +1886,7 @@ export function tickRockslides(map, world, dt) {
     else if (z.phase === "warning") { if (z.timer <= 0) { z.phase = "falling"; z.timer = rockslideFallTime(z); } }
     else if (z.phase === "falling") {
       const t = rockslideFallTime(z) - Math.max(0, z.timer), ox = p.x + .5 - (z.x + .5), oy = p.y + .75 - (z.y + .5), along = ox * z.dx + oy * z.dy, side = Math.abs(ox * -z.dy + oy * z.dx);
-      if (!z.hits.player && !world.guarded && side < K.half) for (let k = 0; k < K.rocks; k++) { const d = rockAlong(z, k, t); if (d >= 0 && Math.abs(d - along) < K.reach) { z.hits.player = true; const dmg = rockslideDamage(world.level, world.maxHp, world.scale || 1); p.hp -= dmg; hurt += dmg; break; } }
+      if (!z.hits.player && !world.guarded && side < K.half) for (let k = 0; k < K.rocks; k++) { const d = rockAlong(z, k, t); if (d >= 0 && Math.abs(d - along) < K.reach) { z.hits.player = true; const raw = rockslideDamage(world.level, world.maxHp, world.ring || 0), dmg = world.sigil > 1 ? Math.max(1, Math.min(Math.round(raw * world.sigil), Math.floor(TRAP_REGION.hardCap * (Number(world.maxHp) || 0)))) : raw; p.hp -= dmg; hurt += dmg; break; } }
       if (z.timer <= 0) { z.phase = "rest"; z.timer = K.rest; } }
     else if (z.phase === "rest" && z.timer <= 0) { z.phase = "armed"; z.timer = z.period || 0; } }
   return hurt;
