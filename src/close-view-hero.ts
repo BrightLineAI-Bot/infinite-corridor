@@ -772,16 +772,17 @@ function carbineHoldPose(state,pose,recoil){
   state.clip='derived-carbine-shoulder';
 }
 
+// The state's fields are read once per call, not once per node (several builds a frame, about 40 nodes each); same values.
 function build(asset, state, pose) {
-  const head = asset.meta.headAttachment;
-  for (const i of asset.order) {
-    const o = i * 16, p = asset.meta.nodes[i].parent; trs(state.local, o, pose, i * 10);
-    state.local[o+12]+=state.fit.offsets[i*3];state.local[o+13]+=state.fit.offsets[i*3+1];state.local[o+14]+=state.fit.offsets[i*3+2];
+  const head = asset.meta.headAttachment, nodes = asset.meta.nodes, order = asset.order, local = state.local, global = state.global, normals = state.nodeNormals, offsets = state.fit.offsets, hands = state.proportions.hands, headNode = head.node;
+  for (let n = 0; n < order.length; n++) { const i = order[n];
+    const o = i * 16, p = nodes[i].parent; trs(local, o, pose, i * 10);
+    local[o+12]+=offsets[i*3];local[o+13]+=offsets[i*3+1];local[o+14]+=offsets[i*3+2];
     // Palm and sibling thumb roots share the wrist pivot; fingers and grip sockets inherit once.
-    if(i===7||i===9||i===18||i===20)for(let k=0;k<11;k++)if(k%4!==3)state.local[o+k]*=state.proportions.hands;
-    if (i === head.node) { const s = state.headScale; for (let k = 0; k < 15; k++) if (k % 4 !== 3) state.local[o + k] *= s; state.local[o + 13] += state.seatY; }
-    if (p < 0) for (let k = 0; k < 16; k++) state.global[o + k] = state.local[o + k]; else multiply(state.global, o, state.global, p * 16, state.local, o);
-    normalMatrix(state.nodeNormals, i * 9, state.global, o);
+    if(i===7||i===9||i===18||i===20)for(let k=0;k<11;k++)if(k%4!==3)local[o+k]*=hands;
+    if (i === headNode) { const s = state.headScale; for (let k = 0; k < 15; k++) if (k % 4 !== 3) local[o + k] *= s; local[o + 13] += state.seatY; }
+    if (p < 0) for (let k = 0; k < 16; k++) global[o + k] = local[o + k]; else multiply(global, o, global, p * 16, local, o);
+    normalMatrix(normals, i * 9, global, o);
   }
   for (let s = 0; s < asset.skins.length; s++) { const skin = asset.skins[s]; for (let j = 0; j < skin.joints.length; j++) { multiply(state.skinMatrices[s], j * 16, state.global, skin.joints[j] * 16, state.fit.inverseBinds[s], j * 16); normalMatrix(state.skinNormals[s], j * 9, state.skinMatrices[s], j * 16); } }
 }
@@ -816,12 +817,24 @@ function deform(asset, state) {
     }
   }
 }
+const NUMBER = NaN; // a pose state's number fields start as this (a double), so a later fraction never changes the state's map
 export function createHeroPoseState(asset,proportions=heroBodyProportions(asset.body)) {
   const size = asset.rest.length, n = asset.meta.nodes.length;
   if(!Number.isFinite(proportions.width)||!Number.isFinite(proportions.depth)||!Number.isFinite(proportions.hands)||Math.min(proportions.width,proportions.depth,proportions.hands)<.25||Math.max(proportions.width,proportions.depth,proportions.hands)>1)throw new Error('Invalid hero proportions');
   if(proportions.head!==undefined&&!(proportions.head>=.25&&proportions.head<=.5))throw new Error('Invalid hero head scale');
-  const s = { asset, pose: new Float64Array(size), other: new Float64Array(size), loop: new Float64Array(size),fallLast:new Float64Array(10),fistSource:new Float64Array(size),fistScratch:new Float64Array(63),fistBindLocal:new Float64Array(n*9),fistBindGlobal:new Float64Array(n*9),fistMirrorC:new Float64Array(n*n*9), primaryTarget:new Float64Array(3),primaryScratch:new Float64Array(60),sweepScratch:new Float64Array(48),sweepBlade:new Float64Array(6),sweepSample:{},sweepSpin:0,slash:{},slashFrame:new Float64Array(20),slashMatrix:new Float64Array(16),slashBlade:new Float64Array(6),primaryGripResidual:0,worldScale:1,hammerLayer:new Float64Array(size),hammerLegData:new Float64Array(20),hammerFeet:new Float64Array(16),ankleLocal:new Float64Array(6),anklePoint:new Float64Array(3),local: new Float64Array(n * 16), global: new Float64Array(n * 16), nodeNormals: new Float64Array(n * 9), skinMatrices: asset.skins.map(k => new Float64Array(k.joints.length * 16)), skinNormals: asset.skins.map(k => new Float64Array(k.joints.length * 9)), vertices: new Float64Array(asset.vertexCount * 6), headScale: asset.meta.headAttachment.defaultScale, seatY: 0, minY: 0, referenceHeight: 1, downClearance: 0, rollX: 0, rollZ: 0, clip: 'Idle', clipTime: 0, rollCompX: 0, rollCompZ: 0,
-    overlayParts: null, braid: null }; // set only for her (sculptOverlays, initBraid), declared for both so his and her states share one shape
+  // One shape for every pose state, his and hers, from birth to the last frame (2026-11-28): every field the state ever holds is
+  // declared here, in this order, and every number field is born a double (NUMBER, then its real starting value below). A
+  // field added later, or a small integer later overwritten by a fraction (a Smi to double change deprecates the map), gave
+  // each state a dozen maps while it was built and posed; build, deform, the braid and the sampler then saw dozens of maps
+  // per site and went megamorphic (a global stub-cache probe per load, in place of one map check), about 5% of the frame for
+  // both bodies. tests/hero-pose-shape.test.ts holds this.
+  const s = { asset, pose: new Float64Array(size), other: new Float64Array(size), loop: new Float64Array(size),fallLast:new Float64Array(10),fistSource:new Float64Array(size),fistScratch:new Float64Array(63),fistBindLocal:new Float64Array(n*9),fistBindGlobal:new Float64Array(n*9),fistMirrorC:new Float64Array(n*n*9), primaryTarget:new Float64Array(3),primaryScratch:new Float64Array(60),sweepScratch:new Float64Array(48),sweepBlade:new Float64Array(6),sweepSample:{},sweepSpin:NUMBER,slash:{},slashFrame:new Float64Array(20),slashMatrix:new Float64Array(16),slashBlade:new Float64Array(6),primaryGripResidual:NUMBER,worldScale:NUMBER,hammerLayer:new Float64Array(size),hammerLegData:new Float64Array(20),hammerFeet:new Float64Array(16),ankleLocal:new Float64Array(6),anklePoint:new Float64Array(3),local: new Float64Array(n * 16), global: new Float64Array(n * 16), nodeNormals: new Float64Array(n * 9), skinMatrices: asset.skins.map(k => new Float64Array(k.joints.length * 16)), skinNormals: asset.skins.map(k => new Float64Array(k.joints.length * 9)), vertices: new Float64Array(asset.vertexCount * 6), headScale: NUMBER, seatY: NUMBER, minY: NUMBER, referenceHeight: NUMBER, downClearance: NUMBER, rollX: NUMBER, rollZ: NUMBER, clip: 'Idle', clipTime: NUMBER, rollCompX: NUMBER, rollCompZ: NUMBER,
+    overlayParts: null, braid: null, // set only for her (sculptOverlays, initBraid), declared for both so his and her states share one shape
+    hammerLegSides: null, sourceAnkle: null, standFeet: null, standShare: NUMBER, proportions: null, sculpt: null, fit: null, sourceFit: null, fistMirrorRestError: NUMBER, restHip: null, hammerSoles: null,
+    // written while posing: the draw floor, the cut or thrust shown, AERIAL_CAST_POSE's ease-out, and the drink and shovel-dig samples (sampleDrinkPose, sampleShovelDigPose)
+    drawFloor: NUMBER, primaryStep: 0, aerialP: NUMBER, aerialAt: NUMBER, aerialW: NUMBER, aerialKeep: NUMBER, weight: NUMBER, down: NUMBER, lever: NUMBER, recover: NUMBER, sip: NUMBER, arm: NUMBER, head: NUMBER };
+  s.sweepSpin=0;s.primaryGripResidual=0;s.worldScale=1;s.headScale=asset.meta.headAttachment.defaultScale;s.seatY=0;s.minY=0;s.referenceHeight=1;s.downClearance=0;s.rollX=0;s.rollZ=0;s.clipTime=0;s.rollCompX=0;s.rollCompZ=0;
+  s.aerialW=0; // AERIAL_CAST_POSE: nothing to ease out (was absent; the others are written before they are read)
   s.hammerLegSides=[s.hammerLegData.subarray(0,10),s.hammerLegData.subarray(10,20)];
   s.sourceAnkle=new Float64Array(6);s.standFeet=new Float64Array(20);s.standShare=1; // HERO_STAND: the ankles on the source skeleton; the stance's share of the pose (the idle's)
   if(proportions.head!==undefined)s.headScale=proportions.head;
