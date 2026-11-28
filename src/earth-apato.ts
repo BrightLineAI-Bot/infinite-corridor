@@ -70,7 +70,7 @@ export const APATO = {
   // The dino duel (dino-duel.ts): the Spinosaurus or the Wild Stegosaurus within `sight` draws it; with you within `close` it turns on
   // you only at `youChance` % of its choices (chosen again after `refocus` s, `refocusYou` s when it chose you). It closes to `gap`
   // tiles past both bodies; `share`/`floor` as the stego's; it holds its blow while the foe's is coming (`wait`).
-  duel: { kinds: ["spinoRex", "wildStego"], sight: 16, refocus: 5, refocusYou: 2, close: 6, youChance: 22, share: .035, floor: .08, gap: .6, speed: .85, wait: true,
+  duel: { kinds: ["spinoRex", "wildStego", "pachy"], sight: 16, refocus: 5, refocusYou: 2, close: 6, youChance: 22, share: .035, floor: .08, gap: .6, speed: .85, wait: true,
     moves: ["apatoWrap", "apatoNeckSlam", "apatoLash", "apatoStomp", "apatoSpires", "apatoLeaves"] },
   graze: { every: 7, time: 2.6 },
   text: {

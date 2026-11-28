@@ -21,7 +21,10 @@ export const DINO_DUEL = {
   // The pairs that duel, leader first (the leader's record runs the duel's clock; its id comes first in the hashed coin and ending).
   // The first is the original duel, unchanged; the Earth Apatosaurus (Tim, 2026-11-18) duels each of the two, and they are listed
   // after it so a Spinosaurus that meets both still finds the Wild Stegosaurus first. It never duels a Triceratops.
-  pairs: [["spinoRex", "wildStego"], ["earthApato", "spinoRex"], ["earthApato", "wildStego"]],
+  // The Pachycephalosaurus (Tim, 2026-11-27) duels the Spinosaurus, the Wild Stegosaurus, the Earth Apatosaurus and the wild Triceratops;
+  // the wild Triceratops (trike-duel.ts) duels the Spinosaurus and the Wild Stegosaurus too. Listed after the older pairs, so every older
+  // pair is found first as before. The Earth Apatosaurus still never duels a Triceratops (it ignores them: earth-apato.ts apatoIgnores).
+  pairs: [["spinoRex", "wildStego"], ["earthApato", "spinoRex"], ["earthApato", "wildStego"], ["pachy", "spinoRex"], ["pachy", "wildStego"], ["pachy", "earthApato"], ["pachy", "triceratops"], ["triceratops", "spinoRex"], ["triceratops", "wildStego"]],
   range: 16, part: 24, partFor: 5, /* begun within `range`; ended when they stay more than `part` apart for `partFor` s */
   cap: 90, verdictAt: 50, breakAt: .35, hold: .3,
   escalate: { from: .025, to: .06, over: 60 }, /* a blow's share of the victim's health, from `from` to `to` over `over` s */
@@ -44,9 +47,9 @@ export const DINO_DUEL = {
   // Rockfall under a ceiling (any interior): `rocks` telegraphed for `warn` s in a ring around a slam, at most `live` at once, the
   // next slam's at least `gap` s later; each takes `share` of the slammer's damage from whatever stands under it (never the duellists).
   rockfall: { rocks: 3, live: 6, ring: [1.2, 4.2], warn: 1.1, radius: .75, share: .5, gap: .8 },
-  names: { spinoRex: "the Spinosaurus", wildStego: "the Wild Stegosaurus", earthApato: "the Earth Apatosaurus" },
+  names: { spinoRex: "the Spinosaurus", wildStego: "the Wild Stegosaurus", earthApato: "the Earth Apatosaurus", pachy: "the Pachycephalosaurus", triceratops: "the wild Triceratops" },
   // The blow a winner lands at the cap (its sound cue).
-  finisher: { spinoRex: "spinoBite", wildStego: "stegoTailWhack", earthApato: "apatoNeckSlam" },
+  finisher: { spinoRex: "spinoBite", wildStego: "stegoTailWhack", earthApato: "apatoNeckSlam", pachy: "pachyDomeRam", triceratops: "trikeGore" },
   text: { eaten: "{winner} devours {loser}. Its spoils are lost.", escape: "{loser} breaks off, badly wounded, and flees." },
 };
 const cap1 = (s) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -59,7 +62,8 @@ export const isDuellist = (e) => !!e && DUEL_KINDS.includes(e.kind);
 // Do a and b duel each other (either way round)? And does `a` lead their duel?
 export const duelPair = (a, b) => !!a && !!b && a !== b && DINO_DUEL.pairs.some(([x, y]) => (a.kind === x && b.kind === y) || (a.kind === y && b.kind === x));
 export const duelLeads = (a, b) => !!a && !!b && DINO_DUEL.pairs.some(([x, y]) => a.kind === x && b.kind === y);
-const free = (e) => !!e && !e.dead && e.hp > 0 && !e.retreating && !e.fleeTo && !e.passingBeast && !e.illusion && !e.dinoFled;
+const free = (e) => !!e && !e.dead && e.hp > 0 && !e.retreating && !e.fleeTo && !e.passingBeast && !e.illusion && !e.dinoFled && !e.pachyDisguised
+  && (e.kind !== "triceratops" || ((e.triceratopsDisposition === "bad" || e.triceratopsBetrayed === true) && !e.mountView && !e.mount)); // only a hostile wild Triceratops duels (never a herd's friendly ones, never a ridden one); a disguised Pachycephalosaurus waits
 export const duelShare = (t, E = DINO_DUEL.escalate) => E.from + (E.to - E.from) * Math.max(0, Math.min(1, (Number(t) || 0) / E.over));
 // The duel `e` is in, with `foe` (or any foe), or null.
 export function duelOf(e, foe = null) { const d = e?.dinoDuel; return d && typeof d === "object" && typeof d.foe === "string" && (!foe || d.foe === foe.id) ? d : null; }

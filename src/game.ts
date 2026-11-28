@@ -98,7 +98,7 @@ import { GREAT_SWEEP_SWING, GREAT_SWEEP_RECORD_VERSION, sweepTempo, sweepTimes, 
 import { generateItem, spellOpen, explorationGateOpen, primaryCarryKind, ORRERY_LOOT, BRAWLER_LOOT, FOURFOLD_DAGGERS, isFourfoldDaggers, QUANDRIX_STAFF, isQuandrixStaff, SCALING_STATS, SCALING_STRENGTH, weaponScaling, toolScaling } from "./items.ts";
 import { itemCap, upgradeLimit, upgradedItem, unlockRefinement, toolKey } from "./items.ts"; import { socketCount } from "./glyphs.ts"; // 2026-11-18: gearReadout
 import { SMITHY, paySalvage, salvagePaidText, salvageYieldMode, reforgeRoll, SPARE_GEAR_STATE } from "./smithy.ts"; // release 607: one salvage table; 2026-11-18: its yield (SALVAGE_YIELD)
-import { earthResolvePlant, earthResolveHit, tickEarthResolve } from "./echoes.ts"; // Earth Resolve, the Earth Apatosaurus's Echo
+import { earthResolvePlant, earthResolveHit, tickEarthResolve, golemGuard } from "./echoes.ts"; // Earth Resolve, the Earth Apatosaurus's Echo; Dome Rush's Earth Golem guard
 import { echoEvent, tickEchoes, echoDrop, noteRoomBeastKill, pounceBonus, ECHOES, hasEcho, WALL_CLING, plungeAfterimage } from "./echoes.ts";
 import { skillMeleeBonus, skillReachBonus, riftStep, riftStepTo, riftStepReady, riftReachOf, RIFT_AIM, tickRiftCharges, skillDurationScale, extraReduction, strikeAmplifier, onConstellationDodge, onConstellationMelee, onConstellationKill, onSkillEnded, tickConstellation, SANCTUARY, sanctuaryOn, altOn, ALT_PASSIVES, altChosen, aerialChargesNow, tickAerialCharges, aerialStepBlocked } from "./constellation.ts";
 import { activeMealBonus, eatMeal, tickMeal, mealName } from "./meals.ts";
@@ -141,6 +141,7 @@ import { DINO_DUEL, tickDinoDuels, duelText, dinoFleeEdge } from "./dino-duel.ts
 import { applyBleed, clearBleed, tickBleed, BLEED } from "./bleed.ts"; // the Spinosaurus's bleed (the Wayfarer's status)
 import { STEGO_ROOMS, stegoRoomSpawn } from "./wild-stego.ts"; // the Wild Stegosaurus in the big rooms
 import { APATO, APATO_ROOMS, apatoRoomsPin, apatoRoomSpawn, tuneApatoClone, apatoLatchedClones, apatoMashNeed, apatoBreakFree, APATO_CLONE } from "./earth-apato.ts"; // the Earth Apatosaurus (Tim, 2026-11-18)
+import { PACHY, PACHY_ROOMS, PACHY_AMBUSH, PACHY_PROFILE, pachyRoomSpawn, pachyAmbushSpawn, pachySlain, notePachySlain, pachyTuned } from "./pachy.ts"; // the Pachycephalosaurus (Tim, 2026-11-27)
 import { POISON, dosePoison, tickPoison, clearPoison } from "./apato-poison.ts"; // its root venom (the Wayfarer's status)
 import { STEGO_BAIT, ensureStegoBait, recordStegoTail, stegoTailObject, takeStegoTail, placeStegoBait, stegoBaitIn, tickStegoBait, biteStegoBait, stegoBaitLures } from "./stego-bait.ts"; // the Stego Bait: the severed tail, the item and its lure
 import { PENTAGON, pentagonCentre, pentagonAt, placePentagonSection, isPentagonId, generatePentagonChamber, pentagonPlan, pentagonSeamOpen, PENTAGON_LORE, addPentagonInscription, readPentagonInscription, parsePentagonId, pentagonLinkEnds, pentagonLinkKey, isPentagonFinaleId, parsePentagonFinaleId, generatePentagonFinale, pentagonFinaleSpot, pentagonFinaleWall, pentagonFrontDoor, pentagonRoofAt, pentagonRoofSpots, PENTAGON_COMPLETE, payPentagonCompletion, pentagonsDue, pentagonCompleted, pentagonFellEarly, PENTAGON_FINDING, pentagonCatchment, pentagonCandidate, pentagonSigilRoll, pentagonSigilText, ensurePentagonFinding, pentagonHuntsOpen, pentagonHuntProbes, pentagonHeading, pentagonFarWords } from "./pentagon.ts";
@@ -218,7 +219,7 @@ const CLONE_HIT = Object.freeze({ melee: true, clone: true }); // the Shadow Clo
 // Wayfarer or the Game keeps, in one place. setPaused shifts all of them by the paused time, so nothing runs out while
 // paused; the RESUME lists are also saved as time remaining (playerRuntime.clocks) and restored on reload (exact resume).
 // Message throttles (…MessageAt, …HintAt) are left out on purpose: they only space out messages.
-export const PLAYER_CLOCKS = ["landRollUntil" /* FALL.rollPose, drawn only */, "castUntil", "attackReadyAt", "attackUntil", "actionVisualUntil", "primaryVisualUntil", "fistVisualUntil", "meleeUntil", "dodgeReadyAt", "invulnerableUntil", "dodgeUntil", "heldUntil", "stunnedUntil", "stunnedAt", "shockAt", "slowUntil", "confusedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoResolveReadyAt", "echoMirrorReadyAt"];
+export const PLAYER_CLOCKS = ["landRollUntil" /* FALL.rollPose, drawn only */, "castUntil", "attackReadyAt", "attackUntil", "actionVisualUntil", "primaryVisualUntil", "fistVisualUntil", "meleeUntil", "dodgeReadyAt", "invulnerableUntil", "dodgeUntil", "heldUntil", "stunnedUntil", "stunnedAt", "shockAt", "slowUntil", "confusedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoResolveReadyAt", "echoMirrorReadyAt", "echoGolemArmUntil", "echoGolemUntil", "echoGolemReadyAt" /* Dome Rush (echoes.ts PACHY_ECHO) */, "dazeAt", "dazedUntil" /* the Pachycephalosaurus's daze (pachy.ts PACHY.daze) */];
 export const GAME_CLOCKS = ["jumpUntil", "jumpStart", "kiSlamJump" /* the Ki Blast leap the slam belongs to: shifts with jumpStart (r946 review) */, "toolReadyAt", "golemReadyAt", "orreryLockUntil" /* the Aether Orrery overload */, "aegisUntil", "aegisLockUntil", "aegisPerfectUntil", "powerAegisUntil", "parryFlashAt", "reflectFlashAt" /* Power Aegis: the perfect window, the empowerment, the flashes (drawn only) */, "boxingUntil", "imbueUntil", "essenceUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "unstickReadyAt", "_inkShieldAt", "lastCrownAt", "plungeRecoverUntil" /* jump attacks */];
 // Timers inside runtime objects: { owner: [fields] } on the Game, and on the player.
 export const GAME_NESTED_CLOCKS = { lockSeen: ["at"] /* AIM_RESOLVE: a pause keeps a hidden lock's last seen spot */, triceratopsDash: ["until"], triceratopsJump: ["start", "until", "drillUntil", "nextAt"] /* mounted contacts follow the same paused dodge/leap */, golem: ["start", "nextAt", "sinkAt"], orbit: ["start"], fistCharge: ["start"], fistCombo: ["until"], fistBeat: ["at", "opens", "closes"] /* the rhythm window and its ball */, fistFlash: ["at"], fistQueued: ["until"], fistReleaseIntent: ["expiresAt"], shadowClone: ["until"], pendingToolUse:["acceptedAt","releaseAt"], aimMark: ["until"], rite: ["started", "until", "nextAt"], treeRise: ["start", "end", "nextRubble"], fracState: ["nextAt"], stalkFog: ["until"], ledgeHint: ["until"], fallen: ["until"], edgeHold: ["at"] /* perf pack P6 EDGE_HOLD: a wall-clock stamp */, plunge: ["start", "until"] /* jump attacks */, cycloneHold: ["start"] /* the Cyclone Heel's held press */ };
@@ -226,7 +227,7 @@ export const PLAYER_NESTED_CLOCKS = { echoCharge: ["until"], echoMist: ["until"]
 // Timers inside lists of runtime objects on the player: { list: [fields] } (release 737: the haunt curses).
 export const PLAYER_LIST_CLOCKS = { curses: ["until", "at"] };
 // Saved as ms remaining and restored on reload (the other player timers above are saved by their own playerRuntime fields).
-export const RESUME_PLAYER_CLOCKS = ["castUntil", "slowUntil", "confusedUntil", "heldUntil", "stunnedUntil", "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoResolveReadyAt", "echoMirrorReadyAt"];
+export const RESUME_PLAYER_CLOCKS = ["castUntil", "slowUntil", "confusedUntil", "heldUntil", "stunnedUntil", "dazedUntil" /* the daze's stars resume with its stun */, "echoVoidReadyAt", "echoPounceUntil", "echoWardReadyAt", "echoResolveReadyAt", "echoMirrorReadyAt", "echoGolemArmUntil", "echoGolemUntil", "echoGolemReadyAt"];
 export const RESUME_GAME_CLOCKS = ["toolReadyAt", "golemReadyAt", "orreryLockUntil", "aegisUntil", "aegisLockUntil", "aegisPerfectUntil", "powerAegisUntil", "boxingUntil", "imbueUntil", "essenceUntil", "fistRecoverUntil", "inkUntil", "subDiveUntil", "_inkShieldAt", "plungeRecoverUntil"];
 export function shiftClocks(game, d) {
   if (!(d > 0)) return;
@@ -754,6 +755,10 @@ export function generatePinnedDungeon(save, id, options = {}) {
   // same way), and never a floor whose big room already holds the Wild Stegosaurus or the Spinosaurus.
   if (fresh && stegoKind && history.apatoRooms === undefined) history.apatoRooms = apatoRoomsPin(apertureTier(save.perception?.aperture || 0)); // version 2: only from Infinite IV (0 below it: never one)
   if (stegoKind && history.apatoRooms && map) { const q = apatoRoomSpawn(save.seed, id, map, stegoKind, history.apatoRooms, (map.enemySpawns || []).some((e) => e.stegoRoom || e.spinoRoom)); if (q && !(map.enemySpawns ||= []).some((e) => e.id === q.id)) map.enemySpawns.push(q); }
+  // The Pachycephalosaurus (pachy.ts PACHY_ROOMS): the same floors, first generated from this version on (`pachyRooms`, pinned the same
+  // way), never a floor whose big room another big beast holds, and never one already slain there (save.pachy.slain).
+  if (fresh && stegoKind && history.pachyRooms === undefined) history.pachyRooms = PACHY_ROOMS.version;
+  if (stegoKind && history.pachyRooms && map) { const q = pachyRoomSpawn(save.seed, id, map, stegoKind, history.pachyRooms, (map.enemySpawns || []).some((e) => e.stegoRoom || e.spinoRoom || e.apatoRoom)); if (q && !pachySlain(save, q.id) && !(map.enemySpawns ||= []).some((e) => e.id === q.id)) map.enemySpawns.push(q); }
   return map;
 }
 // The Pentagon's shortcut links in a chamber (pentagon.ts pentagonLinkEnds): laid in from version 6; over a Pentagon begun
@@ -802,6 +807,13 @@ export function tuneStegoRoom(c, save, stats) {
 export function tuneApatoRoom(c, save, stats) {
   const B = WORLD_BEASTS.earthApato, v = beastProfileVitals(B, save, stats);
   Object.assign(c, { apatoRoom: true, boss: false, hp: v.hp, maxHp: v.hp, damage: v.damage, staggerResistance: B.staggerResistance, speedMultiplier: B.speed, attackGap: B.attackGap, attackCooldownScale: 1, telegraphScale: 1, evasive: true, packName: B.name });
+  delete c.worldBeast; return c;
+}
+// The Pachycephalosaurus of a big room or an ambush (pachy.ts): tuned as a world beast is (PACHY_PROFILE, at the Spinosaurus's level),
+// with no hunt (no tries, retreat or bounty). `flags`: { pachyRoom: true } or { pachyAmbush: true }; a disguise rides along.
+export function tunePachy(c, save, stats, flags = { pachyRoom: true }) {
+  const B = PACHY_PROFILE, v = beastProfileVitals(B, save, stats);
+  Object.assign(c, flags, { boss: false, hp: v.hp, maxHp: v.hp, damage: v.damage, staggerResistance: B.staggerResistance, speedMultiplier: B.speed, attackGap: B.attackGap, attackCooldownScale: 1, telegraphScale: 1, evasive: true, packName: B.name, pachyHpSeen: v.hp });
   delete c.worldBeast; return c;
 }
 export function tuneSpinoBeast(c, save, stats, flags = { spinoRoom: true }) {
@@ -1341,11 +1353,11 @@ export function ordinaryThreat(ring) {
 }
 // Foes tuned to the Wayfarer (or harmless) keep regional threat alone; every other foe is "ordinary" here, its guardians and
 // elites included, so they stay proportionally above the trash around them.
-export function wayfarerTuned(e) { return !!(e.worldBeast || e.deepLair || e.stegoRoom || e.apatoRoom || e.apatoCloneOf || spinoTuned(e) || e.questingBeast || e.stalker || e.gatePredator || e.fracWarden || e.marginWarden || e.mireHeart || e.farArrayBoss || e.farArraySummon || e.skyEcho || e.astralCompanionOf || e.mothChrysalis || e.ambient || e.passiveBehavior || e.passingBeast || e.gloomFinale); } // the Gloomvast (haunts.ts GLOOM_FINALE) is tuned to the Wayfarer
+export function wayfarerTuned(e) { return !!(e.worldBeast || e.deepLair || e.stegoRoom || e.apatoRoom || pachyTuned(e) || e.apatoCloneOf || spinoTuned(e) || e.questingBeast || e.stalker || e.gatePredator || e.fracWarden || e.marginWarden || e.mireHeart || e.farArrayBoss || e.farArraySummon || e.skyEcho || e.astralCompanionOf || e.mothChrysalis || e.ambient || e.passiveBehavior || e.passingBeast || e.gloomFinale); } // the Gloomvast (haunts.ts GLOOM_FINALE) is tuned to the Wayfarer
 // The one regional scaling of a fresh foe (scaleFresh, and foes made later in the same ground). A beast keeps its share of health.
 export function regionalScale(e, q) {
   if (e.pentFinaleBeast || e.deepLair) { e.threatRing = q.ring; e.xpMultiplier = q.xpMultiplier; return e; } // a lair of the Deep too (tuneDeepLair); the Stillworks' beast took its regional ramp when it was made (tunePentagonArenaBeast)
-  const beast = !!(e.worldBeast || e.stegoRoom || e.apatoRoom || spinoTuned(e) || e.questingBeast || e.gloomFinale), m = beast ? beastRegionalThreat(q) : q, /* the Gloomvast takes regional threat as the beasts do (BEAST_REGION_RAMP) */ o = wayfarerTuned(e) ? { hp: 1, damage: 1 } : ordinaryThreat(q.ring);
+  const beast = !!(e.worldBeast || e.stegoRoom || e.apatoRoom || spinoTuned(e) || pachyTuned(e) || e.questingBeast || e.gloomFinale), m = beast ? beastRegionalThreat(q) : q, /* the Gloomvast takes regional threat as the beasts do (BEAST_REGION_RAMP) */ o = wayfarerTuned(e) ? { hp: 1, damage: 1 } : ordinaryThreat(q.ring);
   const share = beast && e.maxHp > 0 ? Math.max(0, Math.min(1, (Number(e.hp) || 0) / e.maxHp)) : 1;
   e.threatRing = q.ring;
   e.maxHp = Math.round(e.maxHp * m.hpMultiplier * o.hp);
@@ -4143,7 +4155,7 @@ export class Game {
         ...(prior ? (prior.skyVersion ? { skyVersion: prior.skyVersion } : {}) : { skyVersion: SKYLANDS.version }), // release 571: Sky Stairs only in sections first seen from now on
         ...(prior ? (prior.skyPlace ? { skyPlace: prior.skyPlace } : {}) : { skyPlace: SKY_PLACE.version }), // release 672: where Sky Stairs stand, pinned per section
         ...(prior ? (prior.starPlace ? { starPlace: prior.starPlace } : {}) : this.save.explored?.[key] ? {} : { starPlace: CHASM.place }), // the Starfield placement (wonders.ts STARFIELD_ROLL): new ground only
-        ...(!prior && !this.save.explored?.[key] && !this.save.session.areas?.[this.areaStateId()] ? { triceratopsHerdVersion: TRICERATOPS_HERDS.version } : {}),
+        ...(!prior && !this.save.explored?.[key] && !this.save.session.areas?.[this.areaStateId()] ? { triceratopsHerdVersion: TRICERATOPS_HERDS.version, pachyAmbushVersion: PACHY_AMBUSH.version } : {}), // the Pachycephalosaurus's rock ambush (pachy.ts): new ground only
         ...(prior ? {} : { skySummitVersion: SKY_SUMMIT.version }), // old tree doors retain their original routes
         ...(prior ? {} : { wayfarerDreadVersion: WAYFARER_DREAD.version }), // the Wayfarer's dread (lore.ts WAYFARER_DREAD): new ground only
         ...(prior ? {} : { seedFindVersion: SEED_FINDS.version }), // travel seeds: a seed may lie only on ground first seen from now on
@@ -4174,6 +4186,7 @@ export class Game {
     if (area === "overworld") this.placeSeedFind(); // travel seeds (skylands.ts SEED_FINDS): new ground only, once
     if (area === "overworld") this.placeAbyssalFind(); // the bizarro world: an Abyssal Seed, often in a pocket, very rarely elsewhere; new ground only, once
     if (area === "overworld") this.openWayglassApproach(); // release 467 (Codex audit F006)
+    if (area === "overworld" && !this.map.settlement && !this.map.hamlet && !this.map.farDomain) { const v = this.save.atlas?.[`${this.rx},${this.ry}`]?.pachyAmbushVersion, w = mapWidth(this.map, area), q = v ? pachyAmbushSpawn(this.save.seed, this.rx, this.ry, v, (x, y) => { const t = this.map.tiles[y * w + x]; return !!t && !t.blocked && !t.structure && !t.environment && !t.pit && !t.water && !this.map.objects.some((o) => Math.round(o.x) === x && Math.round(o.y) === y); }, w) : null; if (q && !pachySlain(this.save, q.id) && !this.map.enemySpawns.some((e) => e.id === q.id)) this.map.enemySpawns.push(q); } // the Pachycephalosaurus lying as a rock (pachy.ts PACHY_AMBUSH)
     if (area === "overworld") this.map.enemySpawns.push(...triceratopsHerdSpawns(this.map, this.save.seed, this.rx, this.ry, this.save.atlas?.[`${this.rx},${this.ry}`]?.triceratopsHerdVersion));
     if(area==="overworld")populateOverworldPack(this.map,this.save.seed,this.rx,this.ry,{safe:settlementSanctuary(this.map,this.rx,this.ry,this.save),fits:this._coherence?creatureSpot(this.map,creatureRegions(this.map)):null});/* WG-08: new ground's extras stand where they can move */
     if(area==="overworld"&&this.farPocket)populatePocket(this.map,this.save.seed,this.rx,this.ry,this.farPocket); // release 715: a stag grove or a blob pocket
@@ -4200,7 +4213,7 @@ export class Game {
     if (area === "overworld") endMarginRun(this.save); // release 459: marginalia hold only inside the crossing
     { const here = this.map.beastHotel ? null : this.fracturedHere(area); if (here && !this.map.enemySpawns.some((q) => q.fractured)) { const w = mapWidth(this.map, area), open = (x, y) => this.fracturedOpen(x, y, w); /* release 651: Fractured mode's packs */
       const base = this.map.enemySpawns.filter((q) => fracturedOrdinary(q) && !q.duelist /* the Gaunt are never copied into a pack */), tiles = base.length ? [] : this.map.tiles.filter((t, i) => i % 7 === 0 && open(t.x, t.y));
-      this.map.enemySpawns.push(...densityPacks(this.save.seed, this.areaStateId(), here, base, tiles, open, this.map.enemySpawns.filter((q) => !q.ambient && !q.passiveBehavior && !q.retreating && !q.passingBeast && !q.stegoRoom && !q.apatoRoom && !spinoTuned(q) && q.kind !== 'npc').length)); } }
+      this.map.enemySpawns.push(...densityPacks(this.save.seed, this.areaStateId(), here, base, tiles, open, this.map.enemySpawns.filter((q) => !q.ambient && !q.passiveBehavior && !q.retreating && !q.passingBeast && !q.stegoRoom && !q.apatoRoom && !spinoTuned(q) && !pachyTuned(q) && q.kind !== 'npc').length)); } }
     this.hauntGorged = false; { const hid = area === "dungeon" ? this.areaId() : `${this.rx},${this.ry}`, inside = area === "dungeon" && (isBuildingId(hid) || isCastleId(hid) || isPentagonId(hid)); // release 731: the haunts
       const plan = hauntPlan(this.save.seed, hid, { keep: area === "overworld" && !!(this.map.keep || this.map.greatBuilding?.castle), interior: inside, wild: area === "overworld" && !!(this.map.fogMoor || this.map.dream), depth: Math.abs(this.rx) + Math.abs(this.ry) });
       if (plan && !this.map.hauntPlaced) { this.map.hauntPlaced = true; const k = area === "overworld" && this.map.keep ? this.map.keep : null; this.map.enemySpawns.push(...hauntSpawns(this.map, mapWidth(this.map, area), this.save.seed, hid, plan, k && { x: k.x, y: k.y, w: k.w, h: k.h }, !k && this.map.greatBuilding?.castle ? (t) => !!(t.courtyard && t.greatBuilding) : null)); } } // release 735: a castle's courts, not the causeway outside its walls
@@ -4274,7 +4287,7 @@ export class Game {
         if (restored.dungeonThreatTuningVersion === undefined) delete merged.dungeonThreatTuningVersion;
         if (e.towerScaled && !isTombstone(restored) && restored.towerVitals !== TALL_TOWERS.dwellerVitals) { const share = restored.maxHp > 0 ? Math.max(0, Math.min(1, (Number(restored.hp) || 0) / restored.maxHp)) : 1; // tall towers: a dweller saved with the region taken twice (TALL_TOWERS.dwellerVitals) takes its true health and damage, keeping its wounds
           Object.assign(merged, { maxHp: e.maxHp, hp: merged.dead ? 0 : Math.max(1, Math.round(e.maxHp * share)), damage: e.damage, towerVitals: TALL_TOWERS.dwellerVitals }); if (e.baseDamage != null) merged.baseDamage = e.baseDamage; else delete merged.baseDamage; }
-        if(area === "dungeon" && !merged.passiveBehavior && !merged.ambient && !merged.worldBeast && !merged.stegoRoom && !merged.apatoRoom && !merged.apatoCloneOf && !spinoTuned(merged) && !merged.astralCompanionOf && !merged.pentFinaleBeast) tuneDungeonThreat(merged); // release 249: a world beast keeps its own tuning
+        if(area === "dungeon" && !merged.passiveBehavior && !merged.ambient && !merged.worldBeast && !merged.stegoRoom && !merged.apatoRoom && !merged.apatoCloneOf && !spinoTuned(merged) && !pachyTuned(merged) && !merged.astralCompanionOf && !merged.pentFinaleBeast) tuneDungeonThreat(merged); // release 249: a world beast keeps its own tuning
         ensureAI(merged);
         resetPackRuntime(merged);
         if ((merged.worldBeast || merged.questingBeast) && restored.beastTuningVersion == null) {
@@ -4641,6 +4654,7 @@ export class Game {
       stunnedFor: clocks.stunnedUntil && Number.isFinite(p.stunnedAt) ? Math.max(0, clock - p.stunnedAt) : null,
       fire: copy(this.playerFire),
       frenzy: copy(this.frenzy),
+      golemHits: clocks.echoGolemArmUntil ? Math.max(0, Math.min(9, Math.floor(Number(p.echoGolemHits) || 0))) : 0, // Dome Rush: the blows counted toward the golem (additive, schema 14)
       rite: R ? { key: R.key, at: { ...R.at }, elapsed: Math.max(0, clock - R.started), left: remaining(R.until, clock), next: remaining(R.nextAt, clock), n: R.n } : null,
       sailVx: Number(p.sailVx) || 0,
       sailVy: Number(p.sailVy) || 0,
@@ -4830,6 +4844,7 @@ export class Game {
     if (!r || typeof r !== "object") return;
     const p = this.player, c = r.clocks && typeof r.clocks === "object" ? r.clocks : {}, ms = (v) => Number.isFinite(Number(v)) && Number(v) > 0 ? Math.min(Number(v), 864e5) : 0;
     for (const k of RESUME_PLAYER_CLOCKS) if (ms(c[k])) p[k] = now + ms(c[k]);
+    if (p.echoGolemArmUntil) { p.echoGolemHits = Math.max(0, Math.min(9, Math.floor(Number(r.golemHits) || 0))); p.echoGolemHitAt = p.echoGolemHits ? now - 1e3 : 0; } // Dome Rush's count resumes
     for (const k of RESUME_GAME_CLOCKS) if (ms(c[`game.${k}`])) this[k] = now + ms(c[`game.${k}`]);
     p.curses = cursesIn(r.curses, now); // release 737
     this.hitStop = normalizeHitStop(r.hitStop); // hitstop-actors.ts: the same ms left, never longer
@@ -5593,7 +5608,7 @@ export class Game {
   dinoDuelTick(dt) {
     if (!(dt > 0)) return [];
     if (this.enemies.some((e) => e.dinoFled && e.fleeDone)) this.enemies = this.enemies.filter((e) => !(e.dinoFled && e.fleeDone));
-    if (!this.enemies.some((e) => (e.kind === "spinoRex" || e.kind === "earthApato") && (!e.dead || e.dinoDuel))) return []; // (a duel's leader just eaten still has its duel to close)
+    if (!this.enemies.some((e) => (e.kind === "spinoRex" || e.kind === "earthApato" || e.kind === "pachy" || e.kind === "triceratops") && (!e.dead || e.dinoDuel))) return []; // every pair's leader (dino-duel.ts DINO_DUEL.pairs) // (a duel's leader just eaten still has its duel to close)
     const width = mapWidth(this.map, this.area), height = mapHeight(this.map, this.area);
     return tickDinoDuels(this.enemies, dt, {
       clock: Number(this.save.playSeconds) || 0, width, height,
@@ -5610,6 +5625,7 @@ export class Game {
     const id = loser.worldBeast;
     if (id && WORLD_BEASTS[id] && this.save.worldBeasts?.[id]?.active) { const cycle = this.save.worldBeasts[id].cycle; worldBeastEaten(this.save, id); journalOnce(this.save, `world-beast-eaten:${id}:${cycle}`, `${text} (${this.rx},${this.ry})`, WORLD_BEASTS[id].name); }
     if (winner && !winner.dead) winner.dinoFeed = DINO_DUEL.feed;
+    if (loser.kind === "pachy" && pachyTuned(loser)) notePachySlain(this.save, loser.id); // eaten: gone for good, and nothing paid
   }
   // The loser breaks off, wounded: a world beast takes its own retreat (its wounds kept on its hunt, so it is still out there); any
   // other runs off the nearest edge of the area and is gone.
@@ -6872,7 +6888,7 @@ export class Game {
       e.x = nx; e.y = ny; e.facing = Math.cos(e.millAngle) >= 0 ? "right" : "left"; e.walkPhase = (e.walkPhase || 0) + dt * 6;
     }
     this.projectiles = this.projectiles.filter((q) => !q.hostile);
-    if (now >= this.fallen.until) { const f = this.fallen; this.fallen = null; for (const e of this.enemies) { delete e.millHome; delete e.millAngle; delete e.millTurn; delete e.loomTo; } this.player.stunnedUntil = 0; this.resolveDeath(now, input, !!f.hazard, f.terrain ?? null); /* the Viewport Closed beat keeps a hazard death's cause */ this.save.hp = this.player.hp; this.save.stamina = this.player.stamina; Object.assign(this.save.position, { area: this.area, rx: this.rx, ry: this.ry, x: this.player.x, y: this.player.y }); }
+    if (now >= this.fallen.until) { const f = this.fallen; this.fallen = null; for (const e of this.enemies) { delete e.millHome; delete e.millAngle; delete e.millTurn; delete e.loomTo; } this.player.stunnedUntil = 0; this.player.dazedUntil = 0; this.player.dazeCount = 0; /* the daze ends with the fall */ this.resolveDeath(now, input, !!f.hazard, f.terrain ?? null); /* the Viewport Closed beat keeps a hazard death's cause */ this.save.hp = this.player.hp; this.save.stamina = this.player.stamina; Object.assign(this.save.position, { area: this.area, rx: this.rx, ry: this.ry, x: this.player.x, y: this.player.y }); }
   }
   mechUp() { return this.save.mech?.active === true && this.save.mech.mode !== "drone" && !aboard(this.save); }
   // Release 507: surface water carries the Wayfarer with the Tidemantle, or inside the robot (MECH_WATER).
@@ -7991,6 +8007,11 @@ export class Game {
       stun(seconds) { if (!(seconds > 0) || p.hp <= 0 || game.parryWard()) return; if (!(now < (p.stunnedUntil || 0))) p.stunnedAt = now; p.stunnedUntil = Math.max(p.stunnedUntil || 0, now + seconds * 1000); game.cancelPendingMeleeContact("knockdown"); game.cancelConsumeVisual('knockdown'); game.message = "The shock knocks you flat!"; },
       // One landed lightning hit from the Lightning Giant: every GIANT.stunHits-th one knocks the Wayfarer down (Tim 2026-10-21).
       shockHit() { if (game.parryWard() || p.hp <= 0 || now < (p.stunnedUntil || 0)) return; p.shockCount = (p.shockCount || 0) + 1; p.shockAt = now; if (p.shockCount >= GIANT.stunHits) { p.shockCount = 0; this.stun(GIANT.stunTime); } },
+      // One landed blow of the Pachycephalosaurus's head or of one of its burst rings (pachy.ts PACHY.daze, Tim 2026-11-27): the
+      // daze.hits-th within daze.decay s stuns the Wayfarer for daze.stun s, stars over her head for daze.stars s. True if it stunned.
+      dazeHit() { const D = PACHY.daze; if (game.parryWard() || p.hp <= 0 || now < (p.stunnedUntil || 0)) return false; if (p.dazeCount && now - (p.dazeAt || 0) > D.decay * 1000) p.dazeCount = 0;
+        p.dazeCount = (p.dazeCount || 0) + 1; p.dazeAt = now; if (p.dazeCount < D.hits) return false;
+        p.dazeCount = 0; this.stun(D.stun); if (!(now < (p.stunnedUntil || 0))) return false; p.dazedUntil = now + D.stars * 1000; game.message = PACHY.text.daze; return true; },
       slow(factor, seconds) { if (game.parryWard()) return; const on = now < (p.slowUntil || 0), cur = on ? (p.slowFactor || 1) : 1; if (on && cur < factor) return; p.slowUntil = on && cur === factor ? Math.max(p.slowUntil, now + seconds * 1000) : now + seconds * 1000; p.slowFactor = factor; }, // balance pack (C11): the stronger slow keeps its own time
       addEffect: (effect) => addPackEffect(game.packEffects ||= [], effect, now),
       spawnMinion(owner, kind, x, y, index) {
@@ -9034,6 +9055,7 @@ export class Game {
       if (e.stegoRoom) tuneStegoRoom(c, this.save, characterStats(this.save)); // the Wild Stegosaurus in a big room (wild-stego.ts)
       if (e.spinoRoom) tuneSpinoBeast(c, this.save, characterStats(this.save), { spinoRoom: true }); // the Spinosaurus in a big room (spino-rex.ts)
       if (e.apatoRoom) tuneApatoRoom(c, this.save, characterStats(this.save)); // the Earth Apatosaurus in a big room (earth-apato.ts)
+      if (e.pachyRoom || e.pachyAmbush) tunePachy(c, this.save, characterStats(this.save), { ...(e.pachyRoom ? { pachyRoom: true } : { pachyAmbush: true }), ...(e.pachyDisguised ? { pachyDisguised: true, aggro: false } : {}) }); // the Pachycephalosaurus (pachy.ts)
       if (e.deepLair) this.tuneDeepLair(c, e.deepLair); // a lair of the Deep: the beast as its kin, by floor (the-deep.ts DEEP_SPECIALS.lair)
       if (e.pentFinaleBeast) tunePentagonArenaBeast(c, e.pentFinaleBeast, this.save, characterStats(this.save), beastRegionalThreat(regionalThreat(this.rx, this.ry))); // the Stillworks' finale beast (pentagon-arena.ts)
       if (e.gloomFinale) this.tuneGloomFinale(c, e.gloomFinale); // the Gloomvast: last, so nothing above changes its tuning
@@ -9059,7 +9081,7 @@ export class Game {
   extraDungeonSpawns() {
     const id = String(this.areaId()), h = dungeonHistory(this.save, id), map = this.map;
     if (map.arena || isArrayRun(id) || id.startsWith("hunt-") || h.resolved || h.combatClear?.completed) return [];
-    const base = (map.enemySpawns || []).filter((q) => !q.boss && !GUARDIAN_ROLES.includes(q.dungeonRole) && !q.worldBeast && !q.questingBeast && !q.marginWarden && !q.gatePredator && !q.ambient && !q.passiveBehavior && !q.objectiveId && !q.astralCompanionOf && !q.retreating && !q.farArraySummon && !q.stegoRoom && !q.apatoRoom && !spinoTuned(q) /* the Wild Stegosaurus in a big room: one, and the extras as they would be without it */);
+    const base = (map.enemySpawns || []).filter((q) => !q.boss && !GUARDIAN_ROLES.includes(q.dungeonRole) && !q.worldBeast && !q.questingBeast && !q.marginWarden && !q.gatePredator && !q.ambient && !q.passiveBehavior && !q.objectiveId && !q.astralCompanionOf && !q.retreating && !q.farArraySummon && !q.stegoRoom && !pachyTuned(q) && !q.apatoRoom && !spinoTuned(q) /* the Wild Stegosaurus in a big room: one, and the extras as they would be without it */);
     const n = Math.round(base.length * DUNGEON_BOOST.count), w = mapWidth(map, "dungeon"), out = [], taken = new Set(map.enemySpawns.map((q) => `${Math.round(q.x)},${Math.round(q.y)}`));
     for (let i = 0; i < n * 3 && out.length < n; i++) {
       const k = hashSeed(`${this.save.seed}:dungeon-boost:v1:${id}:${map.levelId || ""}:${i}`), b = base[k % base.length], r = DUNGEON_BOOST.near;
@@ -9661,6 +9683,7 @@ export class Game {
     echoEvent(this, "kill", this.lastUpdateNow || 0, { enemy: e });
     onConstellationKill(this);
     const firstSpoils = takeFirstSpoils(this.save, e); // release 263: a world beast's first kill: its Sigil and Echo for certain
+    if (e.kind === "pachy" && pachyTuned(e)) notePachySlain(this.save, e.id); // the Pachycephalosaurus: never laid again (pachy.ts save.pachy)
     const roomBeast = noteRoomBeastKill(this.save, e); // a big-room Wild Stegosaurus or a room/interloper Spinosaurus: recorded, and its Echo certain
     const echo = e.deepLair && deepSpecialRow(e.deepLair)?.noEcho ? null /* the-deep.ts DEEP_SPECIALS `noEcho` (Tim, 2026-11-19): such a lair pays its guardian cache only */ : echoDrop(this.save, e, e.boss || isCrossingGuardian(e) || !!e.worldBeast || !!e.questingBeast || roomBeast, this.save.dropCounter, firstSpoils || roomBeast), echoNote = echo ? `An Echo lingers: ${ECHOES[echo].name}. Set it in the Echoes screen (Pack).` : "";
     if (echo) this.glyphNotice = echoNote;
@@ -12953,6 +12976,7 @@ export class Game {
     else if (now < (p.heldUntil || 0)) { x = 0; y = 0; if (input.consume("dodge")) { this.clearAttackBuffer(); p.heldUntil -= CRYSTAL.struggle * 1000; if (now >= p.heldUntil) this.message = "You tear free of its grip."; } } // release 249: held by the Psychic Crystal; dodge to struggle
     // Knocked down by a shock (release 257): no movement or actions until the Wayfarer gets back up.
     if (p.shockCount && now - (p.shockAt || 0) > GIANT.shockDecay * 1000) p.shockCount = 0; // the shock counter fades
+    if (p.dazeCount && now - (p.dazeAt || 0) > PACHY.daze.decay * 1000) p.dazeCount = 0; // and the Pachycephalosaurus's daze counter (pachy.ts PACHY.daze)
     if (now < (p.stunnedUntil || 0)) { x = 0; y = 0; this.clearAttackBuffer(); for (const action of ["tool", "spell", "spell2", "spell3", "utility", "build", "dodge", "jump", "potion", "attack", "interact"]) input.consume(action); }
     if (p.hp <= 0) this.clearAttackBuffer();
     if (Math.hypot(x, y) > 0.15)
@@ -13429,7 +13453,7 @@ export class Game {
     { const b = tickBleed(this.save, dt, Math.hypot(x, y) > .15 || now < (p.dodgeUntil || 0) || now < (p.attackUntil || 0) || now < (this.jumpUntil || 0), Number(this.save.maxHp) || p.maxHp || 100); if (b.damage > 0 && p.hp > 0) p.hp -= b.damage; if (b.cured) this.message = BLEED.text.cured; } // the Spinosaurus's bleed (bleed.ts): only moving hurts; standing still cures it
     { const v = tickPoison(this.save, dt, Number(this.save.maxHp) || p.maxHp || 100); if (v.damage > 0 && p.hp > 0) p.hp -= v.damage; if (v.gone && p.hp > 0) this.message = POISON.text.gone; } // the Earth Apatosaurus's root venom (apato-poison.ts)
     if (this.apatoPin) this.apatoLatchSlip();
-    RESOLVE_GUARD.set(this.save, tickEarthResolve(this, now)); // Earth Resolve: its time, its cooldown, and the guard while she stands in it // a Rift Step or the Shadow Clone's step out of the clones' coils
+    RESOLVE_GUARD.set(this.save, tickEarthResolve(this, now) * golemGuard(this.player, now)); /* and Dome Rush's Earth Golem (echoes.ts PACHY_ECHO) */ // Earth Resolve: its time, its cooldown, and the guard while she stands in it // a Rift Step or the Shadow Clone's step out of the clones' coils
     if (this.spinoBiteMark > 0) this.spinoBiteMark = Math.max(0, this.spinoBiteMark - dt * 1000 / SPINO_SCREEN.bite.ms); // the bite mark over the screen fades
     this.spinoInterloperTick(dt, now); // the Spinosaurus comes in on a stego or stag fight (spino-rex.ts)
     this.dinoDuelTick(dt); // the dino duel (dino-duel.ts): the verdict, the eaten loser, the escape
