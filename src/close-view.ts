@@ -3252,7 +3252,13 @@ function drawPlaceLabel(ctx, g, w, h) { // as the ordinary view writes it: just 
   const label = String(g.map?.name || "").toUpperCase(); if (!label) return;
   ctx.font = "12px monospace"; const y = h - (g.labelInset ?? 122), x = g.labelX ?? 8, bw = Math.min(Math.max(150, ctx.measureText(label).width + 20), g.labelMaxWidth ?? Infinity);
   ctx.fillStyle = "#151411ee"; ctx.fillRect(x, y, bw, 24); ctx.fillStyle = "#cec7b6"; ctx.fillText(label, x + 8, y + 16, bw - 16);
+  placeLabelDrawn(x, y, bw); // for the now-playing title (main.ts)
 }
+// The place label's box as last drawn on screen (CSS px in the canvas; `at` the performance.now() it was drawn), one object for the
+// module, never on the game (a render must not change the game): main.ts lays the now-playing title over it (Tim, 2026-11-28).
+// Written by this view's drawPlaceLabel and by the Standard View's label (renderer.ts).
+export const PLACE_LABEL_BOX = { x: 0, y: 0, w: 0, h: 24, at: 0 };
+export function placeLabelDrawn(x, y, w) { const B = PLACE_LABEL_BOX; B.x = x; B.y = y; B.w = w; B.at = performance.now(); }
 
 // ------------------------------------------------------------------------------------------------ floor features drawn flat (version 4)
 // A captured draw that is a floor feature (CLOSE_VIEW.flat: a mark in the ground, a dais, a ladder down through a hatch) is
