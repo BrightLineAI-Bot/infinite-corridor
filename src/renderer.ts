@@ -60,7 +60,7 @@ import { dungeonPointDiscovered, dungeonTileVisibility, DUNGEON_CHUNK_SIZE } fro
 import { LANTERN, LANTERN_STOPS, lanternShines, lanternLit as lanternIsLit } from "./spell-slots.ts"; // the Lantern: its light over the dark (below, marked LANTERN)
 import { HOLE_DROPS, holeDrops, LAB_FOG, labFogOf, labFogLook, labFogTile, labFogAt, labFogState, ROOM_VIEW, roomViewBelow, creatureInSight, creatureSightLevel, drawSightSilhouette, sightFrame } from "./labyrinths.ts"; // sight lines (2026-11-18): creatures out of the Wayfarer's sight are faint neutral silhouettes
 import { closeViewFolkKind, folkLook, FOLK_MOTION } from "./close-view-folk.ts"; // Close View townsfolk: what a captured person's card keeps (folkCapture)
-import { closeViewFrame, closeViewCapturing, closeViewCreatureSight, closeViewSightFade, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition, drawCloseViewLightsStd, INTERIOR_LIGHT, roomLightField, outdoorNight, closeViewLeaving, AERIAL_RINGS, aerialRingState } from "./close-view.ts"; // Close View: three hooks below, marked CLOSE VIEW
+import { placeLabelDrawn, closeViewFrame, closeViewCapturing, closeViewCreatureSight, closeViewSightFade, closeViewTake, closeViewBareFloor, closeViewWorldCapture, CLOSE_VIEW_HOOKS, closeViewDoorTorchPosition, drawCloseViewLightsStd, INTERIOR_LIGHT, roomLightField, outdoorNight, closeViewLeaving, AERIAL_RINGS, aerialRingState } from "./close-view.ts"; // Close View: three hooks below, marked CLOSE VIEW
 
 // Native bodies retain their semantic decorations. These callbacks are used only by the GPU capture;
 // the ordinary renderer's complete closure below is unchanged. Floor geometry never becomes a standing card.
@@ -3715,6 +3715,7 @@ export function render(ctx, g, w, h, now) {
   ctx.fillRect(labelX, labelY, boxW, 24);
   ctx.fillStyle = "#cec7b6";
   ctx.fillText(label, labelX + 8, labelY + 16, boxW - 16);
+  if (!closeViewCapturing()) placeLabelDrawn(labelX, labelY, boxW); // where the box is, for the now-playing title (main.ts)
   if (g.area === "dungeon") drawWayDownPointer(ctx, g, w, h, s, p, viewLift, now); // off the screen, a chevron at the edge toward the way down
   if (timed) { const t3 = performance.now(); renderTimings.ground = t1 - t0; renderTimings.world = t2 - t1; renderTimings.overlay = t3 - t2; renderTimings.endedAt = t3; }
 }
