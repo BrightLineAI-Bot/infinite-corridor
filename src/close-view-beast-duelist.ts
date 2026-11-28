@@ -14,7 +14,7 @@
 import { DUELISTS } from "./duelists.ts";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, aimWorld, writeSkin, solveTwoBone,
-  createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, span, kick, TIER_DETAIL,
+  blendActs, createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, span, kick, TIER_DETAIL,
 } from "./close-view-beast-rig.ts";
 import { DUELIST_BODY } from "./close-view-beast-duelist-body.ts";
 
@@ -231,10 +231,7 @@ export function sampleDuelist(tr, e, env) {
   const yaw = tr.yaw, cf = Math.cos(yaw), sf = Math.sin(yaw);
   // crossfade between acts
   const key = e.pack?.attack ? `${e.pack.attack}:${e.pack.seq}` : dead ? 'death' : ACT.phase;
-  if (tr.key === '' || !(gapMs <= G.blendMs)) { if (key !== tr.key) tr.blendAt = -Infinity; tr.shown.set(V); tr.from.set(V); tr.key = key; }
-  else if (key !== tr.key) { tr.from.set(tr.shown); tr.blendAt = now; tr.key = key; }
-  const blend = tr.blendAt === -Infinity ? 1 : smooth((now - tr.blendAt) / G.blendMs);
-  for (let k = 0; k < PK; k++) tr.shown[k] = tr.from[k] + (V[k] - tr.from[k]) * blend;
+  blendActs(tr, key, V, PK, now, gapMs, G.blendMs);
   Wv.set(tr.shown);
   // hits: a flinch away from the blow
   if (!dead && Number.isFinite(tr.hp) && e.hp < tr.hp) { tr.hitAt = now; const px = env.target?.x ?? e.x, py = env.target?.y ?? e.y; tr.hitSide = Math.sign((px - x) * -sf + (py - y) * cf) || 1; }

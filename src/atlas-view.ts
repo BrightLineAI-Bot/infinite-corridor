@@ -9,7 +9,7 @@ import { exploring } from "./journey-start.ts";
 import { questOfFollow } from "./quests.ts"; import { questTarget } from "./quest-places.ts"; // progression Phase 7: a followed quest
 import { READINGS, READING_ORDER, readingAt, readingKnown } from "./lore.ts";
 import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.ts";
-import { PENTAGON, parsePentagonId, pentagonPlan, pentagonLinkKey, pentagonCentre } from "./pentagon.ts";
+import { PENTAGON, parsePentagonId, pentagonPlan, pentagonLinkKey, pentagonCentre, pentagonCompleted } from "./pentagon.ts";
 import { dungeonPointDiscovered } from "./dungeon-framework.ts";
 import { labFogOf, labFogState } from "./labyrinths.ts";
 import { TALL_TOWERS } from "./tall-towers.ts";
@@ -626,4 +626,48 @@ export function compassDiscovery(save, prevSensed, next) {
   for (const m of next) if (m.known && !m.boss && prevSensed.has(m.key)) return m.name;
   for (const key of prevSensed) { const at = /^(pentagon|skyway|tree|wayglass|shrine):(-?\d+),(-?\d+)$/.exec(key); if (at && save?.atlas?.[`${at[2]},${at[3]}`]) return SENSED_PLACES[at[1]].known; }
   return null;
+}
+
+// ---------------------------------------------------------------- the Pentagons on the Atlas
+// Tim (2026-11-28): "yellow for [not] completed... green for completed... I just want the color to look good"; and each marker
+// covers the ground the Pentagon stands on, not a dot. The Pentagons marked are only the ones the save already records as found:
+// a Pentagon's history (save.consequences.dungeons, ids `pentagon:<seed>:<cx>:<cy>[:v<V>]:f<n>`), which arrival in any of its
+// nine sections opens (game.ts loadArea, dungeonHistory on `<base>:f1`), and a Pentagon hunt the Wayfarer found or finished
+// (save.pentagonFinding.hunts, status found / done). Never a sigil's pointed-at Pentagon, the compass's sensed one, or a world
+// scan. Complete: its Tesseract paid (`pentComplete` on the base floor's history) or its finale won (pentagon.ts
+// pentagonCompleted, paid on the next start). The footprint is the five-sided wall itself: centred on the centre section, point
+// up, its outer face `PENTAGON.bands.out` tiles from the centre (pentagon.ts regionAt), at least `minRadius` px on screen.
+export const ATLAS_PENTAGONS = Object.freeze({
+  layer: "pentagons", label: "Pentagons",
+  section: 32, // tiles per section side
+  minRadius: 12, // px: the shape's corner radius never drawn smaller, zoomed out
+  open: Object.freeze({ line: "#ffc94d", fill: "rgba(255,201,77,.14)", width: 2.5, halo: "rgba(9,16,24,.85)" }), // warm amber outline
+  done: Object.freeze({ line: "#d4f7e4", fill: "rgba(70,196,142,.5)", width: 1.5, halo: "rgba(9,16,24,.85)" }), // soft jade, filled
+  words: Object.freeze({ open: "not yet completed", entered: "entered", done: "completed · Tesseract earned" }),
+});
+// The Pentagons the save records as found: [{ cx, cy, complete, entered }], sorted by section. Pure and cheap: one pass over the
+// save's dungeon histories (only the `pentagon:` ones parsed) and its Pentagon hunts.
+export function knownPentagons(save) {
+  const seed = String(save?.seed ?? ""), byKey = new Map(), at = (cx, cy) => { const k = `${cx},${cy}`; let q = byKey.get(k); if (!q) byKey.set(k, q = { cx, cy, complete: false, entered: false }); return q; };
+  const D = save?.consequences?.dungeons || {};
+  for (const id in D) {
+    const H = D[id]; if (!id.startsWith("pentagon:") || !H || typeof H !== "object") continue;
+    const p = parsePentagonId(id); if (!p || p.seed !== seed || !Number.isInteger(p.cx) || !Number.isInteger(p.cy)) continue;
+    const q = at(p.cx, p.cy); if (Number(H.visits) > 0) q.entered = true;
+    if (p.n === 0 && (H.pentComplete || pentagonCompleted(H))) q.complete = true;
+  }
+  for (const h of save?.pentagonFinding?.hunts || []) if ((h?.status === "found" || h?.status === "done") && Number.isInteger(h.cx) && Number.isInteger(h.cy)) at(h.cx, h.cy);
+  return [...byKey.values()].sort((a, b) => a.cy - b.cy || a.cx - b.cx);
+}
+// The known Pentagon whose nine sections hold (rx, ry), or null.
+export function pentagonOnSection(list, rx, ry) { for (const q of list || []) if (Math.abs(rx - q.cx) <= 1 && Math.abs(ry - q.cy) <= 1) return q; return null; }
+// Its Atlas words: "The Pentagon · completed · Tesseract earned", or "· entered · not yet completed".
+export function pentagonAtlasText(q) { const W = ATLAS_PENTAGONS.words; return q ? `${PENTAGON.name} · ${q.complete ? W.done : `${q.entered ? `${W.entered} · ` : ""}${W.open}`}` : ""; }
+// The footprint in sections: the wall's corner radius, its centre at the centre section's middle (as the Atlas draws a section).
+export const pentagonAtlasRadius = () => PENTAGON.bands.out / Math.cos(Math.PI / 5) / ATLAS_PENTAGONS.section;
+// The five corners on screen (point up), for a centre at (x, y) px and `cell` px per section, into `out` (reused).
+export function pentagonCorners(x, y, cell, out = []) {
+  const r = Math.max(ATLAS_PENTAGONS.minRadius, pentagonAtlasRadius() * cell); out.length = 10;
+  for (let i = 0; i < 5; i++) { const a = (-90 + 72 * i) * Math.PI / 180; out[i * 2] = x + Math.cos(a) * r; out[i * 2 + 1] = y + Math.sin(a) * r; }
+  return out;
 }

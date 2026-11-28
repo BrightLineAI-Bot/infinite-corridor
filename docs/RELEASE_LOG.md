@@ -15,12 +15,14 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1091 (this merge, #763); production serves `r1084-63d231dd5b0b` (Publish run 198, succeeded 2026-11-28; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1093 (this merge, #765); production serves `r1084-63d231dd5b0b` (Publish run 198, succeeded 2026-11-28; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 1093 | Claude | claude/atlas-pentagons / #765 | Pentagons on the Atlas | Merged (#765); preview follows. |
+| 1092 | Claude | claude/monster-posing-cost / #764 | Faster monster posing in Close View | Merged (#764); preview follows. |
 | 1091 | Claude | claude/wardrobe / #763 | The Wardrobe: a Pack tab with a live preview | Merged (#763); preview follows. |
 | 1090 | Claude | claude/gender-swap / #762 | Body swap at Oren and the town Keepers (500 marks) | Merged (#762); preview follows. |
 | 1089 | Claude | claude/town-music | Town music + now-playing title in the location box | Merged (#761). |
