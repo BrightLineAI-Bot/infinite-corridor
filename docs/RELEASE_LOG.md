@@ -22,6 +22,7 @@ Main is at r1090 (this merge, #762); production serves `r1084-63d231dd5b0b` (Pub
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
 | 1090 | Claude | claude/gender-swap / #762 | Body swap at Oren and the town Keepers (500 marks) | Merged (#762); preview follows. |
+| 1089 | Claude | claude/town-music | Town music + now-playing title in the location box | Merged (#761). |
 | 1088 | Claude | claude/slimmer-saves / #757 | Slimmer saves | Merged (#757); preview follows. |
 | 1087 | Claude | claude/ten-more-tracks | Ten more tracks + a scrolling now-playing title in the HUD (Options → Audio → Show track titles) | In flight. |
 | 1086 | Claude | claude/triceratops-chop | Triceratops Chop replaces Triceratops Cunning (every third swing, two horn spikes left and right); on-hit-echoes test edits (Tim approved) | In flight. |

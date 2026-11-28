@@ -576,6 +576,55 @@ export const MORE_SONGS = {
 };
 Object.assign(SONGS, MORE_SONGS);
 
+// ---- Town songs (Tim, 2026-11-28: a town gets music of its own: Ember Refuge, the hamlets, villages, outposts and market towns,
+// the old settlements and the towns raised where a Listener fell; soundtrack-director.ts musicContext "town"). Two ORIGINAL pieces
+// in the house style, calm and warm, written for the towns; MUSIC_SELECTION's "town" rows add Lanterns at the Market Cross and
+// Hearthsmoke beside them. Neither is a boss theme, and neither shares a chord progression or a lead motif with any other song.
+export const TOWN_SONGS = {
+  // The town's heart: Ab Dorian, a horn and dulcimer singing over a turning harpsichord, neighbours by the well; a recorder once.
+  wellSquare: {
+    id: "wellSquare", name: "The Well in the Square", mood: "warm and easy, neighbours by the well at the heart of a town",
+    bpm: 68, swing: .1, root: 56, mode: "dorian", leadOct: 1, pedal: false,
+    pad: "strings", arp: "harpsichord", leads: ["horn", "dulcimer", "strings", "recorder"],
+    chords: ["1:7", "4", "7", "4", "1:7", "3", "4:add9", "5:sus4"],
+    bass: { calm: B.halves, combat: B.ostinato },
+    drums: { calm: { frame: "X...o.......o..." }, combat: D.ritual, drive: D.war },
+    arps: { calm: "0...1.2...1...3.", busy: "0.1.2.1.3.1.2.1." },
+    motifs: {
+      a: [[0, 2, 4], [4, 4, 4], [8, 6, 6], [14, 5, 2], [16, 5, 8], [24, 3, 4], [28, 4, 4]],
+      a2: [[0, 3, 8], [8, 1, 4], [12, 2, 4], [16, 0, 12], [28, 2, 4]],
+      b: [[0, 7, 6], [6, 6, 2], [8, 4, 8], [16, 6, 6], [22, 5, 2], [24, 4, 8]],
+      c: [[0, 5, 6], [6, 4, 2], [8, 3, 8], [16, 1, 8], [24, 0, 8]],
+      cv: [[0, 5, 6], [6, 4, 2], [8, 3, 8], [16, 4, 16]],
+    },
+    forms: [["a", "a2", "b", "c"], ["a", "a2", "b", "cv"]],
+    leadPlan: [1, 1, 0],
+    mix: { bed: .9, groove: .8, motion: .7, lead: .8 }, echo: .35, reverb: .5,
+  },
+  // Lamps lit along the lanes at evening: Eb Aeolian, a cello walking the lanes, a harpsichord and strings answering, a dulcimer
+  // turning like a lamplighter's pole; a flute once.
+  lamplighter: {
+    id: "lamplighter", name: "The Lamplighter's Round", mood: "gentle and homely, lamps lit one by one along a town's lanes",
+    bpm: 63, swing: .06, root: 51, mode: "aeolian", leadOct: 2, pedal: false,
+    pad: "strings", arp: "dulcimer", leads: ["cello", "harpsichord", "strings", "flute"],
+    chords: ["1", "6", "3", "7", "4:7", "6:add9", "1:sus2", "5"],
+    bass: { calm: B.breath, combat: B.pulse },
+    drums: { calm: D.none, combat: D.procession, drive: D.rising },
+    arps: { calm: "0.......1...2...", busy: "0...1.2.3...2.1." },
+    motifs: {
+      a: [[0, 4, 8], [8, 2, 6], [14, 3, 2], [16, 5, 12], [28, 4, 4]],
+      a2: [[0, 6, 6], [6, 5, 2], [8, 4, 8], [16, 3, 8], [24, 1, 8]],
+      b: [[0, 5, 4], [4, 7, 4], [8, 9, 8], [16, 7, 6], [22, 6, 2], [24, 5, 8]],
+      c: [[0, 4, 8], [8, 1, 4], [12, 2, 4], [16, 1, 8], [24, -1, 8]],
+      cv: [[0, 4, 8], [8, 1, 4], [12, 2, 4], [16, 4, 16]],
+    },
+    forms: [["a", "a2", "b", "c"], ["a", "a2", "b", "cv"]],
+    leadPlan: [1, 1, 0, 1],
+    mix: { bed: 1, groove: .8, motion: .6, lead: .75 }, echo: .45, reverb: .6,
+  },
+};
+Object.assign(SONGS, TOWN_SONGS);
+
 // ---- The world bosses' own themes (Phase 2, Tim 2026-11-14: "each world boss gets its own unique track"). Each is ORIGINAL,
 // from the album's palette (modal minor and Hijaz, strings, choir, horn, plucks, bells, drones; frame drum, toms and timpani
 // only), with its own mode, tempo, lines and voices for that creature's story (LINER_NOTES). BOSS_THEMES (soundtrack-director.ts)
@@ -1225,6 +1274,11 @@ export const LINER_NOTES = [
     story: "A faded procession. Strings and a horn walk under old banners while a harpsichord keeps the pace of a court that is no longer there." },
   { id: "glassMeridian", title: "The Glass Meridian", moment: "The far realms and skylands, where the sky turns", feel: "awe",
     story: "High, clear and strange, in Hijaz. A celesta and bells ring along the line where the sky turns over, and a ney sings one phrase from very far away." },
+  // Town songs (Tim, 2026-11-28): TOWN_SONGS, for the "town" place.
+  { id: "wellSquare", title: "The Well in the Square", moment: "A town's heart: the square, the well and the Wayglass", feel: "torpid",
+    story: "Warm and easy, the sound of being among people again. A horn and a dulcimer trade a neighbourly tune over a harpsichord turning like a windlass, and a recorder joins in once." },
+  { id: "lamplighter", title: "The Lamplighter's Round", moment: "A town at evening, lamps lit one by one along the lanes", feel: "torpid",
+    story: "Gentle and homely. A cello walks the lanes at a lamplighter's pace, a harpsichord and strings answer from the windows, and a dulcimer turns like the pole touching each wick." },
   { id: "boss", moment: "A world beast or boss: the ground itself answers", feel: "urgent" },
   // The world bosses' own themes (BOSS_THEMES): `beast` is who it belongs to, `story` what the music tells of it, `menace` how
   // dark it runs (Tim, 2026-11-15; MENACE_TIERS): overt, understated, or calm (gentle, with an uneasy undertone).
@@ -1296,6 +1350,9 @@ export const MUSIC_SELECTION = [
   ["sea", "shoalGulls", 1, 4, 2],
   ["halls", "dustBanners", 1, 4, 2],
   ["sky", "glassMeridian", 1, 4, 2],
+  // Towns (Tim, 2026-11-28): the town songs, with the two warm pieces that already told of towns and hearths. Day and dusk keep
+  // Lanterns at the Market Cross as well.
+  ["town", "wellSquare", 1, 4, 3], ["town", "lanternCross", 1, 4, 2], ["town", "lamplighter", 1, 4, 2], ["town", "hearthsmoke", 1, 4, 1],
 ];
-export const MUSIC_CONTEXTS = ["day", "dusk", "dungeon", "deep", "sea", "halls", "sky"];
+export const MUSIC_CONTEXTS = ["day", "dusk", "dungeon", "deep", "sea", "halls", "sky", "town"];
 export const songById = (id) => SONGS[id] || null;
