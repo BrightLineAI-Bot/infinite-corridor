@@ -13,7 +13,8 @@ import { shakeOffset } from "./spino-rex.ts";
 import { drawBleedIcon } from "./bleed.ts";
 import { drawPoisonIcon } from "./apato-poison.ts";
 import { drawEarthResolveSigil } from "./apato-render.ts";
-import { insideResolve } from "./echoes.ts"; // the Earth Apatosaurus's root venom
+import { insideResolve, chopSpikePose, TRICERATOPS_CHOP, golemOn, golemScale, PACHY_ECHO } from "./echoes.ts"; // the Earth Apatosaurus's root venom; Triceratops Chop's spikes; Dome Rush's Earth Golem
+import { drawPachyGolem, drawPachyDazeStars, pachyDazeLeft } from "./pachy-render.ts"; // Dome Rush's Earth Golem on the Wayfarer; the Pachycephalosaurus's daze (stars)
 import { drawRealmTile, drawRealmCosmos, drawRealmObject } from "./seed-realm-render.ts"; // seed realms
 import { biomechanicalKeep } from "./close-view-room-routing.ts";
 import { PENTAGON_MURALS } from "./pentagon-halls.ts"; // release 795: the grand halls' murals, drawn small
@@ -158,7 +159,7 @@ export function drawNativePlayerDecorations(ctx, g, s, now) {
   const p=g.player,form=playerFormPresentation(g),quiet=!!(g.presentation?.reduceMotion||g.presentation?.safeMode),t=quiet?0:now;
   const x=(p.x+.5)*s,foot=(p.y+.82)*s;
   ctx.save();
-  if(now<(p.stunnedUntil||0))drawShockSparks(ctx,x,(p.y+.9)*s,s,t);
+  if(now<(p.stunnedUntil||0)&&!(pachyDazeLeft(p,now)>0))drawShockSparks(ctx,x,(p.y+.9)*s,s,t); // dazed by the Pachycephalosaurus: no sparks (Close View draws its stars as cards: close-view-beast-pachy.ts drawPachyDazeClose)
   if(form?.mech){
     const m=g.save.mech;
     if(form.empowered){const r=s*(.72+.05*Math.sin(t/140)),glow=ctx.createRadialGradient(x,foot-.27*s,r*.2,x,foot-.27*s,r);glow.addColorStop(0,'#ffb05a55');glow.addColorStop(1,'#ff5a1f00');ctx.fillStyle=glow;ctx.beginPath();ctx.arc(x,foot-.27*s,r,0,Math.PI*2);ctx.fill();}
@@ -3376,7 +3377,7 @@ export function render(ctx, g, w, h, now) {
       }
       const ride = mountRide, mountFacing = drillPose ? triceratopsDrillFacing(mountComposite?.viewFacing, drillPose) : mountComposite?.viewFacing || (mountPose ? Math.abs(mountPose.x) >= Math.abs(mountPose.y) ? mountPose.x < 0 ? "left" : "right" : mountPose.y < 0 ? "up" : "down" : p.facing), seatInfo = ride ? drawMount(ctx, ride, p, s, g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now, lift, !!(g.presentation?.reduceMotion || g.presentation?.safeMode), mountPose, mountFacing, drillPose) : null, seat = seatInfo ? seatInfo.up : 0; // release 748: riding
       // Release 257: knocked flat by the Lightning Giant's shock, the Wayfarer tips over, shakes, and gets back up.
-      const knocked = now < (p.stunnedUntil || 0), kd = knocked ? knockdownPose(now - (p.stunnedAt || now), (p.stunnedUntil || now) - (p.stunnedAt || now), !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) : null;
+      const knocked = now < (p.stunnedUntil || 0) && !(pachyDazeLeft(p, now) > 0) /* dazed by the Pachycephalosaurus she stays on her feet, stars over her head */, kd = knocked ? knockdownPose(now - (p.stunnedAt || now), (p.stunnedUntil || now) - (p.stunnedAt || now), !!(g.presentation?.reduceMotion || g.presentation?.safeMode)) : null;
       if (kd) { const fx = (p.x + .5) * s + kd.shake, fy = (p.y + .9) * s - lift; ctx.save(); ctx.translate(fx, fy); ctx.rotate(kd.angle * (p.facing === "left" ? -1 : 1)); ctx.translate(-(p.x + .5) * s, -(p.y + .9) * s + lift); }
       const drone = !!g.droneUp?.() && !!g.droneAt, mech = !!g.mechUp?.(), mechLift = (mech || drone) && g.mechBoosting ? s * (drone ? .35 : .22) : 0; // release 317: the robot ashore, lifted while it boosts; 321: the drone carries higher
       if (mech && g.save.mech?.empowered) { const cx = (p.x + .5) * s, cy = (p.y + .55) * s - lift - mechLift, r = s * (.72 + .05 * Math.sin(now / 140)), glow = ctx.createRadialGradient(cx, cy, r * .2, cx, cy, r); glow.addColorStop(0, "#ffb05a55"); glow.addColorStop(1, "#ff5a1f00"); ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill(); } // release 383: the empowered robot's furnace glow
@@ -3398,8 +3399,10 @@ export function render(ctx, g, w, h, now) {
         "player",
         p.facing,
         Math.floor(p.walkPhase || 0),
-        now < (p.attackUntil || 0) ? "attack" : "walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1,
+        now < (p.attackUntil || 0) ? "attack" : "walk",false,(g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1)*golemScale(p,now,!!(g.presentation?.reduceMotion||g.presentation?.safeMode)), // Dome Rush's Earth Golem: larger
       ); STD_HANDS_FREE = false; STD_SALVAGE = false; STD_BODY = "male";
+      if (!suited && !mech && golemOn(p, now)) drawPachyGolem(ctx, (p.x + .5) * s, (p.y + .82) * s - lift - seat, s, golemScale(p, now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)), (p.echoGolemUntil - now) / (PACHY_ECHO.seconds * 1000), now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)); // its rocky plates and its time (pachy-render.ts)
+      if (!suited && !mech) drawPachyDazeStars(ctx, (p.x + .5) * s, (p.y + .82) * s - lift - seat, s, pachyDazeLeft(p, now), now, !!(g.presentation?.reduceMotion || g.presentation?.safeMode)); // the Pachycephalosaurus's daze: stars over her head (pachy-render.ts)
       if (aerialK > 0 && p.facing !== "down") drawAerialArmsStd(ctx, p.x, p.y - (lift + seat) / s, s, p.facing, aerialK); // inside the lean
       if (rushLean) { ctx.restore(); if (cleaverRushLean(g)) drawCleaverRushBlade(ctx, g, s, lift); } // the blade carried low and trailing
       if (!suited && !mech) drawAerialRingsStd(ctx, g, (p.x + .5) * s, (p.y + .82) * s - lift - seat, s, now, 1); // Aerial Step: the near halves, over them
@@ -3555,6 +3558,7 @@ export function render(ctx, g, w, h, now) {
     }
   drawEchoPatches(ctx,g,s,now);
   drawGlyphStatus(ctx,g,s,now,(e)=>shownInDungeon(g,e)&&visibleInCamera(e,l,t,r,b,2)&&creatureInSight(g,e),bareFloor);
+  if(g.chopSpikes)drawChopSpikes(ctx,g,s,now,bareFloor||closeViewCapturing());
   if(g.damageNumbers)drawDamageNumbers(ctx,g,s,now); // release 461
   { const m=g.aimMark; if(m&&now<m.until){const e=g.enemies.find(q=>q.id===m.id&&!q.dead&&shownInDungeon(g,q)&&!q.gloomVeil/* never gives the Gloomvast away in its Dark */);if(e){const k=(m.until-now)/450,cx=(e.x+.5)*s,cy=(e.y+.45)*s,r=s*(.5+Math.max(0,Number(e.bodyRadius)||0)*.6+(1-k)*.12),a=r*.45;ctx.save();ctx.globalAlpha=Math.min(1,k*1.6);ctx.strokeStyle="#fff1c8";ctx.lineWidth=Math.max(2,s*.07);ctx.beginPath();for(const[sx,sy]of[[-1,-1],[1,-1],[1,1],[-1,1]]){ctx.moveTo(cx+sx*r,cy+sy*r-sy*a);ctx.lineTo(cx+sx*r,cy+sy*r);ctx.lineTo(cx+sx*r-sx*a,cy+sy*r)}ctx.stroke();ctx.restore()}}} // release 469: where the swing went
   if(skyA<.98){if(skyA>0){ctx.save();ctx.globalAlpha=1-skyA} // release 635: roofs far below fade into the sky
@@ -3580,7 +3584,7 @@ export function render(ctx, g, w, h, now) {
   const frontShelter=objectLists.shelters.find(o=>!worldCapture&&!roofUnder&&renderableObject(g,o)&&seenInDungeon(g,o)&&p.x>=o.bounds.x-.6&&p.x<=o.bounds.x+o.bounds.w-.4&&p.y>=o.bounds.y+o.bounds.h-1&&p.y<=o.bounds.y+o.bounds.h+1.35);
   // roof report 2026-11-04: not from a roof's front row (it drew a second Wayfarer on the ground below), and at the ground's own height
   const shelterRaise=frontShelter?groundLift(p.x,p.y):0;if(shelterRaise){ctx.save();ctx.translate(0,-shelterRaise*s)}
-  if(frontShelter)actor(ctx,p.x,p.y-lift/s,s,"player",p.facing,Math.floor(p.walkPhase||0),now<(p.attackUntil||0)?"attack":"walk",false,g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1);
+  if(frontShelter)actor(ctx,p.x,p.y-lift/s,s,"player",p.facing,Math.floor(p.walkPhase||0),now<(p.attackUntil||0)?"attack":"walk",false,(g.save.magicSkills?.active?.id==='ember-form'?1.25+.05*(g.save.magicSkills.active.rank||1):1)*golemScale(p,now,!!(g.presentation?.reduceMotion||g.presentation?.safeMode)));
   if(shelterRaise)ctx.restore();
   if(roofUnder){ // roof report 2026-11-04: on a roof, the Wayfarer stands over it, at the roof's height (the one draw), and the roof's lethal edges near them are marked over it
     if(roofDeckDrawn)drawRoofDeckCue(ctx,g,mw,s); else drawTraversalCues(ctx,g.map,mw,p,s,now,null,(x,y)=>g.map.tiles[y*mw+x]?.structure==="buildingRoof");
@@ -3809,6 +3813,29 @@ function drawEncumbered(ctx,cx,cy,s,left,fill,t,still){
     ctx.beginPath();ctx.moveTo(cx-s*.22,cy-s*.05);ctx.lineTo(bx-s*.08,by-s*.04);ctx.moveTo(cx+s*.22,cy-s*.05);ctx.lineTo(bx+s*.08,by-s*.04);ctx.stroke();
     ctx.fillStyle="#3a2a66";ctx.beginPath();ctx.moveTo(bx-s*.12,by-s*.02);ctx.lineTo(bx+s*.12,by-s*.02);ctx.lineTo(bx+s*.08,by-s*.16);ctx.lineTo(bx-s*.08,by-s*.16);ctx.closePath();ctx.fill();ctx.stroke()}
   else{ctx.globalAlpha=.7;ctx.strokeStyle="#9b7bff";ctx.beginPath();ctx.ellipse(cx,cy+s*.42,s*.44,s*.15,0,-Math.PI/2,-Math.PI/2+Math.min(1,fill)*Math.PI*2);ctx.stroke()}
+  ctx.restore();
+}
+// Triceratops Chop (echoes.ts TRICERATOPS_CHOP): each spike a pale horn hanging beside its target, the viewer's left or right, that
+// chops down onto it at an angle; a dark mark on the ground under the target while it hangs, and on landing a short flash and a
+// ring of dust. Standard View draws the horn lifted by its height; Close View draws the horn itself (close-view.ts) and takes only
+// the ground marks from this floor layer (`floorOnly`). One pooled pose record, no allocation; reduced motion: no growing, no fall.
+const CHOP_POSE={};
+export function drawChopSpikes(ctx,g,s,now,floorOnly){
+  const D=TRICERATOPS_CHOP.draw,reduce=!!(g.presentation?.reduceMotion||g.presentation?.safeMode),gy=.3/* the target's centre line to its feet */;
+  ctx.save();ctx.lineJoin="round";ctx.lineCap="round";
+  for(const q of g.chopSpikes){const P=chopSpikePose(q,now,1,0,reduce,CHOP_POSE);if(!P)continue;
+    const fx=P.gx*s,fy=(P.gy+gy)*s;
+    if(P.impact<=0){ctx.globalAlpha=.3*P.alpha;ctx.fillStyle="#1a1208";ctx.beginPath();ctx.ellipse(fx+P.side*s*.08,fy,s*.16,s*.06,0,0,7);ctx.fill()} // the mark it will land on
+    else{const k=P.impact,r=s*D.dust*(reduce?.8:.35+.65*k);ctx.globalAlpha=.6*(1-k);ctx.strokeStyle=D.dustColor;ctx.lineWidth=Math.max(1.5,s*.06*(1-k*.5));ctx.beginPath();ctx.ellipse(fx,fy,r,r*.38,0,0,7);ctx.stroke()
+      if(P.landed&&k<.5&&!floorOnly){const f=1-k*2,rr=s*.28*(reduce?.8:.6+.6*k);ctx.globalAlpha=.85*f;ctx.fillStyle=D.flash;ctx.beginPath();for(let i=0;i<8;i++){const a=i*Math.PI/4+P.side*.3,m=i%2?rr*.35:rr;ctx.lineTo(P.tx*s+Math.cos(a)*m,(P.ty-P.tz)*s+Math.sin(a)*m)}ctx.closePath();ctx.fill()}}
+    if(floorOnly)continue;
+    // the horn: base (wide) to tip, both lifted by their height; drawn as a tapered blade with a dark edge and a pale ridge
+    const bx=P.bx*s,by=(P.by-P.bz)*s,tx=P.tx*s,ty=(P.ty-P.tz)*s,dx=tx-bx,dy=ty-by,m=Math.hypot(dx,dy)||1,nx=-dy/m*P.radius*s,ny=dx/m*P.radius*s;
+    ctx.globalAlpha=P.alpha;ctx.fillStyle=D.horn;ctx.strokeStyle=D.edge;ctx.lineWidth=Math.max(1,s*.025);
+    ctx.beginPath();ctx.moveTo(bx+nx,by+ny);ctx.quadraticCurveTo(bx+dx*.55+nx*.7,by+dy*.55+ny*.7,tx,ty);ctx.quadraticCurveTo(bx+dx*.55-nx*.7,by+dy*.55-ny*.7,bx-nx,by-ny);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.globalAlpha=P.alpha*.7;ctx.strokeStyle=D.flash;ctx.beginPath();ctx.moveTo(bx+nx*.2,by+ny*.2);ctx.lineTo(bx+dx*.8,by+dy*.8);ctx.stroke();
+    if(!reduce&&P.impact<=0&&now>=q.fallAt){ctx.globalAlpha=.35*P.alpha;ctx.strokeStyle=D.flash;ctx.lineWidth=Math.max(1,s*.04);ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx-dx*.6,by-dy*.6);ctx.stroke()} // a streak behind it as it falls
+  }
   ctx.restore();
 }
 function drawGlyphStatus(ctx,g,s,now,visible,bareFloor=false){

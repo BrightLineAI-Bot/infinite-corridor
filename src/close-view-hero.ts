@@ -785,24 +785,43 @@ function build(asset, state, pose) {
   }
   for (let s = 0; s < asset.skins.length; s++) { const skin = asset.skins[s]; for (let j = 0; j < skin.joints.length; j++) { multiply(state.skinMatrices[s], j * 16, state.global, skin.joints[j] * 16, state.fit.inverseBinds[s], j * 16); normalMatrix(state.skinNormals[s], j * 9, state.skinMatrices[s], j * 16); } }
 }
+// Every frame, every vertex: the arrays, matrices and mesh fields are read into locals once per mesh (the asset's `arrays` is
+// a dictionary-mode object and his and her meshes, assets and states differ in shape; a load of any of them per vertex was a
+// polymorphic or dictionary lookup that cost far more on some CPUs than here). Same arithmetic, in the same order, as before,
+// but the normal's length by Math.sqrt (Math.hypot is a slow builtin call, about 35 ns, once per vertex; unit-length normals
+// cannot overflow, so the two differ in the last bit at most).
 function deform(asset, state) {
-  const a = asset.arrays, out = state.vertices;
-  for (const mesh of asset.meta.meshes) if (!mesh.procedural) for (let v = mesh.firstVertex; v < mesh.firstVertex + mesh.vertexCount; v++) {
-    const p = v * 3, o = v * 6, x = state.fit.positions[p], y = state.fit.positions[p + 1], z = state.fit.positions[p + 2], nx = state.fit.normals[p], ny = state.fit.normals[p + 1], nz = state.fit.normals[p + 2];
-    let px = 0, py = 0, pz = 0, qx = 0, qy = 0, qz = 0;
-    const skinned = mesh.skin >= 0, m = skinned ? state.skinMatrices[mesh.skin] : state.global, n = skinned ? state.skinNormals[mesh.skin] : state.nodeNormals;
-    for (let k = 0; k < (skinned ? 4 : 1); k++) { const influence = v * 4 + k, w = skinned ? a.weights[influence] : 1; if (!w) continue; const joint = skinned ? a.joints[influence] : mesh.node, b = joint * 16, c = joint * 9;
-      px += w * (m[b] * x + m[b + 4] * y + m[b + 8] * z + m[b + 12]); py += w * (m[b + 1] * x + m[b + 5] * y + m[b + 9] * z + m[b + 13]); pz += w * (m[b + 2] * x + m[b + 6] * y + m[b + 10] * z + m[b + 14]);
-      qx += w * (n[c] * nx + n[c + 3] * ny + n[c + 6] * nz); qy += w * (n[c + 1] * nx + n[c + 4] * ny + n[c + 7] * nz); qz += w * (n[c + 2] * nx + n[c + 5] * ny + n[c + 8] * nz);
+  const a = asset.arrays, out = state.vertices, weights = a.weights, joints = a.joints, meshes = asset.meta.meshes, fit = state.fit, P = fit.positions, N = fit.normals;
+  for (let mi = 0; mi < meshes.length; mi++) { const mesh = meshes[mi]; if (mesh.procedural) continue;
+    const first = mesh.firstVertex, last = first + mesh.vertexCount, skin = mesh.skin;
+    if (skin >= 0) { const m = state.skinMatrices[skin], n = state.skinNormals[skin];
+      for (let v = first; v < last; v++) {
+        const p = v * 3, o = v * 6, x = P[p], y = P[p + 1], z = P[p + 2], nx = N[p], ny = N[p + 1], nz = N[p + 2];
+        let px = 0, py = 0, pz = 0, qx = 0, qy = 0, qz = 0;
+        for (let influence = v * 4, end = influence + 4; influence < end; influence++) { const w = weights[influence]; if (!w) continue; const joint = joints[influence], b = joint * 16, c = joint * 9;
+          px += w * (m[b] * x + m[b + 4] * y + m[b + 8] * z + m[b + 12]); py += w * (m[b + 1] * x + m[b + 5] * y + m[b + 9] * z + m[b + 13]); pz += w * (m[b + 2] * x + m[b + 6] * y + m[b + 10] * z + m[b + 14]);
+          qx += w * (n[c] * nx + n[c + 3] * ny + n[c + 6] * nz); qy += w * (n[c + 1] * nx + n[c + 4] * ny + n[c + 7] * nz); qz += w * (n[c + 2] * nx + n[c + 5] * ny + n[c + 8] * nz);
+        }
+        const length = Math.sqrt(qx * qx + qy * qy + qz * qz) || 1; out[o] = px; out[o + 1] = py; out[o + 2] = pz; out[o + 3] = qx / length; out[o + 4] = qy / length; out[o + 5] = qz / length;
+      }
+    } else { const m = state.global, n = state.nodeNormals, b = mesh.node * 16, c = mesh.node * 9;
+      const m0 = m[b], m1 = m[b + 1], m2 = m[b + 2], m4 = m[b + 4], m5 = m[b + 5], m6 = m[b + 6], m8 = m[b + 8], m9 = m[b + 9], m10 = m[b + 10], m12 = m[b + 12], m13 = m[b + 13], m14 = m[b + 14];
+      const n0 = n[c], n1 = n[c + 1], n2 = n[c + 2], n3 = n[c + 3], n4 = n[c + 4], n5 = n[c + 5], n6 = n[c + 6], n7 = n[c + 7], n8 = n[c + 8];
+      for (let v = first; v < last; v++) { // one rigid influence of weight 1: 0 + 1 * t, kept so the results stay bit for bit
+        const p = v * 3, o = v * 6, x = P[p], y = P[p + 1], z = P[p + 2], nx = N[p], ny = N[p + 1], nz = N[p + 2];
+        const px = 0 + 1 * (m0 * x + m4 * y + m8 * z + m12), py = 0 + 1 * (m1 * x + m5 * y + m9 * z + m13), pz = 0 + 1 * (m2 * x + m6 * y + m10 * z + m14);
+        const qx = 0 + 1 * (n0 * nx + n3 * ny + n6 * nz), qy = 0 + 1 * (n1 * nx + n4 * ny + n7 * nz), qz = 0 + 1 * (n2 * nx + n5 * ny + n8 * nz);
+        const length = Math.sqrt(qx * qx + qy * qy + qz * qz) || 1; out[o] = px; out[o + 1] = py; out[o + 2] = pz; out[o + 3] = qx / length; out[o + 4] = qy / length; out[o + 5] = qz / length;
+      }
     }
-    const length = Math.hypot(qx, qy, qz) || 1; out[o] = px; out[o + 1] = py; out[o + 2] = pz; out[o + 3] = qx / length; out[o + 4] = qy / length; out[o + 5] = qz / length;
   }
 }
 export function createHeroPoseState(asset,proportions=heroBodyProportions(asset.body)) {
   const size = asset.rest.length, n = asset.meta.nodes.length;
   if(!Number.isFinite(proportions.width)||!Number.isFinite(proportions.depth)||!Number.isFinite(proportions.hands)||Math.min(proportions.width,proportions.depth,proportions.hands)<.25||Math.max(proportions.width,proportions.depth,proportions.hands)>1)throw new Error('Invalid hero proportions');
   if(proportions.head!==undefined&&!(proportions.head>=.25&&proportions.head<=.5))throw new Error('Invalid hero head scale');
-  const s = { asset, pose: new Float64Array(size), other: new Float64Array(size), loop: new Float64Array(size),fallLast:new Float64Array(10),fistSource:new Float64Array(size),fistScratch:new Float64Array(63),fistBindLocal:new Float64Array(n*9),fistBindGlobal:new Float64Array(n*9),fistMirrorC:new Float64Array(n*n*9), primaryTarget:new Float64Array(3),primaryScratch:new Float64Array(60),sweepScratch:new Float64Array(48),sweepBlade:new Float64Array(6),sweepSample:{},sweepSpin:0,slash:{},slashFrame:new Float64Array(20),slashMatrix:new Float64Array(16),slashBlade:new Float64Array(6),primaryGripResidual:0,worldScale:1,hammerLayer:new Float64Array(size),hammerLegData:new Float64Array(20),hammerFeet:new Float64Array(16),ankleLocal:new Float64Array(6),anklePoint:new Float64Array(3),local: new Float64Array(n * 16), global: new Float64Array(n * 16), nodeNormals: new Float64Array(n * 9), skinMatrices: asset.skins.map(k => new Float64Array(k.joints.length * 16)), skinNormals: asset.skins.map(k => new Float64Array(k.joints.length * 9)), vertices: new Float64Array(asset.vertexCount * 6), headScale: asset.meta.headAttachment.defaultScale, seatY: 0, minY: 0, referenceHeight: 1, downClearance: 0, rollX: 0, rollZ: 0, clip: 'Idle', clipTime: 0, rollCompX: 0, rollCompZ: 0 };
+  const s = { asset, pose: new Float64Array(size), other: new Float64Array(size), loop: new Float64Array(size),fallLast:new Float64Array(10),fistSource:new Float64Array(size),fistScratch:new Float64Array(63),fistBindLocal:new Float64Array(n*9),fistBindGlobal:new Float64Array(n*9),fistMirrorC:new Float64Array(n*n*9), primaryTarget:new Float64Array(3),primaryScratch:new Float64Array(60),sweepScratch:new Float64Array(48),sweepBlade:new Float64Array(6),sweepSample:{},sweepSpin:0,slash:{},slashFrame:new Float64Array(20),slashMatrix:new Float64Array(16),slashBlade:new Float64Array(6),primaryGripResidual:0,worldScale:1,hammerLayer:new Float64Array(size),hammerLegData:new Float64Array(20),hammerFeet:new Float64Array(16),ankleLocal:new Float64Array(6),anklePoint:new Float64Array(3),local: new Float64Array(n * 16), global: new Float64Array(n * 16), nodeNormals: new Float64Array(n * 9), skinMatrices: asset.skins.map(k => new Float64Array(k.joints.length * 16)), skinNormals: asset.skins.map(k => new Float64Array(k.joints.length * 9)), vertices: new Float64Array(asset.vertexCount * 6), headScale: asset.meta.headAttachment.defaultScale, seatY: 0, minY: 0, referenceHeight: 1, downClearance: 0, rollX: 0, rollZ: 0, clip: 'Idle', clipTime: 0, rollCompX: 0, rollCompZ: 0,
+    overlayParts: null, braid: null }; // set only for her (sculptOverlays, initBraid), declared for both so his and her states share one shape
   s.hammerLegSides=[s.hammerLegData.subarray(0,10),s.hammerLegData.subarray(10,20)];
   s.sourceAnkle=new Float64Array(6);s.standFeet=new Float64Array(20);s.standShare=1; // HERO_STAND: the ankles on the source skeleton; the stance's share of the pose (the idle's)
   if(proportions.head!==undefined)s.headScale=proportions.head;
@@ -1026,16 +1045,16 @@ function braidRoot(s, out) {
   const r = HERO_BRAID.root, g = s.global, o = 41 * 16; // the Cleric head node: scale and seat included
   out[0] = g[o] * r[0] + g[o + 4] * r[1] + g[o + 8] * r[2] + g[o + 12]; out[1] = g[o + 1] * r[0] + g[o + 5] * r[1] + g[o + 9] * r[2] + g[o + 13]; out[2] = g[o + 2] * r[0] + g[o + 6] * r[1] + g[o + 10] * r[2] + g[o + 14];
 }
+// Segment i's rest direction in model space (the torso's own frame turns its path), into s.braid.dir.
+function braidRestDir(s, i) { const R = s.braid.rest, d = s.braid.dir, g = s.global, t = 24 * 16, o = i * 3, x = R[o], y = R[o + 1], z = R[o + 2]; d[0] = g[t] * x + g[t + 4] * y + g[t + 8] * z; d[1] = g[t + 1] * x + g[t + 5] * y + g[t + 9] * z; d[2] = g[t + 2] * x + g[t + 6] * y + g[t + 10] * z; const l = Math.sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]) || 1; d[0] /= l; d[1] /= l; d[2] /= l; return d; }
 // One step of the chain. `input` null (or reduced motion, a long gap, a teleport) hangs it at rest from the current pose.
 function braidStep(asset, s, input, yaw, scale) {
   const B = HERO_BRAID, F = B.profile, b = s.braid, P = b.points, Q = b.prev, g = s.global, t = 24 * 16, q = b.scratch, n = B.segments + 1, L = b.segment;
-  const radius = B.radius * B.flat + B.gap, R = b.rest, d = b.dir;
+  const radius = B.radius * B.flat + B.gap, d = b.dir;
   braidRoot(s, q);
-  // segment i's rest direction in model space (the torso's own frame turns its path)
-  const restDir = (i) => { const o = i * 3, x = R[o], y = R[o + 1], z = R[o + 2]; d[0] = g[t] * x + g[t + 4] * y + g[t + 8] * z; d[1] = g[t + 1] * x + g[t + 5] * y + g[t + 9] * z; d[2] = g[t + 2] * x + g[t + 6] * y + g[t + 10] * z; const l = Math.hypot(d[0], d[1], d[2]) || 1; d[0] /= l; d[1] /= l; d[2] /= l; return d; };
   const dt = input ? (input.nowMs - b.lastMs) / 1000 : NaN, moved = input ? Math.hypot(input.x - b.lastX, input.y - b.lastY) : 0;
   const rest = !input || input.reducedMotion || !b.ready || !(dt >= 0) || dt > B.resetDt || moved > B.teleport;
-  if (rest) { P[0] = q[0]; P[1] = q[1]; P[2] = q[2]; for (let i = 1; i < n; i++) { restDir(i - 1); P[i * 3] = P[i * 3 - 3] + d[0] * L; P[i * 3 + 1] = P[i * 3 - 2] + d[1] * L; P[i * 3 + 2] = P[i * 3 - 1] + d[2] * L; } }
+  if (rest) { P[0] = q[0]; P[1] = q[1]; P[2] = q[2]; for (let i = 1; i < n; i++) { braidRestDir(s, i - 1); P[i * 3] = P[i * 3 - 3] + d[0] * L; P[i * 3 + 1] = P[i * 3 - 2] + d[1] * L; P[i * 3 + 2] = P[i * 3 - 1] + d[2] * L; } }
   else if (dt > 0) {
     const h = Math.min(dt, B.maxDt), damp = Math.pow(B.damping, h * 60), cy = Math.cos(yaw), sy = Math.sin(yaw);
     // travel and turning: the world-fixed air the braid hangs in, seen from the body
@@ -1048,12 +1067,12 @@ function braidStep(asset, s, input, yaw, scale) {
   // One follow-the-leader pass from the root: the length (with a pull toward the rest path), the front of the chest and kit
   // (pushed out along the torso's forward, then set back on the segment's length) and the floor.
   for (let i = 1; i < n; i++) {
-    const o = i * 3, k = B.hold[i - 1]; let dx = P[o] - P[o - 3], dy = P[o + 1] - P[o - 2], dz = P[o + 2] - P[o - 1], l = Math.hypot(dx, dy, dz) || 1;
-    restDir(i - 1); dx = dx / l * (1 - k) + d[0] * k; dy = dy / l * (1 - k) + d[1] * k; dz = dz / l * (1 - k) + d[2] * k; l = Math.hypot(dx, dy, dz) || 1;
+    const o = i * 3, k = B.hold[i - 1]; let dx = P[o] - P[o - 3], dy = P[o + 1] - P[o - 2], dz = P[o + 2] - P[o - 1], l = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+    braidRestDir(s, i - 1); dx = dx / l * (1 - k) + d[0] * k; dy = dy / l * (1 - k) + d[1] * k; dz = dz / l * (1 - k) + d[2] * k; l = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
     P[o] = P[o - 3] + dx / l * L; P[o + 1] = P[o - 2] + dy / l * L; P[o + 2] = P[o - 1] + dz / l * L;
     const c = torsoLocal(g, t, P[o], P[o + 1], P[o + 2], b.local), bin = Math.floor((c[1] - F.from) / F.step), surface = bin >= 0 && bin < F.bins ? b.front[bin] + radius : -Infinity;
     if (c[2] < surface) {
-      const push = surface - c[2]; dx = P[o] + g[t + 8] * push - P[o - 3]; dy = P[o + 1] + g[t + 9] * push - P[o - 2]; dz = P[o + 2] + g[t + 10] * push - P[o - 1]; l = Math.hypot(dx, dy, dz) || 1;
+      const push = surface - c[2]; dx = P[o] + g[t + 8] * push - P[o - 3]; dy = P[o + 1] + g[t + 9] * push - P[o - 2]; dz = P[o + 2] + g[t + 10] * push - P[o - 1]; l = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
       P[o] = P[o - 3] + dx / l * L; P[o + 1] = P[o - 2] + dy / l * L; P[o + 2] = P[o - 1] + dz / l * L;
     }
     const floor = s.minY + B.radius; if (P[o + 1] < floor) P[o + 1] = floor;
@@ -1061,30 +1080,38 @@ function braidStep(asset, s, input, yaw, scale) {
   if (rest) Q.set(P);
   if (input) { b.ready = true; b.lastMs = input.nowMs; b.lastX = input.x; b.lastY = input.y; b.lastYaw = yaw; }
 }
+// The tube's facet directions, once: for facet k of a ring turned by `twist` (0 or half a facet), the lateral and depth
+// weights of the vertex (cos, sin) and of its normal (cos and sin / flat, divided by that length, which is the same for every
+// ring since the frame's two axes are unit and square). [plain ring: c, s, nc, ns per facet; then the half-turned ring]
+const BRAID_FACETS = (() => { const B = HERO_BRAID, step = TAU / B.sides, out = new Float64Array(B.sides * 8);
+  for (let h = 0; h < 2; h++) for (let k = 0; k < B.sides; k++) { const a = k * step + h * step / 2, c = Math.cos(a), sn = Math.sin(a), l = Math.sqrt(c * c + sn * sn / (B.flat * B.flat)) || 1, o = (h * B.sides + k) * 4; out[o] = c; out[o + 1] = sn; out[o + 2] = c / l; out[o + 3] = sn / B.flat / l; }
+  return out; })();
+// One ring of the tube at `u` along the chain (r < 0: the tip vertex). Module-level, so a frame allocates nothing.
+function braidRing(asset, s, r, u, radius, half) {
+  const B = HERO_BRAID, P = s.braid.points, v = s.vertices, n = B.segments + 1, g = s.global, t = 24 * 16, A = asset.braid, first = A.firstVertex, sides = B.sides;
+  const f = clamp(u) * (n - 1), i = Math.min(n - 2, Math.floor(f)), w = f - i, o = i * 3;
+  const px = P[o] + (P[o + 3] - P[o]) * w, py = P[o + 1] + (P[o + 4] - P[o + 1]) * w, pz = P[o + 2] + (P[o + 5] - P[o + 2]) * w;
+  let tx = P[o + 3] - P[o], ty = P[o + 4] - P[o + 1], tz = P[o + 5] - P[o + 2]; { const l = Math.sqrt(tx * tx + ty * ty + tz * tz) || 1; tx /= l; ty /= l; tz /= l; }
+  // depth axis: the torso's up blended with its forward, kept square to the tangent (the flat face lies on the shoulder's
+  // top, then on the chest); the lateral axis completes the frame (depth = tangent x lateral, as the winding expects)
+  let bx = g[t + 4] + g[t + 8] * B.frame, by = g[t + 5] + g[t + 9] * B.frame, bz = g[t + 6] + g[t + 10] * B.frame; let d = bx * tx + by * ty + bz * tz; bx -= d * tx; by -= d * ty; bz -= d * tz;
+  let l = Math.sqrt(bx * bx + by * by + bz * bz); if (l < .2) { bx = g[t]; by = g[t + 1]; bz = g[t + 2]; d = bx * tx + by * ty + bz * tz; bx -= d * tx; by -= d * ty; bz -= d * tz; l = Math.sqrt(bx * bx + by * by + bz * bz); } // (a tangent along it: the side instead)
+  l = l || 1; bx /= l; by /= l; bz /= l;
+  const ax = by * tz - bz * ty, ay = bz * tx - bx * tz, az = bx * ty - by * tx;
+  if (r < 0) { const o2 = (first + (A.hairRings + 4) * sides) * 6; v[o2] = px; v[o2 + 1] = py; v[o2 + 2] = pz; v[o2 + 3] = tx; v[o2 + 4] = ty; v[o2 + 5] = tz; return; }
+  const T = BRAID_FACETS, fy = B.flat * radius;
+  for (let k = 0, e = half ? sides * 4 : 0; k < sides; k++, e += 4) {
+    const c = T[e] * radius, sn = T[e + 1] * fy, nc = T[e + 2], ns = T[e + 3], o2 = (first + r * sides + k) * 6;
+    v[o2] = px + ax * c + bx * sn; v[o2 + 1] = py + ay * c + by * sn; v[o2 + 2] = pz + az * c + bz * sn;
+    v[o2 + 3] = ax * nc + bx * ns; v[o2 + 4] = ay * nc + by * ns; v[o2 + 5] = az * nc + bz * ns;
+  }
+}
 // The tube, written into the posed vertex array (model space) once the chain has stepped.
 function writeBraid(asset, s) {
-  const B = HERO_BRAID, P = s.braid.points, v = s.vertices, n = B.segments + 1, g = s.global, t = 24 * 16, A = asset.braid, first = A.firstVertex, sides = B.sides, step = TAU / sides;
-  const ringAt = (r, u, radius, twist) => {
-    const f = clamp(u) * (n - 1), i = Math.min(n - 2, Math.floor(f)), w = f - i, o = i * 3;
-    const px = P[o] + (P[o + 3] - P[o]) * w, py = P[o + 1] + (P[o + 4] - P[o + 1]) * w, pz = P[o + 2] + (P[o + 5] - P[o + 2]) * w;
-    let tx = P[o + 3] - P[o], ty = P[o + 4] - P[o + 1], tz = P[o + 5] - P[o + 2]; { const l = Math.hypot(tx, ty, tz) || 1; tx /= l; ty /= l; tz /= l; }
-    // depth axis: the torso's up blended with its forward, kept square to the tangent (the flat face lies on the shoulder's
-    // top, then on the chest); the lateral axis completes the frame (depth = tangent x lateral, as the winding expects)
-    let bx = g[t + 4] + g[t + 8] * B.frame, by = g[t + 5] + g[t + 9] * B.frame, bz = g[t + 6] + g[t + 10] * B.frame; let d = bx * tx + by * ty + bz * tz; bx -= d * tx; by -= d * ty; bz -= d * tz;
-    let l = Math.hypot(bx, by, bz); if (l < .2) { bx = g[t]; by = g[t + 1]; bz = g[t + 2]; d = bx * tx + by * ty + bz * tz; bx -= d * tx; by -= d * ty; bz -= d * tz; l = Math.hypot(bx, by, bz); } // (a tangent along it: the side instead)
-    l = l || 1; bx /= l; by /= l; bz /= l;
-    const ax = by * tz - bz * ty, ay = bz * tx - bx * tz, az = bx * ty - by * tx;
-    if (r < 0) { const o2 = (first + (A.hairRings + 4) * sides) * 6; v[o2] = px; v[o2 + 1] = py; v[o2 + 2] = pz; v[o2 + 3] = tx; v[o2 + 4] = ty; v[o2 + 5] = tz; return; }
-    for (let k = 0; k < sides; k++) {
-      const a = k * step + twist, c = Math.cos(a), sn = Math.sin(a), o2 = (first + r * sides + k) * 6;
-      v[o2] = px + (ax * c + bx * sn * B.flat) * radius; v[o2 + 1] = py + (ay * c + by * sn * B.flat) * radius; v[o2 + 2] = pz + (az * c + bz * sn * B.flat) * radius;
-      let nx = ax * c + bx * sn / B.flat, ny = ay * c + by * sn / B.flat, nz = az * c + bz * sn / B.flat; const l = Math.hypot(nx, ny, nz) || 1; v[o2 + 3] = nx / l; v[o2 + 4] = ny / l; v[o2 + 5] = nz / l;
-    }
-  };
-  const H = A.hairRings, T = B.tie, U = B.tuft, radiusAt = u => B.radius + (B.tipRadius - B.radius) * clamp(u / T.from);
-  for (let r = 0; r < H; r++) { const u = r / (H - 1) * T.from; ringAt(r, u, radiusAt(u) * (r & 1 ? B.crease : 1), r & 1 ? step / 2 : 0); }
-  ringAt(H, T.from, B.tipRadius * T.radius, 0); ringAt(H + 1, T.to, B.tipRadius * T.radius, 0);
-  ringAt(H + 2, T.to, B.tipRadius * .9, step / 2); ringAt(H + 3, U.at, B.tipRadius * U.flare, step / 2); ringAt(-1, U.tip, 0, 0);
+  const B = HERO_BRAID, H = asset.braid.hairRings, T = B.tie, U = B.tuft;
+  for (let r = 0; r < H; r++) { const u = r / (H - 1) * T.from, radius = B.radius + (B.tipRadius - B.radius) * clamp(u / T.from); braidRing(asset, s, r, u, radius * (r & 1 ? B.crease : 1), (r & 1) === 1); }
+  braidRing(asset, s, H, T.from, B.tipRadius * T.radius, false); braidRing(asset, s, H + 1, T.to, B.tipRadius * T.radius, false);
+  braidRing(asset, s, H + 2, T.to, B.tipRadius * .9, true); braidRing(asset, s, H + 3, U.at, B.tipRadius * U.flare, true); braidRing(asset, s, -1, U.tip, 0, false);
 }
 
 // Source action intervals/contact markers are visual only; no event is emitted here.
@@ -1472,6 +1499,11 @@ function standPose(asset,state,pose){
 }
 const PICKUP_POSE = Object.freeze({ drop: .36, chestDrop: .17, bend: .46, upper: .22, reach: .30 });
 const DRINK_LIFE = Object.freeze({ tilt: .26, arch: .10, shoulder: .08 });
+// Model space to world, every vertex every frame: its own small function, so it is optimised on its own whatever becomes of
+// sampleCloseViewHero (large, and polymorphic over every action), and reads only locals. The same arithmetic as before.
+function placeVertices(v, dst, ix, iy, iz, dx, dz, floor, cy, sy, scale) {
+  for (let i = 0; i < v.length; i += 6) { const x = v[i] + dx, y = v[i + 1] - floor, z = v[i + 2] + dz; dst[i] = ix + (z * cy - x * sy) * scale; dst[i + 1] = iy + (z * sy + x * cy) * scale; dst[i + 2] = iz + y * scale; dst[i + 3] = v[i + 5] * cy - v[i + 3] * sy; dst[i + 4] = v[i + 5] * sy + v[i + 3] * cy; dst[i + 5] = v[i + 4]; }
+}
 export function sampleCloseViewHero(asset, state, input, out) {
   out.ready = false;out.ghostCount=0;state.sweepSpin=0;out.powerSuit=false;out.suitVertexCount=0;out.kitVertexCount=0;out.kitSet='';state.worldScale=input.height/state.referenceHeight;
   if (out.asset !== asset || !Number.isFinite(input.nowMs) || !Number.isFinite(input.x) || !Number.isFinite(input.y) || !Number.isFinite(input.groundZ) || !Number.isFinite(input.liftZ) || !Number.isFinite(input.yaw) || !(input.height > 0) || !Number.isFinite(input.height)) return false;
@@ -1630,7 +1662,7 @@ export function sampleCloseViewHero(asset, state, input, out) {
   const scale = input.height / state.referenceHeight, yaw = (action && Number.isFinite(action.yaw) ? action.yaw : input.yaw) + state.sweepSpin, cy = Math.cos(yaw), sy = Math.sin(yaw), v = state.vertices, dst = out.positionsNormals;
   if (asset.braid && state.braid) { braidStep(asset, state, input, yaw, scale); writeBraid(asset, state); } // the female Wayfarer's braid (HERO_BRAID)
   // Source +Z faces forward, source Y is up. The cyclic permutation preserves handedness.
-  for (let i = 0; i < v.length; i += 6) { const x = v[i] + dx, y = v[i + 1] - floor, z = v[i + 2] + dz; dst[i] = input.x + (z * cy - x * sy) * scale; dst[i + 1] = input.y + (z * sy + x * cy) * scale; dst[i + 2] = input.groundZ + input.liftZ + y * scale; dst[i + 3] = v[i + 5] * cy - v[i + 3] * sy; dst[i + 4] = v[i + 5] * sy + v[i + 3] * cy; dst[i + 5] = v[i + 4]; }
+  placeVertices(v, dst, input.x, input.y, input.groundZ + input.liftZ, dx, dz, floor, cy, sy, scale);
   socket(out.leftSocket, state.global, asset.meta.sockets.left.node * 16, scale, cy, sy, input, dx, dz, floor); socket(out.rightSocket, state.global, asset.meta.sockets.right.node * 16, scale, cy, sy, input, dx, dz, floor);
   if(input.powerSuit===true){if(!samplePowerSuitArmor(asset,state,input,out,scale,cy,sy,dx,dz,knocked,p))return false;out.powerSuit=true;}
   // The kit is opt-in per caller: the standard Wayfarer kit, or on the suit its helmet and pack
