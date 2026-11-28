@@ -191,7 +191,7 @@ test('the Pace line reads hours, sections, abilities by route, Echoes and deaths
   assert.ok(p.byRoute.a >= 10 && p.byRoute.S >= 4 && p.byRoute.d === 1 && p.byRoute.W >= 2, JSON.stringify(p.byRoute));
   assert.equal(p.abilities, Object.values(p.byRoute).reduce((n, v) => n + v, 0));
   const t = paceText(p);
-  for (const bit of ['2.0 hours played', '64 sections explored (32 an hour)', 'Echoes 1 of 37', '1.5 deaths an hour', 'by levelling', 'by threads']) assert.ok(t.includes(bit), `${bit} in ${t}`);
+  for (const bit of ['2.0 hours played', '64 sections explored (32 an hour)', `Echoes 1 of ${ECHO_IDS.length}`, '1.5 deaths an hour', 'by levelling', 'by threads']) assert.ok(t.includes(bit), `${bit} in ${t}`);
   const f = pace(freshSave()); assert.equal(f.hours, 0); assert.equal(f.deathsPerHour, null); assert.match(paceText(f), /0 deaths/);
 });
 

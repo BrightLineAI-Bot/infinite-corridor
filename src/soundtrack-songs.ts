@@ -853,6 +853,29 @@ BOSS_SONGS.bonesHunt = {
   dark: { shade: .55, sub: .7, lurch: "X..x..X...x..x..", pont: 14, dive: 4, drop: 2, cluster: 2 },
   mix: { bed: .8, groove: 1, motion: 1, lead: .95 }, echo: .45, reverb: .35,
 };
+// The Pachycephalosaurus (Tim, 2026-11-27): A Phrygian, heavy and primal; a head-butting rhythm of timpani and toms that pounds,
+// stops dead and slams again, a low horn bellowing over a cello and a choir grunting the off-beats.
+BOSS_SONGS.skullDrum = {
+  id: "skullDrum", name: "The Skull Drum", mood: "heavy and primal, a thick skull pounding the ground",
+  bpm: 74, swing: .04, root: 57, mode: "phrygian", leadOct: 0, pedal: true, boss: true, intensityFloor: .5,
+  pad: "strings", arp: "lute", leads: ["horn", "cello", "horn", "choir"], arpOct: 0,
+  chords: ["1", "2", "1", "7", "1", "6", "2", "1:sus4"],
+  bass: { calm: [[0, "R", 4], [6, "R", 2], [8, "5", 4]], combat: [[0, "R", 2], [3, "R", 1], [4, "R", 2], [8, "R", 2], [11, "5", 1], [12, "R", 3]] },
+  drums: { calm: { timp: "X.......X..x...." }, combat: { timp: "X..X....X..X....", tom: "....o.o.....o.oo", frame: "X.......X......." }, drive: { timp: "X..X..x.X..X..x.", tom: "..o.o.o...o.o.oo", frame: "X...X...X...X.x." } },
+  arps: { calm: "0.......0...1...", busy: "0..0..1.0..0..2." },
+  motifs: {
+    a: [[0, 0, 3], [3, 0, 1], [4, 2, 4], [8, 0, 8], [16, 1, 4], [20, 3, 4], [24, 1, 8]],
+    a2: [[0, 0, 3], [3, 0, 1], [4, 2, 4], [8, 4, 8], [16, 3, 4], [20, 1, 4], [24, -1, 8]],
+    b: [[0, 4, 3], [3, 4, 1], [4, 4, 4], [8, 2, 8], [16, 2, 4], [20, 0, 4], [24, -2, 8]],
+    c: [[0, 3, 3], [3, 3, 1], [4, 1, 4], [8, 3, 4], [12, 5, 4], [16, 4, 8], [24, 0, 8]],
+  },
+  forms: [["a", "a2", "b", "c"]],
+  leadPlan: [1, 1, 0, 1],
+  // Overt: the flat second grinds under every phrase, the ground rumbles with each charge, and the music drops out for a beat before
+  // the skull lands.
+  dark: { shade: .45, sub: .9, rumble: .6, drop: 2, shadow: [1] },
+  mix: { bed: .85, groove: 1, motion: .55, lead: .85 }, echo: .3, reverb: .45,
+};
 Object.assign(SONGS, BOSS_SONGS);
 
 // Short scored moments, 2-6 s. Played in the current song's key (its tonic pitch class, around middle C), in their own
@@ -1020,6 +1043,8 @@ export const LINER_NOTES = [
     story: "The dark coming up like a tide. A heavy choir and cello over timpani, a low lute turning underneath, the melody rising a step at a time like water filling a room." },
   { id: "revenantsReturn", beast: "The Gate Revenants", title: "The Revenants Return", moment: "The Gate Revenants' hunt and horde", feel: "urgent", menace: "overt",
     story: "The dead come back through the gate, wave on wave. A grim, relentless march in Phrygian: horns and a choir, a frame drum that never breaks step." },
+  { id: "skullDrum", beast: "The Pachycephalosaurus", title: "The Skull Drum", moment: "The Pachycephalosaurus lowering its dome to charge", feel: "urgent", menace: "overt",
+    story: "A thick skull used as a drum. Timpani and toms pound out a head-butting rhythm that charges, stops dead and slams again, a low horn bellows over a cello, and the music drops away for a beat before each blow lands." },
   { id: "deepTide", beast: "The Tyrant Mosasaur", title: "Teeth of the Deep Tide", moment: "The Tyrant Mosasaur rising from the deep", feel: "urgent", menace: "understated",
     story: "A sea predator rising under the boat. A rolling swing lifts and drops like a swell, a horn and strings call over the deep, and the dulcimer glints like light on dark water." },
 ];

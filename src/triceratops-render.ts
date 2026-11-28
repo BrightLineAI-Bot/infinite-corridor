@@ -186,7 +186,9 @@ export function triceratopsPoseName(e, air = 0, moving = 0, rising = true) {
   const a = e?.pack?.attack, wind = e?.pack?.phase === "windup";
   if (a === "ramCharge") return wind ? "chargeReady" : "charge";
   if (a === "heavySweep") return wind ? "sweepReady" : "sweep";
-  if (a === "shockwave") return wind ? "rear" : "stomp";
+  if (a === "shockwave" || a === "trikeFrillBash") return wind ? "rear" : "stomp";
+  if (a === "trikeGore") return wind ? "chargeReady" : "charge"; // its duel moves (trike-duel.ts) on the herd body's own poses
+  if (a === "trikeHornSweep") return wind ? "sweepReady" : "sweep";
   if (e?.mountDrill) return "drill";
   if (air > .05) return rising ? "leap" : "fall";
   const h = e?.mountHornPose?.phase; if (h === "hold" || h === "windup") return "hornHold";

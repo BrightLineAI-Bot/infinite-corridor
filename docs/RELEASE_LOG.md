@@ -15,12 +15,17 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1081 (this merge, #753); production serves `r1080-888123c078ea` (Publish run 197, 46008629967, succeeded 2026-11-27; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1086 (this merge); production serves `r1084-63d231dd5b0b` (Publish run 198, succeeded 2026-11-28; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 1086 | Claude | claude/triceratops-chop | Triceratops Chop replaces Triceratops Cunning (every third swing, two horn spikes left and right); on-hit-echoes test edits (Tim approved) | In flight. |
+| 1085 | Claude | claude/pachycephalosaurus | The Pachycephalosaurus: Pentagon/keep/arcology big rooms and new-ground rock ambushes; armor and fossil forms; Dome Rush Echo (Earth Golem form); boss theme The Skull Drum; duels incl. the wild Triceratops vs Spinosaurus/Stegosaurus; save.pachy additive; new modules pachy, pachy-render, close-view-beast-pachy, trike-duel; two test edits (Tim approved) | In flight. |
+| 1084 | Claude | claude/close-view-indoors / #756 | Close View everywhere but dungeons | Merged (#756); preview follows. |
+| 1083 | Claude | claude/daily-region-1127 / #754 | The Great Ranges | Merged (#754); preview follows. |
+| 1082 | Claude | claude/female-sample-cost / #755 | Faster Wayfarer posing in Close View | Merged (#755); preview follows. |
 | 1081 | Claude | claude/town-view-flicker-arrow / #753 | No Close View flicker in towns; the edge arrow removed | Merged (#753); preview follows. |
 | 1080 | Claude | claude/female-hips-shape / #751 | The female Wayfarer's shape, refined | Merged (#751); preview follows. |
 | 1079 | Claude | claude/crown-vertical-separation / #752 | The crown is its own space | Merged (#752); preview follows. |
