@@ -14,7 +14,7 @@
 import { ATTACK_MODULES, packWindupScale } from "./monster-pack.ts";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, aimWorld, boneLocalToWorld, writeSkin, solveTwoBone,
-  createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, easeOut, span, kick, wobble, TIER_DETAIL,
+  blendActs, createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, easeOut, span, kick, wobble, TIER_DETAIL,
 } from "./close-view-beast-rig.ts";
 
 export const TURTLE_RIG = Object.freeze({
@@ -270,10 +270,7 @@ export function sampleTurtle(tr, e, env) {
   const yaw = tr.yaw, cf = Math.cos(yaw), sf = Math.sin(yaw);
   // crossfade between acts (never across a contact: those live inside an act's timeline)
   const key = e.pack?.attack ? `${e.pack.attack}:${e.pack.seq}` : dead ? 'death' : e.tucked ? 'tuck' : 'move';
-  if (tr.key === '' || !(gapMs <= G.blendMs)) { if (key !== tr.key) tr.blendAt = -Infinity; tr.shown.set(V); tr.from.set(V); tr.key = key; }
-  else if (key !== tr.key) { tr.from.set(tr.shown); tr.blendAt = now; tr.key = key; }
-  const blend = tr.blendAt === -Infinity ? 1 : smooth((now - tr.blendAt) / G.blendMs);
-  for (let k = 0; k < K; k++) tr.shown[k] = tr.from[k] + (V[k] - tr.from[k]) * blend;
+  blendActs(tr, key, V, K, now, gapMs, G.blendMs);
   W.set(tr.shown);
   // the stamp's shudder: the whole mountain shakes as its feet come down
   if (ACT.contact && !tr.contactWas) { tr.impactAt = now; tr.impactK = ACT.heavy ? 1 : .6; }

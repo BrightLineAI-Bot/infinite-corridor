@@ -1,7 +1,7 @@
 // Raw recipes are RGB meshes; compiled vertices add explicit scalar alpha for the GPU model stream.
 import { MESH_FLOATS, prism, box, bevel, flare, taper, ellipsoid, ringLoft, verticalLoft, curvedTube, membrane, part, block } from './close-view-mesh.ts';
 import { CLOSE_VIEW_ARCOLOGY_MODELS } from './close-view-arcology-models.ts';
-import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor } from './close-view-foundry-models.ts';
+import { CLOSE_VIEW_FOUNDRY_MODELS, CLOSE_VIEW_FOUNDRY_VARIANTS, foundryPaletteColor, foundryPaletteIndex } from './close-view-foundry-models.ts';
 import { CLOSE_VIEW_PENTAGON_MODELS, STILLWORKS_WALKER_MODEL } from './close-view-pentagon-models.ts';
 import { CLOSE_VIEW_ADVENTURE_MODELS, ADVENTURE_JOINT_KINDS, adventureJointPose } from './close-view-adventure-models.ts'; // adventure creatures
 import { CLOSE_VIEW_PLAYER_FORM_MODELS, CLOSE_VIEW_SKIFF_MODEL, CLOSE_VIEW_POWER_SUIT_ARMOR, CLOSE_VIEW_POWER_SUIT_ARMOR_TRIANGLES, CLOSE_VIEW_WAYFARER_KIT, CLOSE_VIEW_WAYFARER_KIT_TRIANGLES, CLOSE_VIEW_SUIT_KIT, CLOSE_VIEW_SUIT_KIT_TRIANGLES } from './close-view-player-forms.ts';
@@ -19,7 +19,7 @@ const ash = 0x87503f, coal = 0x372927, ember = 0xf3a55c;
 const bark = 0x626c50, darkBark = 0x373e2d, root = 0xb6a06b;
 const bone = 0xb7ad91, sinew = 0x625550, crawlerEye = 0xd88f80;
 const plate = 0x78434a, iron = 0x3a2a32, brass = 0xc6a46f;
-const leanBevel = prism(5, .81), leanFlare = prism(5, 1.45), detailPrism = prism(3);
+const detailPrism = prism(3);
 
 // Swing groups are left/right leg (+/-1), left/right arm (+/-2), cape (3), coil segments (4/5), and hound tail (6).
 // The hood's opening faces +X. Its rolled edge frames a recessed face.
@@ -438,14 +438,6 @@ const brokenGreatswordBlade = { face: [], edge: [] };
       [back[i],back[j],edge[j]],[back[i],edge[j],edge[i]]);
   }
 }
-const greatSweep = [
-  block(.17,-.25,.91,.045,.05,.14,leather,-2,0,1.19),
-  block(.17,-.25,1.08,.20,.055,.045,iron,-2,0,1.19),
-  part(brokenGreatswordBlade.face,.17,-.25,1.70,1,.30,.68,0x65656b,-2,0,1.19),
-  part(brokenGreatswordBlade.edge,.17,-.25,1.70,1,.30,.68,0xa6a397,-2,0,1.19),
-  block(.17,-.25,1.62,.016,.03,.47,bronze,-2,0,1.19),
-  part(frontPatch,.17,-.25,1.13,1,.07,.025,brass,-2,0,1.19),
-];
 // Mirage of Blades in Close View (Tim, 2026-11-12: "we should have rendered projectiles that travel through
 // the air"): one flying broken greatsword, laid flat as a rotor about its middle (model +X along the blade,
 // +Y its width, +Z up through its thickness), with a stub of grip and guard at the back end. The actor's
@@ -1356,7 +1348,7 @@ export function writeCloseViewModel(out, offset, actor) {
   const roll = mo ? mo.roll + deathRoll : 0, rollOn = roll !== 0, rollC = rollOn ? Math.cos(roll) : 1, rollS = rollOn ? Math.sin(roll) : 0;
   const B = rig && mo.bend ? bendFrame(BEND_FRAME, mo, rig) : null;
   // a layered creature's blow tints it as the hit pose did; its arrival fades it in
-  const FLASH = CREATURE_MOTION.impact.flash, flashK = root && actor.impactFlash > 0 ? Math.min(1, actor.impactFlash) * CREATURE_MOTION.impact.flashAmount : 0;
+  const flashK = root && actor.impactFlash > 0 ? Math.min(1, actor.impactFlash) * CREATURE_MOTION.impact.flashAmount : 0;
   const ground = root && GROUND_FAMILIES.has(root.family) ? groundLift * size : 0; // set down on the floor (CREATURE_GROUND)
   const tint = root && Number.isFinite(actor.hitReact) ? Math.max(flinch, Math.max(0, Math.min(1, actor.hitReact))) : flinch, drawnAlpha = mo ? alpha * mo.alpha : alpha;
   const turn0 = nativeCleaver?-cf.twist*cleaverLoad+turnLean:newCleaver?-cut.twist+turnLean:weightedFists?meleePose.twist+turnLean:(canonicalPrimary ? primaryStep===2?-.22:primaryStep===3?.06:.22 : fist ? fistStep === 2 ? -.10 : .10 : .21 * gen) * strike + .08 * cast + turnLean, turn = root ? turn0 + root.twist + mo.twist : turn0;
@@ -1384,6 +1376,17 @@ export function writeCloseViewModel(out, offset, actor) {
   const nativePike=kind==='playerCinderPike'&&['idle','walk','attack','drink','collect','openChest','placeStone'].includes(pose);if(nativePike)nativePikeFrame(pose==='attack'?progress:0,primaryStep);
   const freeSwing=drinking||collecting||placingStone?-heldSwing:0;
   const walkerGesture=kind==='voidWalker'&&Number.isFinite(actor.walkerGesture)?Math.max(0,Math.min(1,actor.walkerGesture)):0;
+  { // the actor's share of the vertex loop (writePartVertices), once per model
+    const V = PART_VX;
+    V.x = x; V.y = y; V.z = z; V.size = size; V.cy = cy; V.sy = sy; V.cp = cp; V.sp = sp; V.shift = shift; V.base = base;
+    V.root = !!root; V.rootSquash = rootSquash; V.rootLift = rootLift; V.ground = ground; V.rollOn = rollOn; V.rollC = rollC; V.rollS = rollS; V.bend = B !== null;
+    V.nativeJump = nativeJump; V.nativeJumpBaseline = nativeJumpBaseline; V.nativePike = nativePike; V.cleaverRig = cleaverRig;
+    V.hammerStomp = kind === 'playerHammerStomp'; V.progress = progress; V.hammerWeight = hammerWeight;
+    V.poison = actor.poison ? .55 : 0; V.foundry = foundry ? foundryPaletteIndex(actor.palette) : -1; V.paletteMap = actor.paletteMap || null;
+    V.shadowTint = !!actor.shadow && kind !== 'playerShadow'; V.tint = tint; V.flashK = flashK; V.gloomgorge = kind === 'gloomgorge'; V.drawnAlpha = drawnAlpha;
+  }
+  // and the actor's values each part reads, once (the actor's shape varies with its caller: one load per part was a megamorphic lookup)
+  const actionId = actor.action, jointAttack = actor.action || actor.rootAttack, jointScale = actor.reduceMotion ? CREATURE_POSE.reduced.scale : 1, effectTime = actor.effectTime, carrying = !!actor.carrying;
   for (const { mesh, swing:sourceSwing, px, pz, axialSpin, carryingOnly, hammerPart, pikeArm, pikeWeapon, cleaverArm, cleaverWeapon, walkerBone, muzzle, heldTool } of models[kind]) {
     const jumpPart=nativeJump||nativeJumpBaseline?JUMP_PARTS.get(mesh):null;
     const mirroredArm=rightHeld&&Math.abs(sourceSwing)===2,swing=mirroredArm?-sourceSwing:sourceSwing;
@@ -1392,7 +1395,7 @@ export function writeCloseViewModel(out, offset, actor) {
       : swing >= 40 && swing < 60
         ? Math.sin(phase * 1.3 - swing * .57) * (.018 + .045 * moving) * secondary * (1 - fall)
       : 0;
-    let angle = semanticAngle(kind, swing, actor.action, actionFamily, actionPhase, actionProgress, actionWeight, beat, moving, phase, secondary);
+    let angle = semanticAngle(kind, swing, actionId, actionFamily, actionPhase, actionProgress, actionWeight, beat, moving, phase, secondary);
     if (playerLike&&weightedFists&&Math.abs(swing)===2) {
       const striking=swing===(meleePose.lead>0?-2:2),guard=meleePose.move==='uppercut'?-.72:-.58;
       angle=striking?guard-(meleePose.move==='uppercut'?1.62:meleePose.move==='dash'?1.18:.96)*meleePose.drive:guard-.16*meleePose.drive+.20*meleePose.recovery;
@@ -1447,14 +1450,14 @@ export function writeCloseViewModel(out, offset, actor) {
     // Adventure creatures and Foundry kin: per-kind limb attack poses on the root pose's own stage clock, over their ambient sway
     // (close-view-adventure-models.ts ADVENTURE_JOINT_POSE).
     if (root && root.stage && ADVENTURE_JOINT_KINDS.has(kind)) {
-      const a = adventureJointPose(kind, swing, actor.action || actor.rootAttack, root.style, root.stage, root.u, actor.reduceMotion ? CREATURE_POSE.reduced.scale : 1);
+      const a = adventureJointPose(kind, swing, jointAttack, root.style, root.stage, root.u, jointScale);
       if (a !== null) angle = (semanticAngle(kind, swing, '', '', '', 0, 0, beat, moving, phase, secondary) ?? -Math.sign(swing) * beat * stride) + a;
     }
     // creature-motion.ts: the upright families' arms (CREATURE_MOTION.arms) come up into a guard and fling with a flinch.
     if (mo && mo.arm !== 0 && MOTION_ARMS.has(swing) && UPRIGHT.has(root.family)) angle = (angle ?? 0) + mo.arm;
     // A frozen secondary sway may evaluate to -0; canonical zero keeps paused/watched vertices byte-stable.
     if (angle === 0) angle = 0;
-    const spin = axialSpin && secondary && Number.isFinite(actor.effectTime) ? actor.effectTime / 2000 : 0, spinC = Math.cos(spin), spinS = Math.sin(spin);
+    const spin = axialSpin && secondary && Number.isFinite(effectTime) ? effectTime / 2000 : 0, spinC = Math.cos(spin), spinS = Math.sin(spin);
     const c = Math.cos(angle), s = Math.sin(angle);
     // A raised right-hand tool stays level about the hand (heldTool) instead of tilting with the arm.
     const level=heldTool&&rightHeld&&tool>0?-angle*tool:0,levelC=Math.cos(level),levelS=Math.sin(level);
@@ -1468,118 +1471,13 @@ export function writeCloseViewModel(out, offset, actor) {
     const walkerChild = walkerArm ? -.10 - walkerGesture * .54 : -walkerGait * .72;
     const parentC = walkerBone ? Math.cos(walkerParent) : 1, parentS = walkerBone ? Math.sin(walkerParent) : 0;
     const childC = walkerBone ? Math.cos(walkerChild) : 1, childS = walkerBone ? Math.sin(walkerChild) : 0;
-    for (let i = 0; i < mesh.length; i += MESH_FLOATS) {
-      const localY = mirroredArm?-mesh[i+1]:axialSpin ? mesh[i + 1] * spinC - mesh[i + 2] * spinS : mesh[i + 1], localZ = axialSpin ? mesh[i + 1] * spinS + mesh[i + 2] * spinC : mesh[i + 2];
-      const normalY = mirroredArm?-mesh[i+4]:axialSpin ? mesh[i + 4] * spinC - mesh[i + 5] * spinS : mesh[i + 4], normalZ = axialSpin ? mesh[i + 4] * spinS + mesh[i + 5] * spinC : mesh[i + 5];
-      let mx0=mesh[i],mz0=localZ,nx0=mesh[i+3],nz0=normalZ;
-      if(levelS!==0){const dx=mx0-heldTool[0],dz=mz0-heldTool[1],n0=nx0;mx0=heldTool[0]+dx*levelC+dz*levelS;mz0=heldTool[1]+dz*levelC-dx*levelS;nx0=n0*levelC+nz0*levelS;nz0=nz0*levelC-n0*levelS;}
-      let forward = mx0 * c + mz0 * s + px;
-      let lateral = localY + coilSway;
-      let u = forward * cc - (lateral - pivotY) * sc;
-      let v = forward * sc + (lateral - pivotY) * cc + pivotY;
-      let w = mz0 * c - mx0 * s + pz;
-      const armNormal=nx0*c+nz0*s;
-      let nu=armNormal*cc-normalY*sc,nv=armNormal*sc+normalY*cc,nw=nz0*c-nx0*s;
-      // creature-motion.ts: the torso, head and tail bands bend from each vertex's rest place, then the whole body rolls
-      if(B){
-        // each band turns by its angle times the vertex's weight in it (k): sin(ka) ~ k sin a, 1 - cos(ka) ~ k^2 (1 - cos a)
-        const at=B.up?mesh[i+2]+pz:mesh[i]+px;let k=(at-B.tFrom)*B.tInv,s=0,cs=0,x=0;
-        if(k>0&&B.tOn){if(k>1)k=1;const q=k*k;let du=u-B.tf,dw=w-B.tz;
-          if(B.tP){s=k*B.tPS;cs=1-q*B.tPC;x=du*cs+dw*s;dw=dw*cs-du*s;du=x;x=nu*cs+nw*s;nw=nw*cs-nu*s;nu=x;}
-          if(B.tY){s=k*B.tYS;cs=1-q*B.tYC;x=v*cs+du*s;du=du*cs-v*s;v=x;x=nv*cs+nu*s;nu=nu*cs-nv*s;nv=x;}
-          if(B.tR){s=k*B.tRS;cs=1-q*B.tRC;x=v*cs+dw*s;dw=dw*cs-v*s;v=x;x=nv*cs+nw*s;nw=nw*cs-nv*s;nv=x;}
-          u=B.tf+du;w=B.tz+dw;}
-        k=(at-B.hFrom)*B.hInv;
-        if(k>0&&B.hOn){k=k>1?1:k*k*(3-2*k);const q=k*k;let du=u-B.hf,dw=w-B.hz;
-          if(B.hP){s=k*B.hPS;cs=1-q*B.hPC;x=du*cs+dw*s;dw=dw*cs-du*s;du=x;x=nu*cs+nw*s;nw=nw*cs-nu*s;nu=x;}
-          if(B.hY){s=k*B.hYS;cs=1-q*B.hYC;x=v*cs+du*s;du=du*cs-v*s;v=x;x=nv*cs+nu*s;nu=nu*cs-nv*s;nv=x;}
-          u=B.hf+du;w=B.hz+dw;}
-        k=(B.lFrom-at)*B.lInv;
-        if(k>0&&B.lOn){k=k>1?1:k*k*(3-2*k);const q=k*k;let du=u-B.lf,dw=w-B.lz;
-          if(B.lP){s=k*B.lPS;cs=1-q*B.lPC;x=du*cs+dw*s;dw=dw*cs-du*s;du=x;x=nu*cs+nw*s;nw=nw*cs-nu*s;nu=x;}
-          if(B.lY){s=k*B.lYS;cs=1-q*B.lYC;x=v*cs+du*s;du=du*cs-v*s;v=x;x=nv*cs+nu*s;nu=nu*cs-nv*s;nv=x;}
-          u=B.lf+du;w=B.lz+dw;}
-      }
-      if(rollOn){const x=v*rollC+w*rollS;w=w*rollC-v*rollS;v=x;const y=nv*rollC+nw*rollS;nw=nw*rollC-nv*rollS;nv=y;}
-      let f=u*cp+w*sp+shift,worldY=v,worldZ=base+w*cp-u*sp;
-      let nf=nu*cp+nw*sp;nw=nw*cp-nu*sp;
-      if(jumpPart){
-        let a=u,b=v,d=w,na=nu,nb=nv,nd=normalZ*c-mesh[i+3]*s;
-        if(jumpPart.foot){const k=jumpPart.side*3;a+=JUMP_DELTA[k]*nativeJump;b+=JUMP_DELTA[k+1]*nativeJump;d+=JUMP_DELTA[k+2]*nativeJump;}
-        else if(nativeJumpBaseline){const k=jumpPart.side*360+i/MESH_FLOATS*6;a=JUMP_LEGS[k];b=JUMP_LEGS[k+1];d=JUMP_LEGS[k+2];na=JUMP_LEGS[k+3];nb=JUMP_LEGS[k+4];nd=JUMP_LEGS[k+5];}
-        else{const k=jumpPart.side*360+i/MESH_FLOATS*6;a+=(JUMP_LEGS[k]-a)*nativeJump;b+=(JUMP_LEGS[k+1]-b)*nativeJump;d+=(JUMP_LEGS[k+2]-d)*nativeJump;na+=(JUMP_LEGS[k+3]-na)*nativeJump;nb+=(JUMP_LEGS[k+4]-nb)*nativeJump;nd+=(JUMP_LEGS[k+5]-nd)*nativeJump;const nl=Math.hypot(na,nb,nd)||1;na/=nl;nb/=nl;nd/=nl;}
-        f=a*cp+d*sp+shift;worldY=b;worldZ=base+d*cp-a*sp;nf=na*cp+nd*sp;nv=nb;nw=nd*cp-na*sp;
-      }
-      if(nativePike&&(pikeArm!==undefined||pikeWeapon)){
-        let a,b,d,na,nb,nd;
-        if(pikeArm!==undefined){const k=pikeArm*360+i/MESH_FLOATS*6;a=PIKE_ARMS[k];b=PIKE_ARMS[k+1];d=PIKE_ARMS[k+2];na=PIKE_ARMS[k+3];nb=PIKE_ARMS[k+4];nd=PIKE_ARMS[k+5];}
-        else{const m=PIKE_FRAME,along=mesh[i+2]+pz-.79,across=mesh[i+1]+.25,up=mesh[i]+px-.17;
-          a=m[9]+m[0]*along+m[3]*across+m[6]*up;b=m[10]+m[1]*along+m[4]*across+m[7]*up;d=m[11]+m[2]*along+m[5]*across+m[8]*up;
-          na=m[0]*mesh[i+5]+m[3]*mesh[i+4]+m[6]*mesh[i+3];nb=m[1]*mesh[i+5]+m[4]*mesh[i+4]+m[7]*mesh[i+3];nd=m[2]*mesh[i+5]+m[5]*mesh[i+4]+m[8]*mesh[i+3];}
-        f=a*cp+d*sp+shift;worldY=b;worldZ=base+d*cp-a*sp;nf=na*cp+nd*sp;nv=nb;nw=nd*cp-na*sp;
-      }
-      if(cleaverRig&&(cleaverArm||cleaverWeapon)){
-        // The rig is authored on the displayed-right side (+Y). The left-hand Cleaver reads each
-        // vertex mirrored (-Y) through it, then mirrors the result back onto the left (-Y).
-        let a,b,d,na,nb,nd;
-        const nx=mesh[i+3],ny=-mesh[i+4],nz=mesh[i+5];
-        if(cleaverArm){
-          const t=Math.max(0,Math.min(1,(1.19-mesh[i+2])/.422));
-          const {start,delta,axis,x,y}=t<.5?cleaverRig.upper:cleaverRig.lower;
-          const q=t<.5?t*2:(t-.5)*2,ox=mesh[i],oy=-mesh[i+1]-.25;
-          a=start[0]+delta[0]*q+x[0]*ox+y[0]*oy;
-          b=start[1]+delta[1]*q+x[1]*ox+y[1]*oy;
-          d=start[2]+delta[2]*q+x[2]*ox+y[2]*oy;
-          na=x[0]*nx+y[0]*ny-axis[0]*nz;nb=x[1]*nx+y[1]*ny-axis[1]*nz;nd=x[2]*nx+y[2]*ny-axis[2]*nz;
-        }else{
-          // The five weapon meshes share one wrist transform, including the blade edge.
-          const {wrist,blade:{x,y,z}}=cleaverRig;
-          const along=mesh[i+2]+pz-.79,across=-(mesh[i+1]+.25),thick=mesh[i]+px-.17;
-          a=wrist[0]+z[0]*along+y[0]*across+x[0]*thick;
-          b=wrist[1]+z[1]*along+y[1]*across+x[1]*thick;
-          d=wrist[2]+z[2]*along+y[2]*across+x[2]*thick;
-          na=z[0]*nz+y[0]*ny+x[0]*nx;nb=z[1]*nz+y[1]*ny+x[1]*nx;nd=z[2]*nz+y[2]*ny+x[2]*nx;
-        }
-        b=-b;nb=-nb;
-        f=a*cp+d*sp+shift;worldY=b;worldZ=base+d*cp-a*sp;nf=na*cp+nd*sp;nv=nb;nw=nd*cp-na*sp;
-      }
-      if(walkerBone){
-        // Walker-only two-bone FK in the forward/up plane. Distal pieces first bend around
-        // their real elbow/knee, then inherit the shoulder/hip turn. Reduced motion zeros
-        // only gait; the accepted voidHand gesture remains fully readable.
-        let a=mesh[i]+px,b=mesh[i+1],d=mesh[i+2]+pz,na=mesh[i+3],nb=mesh[i+4],nd=mesh[i+5];
-        if (walkerBone.segment === 'lower') {
-          const [ox, , oz] = walkerBone.pivot, dx = a - ox, dz = d - oz;
-          a = ox + dx * childC + dz * childS; d = oz + dz * childC - dx * childS;
-          const qx = na * childC + nd * childS; nd = nd * childC - na * childS; na = qx;
-        }
-        const ox = walkerArm ? 0 : -.015, oz = walkerArm ? 1.03 : .48, dx = a - ox, dz = d - oz;
-        a = ox + dx * parentC + dz * parentS; d = oz + dz * parentC - dx * parentS;
-        const qx = na * parentC + nd * parentS; nd = nd * parentC - na * parentS; na = qx;
-        f=a*cp+d*sp+shift;worldY=b;worldZ=base+d*cp-a*sp;nf=na*cp+nd*sp;nv=nb;nw=nd*cp-na*sp;
-      }
-      if(hammerPart!==undefined){
-        const o=hammerPart*12,m=HAMMER_FRAMES,mx=mesh[i],my=mesh[i+1],mz=mesh[i+2],nx=mesh[i+3],ny=mesh[i+4],nz=mesh[i+5],zl=Math.hypot(m[o+6],m[o+7],m[o+8])||1;
-        f=m[o]*mx+m[o+3]*my+m[o+6]*mz+m[o+9];worldY=m[o+1]*mx+m[o+4]*my+m[o+7]*mz+m[o+10];worldZ=m[o+2]*mx+m[o+5]*my+m[o+8]*mz+m[o+11];
-        nf=m[o]*nx+m[o+3]*ny+m[o+6]/zl*nz;nv=m[o+1]*nx+m[o+4]*ny+m[o+7]/zl*nz;nw=m[o+2]*nx+m[o+5]*ny+m[o+8]/zl*nz;
-      }else if(kind==='playerHammerStomp')worldZ-=.04*hammerSmooth((progress*570-240)/80)*hammerWeight+base*hammerWeight;
-      out[offset++]=x+(f*cy-worldY*sy)*size;out[offset++]=y+(f*sy+worldY*cy)*size;out[offset++]=root?z+worldZ*rootSquash*size+rootLift-ground:z+worldZ*size;
-      out[offset++]=nf*cy-nv*sy;out[offset++]=nf*sy+nv*cy;out[offset++]=nw;
-      const poison = actor.poison ? .55 : 0;
-      let sourceRed=mesh[i+6],sourceGreen=mesh[i+7],sourceBlue=mesh[i+8];
-      if(foundry){const rgb=(Math.round(sourceRed*255)<<16)|(Math.round(sourceGreen*255)<<8)|Math.round(sourceBlue*255),mapped=foundryPaletteColor(rgb,actor.palette);sourceRed=(mapped>>16)/255;sourceGreen=((mapped>>8)&255)/255;sourceBlue=(mapped&255)/255;}
-      if(actor.paletteMap){const rgb=(Math.round(sourceRed*255)<<16)|(Math.round(sourceGreen*255)<<8)|Math.round(sourceBlue*255),mapped=actor.paletteMap[rgb];if(Number.isInteger(mapped)){sourceRed=(mapped>>16)/255;sourceGreen=((mapped>>8)&255)/255;sourceBlue=(mapped&255)/255;}}
-      if(actor.shadow&&kind!=='playerShadow'){const eye=Math.abs(sourceRed-0xc7/255)<.001&&Math.abs(sourceGreen-0xe6/255)<.001;sourceRed=(eye?0xb4:0x1b)/255;sourceGreen=(eye?0x8c:0x10)/255;sourceBlue=(eye?0xff:0x30)/255;}
-      const red = sourceRed + (.32 - sourceRed) * poison;
-      const green = sourceGreen + (.82 - sourceGreen) * poison;
-      const blue = sourceBlue + (.24 - sourceBlue) * poison;
-      const r1 = red + (.96 - red) * tint * .6, g1 = green + (.34 - green) * tint * .6, b1 = blue + (.23 - blue) * tint * .6; // the hurt tint
-      out[offset++] = flashK > 0 ? r1 + (FLASH[0] - r1) * flashK : r1; // the blow's first instant: white-hot (CREATURE_MOTION.impact)
-      out[offset++] = flashK > 0 ? g1 + (FLASH[1] - g1) * flashK : g1;
-      out[offset++] = flashK > 0 ? b1 + (FLASH[2] - b1) * flashK : b1;
-      const bodyAlpha = kind === 'gloomgorge' ? drawnAlpha * Math.max(.32, Math.min(1, .45 + .75 * Math.max(0, w))) : drawnAlpha;
-      out[offset++] = carryingOnly && !actor.carrying ? 0 : bodyAlpha;
-    }
+    const V = PART_VX;
+    V.mirroredArm = mirroredArm; V.axialSpin = !!axialSpin; V.spinC = spinC; V.spinS = spinS; V.levelC = levelC; V.levelS = levelS; V.heldTool = heldTool || null;
+    V.c = c; V.s = s; V.px = px; V.pz = pz; V.coilSway = coilSway; V.pivotY = pivotY; V.cc = cc; V.sc = sc;
+    V.jumpPart = jumpPart || null; V.pikeArm = pikeArm === undefined ? -1 : pikeArm; V.pikeWeapon = !!pikeWeapon; V.cleaverArm = !!cleaverArm; V.cleaverWeapon = !!cleaverWeapon;
+    V.walkerBone = walkerBone || null; V.walkerArm = !!walkerArm; V.parentC = parentC; V.parentS = parentS; V.childC = childC; V.childS = childS;
+    V.hammerPart = hammerPart === undefined ? -1 : hammerPart; V.hidden = !!carryingOnly && !carrying;
+    offset = writePartVertices(out, offset, mesh, V);
     if(muzzle&&muzzleOut){
       // The held tool's muzzle through this part's exact general arm transform (no rig/jump paths).
       let mx=muzzle[0],mz=muzzle[2];if(levelS!==0){const dx=mx-heldTool[0],dz=mz-heldTool[1];mx=heldTool[0]+dx*levelC+dz*levelS;mz=heldTool[1]+dz*levelC-dx*levelS;}
@@ -1591,6 +1489,170 @@ export function writeCloseViewModel(out, offset, actor) {
     let low = Infinity; for (let o = modelStart + 2; o < offset; o += MODEL_FLOATS) if (out[o] < low) low = out[o];
     const drop = low - z; if (drop > 0 && Number.isFinite(drop)) for (let o = modelStart + 2; o < offset; o += MODEL_FLOATS) out[o] -= drop; }
   for (const attachment of attachments) offset = writeAttachment(out, offset, attachment, drawnAlpha, actorScale);
+  return offset;
+}
+
+// The vertex loop of writeCloseViewModel, every vertex of every ordinary creature every frame (Close View draws up to
+// MODEL_LIMIT of them, in packs): its own function, so it is optimised on its own whatever becomes of writeCloseViewModel
+// (large, and polymorphic over every actor and pose), and it reads only locals. The actor's and the part's values come in
+// once per part on one scratch record (PART_VX, one shape), the bend bands once from BEND_FRAME: nothing is read from the
+// actor, the part or the bend record per vertex. The same arithmetic, in the same order, as before (bit for bit).
+const PART_VX = {
+  // the actor (once per model)
+  x: 0, y: 0, z: 0, size: 1, cy: 1, sy: 0, cp: 1, sp: 0, shift: 0, base: 0, root: false, rootSquash: 1, rootLift: 0, ground: 0,
+  rollOn: false, rollC: 1, rollS: 0, bend: false, nativeJump: 0, nativeJumpBaseline: false, nativePike: false, cleaverRig: null,
+  hammerStomp: false, progress: 0, hammerWeight: 0, poison: 0, foundry: -1, paletteMap: null, shadowTint: false, tint: 0, flashK: 0,
+  gloomgorge: false, drawnAlpha: 1,
+  // the part (once per part)
+  mirroredArm: false, axialSpin: false, spinC: 1, spinS: 0, levelC: 1, levelS: 0, heldTool: null, c: 1, s: 0, px: 0, pz: 0, coilSway: 0,
+  pivotY: 0, cc: 1, sc: 0, jumpPart: null, pikeArm: -1, pikeWeapon: false, cleaverArm: false, cleaverWeapon: false, walkerBone: null,
+  walkerArm: false, parentC: 1, parentS: 0, childC: 1, childS: 0, hammerPart: -1, hidden: false,
+};
+// A Foundry body's recoloured vertex colours (foundryPaletteColor per vertex, exactly as it was worked out there), once per
+// mesh and palette: a bounded memo (the Foundry meshes times FOUNDRY_PALETTES), never per frame.
+const FOUNDRY_RGB = new WeakMap();
+// A colour's 24-bit key (0xRRGGBB) from its 0..1 channels, as the palettes name them.
+const rgb24 = (r, g, b) => (Math.round(r * 255) << 16) | (Math.round(g * 255) << 8) | Math.round(b * 255);
+function foundryColours(mesh, palette) {
+  let byPalette = FOUNDRY_RGB.get(mesh); if (!byPalette) { byPalette = []; FOUNDRY_RGB.set(mesh, byPalette); }
+  let rgb = byPalette[palette]; if (rgb) return rgb;
+  rgb = new Float64Array(mesh.length / MESH_FLOATS * 3);
+  for (let i = 0, j = 0; i < mesh.length; i += MESH_FLOATS, j += 3) {
+    const mapped = foundryPaletteColor(rgb24(mesh[i + 6], mesh[i + 7], mesh[i + 8]), palette);
+    rgb[j] = (mapped >> 16) / 255; rgb[j + 1] = ((mapped >> 8) & 255) / 255; rgb[j + 2] = (mapped & 255) / 255;
+  }
+  byPalette[palette] = rgb; return rgb;
+}
+function writePartVertices(out, offset, mesh, V) {
+  const x = V.x, y = V.y, z = V.z, size = V.size, cy = V.cy, sy = V.sy, cp = V.cp, sp = V.sp, shift = V.shift, base = V.base;
+  const root = V.root, rootSquash = V.rootSquash, rootLift = V.rootLift, ground = V.ground, rollOn = V.rollOn, rollC = V.rollC, rollS = V.rollS;
+  const nativeJump = V.nativeJump, nativeJumpBaseline = V.nativeJumpBaseline, nativePike = V.nativePike, cleaverRig = V.cleaverRig;
+  const hammerStomp = V.hammerStomp, progress = V.progress, hammerWeight = V.hammerWeight;
+  const poison = V.poison, paletteMap = V.paletteMap, shadowTint = V.shadowTint, tint = V.tint, flashK = V.flashK, gloomgorge = V.gloomgorge, drawnAlpha = V.drawnAlpha;
+  const mirroredArm = V.mirroredArm, axialSpin = V.axialSpin, spinC = V.spinC, spinS = V.spinS, levelC = V.levelC, levelS = V.levelS, heldTool = V.heldTool;
+  const c = V.c, s = V.s, px = V.px, pz = V.pz, coilSway = V.coilSway, pivotY = V.pivotY, cc = V.cc, sc = V.sc;
+  const jumpPart = V.jumpPart, pikeArm = V.pikeArm, pikeWeapon = V.pikeWeapon, cleaverArm = V.cleaverArm, cleaverWeapon = V.cleaverWeapon;
+  const walkerBone = V.walkerBone, walkerArm = V.walkerArm, parentC = V.parentC, parentS = V.parentS, childC = V.childC, childS = V.childS, hammerPart = V.hammerPart;
+  const hidden = V.hidden, foundryRgb = V.foundry >= 0 ? foundryColours(mesh, V.foundry) : null, FLASH = CREATURE_MOTION.impact.flash, FL0 = FLASH[0], FL1 = FLASH[1], FL2 = FLASH[2];
+  const B = BEND_FRAME, bend = V.bend, bUp = B.up, tFrom = B.tFrom, tInv = B.tInv, hFrom = B.hFrom, hInv = B.hInv, lFrom = B.lFrom, lInv = B.lInv;
+  const tf = B.tf, tz = B.tz, hf = B.hf, hz = B.hz, lf = B.lf, lz = B.lz, tOn = B.tOn, hOn = B.hOn, lOn = B.lOn;
+  const tP = B.tP, tPS = B.tPS, tPC = B.tPC, tY = B.tY, tYS = B.tYS, tYC = B.tYC, tR = B.tR, tRS = B.tRS, tRC = B.tRC;
+  const hP = B.hP, hPS = B.hPS, hPC = B.hPC, hY = B.hY, hYS = B.hYS, hYC = B.hYC, lP = B.lP, lPS = B.lPS, lPC = B.lPC, lY = B.lY, lYS = B.lYS, lYC = B.lYC;
+  // Unpoisoned, untinted and unflashed, a colour is its source exactly (c + (k - c) * 0 is c for every colour, all >= +0).
+  const flash = flashK > 0, plain = poison === 0 && tint === 0 && !flash;
+  const hasRig = jumpPart !== null || nativePike && (pikeArm >= 0 || pikeWeapon) || cleaverRig !== null && (cleaverArm || cleaverWeapon) || walkerBone !== null || hammerPart >= 0 || hammerStomp;
+  for (let i = 0; i < mesh.length; i += MESH_FLOATS) {
+    const localY = mirroredArm?-mesh[i+1]:axialSpin ? mesh[i + 1] * spinC - mesh[i + 2] * spinS : mesh[i + 1], localZ = axialSpin ? mesh[i + 1] * spinS + mesh[i + 2] * spinC : mesh[i + 2];
+    const normalY = mirroredArm?-mesh[i+4]:axialSpin ? mesh[i + 4] * spinC - mesh[i + 5] * spinS : mesh[i + 4], normalZ = axialSpin ? mesh[i + 4] * spinS + mesh[i + 5] * spinC : mesh[i + 5];
+    let mx0=mesh[i],mz0=localZ,nx0=mesh[i+3],nz0=normalZ;
+    if(levelS!==0){const dx=mx0-heldTool[0],dz=mz0-heldTool[1],n0=nx0;mx0=heldTool[0]+dx*levelC+dz*levelS;mz0=heldTool[1]+dz*levelC-dx*levelS;nx0=n0*levelC+nz0*levelS;nz0=nz0*levelC-n0*levelS;}
+    let forward = mx0 * c + mz0 * s + px;
+    let lateral = localY + coilSway;
+    let u = forward * cc - (lateral - pivotY) * sc;
+    let v = forward * sc + (lateral - pivotY) * cc + pivotY;
+    let w = mz0 * c - mx0 * s + pz;
+    const armNormal=nx0*c+nz0*s;
+    let nu=armNormal*cc-normalY*sc,nv=armNormal*sc+normalY*cc,nw=nz0*c-nx0*s;
+    // creature-motion.ts: the torso, head and tail bands bend from each vertex's rest place, then the whole body rolls
+    if(bend){
+      // each band turns by its angle times the vertex's weight in it (k): sin(ka) ~ k sin a, 1 - cos(ka) ~ k^2 (1 - cos a)
+      const at=bUp?mesh[i+2]+pz:mesh[i]+px;let k=0,sn=0,cs=0,t=0;
+      if(tOn&&(k=(at-tFrom)*tInv)>0){if(k>1)k=1;const q=k*k;let du=u-tf,dw=w-tz;
+        if(tP){sn=k*tPS;cs=1-q*tPC;t=du*cs+dw*sn;dw=dw*cs-du*sn;du=t;t=nu*cs+nw*sn;nw=nw*cs-nu*sn;nu=t;}
+        if(tY){sn=k*tYS;cs=1-q*tYC;t=v*cs+du*sn;du=du*cs-v*sn;v=t;t=nv*cs+nu*sn;nu=nu*cs-nv*sn;nv=t;}
+        if(tR){sn=k*tRS;cs=1-q*tRC;t=v*cs+dw*sn;dw=dw*cs-v*sn;v=t;t=nv*cs+nw*sn;nw=nw*cs-nv*sn;nv=t;}
+        u=tf+du;w=tz+dw;}
+      if(hOn&&(k=(at-hFrom)*hInv)>0){k=k>1?1:k*k*(3-2*k);const q=k*k;let du=u-hf,dw=w-hz;
+        if(hP){sn=k*hPS;cs=1-q*hPC;t=du*cs+dw*sn;dw=dw*cs-du*sn;du=t;t=nu*cs+nw*sn;nw=nw*cs-nu*sn;nu=t;}
+        if(hY){sn=k*hYS;cs=1-q*hYC;t=v*cs+du*sn;du=du*cs-v*sn;v=t;t=nv*cs+nu*sn;nu=nu*cs-nv*sn;nv=t;}
+        u=hf+du;w=hz+dw;}
+      if(lOn&&(k=(lFrom-at)*lInv)>0){k=k>1?1:k*k*(3-2*k);const q=k*k;let du=u-lf,dw=w-lz;
+        if(lP){sn=k*lPS;cs=1-q*lPC;t=du*cs+dw*sn;dw=dw*cs-du*sn;du=t;t=nu*cs+nw*sn;nw=nw*cs-nu*sn;nu=t;}
+        if(lY){sn=k*lYS;cs=1-q*lYC;t=v*cs+du*sn;du=du*cs-v*sn;v=t;t=nv*cs+nu*sn;nu=nu*cs-nv*sn;nv=t;}
+        u=lf+du;w=lz+dw;}
+    }
+    if(rollOn){const t=v*rollC+w*rollS;w=w*rollC-v*rollS;v=t;const t2=nv*rollC+nw*rollS;nw=nw*rollC-nv*rollS;nv=t2;}
+    let f=u*cp+w*sp+shift,worldY=v,worldZ=base+w*cp-u*sp;
+    let nf=nu*cp+nw*sp;nw=nw*cp-nu*sp;
+    if(hasRig){ // the Wayfarer's native rigs and the Void Walker's limbs: each replaces the general transform above with its
+    // own model-space vertex (a, b, d) and normal (na, nb, nd), which then takes the body's pitch like any other (the last rig wins)
+    let a=0,b=0,d=0,na=0,nb=0,nd=0,rigged=false;
+    if(jumpPart!==null){
+      a=u;b=v;d=w;na=nu;nb=nv;nd=normalZ*c-mesh[i+3]*s;rigged=true;
+      if(jumpPart.foot){const k=jumpPart.side*3;a+=JUMP_DELTA[k]*nativeJump;b+=JUMP_DELTA[k+1]*nativeJump;d+=JUMP_DELTA[k+2]*nativeJump;}
+      else if(nativeJumpBaseline){const k=jumpPart.side*360+i/MESH_FLOATS*6;a=JUMP_LEGS[k];b=JUMP_LEGS[k+1];d=JUMP_LEGS[k+2];na=JUMP_LEGS[k+3];nb=JUMP_LEGS[k+4];nd=JUMP_LEGS[k+5];}
+      else{const k=jumpPart.side*360+i/MESH_FLOATS*6;a+=(JUMP_LEGS[k]-a)*nativeJump;b+=(JUMP_LEGS[k+1]-b)*nativeJump;d+=(JUMP_LEGS[k+2]-d)*nativeJump;na+=(JUMP_LEGS[k+3]-na)*nativeJump;nb+=(JUMP_LEGS[k+4]-nb)*nativeJump;nd+=(JUMP_LEGS[k+5]-nd)*nativeJump;const nl=Math.hypot(na,nb,nd)||1;na/=nl;nb/=nl;nd/=nl;}
+    }
+    if(nativePike&&(pikeArm>=0||pikeWeapon)){
+      rigged=true;
+      if(pikeArm>=0){const k=pikeArm*360+i/MESH_FLOATS*6;a=PIKE_ARMS[k];b=PIKE_ARMS[k+1];d=PIKE_ARMS[k+2];na=PIKE_ARMS[k+3];nb=PIKE_ARMS[k+4];nd=PIKE_ARMS[k+5];}
+      else{const m=PIKE_FRAME,along=mesh[i+2]+pz-.79,across=mesh[i+1]+.25,up=mesh[i]+px-.17;
+        a=m[9]+m[0]*along+m[3]*across+m[6]*up;b=m[10]+m[1]*along+m[4]*across+m[7]*up;d=m[11]+m[2]*along+m[5]*across+m[8]*up;
+        na=m[0]*mesh[i+5]+m[3]*mesh[i+4]+m[6]*mesh[i+3];nb=m[1]*mesh[i+5]+m[4]*mesh[i+4]+m[7]*mesh[i+3];nd=m[2]*mesh[i+5]+m[5]*mesh[i+4]+m[8]*mesh[i+3];}
+    }
+    if(cleaverRig!==null&&(cleaverArm||cleaverWeapon)){
+      // The rig is authored on the displayed-right side (+Y). The left-hand Cleaver reads each
+      // vertex mirrored (-Y) through it, then mirrors the result back onto the left (-Y).
+      rigged=true;
+      const nx=mesh[i+3],ny=-mesh[i+4],nz=mesh[i+5];
+      if(cleaverArm){
+        const t=Math.max(0,Math.min(1,(1.19-mesh[i+2])/.422));
+        const {start,delta,axis,x,y}=t<.5?cleaverRig.upper:cleaverRig.lower;
+        const q=t<.5?t*2:(t-.5)*2,ox=mesh[i],oy=-mesh[i+1]-.25;
+        a=start[0]+delta[0]*q+x[0]*ox+y[0]*oy;
+        b=start[1]+delta[1]*q+x[1]*ox+y[1]*oy;
+        d=start[2]+delta[2]*q+x[2]*ox+y[2]*oy;
+        na=x[0]*nx+y[0]*ny-axis[0]*nz;nb=x[1]*nx+y[1]*ny-axis[1]*nz;nd=x[2]*nx+y[2]*ny-axis[2]*nz;
+      }else{
+        // The five weapon meshes share one wrist transform, including the blade edge.
+        const {wrist,blade:{x,y,z}}=cleaverRig;
+        const along=mesh[i+2]+pz-.79,across=-(mesh[i+1]+.25),thick=mesh[i]+px-.17;
+        a=wrist[0]+z[0]*along+y[0]*across+x[0]*thick;
+        b=wrist[1]+z[1]*along+y[1]*across+x[1]*thick;
+        d=wrist[2]+z[2]*along+y[2]*across+x[2]*thick;
+        na=z[0]*nz+y[0]*ny+x[0]*nx;nb=z[1]*nz+y[1]*ny+x[1]*nx;nd=z[2]*nz+y[2]*ny+x[2]*nx;
+      }
+      b=-b;nb=-nb;
+    }
+    if(walkerBone!==null){
+      // Walker-only two-bone FK in the forward/up plane. Distal pieces first bend around
+      // their real elbow/knee, then inherit the shoulder/hip turn. Reduced motion zeros
+      // only gait; the accepted voidHand gesture remains fully readable.
+      a=mesh[i]+px;b=mesh[i+1];d=mesh[i+2]+pz;na=mesh[i+3];nb=mesh[i+4];nd=mesh[i+5];rigged=true;
+      if (walkerBone.segment === 'lower') {
+        const [ox, , oz] = walkerBone.pivot, dx = a - ox, dz = d - oz;
+        a = ox + dx * childC + dz * childS; d = oz + dz * childC - dx * childS;
+        const qx = na * childC + nd * childS; nd = nd * childC - na * childS; na = qx;
+      }
+      const ox = walkerArm ? 0 : -.015, oz = walkerArm ? 1.03 : .48, dx = a - ox, dz = d - oz;
+      a = ox + dx * parentC + dz * parentS; d = oz + dz * parentC - dx * parentS;
+      const qx = na * parentC + nd * parentS; nd = nd * parentC - na * parentS; na = qx;
+    }
+    if(rigged){f=a*cp+d*sp+shift;worldY=b;worldZ=base+d*cp-a*sp;nf=na*cp+nd*sp;nv=nb;nw=nd*cp-na*sp;}
+    if(hammerPart>=0){
+      const o=hammerPart*12,m=HAMMER_FRAMES,mx=mesh[i],my=mesh[i+1],mz=mesh[i+2],nx=mesh[i+3],ny=mesh[i+4],nz=mesh[i+5],zl=Math.hypot(m[o+6],m[o+7],m[o+8])||1;
+      f=m[o]*mx+m[o+3]*my+m[o+6]*mz+m[o+9];worldY=m[o+1]*mx+m[o+4]*my+m[o+7]*mz+m[o+10];worldZ=m[o+2]*mx+m[o+5]*my+m[o+8]*mz+m[o+11];
+      nf=m[o]*nx+m[o+3]*ny+m[o+6]/zl*nz;nv=m[o+1]*nx+m[o+4]*ny+m[o+7]/zl*nz;nw=m[o+2]*nx+m[o+5]*ny+m[o+8]/zl*nz;
+    }else if(hammerStomp)worldZ-=.04*hammerSmooth((progress*570-240)/80)*hammerWeight+base*hammerWeight;
+    }
+    const o=offset;offset+=MODEL_FLOATS;
+    out[o]=x+(f*cy-worldY*sy)*size;out[o+1]=y+(f*sy+worldY*cy)*size;out[o+2]=root?z+worldZ*rootSquash*size+rootLift-ground:z+worldZ*size;
+    out[o+3]=nf*cy-nv*sy;out[o+4]=nf*sy+nv*cy;out[o+5]=nw;
+    out[o+9]=hidden ? 0 : gloomgorge ? drawnAlpha * Math.max(.32, Math.min(1, .45 + .75 * Math.max(0, w))) : drawnAlpha;
+    let sourceRed,sourceGreen,sourceBlue;
+    if(foundryRgb!==null){const j=i/MESH_FLOATS*3;sourceRed=foundryRgb[j];sourceGreen=foundryRgb[j+1];sourceBlue=foundryRgb[j+2];}
+    else{sourceRed=mesh[i+6];sourceGreen=mesh[i+7];sourceBlue=mesh[i+8];}
+    if(paletteMap!==null){const mapped=paletteMap[rgb24(sourceRed,sourceGreen,sourceBlue)];if(Number.isInteger(mapped)){sourceRed=(mapped>>16)/255;sourceGreen=((mapped>>8)&255)/255;sourceBlue=(mapped&255)/255;}}
+    if(shadowTint){const eye=Math.abs(sourceRed-0xc7/255)<.001&&Math.abs(sourceGreen-0xe6/255)<.001;sourceRed=(eye?0xb4:0x1b)/255;sourceGreen=(eye?0x8c:0x10)/255;sourceBlue=(eye?0xff:0x30)/255;}
+    if(plain){out[o+6]=sourceRed;out[o+7]=sourceGreen;out[o+8]=sourceBlue;continue;}
+    const red = sourceRed + (.32 - sourceRed) * poison;
+    const green = sourceGreen + (.82 - sourceGreen) * poison;
+    const blue = sourceBlue + (.24 - sourceBlue) * poison;
+    const r1 = red + (.96 - red) * tint * .6, g1 = green + (.34 - green) * tint * .6, b1 = blue + (.23 - blue) * tint * .6; // the hurt tint
+    out[o+6] = flash ? r1 + (FL0 - r1) * flashK : r1; // the blow's first instant: white-hot (CREATURE_MOTION.impact)
+    out[o+7] = flash ? g1 + (FL1 - g1) * flashK : g1;
+    out[o+8] = flash ? b1 + (FL2 - b1) * flashK : b1;
+  }
   return offset;
 }
 

@@ -13,7 +13,7 @@ import { GIANT_ART } from "./lightning-giant-render.ts";
 import { ATTACK_MODULES, packWindupScale, GIANT } from "./monster-pack.ts";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, setWorldAxes, aimWorld, boneLocalToWorld, writeSkin, solveTwoBone,
-  createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, easeOut, mix, span, kick, wobble, TIER_DETAIL,
+  blendActs, createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, easeOut, mix, span, kick, wobble, TIER_DETAIL,
 } from "./close-view-beast-rig.ts";
 
 // GIANT_ART is read when a mesh or pose is first made, never at load: monster-pack.ts reaches close-view.ts, which loads
@@ -395,10 +395,7 @@ export function sampleGiant(tr, e, env) {
   // crossfade between acts (a new attack, a new sub-mode): never across a contact, which lives inside one act's timeline
   const key = e.pack?.attack ? `${e.pack.attack}:${e.pack.seq}:${e.pack.data?.mode || ''}:${e.pack.data?.strikes || 0}` : e.giantThrust ? 'thrust' : dead ? 'death' : 'move';
   // A first sight, or a gap longer than the blend (a hidden tab, sparse frames): show the act as it is now, never a stale pose.
-  if (tr.key === '' || !(gapMs <= G.blendMs)) { if (key !== tr.key) tr.blendAt = -Infinity; tr.shown.set(V); tr.from.set(V); tr.key = key; }
-  else if (key !== tr.key) { tr.from.set(tr.shown); tr.blendAt = now; tr.key = key; }
-  const blend = tr.blendAt === -Infinity ? 1 : smooth((now - tr.blendAt) / G.blendMs);
-  for (let k = 0; k < K; k++) tr.shown[k] = tr.from[k] + (V[k] - tr.from[k]) * blend;
+  blendActs(tr, key, V, K, now, gapMs, G.blendMs);
   normDir(tr.shown); W2.set(tr.shown);
   // hits, landings and the stagger (additive)
   if (!dead && Number.isFinite(tr.hp) && e.hp < tr.hp) { tr.hitAt = now; const px = env.target?.x ?? e.x, py = env.target?.y ?? e.y; tr.hitSide = Math.sign((px - e.x) * -sf + (py - e.y) * cf) || 1; }

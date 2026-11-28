@@ -193,6 +193,16 @@ export function strikeCurve(x, contact, { load = .55, antic = .25, over = .18, s
   if (x < settle) { const t = (x - contact) / Math.max(1e-6, settle - contact); return 1 + over * Math.sin(Math.PI * Math.min(1, t * 1.4)) * (1 - t); }
   return 1;
 }
+// The crossfade between acts most beasts share: the act's pose vector V (n long) into tr.shown. A new act (its key) blends from
+// the pose last shown over blendMs; the first sight, a gap longer than the blend (a hidden tab, sparse frames) or a `snap` (a
+// teleport) shows the act as it is now, never a stale pose. Returns the blend (0..1).
+export function blendActs(tr, key, V, n, now, gapMs, blendMs, snap = false) {
+  if (tr.key === '' || !(gapMs <= blendMs) || snap) { if (key !== tr.key) tr.blendAt = -Infinity; tr.shown.set(V); tr.from.set(V); tr.key = key; }
+  else if (key !== tr.key) { tr.from.set(tr.shown); tr.blendAt = now; tr.key = key; }
+  const blend = tr.blendAt === -Infinity ? 1 : smooth((now - tr.blendAt) / blendMs);
+  for (let k = 0; k < n; k++) tr.shown[k] = tr.from[k] + (V[k] - tr.from[k]) * blend;
+  return blend;
+}
 // A damped kick at time x seconds after an impulse (1 at 0, oscillating down to 0).
 export const kick = (x, freq = 9, damp = 7) => !(x >= 0 && x < 30) ? 0 : Math.exp(-damp * x) * Math.cos(freq * x);
 // A deterministic, smooth, bounded noise from a time (seconds) and a seed (for breathing variety and crackle).
