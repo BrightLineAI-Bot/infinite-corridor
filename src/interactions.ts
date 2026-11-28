@@ -1,4 +1,4 @@
-import{followHuntTrace}from'./foundry.ts';import{APERTURE_BANDS}from'./items.ts';import{reciterTalk,travelerTalk,wandererTalk,collectWandererCache}from'./travelers.ts';import{hearElder}from'./elders.ts';import{ensurePerceptionInPlace}from'./types.ts';import{dungeonId,apertureTier,perceived}from'./world.ts';
+import{followHuntTrace}from'./foundry.ts';import{APERTURE_BANDS}from'./items.ts';import{reciterTalk,travelerTalk,wandererTalk,collectWandererCache}from'./travelers.ts';import{hearElder}from'./elders.ts';import{ensurePerceptionInPlace}from'./types.ts';import{wayfarerBody,setWayfarerBody,WAYFARER_BODY}from'./journey-start.ts';import{dungeonId,apertureTier,perceived}from'./world.ts';
 import { skylandActions, altarActions, offerViscera, seedCount } from './skylands.ts';
 import { realmSeedKinds } from './seed-realms.ts'; // seed realms
 import{DIG,addStone}from'./digging.ts';import{shipwrightActions,ensureBoatState,addWood}from'./boats.ts';import{diveSiteActions}from'./diving.ts';import{diveGate,underwaterGate}from'./vehicle-gates.ts';
@@ -74,6 +74,13 @@ export function commitRelay(s,choice,context){const id=dungeonId(s.seed,s.worldG
 // become an item or another price.
 export const STAT_RESPEC={marks:500};
 export function retrainStats(s){const spent=Object.values(s.stats||{}).reduce((n,v)=>n+Math.max(0,(Number(v)||1)-1),0);if(!spent)return{ok:false,message:'Oren: “Nothing to unlearn yet. Come back when you have trained.”'};if((Number(s.currency)||0)<STAT_RESPEC.marks)return{ok:false,message:`Oren: “Retraining takes time. ${STAT_RESPEC.marks} marks; you have ${Number(s.currency)||0}.”`};s.currency-=STAT_RESPEC.marks;for(const k of Object.keys(s.stats))s.stats[k]=1;s.statPoints=(Number(s.statPoints)||0)+spent;return{ok:true,message:`Oren drills the old habits out of you (−${STAT_RESPEC.marks} marks). ${spent} stat points returned: spend them again in Pack.`,transition:'retrain'};}
+// Tim 2026-11-28: "a gender swap... 500 marks... the same person who makes a stat reset available... in the town". Oren Vale
+// and every Listener town's Keeper (who also retrain stats) change the Wayfarer's body for BODY_SWAP.marks; the free switch in
+// Options -> System is gone (Tim chose that). Presentation only: gear, skills, stats and the journey stay as they are.
+export const BODY_SWAP={marks:500};
+export function swapBody(s,who='Oren'){const now=wayfarerBody(s),next=now==='female'?'male':'female',have=Number(s.currency)||0;if(have<BODY_SWAP.marks)return{ok:false,message:`${who}: “A new body is no small thing. ${BODY_SWAP.marks} marks; you have ${have}.”`};s.currency=have-BODY_SWAP.marks;setWayfarerBody(s,next);return{ok:true,message:`${who} works the change through you (−${BODY_SWAP.marks} marks). The Wayfarer is ${WAYFARER_BODY.labels[next].toLowerCase()} now; gear, skills and stats are as they were.`,transition:'reshape'};}
+// Adds the body swap right after retraining wherever retraining is offered (the generated lists stay byte-identical).
+const withReshape=(list)=>{if(list.includes('reshape'))return list;const i=list.indexOf('retrain');if(i<0)return list;const out=[...list];out.splice(i+1,0,'reshape');return out;};
 // What a finished action says, by action (2026-11-19, first-hour fixes: it said "Enter complete." or "Challenge complete."), with
 // the object's name where it has one. An action not listed says it is done in plain words.
 export const ACTION_DONE=Object.freeze({
@@ -88,7 +95,7 @@ export const ACTION_DONE=Object.freeze({
 export const actionDone=(o,a)=>ACTION_DONE[a]?ACTION_DONE[a](o):`You ${String(a||'act').replace(/([A-Z])/g,' $1').toLowerCase()}${o?.name?` ${o.name}`:''}.`;
 export function validActions(o,s){
  if(!perceived(o,s))return[];
- if(o.kind==='npc'){const list=(o.actions||[]).filter(a=>!NO_HARM_ACTIONS.includes(a));/* Tim 2026-11-20: townsfolk cannot be attacked (the generated residents keep their old action lists byte-identical) */if(o.id==='warden-oren'&&!list.includes('retrain'))list.splice(1,0,'retrain');/* release 347: added here, not to the generated Refuge, so the region stays byte-identical */return list;}
+ if(o.kind==='npc'){const list=(o.actions||[]).filter(a=>!NO_HARM_ACTIONS.includes(a));/* Tim 2026-11-20: townsfolk cannot be attacked (the generated residents keep their old action lists byte-identical) */if(o.id==='warden-oren'&&!list.includes('retrain'))list.splice(1,0,'retrain');/* release 347: added here, not to the generated Refuge, so the region stays byte-identical */return o.id==='warden-oren'?withReshape(list):list;}
  if(o.kind==='relayNode')return relayNodeActions(o,s,s.consequences.dungeons[o.areaId]);
  if(o.kind==='relayTerminal')return s.consequences.choices.relay?[]:s.narrative.facts['crossing.marshal']?['restore','sever']:['inspect'];
  if(o.kind==='apertureRitual')return apertureRitualState(s).ready?['perform','inspect']:['inspect'];
@@ -109,6 +116,7 @@ export function validActions(o,s){
  if(o.kind==='rock'&&o.state==='sealed')return[...(s.worldFlags[o.id+':chip']?[]:['chip']),...(s.stats.Might>=3?['break','move']:[])]; // release 225: anyone can chip one stone from a rock (275: chip, then break, before move, so Act gathers stone instead of rolling the rock away)
  if(o.kind==='rock'&&o.state!=='sealed'&&!o.strange)return[]; // release 275: rubble and a rolled-aside rock take no more presses (they hid the next rock from Act)
  if(o.kind==='cache'&&o.state==='hidden'&&!s.worldFlags['rock-1:opened'])return[];
+ if(o.kind==='townKeeper')return withReshape(o.actions||[]); // Tim 2026-11-28: the body swap beside retraining
  return(o.actions||[]).filter(a=>!(o.state==='used'&&!['enter','exit','bypass'].includes(a)));
 }
 // Release 287: a dungeon supply cache's stone and wood (DIG.dungeonCache); `depth` 0 is the first level.
@@ -139,12 +147,13 @@ export function applyInteraction(o,a,s,context='global',place={}){
  if(o.kind==='apertureMemory'){o.state='used';gainAperture(s,3,'memory:'+context,'A buried memory resolves into language.');s.perception.discoveries.memories++;return{ok:true,message:'The inscription remembers a corridor that has not happened yet. Aperture +3.',transition:'aperture'};}
  if(o.kind==='apertureDoor')return{ok:true,message:'The unseen crossing opens into a sharper, stranger annex.',transition:'apertureDoor'};
  if(o.kind==='apertureRelic'){o.state='used';gainAperture(s,3,'relic:'+context,'The Deep Lattice accepts your attention.');s.perception.discoveries.relics++;return{ok:true,message:'Fine structures flare across stone and flesh. Aperture +3.',transition:'aperture'};}
- if(o.kind==='townKeeper'){if(a==='upgrade')return{ok:true,message:`${o.name} lays out the equipped pieces beside their required spheres.`,transition:'forge'};if(a==='attune')return{ok:true,message:`${o.name} turns an Aperture lens until its branches become legible.`,transition:'skills'};if(a==='retrain'){const r=retrainStats(s);return{...r,message:r.message.replace(/^Oren/,o.name)}}} // release 441: Ember Refuge's forge, Aperture and retraining in every Listener town
+ if(o.kind==='townKeeper'){if(a==='upgrade')return{ok:true,message:`${o.name} lays out the equipped pieces beside their required spheres.`,transition:'forge'};if(a==='attune')return{ok:true,message:`${o.name} turns an Aperture lens until its branches become legible.`,transition:'skills'};if(a==='retrain'){const r=retrainStats(s);return{...r,message:r.message.replace(/^Oren/,o.name)}}if(a==='reshape')return swapBody(s,o.name);} // release 441: Ember Refuge's forge, Aperture and retraining in every Listener town
  if(o.kind==='npc'){
  if(a==='upgrade'&&o.id==='keeper-sela')return{ok:true,message:'Sela lays out the equipped pieces beside their required spheres.',transition:'forge'};
  if(a==='attune'&&o.id==='keeper-sela')return{ok:true,message:'Sela turns the Aperture lens until its branches become legible.',transition:'skills'};
  if(a==='speak'&&o.id==='keeper-sela')return{ok:true,message:'Sela: “Spheres remember pressure. Aperture remembers possibility. I can teach either to hold a shape.”'};
  if(o.id==='warden-oren'&&a==='retrain')return retrainStats(s); // release 347
+ if(o.id==='warden-oren'&&a==='reshape')return swapBody(s); // Tim 2026-11-28
  if(a==='speak'&&o.id!=='vendor-vela')return{ok:true,message:o.id==='warden-oren'?'Oren: “Walls, wardens and a lit beacon. Between the three of us, nothing gets in.”':o.id==='keeper-sela'?'Sela: “The beacon will endure. At the Relay, restoring or severing the line is your choice.”':(o.name||'The resident')+': “Roads keep changing, but the wayglass remembers every traveler.”'};
  }
  if(o.kind==='relayNode'){const h=s.consequences.dungeons[o.areaId];if(a==='inspect')return{ok:true,message:inspectRelayNode(o,s,h)};const r=commitRelayNode(s,o,a,h);return r.ok?{...r,transition:'relayNode'}:r;}
