@@ -200,11 +200,16 @@ test('bounded cost: fixed braid size, no per-frame growth, sampling no dearer th
   // 2026-11-26: her refined buttocks and bust (HERO_FEMALE.refine) take her past the male body (was: fewer, the bun gone), well under the cap
   assert.equal(female.indexCount / 3, male.indexCount / 3 - female.braid.bunTriangles + female.braid.triangles + female.refined.triangles);
   assert.ok(female.refined.triangles > 100 && female.indexCount / 3 <= HERO_BODY_TRIANGLES - 40, `refined ${female.refined.triangles}, ${female.indexCount / 3} of ${HERO_BODY_TRIANGLES}`);
-  const time = (asset) => { const s = createHeroPoseState(asset), f = createHeroFrame(asset), runs = []; for (let i = 0; i < 260; i++) { const t0 = performance.now(); sampleCloseViewHero(asset, s, input({ nowMs: 1e5 + i * 16, speed: 2, gaitPhase: i / 10, x: 3 + i * .03, yaw: i * .02 }), f); if (i >= 60) runs.push(performance.now() - t0); } runs.sort((a, b) => a - b); return runs[runs.length >> 1]; };
-  time(male); time(female);
-  // 2026-11-27: the best of three interleaved medians each (a single median caught a one-off JIT/GC spike on CI: 1.53x;
-  // measured repeatedly the refined body samples at about 1.0x the male, 0.9x before the refine)
-  let m = Infinity, f = Infinity; for (let k = 0; k < 3; k++) { m = Math.min(m, time(male)); f = Math.min(f, time(female)); }
+  // 2026-11-28 (Tim approved): his and her frames alternate inside one loop, the order flipping each frame, so a machine
+  // slowdown (shared CI hosts slow to about half speed for seconds at a time) lands on both bodies alike. Before, his
+  // medians were taken before hers, and a slowdown starting in between failed her alone (1089 Preview: 0.224 vs 0.119 ms).
+  // The bound below is unchanged.
+  const paired = () => { const S = [male, female].map((asset) => ({ asset, s: createHeroPoseState(asset), f: createHeroFrame(asset), runs: [] }));
+    for (let i = 0; i < 260; i++) for (let k = 0; k < 2; k++) { const b = S[(i + k) & 1], t0 = performance.now(); sampleCloseViewHero(b.asset, b.s, input({ nowMs: 1e5 + i * 16, speed: 2, gaitPhase: i / 10, x: 3 + i * .03, yaw: i * .02 }), b.f); if (i >= 60) b.runs.push(performance.now() - t0); }
+    return S.map((b) => { b.runs.sort((x, y) => x - y); return b.runs[b.runs.length >> 1]; }); };
+  paired();
+  // the best of three paired rounds each (a one-off JIT/GC spike, see 2026-11-27)
+  let m = Infinity, f = Infinity; for (let k = 0; k < 3; k++) { const [a, b] = paired(); m = Math.min(m, a); f = Math.min(f, b); }
   assert.ok(f < m * 1.35 + .05, `female ${f.toFixed(3)} ms vs male ${m.toFixed(3)} ms`);
 });
 
