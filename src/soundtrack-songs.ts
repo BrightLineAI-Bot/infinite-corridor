@@ -368,6 +368,214 @@ export const SONGS = {
   },
 };
 
+// ---- Ten more tracks (Tim, 2026-11-27: "come up with 10 more tracks ... so that we can just hear more songs"). Every one is
+// ORIGINAL and in the album's house style: downtempo, modal minor (and one more Hijaz), drones, plucks and bells, frame drum, toms
+// and timpani only, adaptive by tier like the songs above. None is a boss theme. MUSIC_SELECTION adds them, at a lower weight
+// than each place's opener, to the places that had the fewest songs, so a journey's rotation (every 2-4 minutes) reaches them.
+export const MORE_SONGS = {
+  // The towns and the Refuge by day: A Dorian, a lute and harpsichord trading a market tune under lantern strings.
+  lanternCross: {
+    id: "lanternCross", name: "Lanterns at the Market Cross", mood: "warm and unhurried, stalls and lanterns at a crossroads",
+    bpm: 70, swing: .14, root: 57, mode: "dorian", leadOct: 1, pedal: false,
+    pad: "strings", arp: "lute", leads: ["lute", "harpsichord", "strings", "lute"],
+    chords: ["1", "4:7", "1", "5:sus4", "3", "4", "2:7", "5:sus4"],
+    bass: { calm: B.halves, combat: B.ostinato },
+    drums: { calm: { frame: "X.......o...o..." }, combat: D.ritual, drive: D.war },
+    arps: { calm: "0..2..1.0..3..2.", busy: "0.2.1.3.0.2.1.3." },
+    motifs: {
+      a: [[0, 4, 6], [6, 3, 2], [8, 2, 8], [16, 3, 4], [20, 5, 4], [24, 7, 8]],
+      a2: [[0, 2, 8], [8, 0, 4], [12, 1, 4], [16, 4, 12], [28, 3, 4]],
+      b: [[0, 6, 6], [6, 5, 2], [8, 4, 8], [16, 5, 8], [24, 3, 6], [30, 2, 2]],
+      c: [[0, 3, 8], [8, 1, 4], [12, 2, 4], [16, 4, 8], [24, 1, 8]],
+      cv: [[0, 5, 8], [8, 3, 8], [16, 4, 12], [28, 3, 4]],
+    },
+    forms: [["a", "a2", "b", "c"], ["a", "a2", "b", "cv"]],
+    leadPlan: [1, 1, 0],
+    mix: { bed: .9, groove: .8, motion: .75, lead: .8 }, echo: .35, reverb: .45,
+  },
+  // Open meadows by day: C Dorian, dulcimer seeds blowing over strings, a choir far off, a recorder now and then.
+  thistledown: {
+    id: "thistledown", name: "Thistledown Meadow", mood: "light and drifting, seed heads on a long wind",
+    bpm: 64, swing: .06, root: 48, mode: "dorian", leadOct: 2, pedal: false,
+    pad: "strings", arp: "dulcimer", leads: ["strings", "dulcimer", "choir", "recorder"],
+    chords: ["1:add9", "7", "4:add9", "1", "3:7", "7", "4", "5:sus2"],
+    bass: { calm: B.breath, combat: B.pulse },
+    drums: { calm: D.none, combat: D.procession, drive: D.rising },
+    arps: { calm: "0...1...2.....1.", busy: "0.1.2.1.3.2.1.2." },
+    motifs: {
+      a: [[0, 2, 8], [8, 4, 6], [14, 3, 2], [16, 1, 12], [28, 0, 4]],
+      a2: [[0, 5, 8], [8, 3, 4], [12, 4, 4], [16, 2, 8], [24, 0, 8]],
+      b: [[0, 4, 4], [4, 6, 4], [8, 2, 8], [16, 3, 10], [26, 1, 6]],
+      c: [[0, 0, 8], [8, 3, 4], [12, 2, 4], [16, 1, 8], [24, 4, 8]],
+      cv: [[0, 5, 12], [12, 3, 4], [16, 4, 16]],
+    },
+    forms: [["a", "a2", "b", "c"], ["a", "a2", "b", "cv"]],
+    leadPlan: [1, 0, 1, 1],
+    mix: { bed: .95, groove: .75, motion: .7, lead: .75 }, echo: .5, reverb: .6,
+  },
+  // Dusk and dark country: Bb Aeolian, low and warm; a cello by the fire, a lute turning, the strings like smoke going up.
+  hearthsmoke: {
+    id: "hearthsmoke", name: "Hearthsmoke", mood: "low and warm, a fire banked against the dark country",
+    bpm: 60, swing: 0, root: 46, mode: "aeolian", leadOct: 2, pedal: true,
+    pad: "strings", arp: "lute", leads: ["cello", "lute", "choir", "strings"],
+    chords: ["1:sus2", "1", "6:add9", "3", "4:7", "4", "7:sus4", "1"],
+    bass: { calm: B.pedal, combat: B.tread },
+    drums: { calm: D.heartbeat, combat: D.ritual, drive: D.war },
+    arps: { calm: "0.......1...2...", busy: "0...1.2.0...1.2.", motionCalm: false },
+    motifs: {
+      a: [[0, 4, 8], [8, 1, 4], [12, 2, 4], [16, 0, 12], [28, -1, 4]],
+      a2: [[0, 7, 8], [8, 5, 4], [12, 6, 4], [16, 4, 8], [24, 2, 8]],
+      b: [[0, 5, 6], [6, 4, 2], [8, 3, 8], [16, 2, 2], [18, 3, 2], [20, 5, 4], [24, 7, 8]],
+      c: [[0, 3, 8], [8, 2, 8], [16, 0, 16]],
+      cv: [[0, 6, 8], [8, 2, 4], [12, 1, 4], [16, 0, 16]],
+    },
+    forms: [["a", "a2", "b", "c"], ["a", "a2", "b", "cv"]],
+    leadPlan: [1, 1, 0],
+    mix: { bed: 1, groove: .8, motion: .6, lead: .75 }, echo: .4, reverb: .6,
+  },
+  // Fens, mires and fog at dusk: C# Phrygian, cold bells and a celesta like marsh lights over a choir drone.
+  fenLights: {
+    id: "fenLights", name: "Lights over the Fen", mood: "eerie and gentle, small lights drifting over black water",
+    bpm: 66, swing: 0, root: 49, mode: "phrygian", leadOct: 2, pedal: true,
+    pad: "choir", arp: "bell", leads: ["bell", "choir", "celesta", "strings"],
+    chords: ["1", "2", "7", "1", "6:7", "2", "4:7", "1:sus4"],
+    bass: { calm: B.pedal, combat: B.pulse },
+    drums: { calm: D.none, combat: D.procession, drive: D.rising },
+    arps: { calm: "0.....2.......1.", busy: "0...2...1.3...2.", motionCalm: false },
+    motifs: {
+      a: [[0, 2, 8], [8, 4, 4], [12, 3, 4], [16, 1, 8], [24, 3, 8]],
+      a2: [[0, 6, 8], [8, 3, 8], [16, 4, 8], [24, 2, 4], [28, 1, 4]],
+      b: [[0, 7, 10], [10, 5, 2], [12, 4, 4], [16, 3, 12], [28, 1, 4]],
+      c: [[0, 5, 8], [8, 2, 8], [16, 0, 16]],
+      cv: [[0, 3, 8], [8, 0, 8], [16, 4, 8], [24, 0, 8]],
+    },
+    forms: [["a", "a2", "b", "c"], ["a", "a2", "b", "cv"]],
+    leadPlan: [1, 0, 1],
+    mix: { bed: 1, groove: .8, motion: .65, lead: .7 }, echo: .6, reverb: .7,
+  },
+  // Dungeons: D Aeolian, one candle's worth of harpsichord, a low cello, long rests, a dark flute for one turn in four.
+  undercroft: {
+    id: "undercroft", name: "Candle in the Undercroft", mood: "close and hushed, a small light under heavy vaults",
+    bpm: 62, swing: 0, root: 50, mode: "aeolian", leadOct: 1, pedal: true,
+    pad: "strings", arp: "harpsichord", leads: ["cello", "harpsichord", "choir", "flute"],
+    chords: ["1:7", "1:7", "4", "6:add9", "3:7", "7", "5:sus4", "5"],
+    bass: { calm: B.pedal, combat: B.tread },
+    drums: { calm: D.none, combat: D.ritual, drive: D.war },
+    arps: { calm: "0.......2.......", busy: "0...1...2...1.3.", motionCalm: false },
+    motifs: {
+      a: [[0, 4, 8], [8, 6, 4], [12, 4, 4], [16, 2, 8], [24, 0, 8]],
+      a2: [[0, 3, 8], [8, 5, 6], [14, 4, 2], [16, 2, 12], [28, 0, 4]],
+      b: [[0, 4, 4], [4, 2, 4], [8, 1, 8], [16, 3, 8], [24, 6, 8]],
+      c: [[0, 4, 8], [8, 1, 8], [16, 6, 8], [24, 4, 8]],
+      cv: [[0, 0, 8], [8, 1, 4], [12, 2, 4], [16, 1, 12], [28, 0, 4]],
+    },
+    forms: [["a", "a2", "b", "c"], ["a", "a2", "b", "cv"]],
+    leadPlan: [1, 0, 1, 0],
+    mix: { bed: 1, groove: .85, motion: .55, lead: .75 }, echo: .45, reverb: .65,
+  },
+  // The Deep and old vaults: B Dorian at the album's slowest walk, roots growing through stone; a choir and cello, one bell.
+  rootVault: {
+    id: "rootVault", name: "Roots Through the Vault", mood: "slow and patient, old roots splitting older stone",
+    bpm: 58, swing: 0, root: 47, mode: "dorian", leadOct: 1, pedal: true,
+    pad: "both", arp: "bell", leads: ["choir", "cello", "bell", "strings"],
+    chords: ["1:sus2", "1", "3:add9", "3", "7:add9", "4", "1:sus2", "5:sus4"],
+    bass: { calm: B.pedal, combat: B.halves },
+    drums: { calm: D.none, combat: D.procession, drive: D.rising },
+    arps: { calm: "0...............", busy: "0.......1.......", motionCalm: false },
+    motifs: {
+      a: [[0, 4, 12], [12, 1, 4], [16, 2, 8], [24, 0, 8]],
+      a2: [[0, 6, 8], [8, 3, 8], [16, 4, 12], [28, 2, 4]],
+      b: [[0, 8, 8], [8, 6, 8], [16, 5, 10], [26, 3, 6]],
+      c: [[0, 1, 8], [8, 0, 8], [16, -3, 16]],
+      cv: [[0, 4, 8], [8, 1, 8], [16, 0, 16]],
+    },
+    forms: [["a", "a2", "b", "c"], ["a", "a2", "b", "cv"]],
+    leadPlan: [1, 0, 0, 1],
+    mix: { bed: 1, groove: .85, motion: .5, lead: .7 }, echo: .5, reverb: .75,
+  },
+  // Flooded halls below: F Aeolian, a dulcimer dripping into the echo, celesta and bell over a choir.
+  drownedCistern: {
+    id: "drownedCistern", name: "The Drowned Cistern", mood: "still and glimmering, water standing in the dark",
+    bpm: 60, swing: 0, root: 53, mode: "aeolian", leadOct: 1, pedal: true,
+    pad: "choir", arp: "dulcimer", leads: ["dulcimer", "celesta", "choir", "bell"],
+    chords: ["1:add9", "3:add9", "6:add9", "4:add9", "1:add9", "3", "7:add9", "5:sus4"],
+    bass: { calm: B.pedal, combat: B.pulse },
+    drums: { calm: D.none, combat: D.procession, drive: D.rising },
+    arps: { calm: "0.....3.....1...", busy: "0..3..1..2..0.3.", motionCalm: false },
+    motifs: {
+      a: [[0, 2, 6], [6, 1, 2], [8, 0, 8], [16, 4, 8], [24, 3, 8]],
+      a2: [[0, 5, 8], [8, 2, 8], [16, 3, 4], [20, 4, 4], [24, 0, 8]],
+      b: [[0, 4, 4], [4, 2, 4], [8, 1, 8], [16, 6, 8], [24, 4, 8]],
+      c: [[0, 6, 8], [8, 3, 8], [16, 1, 12], [28, 0, 4]],
+      cv: [[0, 3, 8], [8, 1, 6], [14, 2, 2], [16, 4, 12], [28, 3, 4]],
+    },
+    forms: [["a", "a2", "b", "c"], ["a", "a2", "b", "cv"]],
+    leadPlan: [1, 1, 0],
+    mix: { bed: 1, groove: .8, motion: .7, lead: .7 }, echo: .65, reverb: .75,
+  },
+  // The sea near shore: E Dorian with a rolling swing, a horn over the surf, dulcimer spray, a recorder like a gull.
+  shoalGulls: {
+    id: "shoalGulls", name: "Gulls over the Shoal", mood: "breezy and bright-edged, surf on a sandbar",
+    bpm: 74, swing: .16, root: 52, mode: "dorian", leadOct: 1, pedal: false,
+    pad: "strings", arp: "dulcimer", leads: ["horn", "dulcimer", "strings", "recorder"],
+    chords: ["1", "7", "4:add9", "1", "3", "7:sus2", "4", "5:7"],
+    bass: { calm: B.halves, combat: B.ostinato },
+    drums: { calm: { frame: "X.....o.....o..." }, combat: D.ritual, drive: D.war },
+    arps: { calm: "0..2..1..3..1...", busy: "0.2.1.3.2.1.3.2." },
+    motifs: {
+      a: [[0, 0, 4], [4, 2, 4], [8, 4, 8], [16, 3, 6], [22, 1, 2], [24, 6, 8]],
+      a2: [[0, 5, 8], [8, 4, 4], [12, 3, 4], [16, 2, 12], [28, 1, 4]],
+      b: [[0, 6, 6], [6, 5, 2], [8, 4, 8], [16, 3, 8], [24, 7, 8]],
+      c: [[0, 3, 4], [4, 5, 4], [8, 7, 8], [16, 6, 8], [24, 4, 8]],
+      cv: [[0, 5, 8], [8, 3, 8], [16, 4, 4], [20, 3, 4], [24, 1, 8]],
+    },
+    forms: [["a", "a2", "b", "c"], ["a", "a2", "b", "cv"]],
+    leadPlan: [1, 1, 0, 1],
+    mix: { bed: .9, groove: .8, motion: .75, lead: .8 }, echo: .55, reverb: .5,
+  },
+  // Castles, keeps and the Pentagon: Eb Dorian, a faded procession; strings and horn under old banners, a harpsichord walking.
+  dustBanners: {
+    id: "dustBanners", name: "Dust on the Banners", mood: "stately and faded, a hall that remembers its feasts",
+    bpm: 64, swing: 0, root: 51, mode: "dorian", leadOct: 1, pedal: false,
+    pad: "both", arp: "harpsichord", leads: ["strings", "horn", "harpsichord", "choir"],
+    chords: ["1:7", "3", "4:7", "1", "7:add9", "3:7", "2:7", "5:sus4"],
+    bass: { calm: B.roots, combat: B.tread },
+    drums: { calm: D.none, combat: D.march, drive: D.siege },
+    arps: { calm: "0...2...1...2...", busy: "0.1.2.1.3.2.1.2." },
+    motifs: {
+      a: [[0, 0, 8], [8, 2, 8], [16, 4, 6], [22, 5, 2], [24, 6, 8]],
+      a2: [[0, 5, 8], [8, 3, 4], [12, 2, 4], [16, 4, 8], [24, 2, 8]],
+      b: [[0, 8, 8], [8, 7, 4], [12, 6, 4], [16, 4, 12], [28, 3, 4]],
+      c: [[0, 3, 8], [8, 1, 8], [16, 0, 8], [24, -3, 8]],
+      cv: [[0, 5, 8], [8, 3, 6], [14, 2, 2], [16, 1, 16]],
+    },
+    forms: [["a", "a2", "b", "c"], ["a", "a2", "b", "cv"]],
+    leadPlan: [1, 1, 0],
+    mix: { bed: .95, groove: .8, motion: .7, lead: .75 }, echo: .3, reverb: .55,
+  },
+  // The far realms and skylands: A Hijaz, glassy and high; a celesta and bells on the line where the sky turns, a ney once.
+  glassMeridian: {
+    id: "glassMeridian", name: "The Glass Meridian", mood: "high, clear and strange, the line where the sky turns",
+    bpm: 66, swing: .08, root: 57, mode: "hijaz", leadOct: 1, pedal: true,
+    pad: "choir", arp: "bell", leads: ["celesta", "strings", "choir", "ney"],
+    chords: ["1:sus4", "1", "7", "2", "4", "7", "2", "1"],
+    bass: { calm: B.pedal, combat: B.ostinato },
+    drums: { calm: { frame: "X.........o....." }, combat: D.ritual, drive: D.war },
+    arps: { calm: "0...2...1.......", busy: "0.2.1.2.0.3.1.2." },
+    motifs: {
+      a: [[0, 4, 8], [8, 3, 8], [16, 2, 8], [24, 0, 8]],
+      a2: [[0, 6, 4], [4, 5, 4], [8, 3, 8], [16, 1, 12], [28, 2, 4]],
+      b: [[0, 5, 8], [8, 7, 8], [16, 6, 6], [22, 5, 2], [24, 3, 8]],
+      c: [[0, 1, 6], [6, 2, 2], [8, 3, 8], [16, 4, 8], [24, 2, 8]],
+      cv: [[0, 5, 8], [8, 3, 4], [12, 2, 4], [16, 0, 16]],
+    },
+    forms: [["a", "a2", "b", "c"], ["a", "a2", "b", "cv"]],
+    leadPlan: [1, 0, 1, 1],
+    mix: { bed: 1, groove: .8, motion: .75, lead: .75 }, echo: .55, reverb: .7,
+  },
+};
+Object.assign(SONGS, MORE_SONGS);
+
 // ---- The world bosses' own themes (Phase 2, Tim 2026-11-14: "each world boss gets its own unique track"). Each is ORIGINAL,
 // from the album's palette (modal minor and Hijaz, strings, choir, horn, plucks, bells, drones; frame drum, toms and timpani
 // only), with its own mode, tempo, lines and voices for that creature's story (LINER_NOTES). BOSS_THEMES (soundtrack-director.ts)
@@ -996,6 +1204,27 @@ export const LINER_NOTES = [
   { id: "deepbell", moment: "The Deep, far below", feel: "torpid" },
   { id: "astrolabe", moment: "The far realms and skylands: the scholar's road east", feel: "awe" },
   { id: "observatory", moment: "Revelation: the stars, the late road", feel: "awe" },
+  // Ten more tracks (Tim, 2026-11-27): MORE_SONGS. `title` is the name the HUD's now-playing label shows, `story` what the piece is.
+  { id: "lanternCross", title: "Lanterns at the Market Cross", moment: "Towns and the Refuge by day: market stalls at a crossroads", feel: "torpid",
+    story: "A market tune, traded back and forth between a lute and a harpsichord, under strings that hang like strings of lanterns. Nobody is in a hurry." },
+  { id: "thistledown", title: "Thistledown Meadow", moment: "Open meadows by day, seed heads on the wind", feel: "torpid",
+    story: "Light and drifting. A dulcimer scatters like thistledown over the strings, a choir hums on the far side of the field, and a recorder answers once." },
+  { id: "hearthsmoke", title: "Hearthsmoke", moment: "Dusk in the dark country, a fire banked for the night", feel: "torpid",
+    story: "Low and warm against the dark. A cello by the fire over a held drone, a lute turning slowly, and the strings going up like smoke from a chimney." },
+  { id: "fenLights", title: "Lights over the Fen", moment: "Fens, mires and fog at dusk", feel: "awe",
+    story: "Small lights drifting over black water. Cold bells and a celesta wander above a choir drone in Phrygian, never quite where you expect them." },
+  { id: "undercroft", title: "Candle in the Undercroft", moment: "The first dungeons: a small light under heavy vaults", feel: "torpid",
+    story: "One candle's worth of harpsichord in a low, close room. A cello keeps near the floor, the rests are long, and a dark flute speaks once in a while." },
+  { id: "rootVault", title: "Roots Through the Vault", moment: "The Deep and the old vaults, roots splitting stone", feel: "awe",
+    story: "The slowest walk on the album. A choir and a cello grow a line as patient as roots through masonry, and one bell marks where the stone gives." },
+  { id: "drownedCistern", title: "The Drowned Cistern", moment: "Flooded halls below, water standing in the dark", feel: "torpid",
+    story: "Still and glimmering. A dulcimer drips into the echo, a celesta and a bell catch the light off standing water, and a choir holds the dark around them." },
+  { id: "shoalGulls", title: "Gulls over the Shoal", moment: "The sea near shore, surf on a sandbar", feel: "torpid",
+    story: "Breezy, with a rolling swing. A horn calls over the surf, the dulcimer throws up spray, and a recorder wheels overhead like a gull." },
+  { id: "dustBanners", title: "Dust on the Banners", moment: "Castles, keeps and the Pentagon, long after the feasts", feel: "awe",
+    story: "A faded procession. Strings and a horn walk under old banners while a harpsichord keeps the pace of a court that is no longer there." },
+  { id: "glassMeridian", title: "The Glass Meridian", moment: "The far realms and skylands, where the sky turns", feel: "awe",
+    story: "High, clear and strange, in Hijaz. A celesta and bells ring along the line where the sky turns over, and a ney sings one phrase from very far away." },
   { id: "boss", moment: "A world beast or boss: the ground itself answers", feel: "urgent" },
   // The world bosses' own themes (BOSS_THEMES): `beast` is who it belongs to, `story` what the music tells of it, `menace` how
   // dark it runs (Tim, 2026-11-15; MENACE_TIERS): overt, understated, or calm (gentle, with an uneasy undertone).
@@ -1059,6 +1288,14 @@ export const MUSIC_SELECTION = [
   ["sea", "saltwind", 1, 4, 3], ["sea", "moonlitTower", 1, 4, 1], ["sea", "observatory", 4, 4, 1],
   ["halls", "fiveHalls", 1, 4, 3], ["halls", "underhollow", 1, 2, 1], ["halls", "gateOpens", 2, 4, 2],
   ["sky", "astrolabe", 1, 4, 3], ["sky", "observatory", 2, 4, 3], ["sky", "moonlitTower", 1, 4, 1],
+  // Ten more tracks (MORE_SONGS), each below its place's opener so the openers stay, spread over the places with the fewest songs.
+  ["day", "lanternCross", 1, 4, 2], ["day", "thistledown", 1, 4, 2], ["dusk", "lanternCross", 1, 4, 1],
+  ["dusk", "hearthsmoke", 1, 4, 2], ["dusk", "fenLights", 1, 4, 2],
+  ["dungeon", "undercroft", 1, 4, 2], ["dungeon", "drownedCistern", 1, 4, 1],
+  ["deep", "rootVault", 1, 4, 2], ["deep", "drownedCistern", 1, 4, 2],
+  ["sea", "shoalGulls", 1, 4, 2],
+  ["halls", "dustBanners", 1, 4, 2],
+  ["sky", "glassMeridian", 1, 4, 2],
 ];
 export const MUSIC_CONTEXTS = ["day", "dusk", "dungeon", "deep", "sea", "halls", "sky"];
 export const songById = (id) => SONGS[id] || null;

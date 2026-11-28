@@ -8,13 +8,14 @@
     />
     <meta name="theme-color" content="#10151d" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./styles.css?v=1086" />
+    <link rel="stylesheet" href="./styles.css?v=1087" />
     <title>Infinite Corridor</title>
   </head>
   <body>
     <main id="app">
       <canvas id="game"></canvas>
       <aside id="eventBanner" role="status" aria-live="assertive" aria-atomic="true"><strong></strong><span></span></aside>
+      <aside id="nowPlaying" class="now-playing" role="status" aria-live="polite" aria-atomic="true" hidden><span class="np-note" aria-hidden="true">♪</span><span class="np-window"><span id="nowPlayingTitle" class="np-title"></span></span></aside>
       <section id="hud">
         <div class="hud-summary">
           <div id="vitals">
@@ -172,7 +173,7 @@
       </dialog>
     </main>
     <script type="module">
-      const release = "1086";
+      const release = "1087";
       const params = new URLSearchParams(location.search);
       const entry = params.get("dev") === "proving-ground"
         ? "./src/proving-ground.js"

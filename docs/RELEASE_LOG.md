@@ -15,12 +15,13 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1086 (this merge); production serves `r1084-63d231dd5b0b` (Publish run 198, succeeded 2026-11-28; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1087 (this merge); production serves `r1084-63d231dd5b0b` (Publish run 198, succeeded 2026-11-28; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
 | Release | Agent | Branch / PR | Scope | State |
 |---|---|---|---|---|
+| 1087 | Claude | claude/ten-more-tracks | Ten more tracks + a scrolling now-playing title in the HUD (Options → Audio → Show track titles) | In flight. |
 | 1086 | Claude | claude/triceratops-chop | Triceratops Chop replaces Triceratops Cunning (every third swing, two horn spikes left and right); on-hit-echoes test edits (Tim approved) | In flight. |
 | 1085 | Claude | claude/pachycephalosaurus | The Pachycephalosaurus: Pentagon/keep/arcology big rooms and new-ground rock ambushes; armor and fossil forms; Dome Rush Echo (Earth Golem form); boss theme The Skull Drum; duels incl. the wild Triceratops vs Spinosaurus/Stegosaurus; save.pachy additive; new modules pachy, pachy-render, close-view-beast-pachy, trike-duel; two test edits (Tim approved) | In flight. |
 | 1084 | Claude | claude/close-view-indoors / #756 | Close View everywhere but dungeons | Merged (#756); preview follows. |

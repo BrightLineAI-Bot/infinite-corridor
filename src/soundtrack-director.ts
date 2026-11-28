@@ -241,4 +241,28 @@ export class MusicDirector {
     return { songId: this.songId, intensity: this.intensity, change: this.change || "context", stingers, duel: this.duel, hush: dueling ? 0 : 1 };
   }
 }
+// The HUD's now-playing label (Tim, 2026-11-27: "scroll the title of the track in the heads-up display when a new song comes
+// up"). The engine's own events say when a song is actually heard: "start" (the first song, and again after a mute) and "switch"
+// (a new song on a bar line). A song only counts as new when it differs from the last one counted, so a song looping, resuming
+// after a mute or picking up again after nothing else played never shows twice. It is passed over (not shown later) while the
+// music is muted or at volume 0, while the dinosaurs duel (the score is hushed), or with Options -> Audio -> Show track titles
+// off; while the game is paused it waits and shows once play resumes. main.ts draws it: `seconds` on screen, the title sliding
+// in from the right at `speed` px/s, holding, then sliding out; `fade` s in and out. With Reduce motion it never moves.
+export const NOW_PLAYING = { seconds: 8, minSeconds: 5, fade: .6, speed: 42 };
+// memo: { shown, pending } kept by the caller. state: { muted, level (the music's level, 0 is silent), enabled, duel (DIRECTOR
+// duel state), paused }. event: a soundtrack.ts event, or null to check a waiting title. Returns { id, title } to show, or null.
+export function nowPlayingCue(memo, state = {}, event = null, songs = SONGS) {
+  const id = event?.type === "start" ? event.songId : event?.type === "switch" ? event.to : null;
+  if (id && songs[id] && id !== memo.shown) { memo.shown = id; memo.pending = id; }
+  if (!memo.pending) return null;
+  if (state.muted || !(Number(state.level) > 0) || state.enabled === false || (state.duel && state.duel !== "off")) { memo.pending = null; return null; }
+  if (state.paused) return null;
+  const song = songs[memo.pending]; memo.pending = null;
+  return song ? { id: song.id, title: song.name } : null;
+}
+// How long the label stays up for a title `width` px wide in a window `room` px wide: long enough to slide the whole title past.
+export function nowPlayingSeconds(width, room, reduceMotion = false, N = NOW_PLAYING) {
+  if (reduceMotion) return N.seconds;
+  return Math.max(N.minSeconds, Math.min(14, (Math.max(0, room) + Math.max(0, width)) / N.speed + 2.5));
+}
 export { MUSIC_CONTEXTS };

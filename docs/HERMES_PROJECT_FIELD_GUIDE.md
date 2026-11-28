@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 1087 — Ten more tracks and a now-playing title
+
+Tim (2026-11-27) asked for ten more tracks, and for the title of a new song to scroll across the HUD when it comes up, so more songs are heard and recognised.
+
+**CODE:** soundtrack-songs.ts MORE_SONGS (ten non-boss songs, merged into SONGS) with LINER_NOTES entries carrying title and story; MUSIC_SELECTION rows at weight 2 or 1 add them to every place without changing any opener, so every place and chapter now has at least three songs. soundtrack-director.ts NOW_PLAYING, nowPlayingCue(memo, state, event) and nowPlayingSeconds. main.ts feeds the soundtrack engine's onEvent (start, switch) and directMusic into nowPlaying(); showNowPlaying and hideNowPlaying drive #nowPlaying (styles.css .now-playing, keyframes np-scroll, a still fading label under body.reduce-motion). The device setting trackTitles lives in persistence.ts (on unless explicitly false), shown in Options → Audio. Tests: ten-more-tracks (10).
+
+**BOUNDARY:** The label never changes the music or game state and never takes a touch; it runs on the music timer, not the game loop, with one layout read per new song. It shows only for a song different from the last one counted: never on a loop, a resume or a repeat; dropped while muted, at volume 0, with the setting off or during a dino duel; it waits through a pause. Save schema unchanged (the setting is a device setting). The Proving Ground has no soundtrack and hides .now-playing. A new song stays below its place's opener weight, so journeys open on the same song as before.
+
 ## Release 1086 — Triceratops Chop
 
 Tim (2026-11-27) replaced the Triceratops's Echo: every third swing, two horn spikes appear in the air and strike the target, one from the left and one from the right, auto-targeted, physical damage based on weapon damage. He chose to keep the old strength (+33% over three swings, half a swing per spike), to count swings only, and approved the matching edits to tests/on-hit-echoes.test.ts (the Triceratops leaves ON_HIT_IDS; the Cunning tests go).
