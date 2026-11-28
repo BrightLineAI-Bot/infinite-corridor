@@ -21,7 +21,7 @@ import { drawRangedEffects as drawCombatEffects, VIEWPORT_CLOSED, VIEWPORT_QUIET
 import { screenToWorld, drawWaymarkIcon, rendererDiagnostics } from "./renderer.ts";
 import { drawPentagonSigilIcon } from "./renderer.ts";
 import { closeViewSurfacePick } from "./close-view.ts"; // roof decks: the aimed Rift Step's tap
-import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, CLOSE_VIEW_PROPS, closeViewOn, closeViewSwitchStats, closeViewRenderDiagnostics, closeViewDrawsProps, closeViewPlaceAllowed, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewCompassRotation, closeViewBodyFacingYaw, compassFacingStep, closeViewScreenToWorld, mountCloseViewControls, closeViewLookActive, closeViewLookLabel, closeViewLookToggle, closeViewLookSet, closeViewLookActions, closeViewLookGuard, closeViewLookZoomBy, closeViewHomeZoomTake, createLookHold, closeViewPrewarmDue, prewarmCloseView, prewarmCloseViewGL } from "./close-view.ts"; // Close View (2026-11-06): interiors from behind the Wayfarer
+import { PLACE_LABEL_BOX, CLOSE_VIEW, CLOSE_VIEW_HOOKS, CLOSE_VIEW_PROPS, closeViewOn, closeViewSwitchStats, closeViewRenderDiagnostics, closeViewDrawsProps, closeViewPlaceAllowed, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewCompassRotation, closeViewBodyFacingYaw, compassFacingStep, closeViewScreenToWorld, mountCloseViewControls, closeViewLookActive, closeViewLookLabel, closeViewLookToggle, closeViewLookSet, closeViewLookActions, closeViewLookGuard, closeViewLookZoomBy, closeViewHomeZoomTake, createLookHold, closeViewPrewarmDue, prewarmCloseView, prewarmCloseViewGL } from "./close-view.ts"; // Close View (2026-11-06): interiors from behind the Wayfarer
 import { renderTimings } from "./renderer.ts";
 import { createProbe, createDodgeWatch, PROBE } from "./diagnostic-probe.ts";
 import { vendorShop, buyFromVendor, walkerCrossingMap, shiftClocks, currentDungeonDoors, sectionTerrainCacheStats, greatTreeKnown, greatTreeProbe, pentagonSensed } from "./game.ts";
@@ -1143,22 +1143,45 @@ function directMusic() {
     battleSfx?.setPaused(game.paused); battleSfx?.setDuel(out.duel, musicMemo.duelPair);
     musicDuel = out.duel; if (out.duel !== "off") hideNowPlaying(); // the duel is music-free: no title over it
     nowPlaying(); // a title that waited for the game to resume
+    followPlaceBox(); // the place box moved or changed width (a new section's label, a turned phone)
   } catch (error) { console.warn("Soundtrack director failed", error); }
 }
 // The now-playing label (Tim, 2026-11-27; soundtrack-director.ts NOW_PLAYING and nowPlayingCue): when the engine starts a new
-// song, its title slides in under the HUD, holds, slides out and fades. Driven by the engine's own events on the music timer,
-// never by the game loop; one layout read per new song. Reduce motion: a still label that fades in and out.
+// song, its title slides in, holds, slides out and fades. Driven by the engine's own events on the music timer, never by the game
+// loop; one layout read per new song. Reduce motion: a still label that fades in and out.
+// Where (Tim, 2026-11-28): in the place box under Map and Pack ("SECTION 0,0", or the dungeon's name), laid exactly over it in
+// place of the place's name, then the box shows the place again. The renderers keep the box's position and width as they draw
+// it (close-view.ts PLACE_LABEL_BOX, written by renderer.ts and close-view.ts as they draw it); with no box on screen (Close View on a map
+// with no name) the title shows as before, in its own pill under the HUD.
 const nowPlayingEl = $("#nowPlaying"), nowPlayingText = $("#nowPlayingTitle"), nowPlayingMemo = {};
 let nowPlayingTimer = 0, musicDuel = "off";
+const NOW_PLAYING_BOX = { fresh: 1000, at: { x: NaN, y: NaN, w: NaN } }; // the box counts as on screen if drawn within `fresh` ms
+function placeBoxNow() { const B = PLACE_LABEL_BOX; return B && B.w > 0 && performance.now() - B.at < NOW_PLAYING_BOX.fresh ? B : null; }
+// Lay the label over the box (true), or leave it a pill (false). A layout read only when the box has moved.
+function fitPlaceBox(B) {
+  const at = NOW_PLAYING_BOX.at; if (at.x === B.x && at.y === B.y && at.w === B.w) return;
+  const r = canvas.getBoundingClientRect(); at.x = B.x; at.y = B.y; at.w = B.w;
+  nowPlayingEl.style.setProperty("--np-x", `${Math.round(r.left + B.x)}px`); nowPlayingEl.style.setProperty("--np-y", `${Math.round(r.top + B.y)}px`);
+  nowPlayingEl.style.setProperty("--np-w", `${Math.round(B.w)}px`); nowPlayingEl.style.setProperty("--np-h", `${B.h || 24}px`);
+}
+function followPlaceBox() {
+  if (!nowPlayingEl || nowPlayingEl.hidden || !nowPlayingEl.classList.contains("in-box")) return;
+  const B = placeBoxNow(); if (!B) { if (!game.paused && !document.hidden) hideNowPlaying(); return; } // the box left the screen (Close View on a nameless map): the title goes with it (a pause only stops the drawing)
+  const w = NOW_PLAYING_BOX.at.w; fitPlaceBox(B);
+  if (w !== B.w) nowPlayingEl.style.setProperty("--np-room", `${nowPlayingText.parentElement.clientWidth}px`);
+}
 function nowPlayingState() { return { muted: muted || backgroundMusic.musicPaused, level: masterLevel() * settings.musicVolume, enabled: settings.trackTitles !== false, duel: musicDuel, paused: game.paused || document.hidden }; }
 function nowPlaying(event = null) { try { const cue = nowPlayingCue(nowPlayingMemo, nowPlayingState(), event); if (cue) showNowPlaying(cue.title); } catch (error) { console.warn("Now playing failed", error); } }
 function showNowPlaying(title) {
   if (!nowPlayingEl || !nowPlayingText) return;
   clearTimeout(nowPlayingTimer);
-  const reduce = document.body.classList.contains("reduce-motion"), ribbon = document.querySelector(".compass-ribbon");
-  // Below the HUD and its expand button, and below Close View's compass ribbon when it shows; never over the controls.
-  const bottom = (el) => el && el.offsetParent !== null && getComputedStyle(el).display !== "none" ? el.getBoundingClientRect().bottom : 0;
-  nowPlayingEl.style.setProperty("--np-top", `${Math.round(Math.max(bottom($("#hud")), bottom($("#hudExpand")), bottom(ribbon)) + 6)}px`);
+  const reduce = document.body.classList.contains("reduce-motion"), ribbon = document.querySelector(".compass-ribbon"), box = placeBoxNow();
+  nowPlayingEl.classList.toggle("in-box", !!box);
+  if (box) { NOW_PLAYING_BOX.at.w = NaN; fitPlaceBox(box); }
+  else { // the pill: below the HUD and its expand button, and below Close View's compass ribbon when it shows; never over the controls
+    const bottom = (el) => el && el.offsetParent !== null && getComputedStyle(el).display !== "none" ? el.getBoundingClientRect().bottom : 0;
+    nowPlayingEl.style.setProperty("--np-top", `${Math.round(Math.max(bottom($("#hud")), bottom($("#hudExpand")), bottom(ribbon)) + 6)}px`);
+  }
   nowPlayingText.textContent = title; nowPlayingEl.hidden = false;
   nowPlayingEl.classList.remove("visible", "scrolling");
   const room = nowPlayingText.parentElement.clientWidth, width = nowPlayingText.scrollWidth, seconds = nowPlayingSeconds(width, room, reduce);
