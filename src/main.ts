@@ -24,7 +24,7 @@ import { closeViewSurfacePick } from "./close-view.ts"; // roof decks: the aimed
 import { CLOSE_VIEW, CLOSE_VIEW_HOOKS, CLOSE_VIEW_PROPS, closeViewOn, closeViewSwitchStats, closeViewRenderDiagnostics, closeViewDrawsProps, closeViewPlaceAllowed, closeViewSteer, closeViewUnsteer, closeViewShowing, closeViewCompassRotation, closeViewBodyFacingYaw, compassFacingStep, closeViewScreenToWorld, mountCloseViewControls, closeViewLookActive, closeViewLookLabel, closeViewLookToggle, closeViewLookSet, closeViewLookActions, closeViewLookGuard, closeViewLookZoomBy, closeViewHomeZoomTake, createLookHold, closeViewPrewarmDue, prewarmCloseView, prewarmCloseViewGL } from "./close-view.ts"; // Close View (2026-11-06): interiors from behind the Wayfarer
 import { renderTimings } from "./renderer.ts";
 import { createProbe, createDodgeWatch, PROBE } from "./diagnostic-probe.ts";
-import { vendorShop, buyFromVendor, walkerCrossingMap, shiftClocks, currentDungeonDoors, sectionTerrainCacheStats, greatTreeKnown, greatTreeProbe, pentagonSensed } from "./game.ts";
+import { vendorShop, buyFromVendor, walkerCrossingMap, shiftClocks, currentDungeonDoors, sectionTerrainCacheStats, greatTreeKnown, greatTreeProbe, pentagonSensed, restedWaystones, WAYSTONE_WARP } from "./game.ts";
 import { IMBUE, imbueAmount, ESSENCE_WALK, essenceExempt, FIST_CALLOUT, fistStatusLevel } from "./brawler-spells.ts"; // Imbue Weapon: the Arcanum shows what it adds now; Essence Walk its costs
 import { sectionAtlasColor } from "./atlas-colors.ts";
 import { sectionRegion, regionName, REGIONS, biomeFor } from "./landscape.ts"; // release 573; biomeFor: a section a tall tower's lookout charted
@@ -2254,9 +2254,13 @@ function renderAtlasLegend(){const legend=$("#mapLegend");legend.replaceChildren
 function refreshWayglassDestinations(){
   const select=$("#mapWayglassSelect"),prior=select.value,entries=Object.entries(save.checkpoints||{}).sort((a,b)=>(a[1].rx-b[1].rx)||(a[1].ry-b[1].ry)||(a[1].name||a[0]).localeCompare(b[1].name||b[0])); // release 443 (Tim: "arranged numerically, so I can just scroll down"): by section, east-west then north-south
   select.replaceChildren(...entries.map(([key,c])=>{const option=document.createElement("option");option.value=key;option.textContent=`${c.rx}, ${c.ry} · ${c.name||"Wayglass"}`;return option}));
+  // Waystone warp (game.ts WAYSTONE_WARP): the Waystones rested at, in a group of their own after the Wayglasses, by ring
+  const stones=restedWaystones(save);if(stones.length){const group=document.createElement("optgroup");group.label=WAYSTONE_WARP.group;group.append(...stones.map((w)=>{const option=document.createElement("option");option.value=w.key;option.textContent=w.label;return option}));select.append(group)}
   const selected=mapView.selected&&`${mapView.selected.rx},${mapView.selected.ry}`,active=save.activeCheckpoint&&`${save.activeCheckpoint.rx},${save.activeCheckpoint.ry}`;
-  select.value=save.checkpoints?.[selected]?selected:save.checkpoints?.[prior]?prior:active||entries[0]?.[0]||"";
+  select.value=save.checkpoints?.[selected]?selected:save.checkpoints?.[prior]||stones.some((w)=>w.key===prior)?prior:active||entries[0]?.[0]||"";
 }
+// Waystone warp: the Waystone picked in the Wayglass list, or null.
+function selectedWaystone(){const v=$("#mapWayglassSelect")?.value;return typeof v==="string"&&v.startsWith(WAYSTONE_WARP.prefix)?restedWaystones(save).find((w)=>w.key===v)||null:null}
 // Release 443: the Wayglass of a tapped section, or of the nearest section within ATLAS_WAYGLASS_REACH (a zoomed-out tap rarely lands on the exact one).
 const ATLAS_WAYGLASS_REACH = 1;
 function atlasWayglassNear(rx, ry){const exact=`${rx},${ry}`;if(save.checkpoints?.[exact])return exact;let best=null;for(const[k,c]of Object.entries(save.checkpoints||{})){const d=Math.max(Math.abs(c.rx-rx),Math.abs(c.ry-ry));if(d<=ATLAS_WAYGLASS_REACH&&(!best||d<best.d))best={k,d}}return best?.k||null}
@@ -2265,12 +2269,13 @@ function updateMapTravelButton() {
   const travel = $("#mapTravel"), selected = mapView.selected,
     checkpoint = save.checkpoints?.[selectedWayglassKey()] || (selected && save.checkpoints?.[`${selected.rx},${selected.ry}`]);
   const sigil = game.area === "dungeon" || sigilAtlas || !!game.rite; // CROSSING_SIGIL: out of anywhere, inside or out; the Rite of Ascendancy seals Wayglass travel, so its way out is the sigil
-  travel.textContent = sigil
+  const stone = selectedWaystone(); // Waystone warp: only where Wayglass travel answers
+  travel.textContent = stone ? (game.area === "dungeon" || !!game.rite ? `${stone.label} · from outside only` : `Travel to ${stone.label}`) : sigil
     ? `Use Crossing Sigil ×${save.consumables.crossingSigil || 0} → ${checkpoint ? checkpoint.name || "Wayglass" : game.area === "dungeon" ? "dungeon entrance" : save.activeCheckpoint?.name || "active Wayglass"}` // release 449
     : checkpoint
       ? `Travel to ${checkpoint.name || "Wayglass"}`
       : "Return to active checkpoint";
-  travel.disabled = sigil && !(save.consumables.crossingSigil > 0);
+  travel.disabled = stone ? game.area === "dungeon" || !!game.rite : sigil && !(save.consumables.crossingSigil > 0);
   $("#mapHome").disabled = game.area === "dungeon" || !!game.rite; // ASCENDANCY.messages.sealed
   $("#mapHome").textContent = `Return to ${homeName(save)}`; // release 371
   // Release 541 (Tim: "I'm not seeing the option to set a listener town as my home... in the atlas"): the section you tapped,
@@ -3201,7 +3206,7 @@ $("#journalClose").onclick = () => journal.close();
 $("#creatureViewerClose").onclick=()=>$("#creatureViewer").close();
 $("#close").onclick = () => panel.close();
 $("#mapClose").onclick = () => atlas.close();
-$("#mapWayglassSelect").onchange=()=>{const key=$("#mapWayglassSelect").value,c=save.checkpoints?.[key];if(!c)return;mapView.chosen=true;mapView.x=c.rx;mapView.y=c.ry;showMapDetail(c.rx,c.ry);drawMap()};
+$("#mapWayglassSelect").onchange=()=>{const key=$("#mapWayglassSelect").value,stone=selectedWaystone(),c=save.checkpoints?.[key]||(stone&&{rx:stone.cx,ry:stone.cy});if(!c)return;/* Waystone warp: a Waystone shows its Pentagon */mapView.chosen=true;mapView.x=c.rx;mapView.y=c.ry;showMapDetail(c.rx,c.ry);drawMap()};
 $("#mapModeToggle").onclick=()=>{mapMode=mapMode==="dungeon"?"atlas":"dungeon";mapView.x=game.rx;mapView.y=game.ry;updateMapModeUI();if(mapMode==="atlas")showMapDetail(game.rx,game.ry);drawMap()};
 $("#dungeonLevelSelect").onchange=()=>{updateMapModeUI();drawMap()};
 $("#mapCenter").onclick = () => {
@@ -3229,7 +3234,8 @@ $("#mapUnstick").onclick = () => {
 };
 $("#mapTravel").onclick = () => {
   if (performance.now() - atlasOpenedAt < 500) return;
-  const key = selectedWayglassKey();
+  const key = selectedWayglassKey(), stone = selectedWaystone();
+  if (stone) { const warped = game.travelToWaystone(stone.key); persist(); if (warped) resume(); else { $("#mapDetail").textContent = game.message; drawMap(); } return; } // Waystone warp: refused wherever Wayglass travel is (game.ts WAYSTONE_WARP)
   const travelled=game.area === "dungeon" || sigilAtlas || game.rite
     ? game.useCrossingSigil(save.checkpoints?.[key] ? key : null) // release 449: on to the chosen Wayglass (CROSSING_SIGIL: from anywhere)
     : game.travelToCheckpoint(save.checkpoints?.[key] ? key : null);
@@ -3802,7 +3808,7 @@ function performInteraction(id, action) {
   persist();
   if (
     result?.ok &&
-    ["enter", "exit", "bypass", "restore", "sever", "transit"].includes(action)
+    ["enter", "exit", "bypass", "restore", "sever", "transit", "travelOut"].includes(action)
   ) {
     resume();
     return;

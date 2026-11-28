@@ -146,7 +146,7 @@ import { POISON, dosePoison, tickPoison, clearPoison } from "./apato-poison.ts";
 import { STEGO_BAIT, ensureStegoBait, recordStegoTail, stegoTailObject, takeStegoTail, placeStegoBait, stegoBaitIn, tickStegoBait, biteStegoBait, stegoBaitLures } from "./stego-bait.ts"; // the Stego Bait: the severed tail, the item and its lure
 import { PENTAGON, pentagonCentre, pentagonAt, placePentagonSection, isPentagonId, generatePentagonChamber, pentagonPlan, pentagonSeamOpen, PENTAGON_LORE, addPentagonInscription, readPentagonInscription, parsePentagonId, pentagonLinkEnds, pentagonLinkKey, isPentagonFinaleId, parsePentagonFinaleId, generatePentagonFinale, pentagonFinaleSpot, pentagonFinaleWall, pentagonFrontDoor, pentagonRoofAt, pentagonRoofSpots, PENTAGON_COMPLETE, payPentagonCompletion, pentagonsDue, pentagonCompleted, pentagonFellEarly, PENTAGON_FINDING, pentagonCatchment, pentagonCandidate, pentagonSigilRoll, pentagonSigilText, ensurePentagonFinding, pentagonHuntsOpen, pentagonHuntProbes, pentagonHeading, pentagonFarWords } from "./pentagon.ts";
 import { PENTAGON_HALLS, readPentagonMural, pentagonMuralsState } from "./pentagon-halls.ts"; // release 795: the grand halls' murals
-import { ADVENTURE_PENTAGON, ADVENTURE_LINKS } from "./adventures.ts"; // Pentagon version 11: the adventure (its Waystones, vistas and shortcut gates)
+import { ADVENTURE_PENTAGON, ADVENTURE_LINKS, ADVENTURE_THEMES } from "./adventures.ts"; // Pentagon version 11: the adventure (its Waystones, vistas and shortcut gates)
 useRoof({ roofAt: pentagonRoofAt, roofSpots: pentagonRoofSpots }); // release 752: the roof dwellers live on the v7 Pentagon roof
 import { THE_DEEP, DEEP_FLOOR_GEN, deepFloorGen, ensureTheDeep, deepIdFor, isDeepId, deepShaft, shaftHere, startFloors, floorPlan, floorScale, floorAffixShare, guardianAffixes, lootBonus, floorSpecial, deepSpecialRow, lairScale, DEEP_SPECIALS } from "./the-deep.ts";
 import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExit } from "./deep-annex.ts";
@@ -482,8 +482,57 @@ function labyrinthState(save, map) {
 function adventureWaystoneState(save, map) {
   for (const o of map?.objects || []) { if (o.kind !== "pentWaystone") continue;
     const list = save.consequences?.dungeons?.[`${o.pentBase}:f1`]?.advWaystones, others = (Array.isArray(list) ? list : []).filter((w) => w && w.id !== o.chamberId && typeof w.id === "string" && Number.isFinite(w.x) && Number.isFinite(w.y));
-    o.actions = ["rest", ...others.map((w) => `travel:${w.waystone}`)]; o.actionLabels = { ...(o.actionLabels || {}), ...Object.fromEntries(others.map((w) => [`travel:${w.waystone}`, ADVENTURE_PENTAGON.waystone.travel(w.name)])) }; }
+    o.actions = ["rest", ...others.map((w) => `travel:${w.waystone}`)]; o.actionLabels = { ...(o.actionLabels || {}), ...Object.fromEntries(others.map((w) => [`travel:${w.waystone}`, ADVENTURE_PENTAGON.waystone.travel(w.name)])), [WAYSTONE_WARP.out]: WAYSTONE_WARP.outLabel(waystoneOutTarget(save)?.name || WAYSTONE_WARP.gateName) }; } // Waystone warp: Travel out (interactions.ts validActions offers it; `actions` stays as generated)
   return map;
+}
+// Waystone warp (Tim, 2026-11-28: "you get lost... until you find the shortcut central hub, and then... it'll be easy for you to
+// get to that central area. So you don't have to traverse the whole Pentagon again"). Two ways, both through the Wayglass line:
+// - into a Pentagon: every Waystone of a version-11 Pentagon the Wayfarer has rested at (the base history's `advWaystones`, and
+//   its `advRest`, so rests from before this release count) joins the Atlas's Wayglass list (restedWaystones), named for its
+//   Pentagon's theme, its hall or ward, and its ring (|cx| + |cy|). Taken wherever Wayglass travel is (Game.travelToWaystone):
+//   a plain arrival at the stone, not a rest; resting is left to the Wayfarer.
+// - out of one: "Travel out" at any Waystone returns to the last Wayglass used (`save.waystoneWarp.lastWayglass`, types.ts),
+//   where Wayglass travel would set you down, or with none to the Pentagon's outer gate (pentagonFrontDoor). Never in a fight.
+// Older Pentagons (before version 11) have no Waystones, so nothing changes for them; no generation changes.
+export const WAYSTONE_WARP = Object.freeze({
+  prefix: "waystone:", // the Atlas list's value for a Waystone: the prefix and its chamber's id
+  out: "travelOut", gateName: "the outer gate",
+  clear: 3, // an arrival stands at least this many tiles from any living creature (a small, bounded search of the hall's floor)
+  search: 10, // how far from the stone that search looks, in tiles
+  fightReach: 14, // a hunting creature this near (or a guardian anywhere awake) keeps Travel out shut, as the autosave reads a fight
+  group: "Pentagon Waystones",
+  label: (theme, place, ring) => `Waystone · ${theme} Pentagon, ${place} (ring ${ring})`,
+  outLabel: (name) => `Travel out · ${name}`,
+  messages: Object.freeze({
+    unknown: "That Waystone does not know you yet. Rest against it first.",
+    sealed: "Waystone travel answers only where Wayglass travel does. Reach an exit, or use a Crossing Sigil.",
+    displaced: "Wayglass travel cannot find you after the displacement. Reach a physical Wayglass, or die, to restore the line.",
+    arrived: (name) => `The Wayglass line folds, and you stand beside ${name}. Its warmth is at your back.`,
+    fight: "Not with something hunting you. The stone will wait until the fight is done.",
+    out: (name) => `You lay a hand on the stone, and the Wayglass line carries you out to ${name}. Nothing carried was lost.`,
+    gate: "You lay a hand on the stone, and it sets you down outside, at the Pentagon's outer gate. Nothing carried was lost.",
+    notPentagon: "The stone is cold.",
+  }),
+});
+// The Waystone a Travel out returns to: the last Wayglass used, unless the Wayglass line cannot find you (a displacement), or null.
+export function waystoneOutTarget(save) { const c = save?.waystoneWarp?.lastWayglass; return !save?.session?.displacementJourney && validCheckpoint(c) ? c : null; }
+// One rested Waystone's Atlas entry, or null (not a version-11 Pentagon's Waystone chamber). Bounded memo of labels by chamber id.
+const WAYSTONE_LABELS = new Map();
+function waystoneEntry(id, w) {
+  const q = parsePentagonId(id); if (!q || q.V < ADVENTURE_PENTAGON.version || !Number.isFinite(w?.x) || !Number.isFinite(w?.y)) return null;
+  let label = WAYSTONE_LABELS.get(id);
+  if (label === undefined) { const P = pentagonPlan(q.seed, q.cx, q.cy, q.V), node = P.adventure ? P.nodes[q.n] : null;
+    label = node && (node.kind === "waystone" || node.waystone) ? WAYSTONE_WARP.label(ADVENTURE_THEMES[P.adventure.primary]?.name || PENTAGON.name, node.kind === "waystone" ? node.name : String(node.name || "").split(" · ")[0], Math.abs(q.cx) + Math.abs(q.cy)) : null;
+    if (WAYSTONE_LABELS.size > 64) WAYSTONE_LABELS.clear(); WAYSTONE_LABELS.set(id, label); }
+  return label ? { key: `${WAYSTONE_WARP.prefix}${id}`, id, base: q.base, cx: q.cx, cy: q.cy, ring: Math.abs(q.cx) + Math.abs(q.cy), x: w.x, y: w.y, name: w.name || ADVENTURE_PENTAGON.waystone.name, label } : null;
+}
+// Every Waystone rested at in this journey, ordered by ring, then section, then name: the Atlas's Waystone entries.
+export function restedWaystones(save) {
+  const D = save?.consequences?.dungeons, out = [], seen = new Set(); if (!D || typeof D !== "object") return out;
+  for (const k in D) { if (!k.startsWith("pentagon:") || !k.endsWith(":f1")) continue; const H = D[k], p = parsePentagonId(k); if (!H || typeof H !== "object" || !p || p.V < ADVENTURE_PENTAGON.version) continue;
+    for (const w of [...(Array.isArray(H.advWaystones) ? H.advWaystones : []), ...(H.advRest ? [H.advRest] : [])]) {
+      if (!w || typeof w.id !== "string" || seen.has(w.id) || parsePentagonId(w.id)?.base !== p.base) continue; const e = waystoneEntry(w.id, w); if (e) { seen.add(w.id); out.push(e); } } }
+  return out.sort((a, b) => a.ring - b.ring || a.cx - b.cx || a.cy - b.cy || a.label.localeCompare(b.label));
 }
 // TOWER_SEAL (great-buildings.ts): a compound or castle floor holding the tower's key, as this journey left it: once taken (kept on
 // the tower's first floor's history, `labKeys`) the key is gone.
@@ -4912,6 +4961,7 @@ export class Game {
     this.effects = [];
     this.traversal = null;
     this.clearCarriedStates(); // release 736 (review F8): you arrive on your feet, not gliding, swimming or held
+    this.noteWayglass(c); // Waystone warp: the last Wayglass used
     this.message = `${strandedHome ? DISPLACEMENT_STRAND.message + " " : ""}Returned to ${c.name || "the active checkpoint"}. Nothing carried was lost.`;
     this.sync();
     return true;
@@ -4930,6 +4980,64 @@ export class Game {
   }
   returnToCheckpoint() {
     return this.travelToCheckpoint();
+  }
+  // Waystone warp (WAYSTONE_WARP): the last Wayglass used, kept for a Waystone's Travel out (save.waystoneWarp, types.ts).
+  noteWayglass(c) { if (!validCheckpoint(c)) return; const w = this.save.waystoneWarp && typeof this.save.waystoneWarp === "object" ? this.save.waystoneWarp : (this.save.waystoneWarp = {}); w.lastWayglass = { rx: c.rx, ry: c.ry, x: c.x, y: c.y, name: c.name || "Wayglass" }; }
+  // Waystone warp, in: from the Atlas's Wayglass list (`key`: WAYSTONE_WARP.prefix and the chamber's id, or the id) to a Waystone
+  // rested at, wherever Wayglass travel answers (never inside a dungeon, the Deep or a Pentagon, in the Rite of Ascendancy or after
+  // a displacement). A plain arrival, not a rest: on clear floor beside the stone, no creature within WAYSTONE_WARP.clear, the
+  // states that belonged to where you were cleared as by Wayglass travel; a skiff sailed is rowed back to its dock by its crew.
+  travelToWaystone(key) {
+    const W = WAYSTONE_WARP, M = W.messages, id = String(key || "").startsWith(W.prefix) ? String(key).slice(W.prefix.length) : String(key || "");
+    const w = restedWaystones(this.save).find((q) => q.id === id); if (!w) { this.message = M.unknown; return false; }
+    if (this.rite) { this.message = ASCENDANCY.messages.sealed; return false; }
+    if (this.save.session.displacementJourney) { this.message = M.displaced; return false; }
+    if (this.area === "dungeon") { this.message = M.sealed; return false; }
+    const late = this.sigilBlocked(); if (late) { this.message = late; return false; }
+    const P = parsePentagonId(id), plan = pentagonPlan(P.seed, P.cx, P.cy, P.V), p = this.player;
+    if (aboard(this.save)) { disembark(this.save, ensureBoatState(this.save).home); p.sailVx = p.sailVy = 0; } // as when a skiff is carried onto ground
+    this.snapshotArea();
+    this.save.session.dungeonReturn = { ...pentagonFrontDoor(plan) }; // a way out with no door taken: the outer gate (each door still lets you out by itself)
+    this.save.session.activeDungeonId = id; this.save.session.activeDungeonLevelId = null; this.save.session.viewportDungeonHuntId = null; this.save.session.activeDisplacement = null;
+    pinDungeonLayout(this.save, id); const h = dungeonHistory(this.save, id); h.visits++; h.visitOpen = true;
+    this.loadArea("dungeon", false);
+    const stone = this.map.objects.find((o) => o.kind === "pentWaystone") || w, at = buildingArrival(this.map, stone.x, stone.y); p.x = at.x; p.y = at.y;
+    relocateIfStranded(p, this.map, mapWidth(this.map, "dungeon")); this.settleArrival(); this.clearOfCreatures();
+    this.projectiles = []; this.effects = []; this.traversal = null; this.clearCarriedStates(); this.fallen = null; this.jumpUntil = 0;
+    p.invulnerableUntil = Math.max(p.invulnerableUntil || 0, (this.lastUpdateNow || 0) + 1500);
+    this.message = M.arrived(stone.name || w.name); this.defeatNotice = { title: ADVENTURE_PENTAGON.waystone.notice, detail: w.label, kind: "discovery", sound: "shortcut" };
+    this.sync(); return true;
+  }
+  // An arrival with a living creature within WAYSTONE_WARP.clear tiles moves to the nearest floor reachable from it (within
+  // WAYSTONE_WARP.search) that is clear of them all; bounded by the search square. Returns whether it moved.
+  clearOfCreatures() {
+    const W = WAYSTONE_WARP, p = this.player, map = this.map, width = mapWidth(map, this.area), height = Math.floor((map?.tiles?.length || 0) / width);
+    const foes = this.enemies.filter((e) => e && !e.dead && !e.friendly && !(e.hp <= 0) && Math.hypot(e.x - p.x, e.y - p.y) < W.clear + W.search); if (!height || !foes.length) return false;
+    const clear = (x, y) => foes.every((e) => Math.hypot(e.x - x, e.y - y) >= W.clear); if (clear(p.x, p.y)) return false;
+    const sx = Math.round(p.x), sy = Math.round(p.y), seen = new Set([sy * width + sx]), queue = [[sx, sy]];
+    for (let k = 0; k < queue.length; k++) { const [x, y] = queue[k]; if (k && !footprintOpen(map, width, x, y, false, false, false, true)) continue; if (k && clear(x, y)) { p.x = x; p.y = y; return true; }
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy, i = ny * width + nx; if (nx < 0 || ny < 0 || nx >= width || ny >= height || Math.abs(nx - sx) > W.search || Math.abs(ny - sy) > W.search || seen.has(i)) continue; seen.add(i); queue.push([nx, ny]); } }
+    return false;
+  }
+  // Is a fight under way here: a hunting creature within WAYSTONE_WARP.fightReach, or an awake guardian or boss anywhere on the floor.
+  waystoneFight() { const p = this.player, R = WAYSTONE_WARP.fightReach;
+    return this.enemies.some((e) => e && !e.dead && !e.friendly && !(e.hp <= 0) && (e.aggro || e.pentArenaAwake) && (Math.hypot(e.x - p.x, e.y - p.y) <= R || e.boss || e.pentBoss || e.pentFinaleBeast || isDungeonGuardian(e))); }
+  // Waystone warp, out: from a Waystone to the last Wayglass used (where Wayglass travel would set you down), or to the Pentagon's
+  // outer gate with none. Never in a fight, a boss's above all, nor once fallen; a walk out, never a crossing left unresolved.
+  travelOutOfPentagon(o) {
+    const W = WAYSTONE_WARP, M = W.messages, B = this.map?.building, P = this.area === "dungeon" && B?.pentagon && B.adventure ? parsePentagonId(this.areaId()) : null;
+    if (!P || o?.kind !== "pentWaystone") return { ok: false, message: (this.message = M.notPentagon) };
+    const late = this.sigilBlocked(); if (late) return { ok: false, message: (this.message = late) };
+    if (this.rite) return { ok: false, message: (this.message = ASCENDANCY.messages.sealed) };
+    if (this.waystoneFight()) return { ok: false, message: (this.message = M.fight) };
+    const to = waystoneOutTarget(this.save), gate = pentagonFrontDoor(pentagonPlan(P.seed, P.cx, P.cy, P.V));
+    dungeonHistory(this.save, this.areaId()).visitOpen = false; // a walk, not a crossing left unexplored (as the dais's Transit)
+    this.save.session.dungeonReturn = to ? { rx: to.rx, ry: to.ry, x: to.x, y: to.y } : { ...gate };
+    if (!this.leaveDungeon("")) return { ok: false, message: this.message };
+    this.landSafely(); this.clearCarriedStates(); this.fallen = null; this.jumpUntil = 0; this.traversal = null;
+    this.message = to ? M.out(to.name || "the Wayglass") : M.gate;
+    this.defeatNotice = { title: "TRAVEL OUT", detail: to ? to.name || "the Wayglass" : W.gateName, kind: "discovery", sound: "shortcut" };
+    this.sync(); return { ok: true, message: this.message };
   }
   // ---------------------------------------------------------------- glyphs (release 98)
   glyphLoadout(host, spellId = null) {
@@ -6106,7 +6214,9 @@ export class Game {
     if (o.kind === "annexStair") return this.descendAnnex(o); // release 675
     if (o.kind === "buildingStair") return this.takeBuildingStair(o); // great buildings
     if (o.kind === "pentShortcut") return this.pentagonShortcut(o); // the Pentagon's shortcut links (v6)
-    if (o.kind === "pentWaystone") return String(action || "").startsWith("travel:") ? this.travelWaystone(o, Number(String(action).slice(7))) : this.restAtWaystone(o); // Pentagon v11: a Waystone: rest (and wake here), or travel to another
+    if (o.kind === "pentWaystone") { if (action === WAYSTONE_WARP.out) return this.travelOutOfPentagon(o); // Waystone warp: out to the last Wayglass used
+      if (!action) { this.interactionRequested = o.id; return { ok: true, message: (this.message = `${o.name}: rest, or travel.`) }; } // Waystone warp: Act opens its choices (rest, travel, Travel out)
+      return String(action).startsWith("travel:") ? this.travelWaystone(o, Number(String(action).slice(7))) : this.restAtWaystone(o); } // Pentagon v11: a Waystone: rest (and wake here), or travel to another
     if (o.kind === "advVista") { const B = this.map.building; o.state = "read"; this.message = o.lore; journalOnce(this.save, `adventure-vista:${B?.base}:${B?.node}`, o.lore, PENTAGON.name); this.sync(); return { ok: true, message: this.message }; } // Pentagon v11: a vista's view of the landmark
     if (o.kind === "pentFinaleWall") return this.pentagonFinaleWalk(o); // the finale's opened wall, either side
     if (o.kind === "pentDais") return this.pentagonDais(o, action); // and its dais: Transit, and its rerolls
@@ -6316,6 +6426,7 @@ export class Game {
       };
       this.save.checkpoints[this.rx + "," + this.ry] =
         this.save.activeCheckpoint;
+      this.noteWayglass(this.save.activeCheckpoint); // Waystone warp: the last Wayglass used
     } else if (r.transition === "chest") {
       this.obtainDrop(o.rewardSource || "chest");
       if (this.area === "dungeon" && !this.map?.skyland) { const sk = this.grantSeedFind("dungeon", `${this.areaStateId()}:${o.id}`); if (sk) this.message = `${this.message} Among it lies a ${SEEDS[sk].name}.`; } // travel seeds (SEED_FINDS.dungeon)
@@ -11304,7 +11415,7 @@ export class Game {
   // wakeOnCrown (TREE_GLIDE.home.setsRest, Decision 14), whose own wake message then follows.
   takeCrownRest(o) {
     const c = this.save.activeCheckpoint; if (c && c.rx === this.rx && c.ry === this.ry && c.x === o.x && c.y === o.y) return false;
-    this.save.activeCheckpoint = { rx: this.rx, ry: this.ry, x: o.x, y: o.y, name: o.keepRest ? "Keep Rest" : "Crown Rest", crown: true }; (this.save.checkpoints ||= {})[`${this.rx},${this.ry}`] = this.save.activeCheckpoint;
+    this.save.activeCheckpoint = { rx: this.rx, ry: this.ry, x: o.x, y: o.y, name: o.keepRest ? "Keep Rest" : "Crown Rest", crown: true }; (this.save.checkpoints ||= {})[`${this.rx},${this.ry}`] = this.save.activeCheckpoint; this.noteWayglass(this.save.activeCheckpoint); /* Waystone warp */
     this.message = o.keepRest ? "The keep's crown is yours: you will wake here if you fall." : "The crown hums under your feet: the great tree will hold you here if you fall."; return true;
   }
   // Release 659 (Tim: "I'm trapped in the listener's dungeon. There's no exit"): on a multi-level floor, which way the passages
