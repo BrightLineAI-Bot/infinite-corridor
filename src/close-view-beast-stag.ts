@@ -12,7 +12,7 @@ import { STAG_ART } from "./briar-stag-render.ts";
 import { ATTACK_MODULES, packWindupScale, STAG } from "./monster-pack.ts";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, aimWorld, boneLocalToWorld, writeSkin, poseAnimalLeg,
-  createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, easeOut, span, kick, wobble, TIER_DETAIL,
+  blendActs, createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, easeOut, span, kick, wobble, TIER_DETAIL,
 } from "./close-view-beast-rig.ts";
 
 const hex = (s) => parseInt(s.slice(1), 16);
@@ -365,10 +365,7 @@ export function sampleStag(tr, e, env) {
   const yaw = tr.yaw, cf = Math.cos(yaw), sf = Math.sin(yaw);
   // crossfade between acts (never across a contact: those live inside an act's timeline)
   const key = e.pack?.attack ? `${e.pack.attack}:${e.pack.seq}:${e.pack.data?.mode || ''}:${e.pack.data?.stage || ''}` : e.playing ? 'play' : dead ? 'death' : 'move';
-  if (tr.key === '' || !(gapMs <= G.blendMs)) { if (key !== tr.key) tr.blendAt = -Infinity; tr.shown.set(V); tr.from.set(V); tr.key = key; }
-  else if (key !== tr.key) { tr.from.set(tr.shown); tr.blendAt = now; tr.key = key; }
-  const blend = tr.blendAt === -Infinity ? 1 : smooth((now - tr.blendAt) / G.blendMs);
-  for (let k = 0; k < K; k++) tr.shown[k] = tr.from[k] + (V[k] - tr.from[k]) * blend;
+  blendActs(tr, key, V, K, now, gapMs, G.blendMs);
   W.set(tr.shown);
   // beats inside an act (each hook, stamp, thorn volley or call): the rising edge starts a short kick
   if (ACT.beat >= 0 && ACT.beat !== tr.beatSeq) { tr.beatSeq = ACT.beat; tr.beatAt = now; tr.beatK = ACT.beatK; } else if (ACT.beat < 0) tr.beatSeq = -1;

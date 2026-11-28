@@ -9,7 +9,7 @@
 import { ATTACK_MODULES, packWindupScale, QB_MOVES } from "./monster-pack.ts";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, setWorldAxes, boneLocalToWorld, writeSkin, poseAnimalLeg,
-  createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, easeOut, span, kick, wobble, TIER_DETAIL,
+  blendActs, createGait, stepGait, meshBuilder, clamp01, smooth, easeIn, easeOut, span, kick, wobble, TIER_DETAIL,
 } from "./close-view-beast-rig.ts";
 
 export const QB_RIG = Object.freeze({
@@ -332,10 +332,7 @@ export function sampleQb(tr, e, env) {
     let turn = Math.max(-1, Math.min(1, dt * rate)) * delta; if (!e.pack?.attack && tr.gait.moving < .1) turn = Math.max(-G.standTurnMax * dt, Math.min(G.standTurnMax * dt, turn)); tr.yaw += turn; }
   const yaw = tr.yaw, cf = Math.cos(yaw), sf = Math.sin(yaw);
   const key = e.pack?.attack ? `${e.pack.attack}:${e.pack.seq}:${e.pack.phase === 'strike' ? 'strike' : ''}` : e.pack?.evade?.t > 0 ? 'evade' : dead ? 'death' : 'move';
-  if (tr.key === '' || !(gapMs <= G.blendMs)) { if (key !== tr.key) tr.blendAt = -Infinity; tr.shown.set(V); tr.from.set(V); tr.key = key; }
-  else if (key !== tr.key) { tr.from.set(tr.shown); tr.blendAt = now; tr.key = key; }
-  const blend = tr.blendAt === -Infinity ? 1 : smooth((now - tr.blendAt) / G.blendMs);
-  for (let k = 0; k < K; k++) tr.shown[k] = tr.from[k] + (V[k] - tr.from[k]) * blend;
+  blendActs(tr, key, V, K, now, gapMs, G.blendMs);
   W.set(tr.shown);
   if (ACT.beat >= 0 && ACT.beat !== tr.beatSeq) { tr.beatSeq = ACT.beat; tr.beatAt = now; tr.beatK = ACT.beatK; } else if (ACT.beat < 0) tr.beatSeq = -1;
   if (ACT.contact && !tr.contactWas) { tr.impactAt = now; tr.impactK = /Wave|Pounce|leapSlam/.test(ACT.phase) ? 1 : .55; }
