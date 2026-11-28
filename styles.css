@@ -1283,6 +1283,13 @@ body.proving-ground .compass-ribbon, body.viewport-closed .compass-ribbon { disp
 @keyframes np-scroll { 0% { transform: translateX(var(--np-room, 200px)); } 28% { transform: translateX(0); } 64% { transform: translateX(min(0px, calc(var(--np-room, 200px) - var(--np-width, 0px)))); } 100% { transform: translateX(calc(-1 * var(--np-width, 200px))); } }
 body.reduce-motion .np-window { width: auto; max-width: min(13.5rem, calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right) - 150px)); text-overflow: ellipsis; -webkit-mask-image: none; mask-image: none; }
 body.reduce-motion .np-title { display: inline; animation: none !important; transform: none; }
+/* In the place box (Tim, 2026-11-28; main.ts fitPlaceBox): laid exactly over the canvas's place label under Map and Pack, the
+   box's own size, colours and 12 px type (it never grows with the text or UI scale, so nothing shifts or overlaps), opaque so the
+   place's name is hidden under it; the title scrolls through, then fades back to the place. Reduce motion: the still title,
+   cut short with an ellipsis. Without a box on screen it stays the pill above. */
+.now-playing.in-box { top: var(--np-y, 0px); left: var(--np-x, 0px); width: var(--np-w, 150px); height: var(--np-h, 24px); max-width: none; box-sizing: border-box; padding: 0 8px; gap: 4px; border: 0; border-radius: 0; background: #151411; color: #cec7b6; font: 12px/24px monospace; letter-spacing: 0; text-shadow: none; overflow: hidden; }
+.now-playing.in-box.visible { opacity: 1; }
+.now-playing.in-box .np-window { flex: 1 1 0; width: auto; min-width: 0; max-width: none; }
 body.proving-ground .now-playing { display: none !important; }
 /* The Wardrobe (Pack → Wardrobe, wardrobe.ts): the preview on top, the view and in-hand toggles, the presets, the quick swap. */
 .wardrobe { display: grid; gap: .55rem; }
