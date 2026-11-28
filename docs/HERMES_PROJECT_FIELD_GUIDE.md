@@ -6,7 +6,7 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
-## Unreleased — Pentagons on the Atlas
+## Release 1093 — Pentagons on the Atlas
 
 Tim (2026-11-28): mark the Pentagons he has discovered or entered on the Atlas, with a layer toggle like the relays, coloured by whether each is complete (its Tesseract earned) so he can return to unfinished ones; each marker covers the Pentagon's real footprint, not a dot, and stays readable zoomed out.
 
