@@ -40,7 +40,7 @@ test('the creator\'s body choice is stored with the weapon and tool and persists
   const main = fs.readFileSync(new URL('../src/main.ts', import.meta.url), 'utf8');
   assert.match(main, /body=startBodyGroup\(\),choices=\[mode\.box,body\.box,weapon\.box,tool\.box\]/);
   assert.match(main, /weapon:weapon\.value\(\),tool:tool\.value\(\),body:body\.value\(\)/);
-  assert.match(main, /if\(category==="System"\)\{wayfarerBodyRow\(grid\);/);
+  assert.doesNotMatch(main, /wayfarerBodyRow/, 'Tim 2026-11-28: the body changes only at Oren or a town Keeper, for marks');
 });
 
 test('the female asset derives from the converted one: no bun, a braid, the same rig, within the body cap', () => {

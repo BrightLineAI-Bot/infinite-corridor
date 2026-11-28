@@ -6,6 +6,14 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Unreleased — the body swap at Oren and the town Keepers
+
+Tim (2026-11-28): "there should be a gender swap that's available... for 500 marks... the same person who makes a stat reset available... in the town." He chose to remove the free switch in Options → System.
+
+**CODE:** `src/interactions.ts`: `BODY_SWAP {marks: 500}` and `swapBody(s, who)`, which flips `save.wayfarer.body` through `setWayfarerBody` and takes the marks, or refuses with the price and what you have; transition `reshape`. `withReshape` puts `reshape` right after `retrain` in `validActions` for Oren Vale (`warden-oren`) and every `townKeeper`; the generated action lists are not changed. `applyInteraction` routes `reshape` for both (the Keeper speaks in its own name). `src/main.ts`: the label "Change Wayfarer to female/male (500 marks)"; `wayfarerBodyRow` and its row in Options → System are removed. Tests: `tests/body-swap.test.ts`; `tests/female-wayfarer.test.ts` now asserts the System row is gone.
+
+**BOUNDARY:** Presentation only: gear, skills, stats, Aperture and the journey are untouched; both views read the body every frame, so the change shows at once. No new save field (`save.wayfarer.body` exists since 1069), schema 14, no generation change. The new-journey choice is unchanged.
+
 ## Release 1088 — slimmer saves: area packs and a split main record
 
 Tim (2026-11-27): his 42-hour journey stored ~15 MB and will keep growing as he explores past 1000 sections; save only what changed. Measured on his save: `session.areas` 12.1 MB over 1,825 areas (foes 10.24 MB: 12,348 dead-foe tombstones and 4,100 full records), the main record 2.9 MB (consequences .65, killLedger .55, atlas .54, narrative .47 MB). Delta-encoding areas against regeneration was rejected: a regenerated foe depends on saved progress (the Threat Sigil, defeated elites, choices) and unpinned balance tables, so a delta could silently change stored foes. Per-area records written only when changed already existed (release 555). Tim approved: compression, a slightly slower load, stored size shown, the main-record split, lossless compaction only.
