@@ -6,6 +6,13 @@
 
 Operator decision 2026-10-11: Test Bot makes all code changes through approved cards, npm test checks, staging, and an operator-approved merge into local main. The `infinitecorridor` Hermes profile only investigates and publishes merged main through `scripts/proposal-workflow.mjs` (create, validate, publish-preview, promote), using the repository-owned [owner review and promotion flow](proposal-publication-workflow.md). Each publication requires a separate Discord approval card. Change-Control is disabled workspace-wide; `.change-control/` and the old Verdict Gate are historical, not current authority. Approval for preparation does not approve preview publication or production promotion. This documentation does not change the external profile adapter.
 
+## Release 1090 — the body swap at Oren and the town Keepers
+
+Tim (2026-11-28): "there should be a gender swap that's available... for 500 marks... the same person who makes a stat reset available... in the town." He chose to remove the free switch in Options → System.
+
+**CODE:** `src/interactions.ts`: `BODY_SWAP {marks: 500}` and `swapBody(s, who)`, which flips `save.wayfarer.body` through `setWayfarerBody` and takes the marks, or refuses with the price and what you have; transition `reshape`. `withReshape` puts `reshape` right after `retrain` in `validActions` for Oren Vale (`warden-oren`) and every `townKeeper`; the generated action lists are not changed. `applyInteraction` routes `reshape` for both (the Keeper speaks in its own name). `src/main.ts`: the label "Change Wayfarer to female/male (500 marks)"; `wayfarerBodyRow` and its row in Options → System are removed. Tests: `tests/body-swap.test.ts`; `tests/female-wayfarer.test.ts` now asserts the System row is gone.
+
+**BOUNDARY:** Presentation only: gear, skills, stats, Aperture and the journey are untouched; both views read the body every frame, so the change shows at once. No new save field (`save.wayfarer.body` exists since 1069), schema 14, no generation change. The new-journey choice is unchanged.
 ## Release 1089 — Town music and the title in the location box
 
 Tim (2026-11-28) asked for a dedicated town music context, and for the now-playing title to scroll in the bottom-left section box instead of a separate pill.
