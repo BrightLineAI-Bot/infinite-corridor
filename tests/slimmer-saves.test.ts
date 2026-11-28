@@ -20,12 +20,13 @@ function exact(a, b, path = '') {
 }
 
 function fakeIdb() {
-  const data = new Map(), ls = new Map(), ctl = { data, ls, failOn: null };
+  const data = new Map(), ls = new Map(), ctl = { data, ls, failOn: null, lie: false };
   const inRange = (k, r) => r && typeof r === 'object' ? k >= r.lower && k <= r.upper : k === r;
   const keysIn = (r) => [...data.keys()].filter((k) => inRange(k, r)).sort();
-  function transaction() {
+  function transaction(_store, mode) {
     const tx = { pending: 0, settled: false, error: null };
-    const settle = () => setTimeout(() => { if (tx.pending || tx.settled) return; tx.settled = true; if (tx.error) { tx.onerror?.(); tx.onabort?.(); } else tx.oncomplete?.(); }, 0);
+    // lie: the transaction commits, but the page hears an abort (its stall timer fired mid-commit)
+    const settle = () => setTimeout(() => { if (tx.pending || tx.settled) return; tx.settled = true; if (tx.error) { tx.onerror?.(); tx.onabort?.(); } else if (mode === 'readwrite' && ctl.lie) { ctl.lie = false; tx.error = new Error('reported failed, but committed'); tx.onabort?.(); } else tx.oncomplete?.(); }, 0);
     const request = (kind, key, fn) => { const q = {}; tx.pending++; setTimeout(() => { if (tx.settled) return; try { if (ctl.failOn?.(kind, key)) throw new Error(`fake ${kind} failure`); q.result = fn(); q.onsuccess?.(); } catch (e) { q.error = tx.error = e; q.onerror?.(); } tx.pending--; settle(); }, 0); return q; };
     tx.objectStore = () => ({
       get: (k) => request('get', k, () => structuredClone(data.get(k))),
@@ -100,7 +101,7 @@ test('areas left unchanged are packed a few buckets a write; the journey reads b
   assert.equal(main.version, PACKED_AREAS.storeVersion, 'the main record carries the marker with its first pack'); assert.equal(main.session[PACKED_FROM], 14);
   assert.equal(ctl.data.has('journey:1::delta'), false, 'that write was whole');
   await settle(P, s);
-  assert.deepEqual(plainKeys(ctl), ['journey:1::area::overworld:99:0:g1'], 'every area is packed but the one too small to be worth it');
+  assert.ok(plainKeys(ctl).length <= 1, 'every area is packed (a small one only when its bucket is packed for a larger one)');
   const delta = ctl.data.get('journey:1::delta'); assert.ok(delta, 'later writes are deltas again');
   assert.equal(delta.ops.some(([path]) => path[0] === 'version' || path.includes(PACKED_FROM)), false, 'a delta never touches the marker');
   const Q = await freshPersistence(), back = await Q.loadSave();
@@ -318,6 +319,60 @@ test('export, import, the mirror and a recovery copy carry the whole split journ
   await P.importJourney(1, JSON.stringify(exported), true); assert.deepEqual(ctl.data.get('recovery:1:1').atlas, want.atlas, 'the recovery copy is whole');
   assert.equal(sameJourney(await (await freshPersistence()).loadSave(), migrateSave(structuredClone(exported))), null);
   await P.deleteJourney(1); assert.equal(partKeys(ctl).length, 0, 'parts go with the journey');
+});
+
+// ---------------------------------------------------------------- the store stays whole whatever a page remembers (review of 1085)
+// 200 large areas and split collections, stored first by a build without packs (every area a plain record).
+async function storedPlain(ctl, seed) {
+  const s = bigMain(seed); s.session.areas = Object.fromEntries(Array.from({ length: 200 }, (_, i) => [`overworld:${i}:0:g1`, bigArea(i)]));
+  const CS = globalThis.CompressionStream; globalThis.CompressionStream = undefined;
+  try { const P0 = await freshPersistence(); P0.setActiveSlot(1); await P0.saveGame(s); await P0.flushSaves(); } finally { globalThis.CompressionStream = CS; }
+  return s;
+}
+const quietly = async (fn) => { const w = console.warn; console.warn = () => {}; try { return await fn(); } finally { console.warn = w; } };
+async function wholeBack(want) {
+  const Q = await freshPersistence(); Q.setActiveSlot(1); const back = await Q.loadSave();
+  assert.equal(Q.saveBlocked(1), null); assert.equal(Object.keys(back.session.areas).length, 200, 'every area');
+  assert.equal(sameJourney({ ...back, xp: 0 }, { ...migrateSave(structuredClone(want)), xp: 0 }), null, 'the whole journey, every part');
+}
+
+test('a write that committed but was reported failed, then an urgent whole write: every area and part is still there', async () => {
+  for (const urgent of [true, false]) {
+    const ctl = fakeIdb(), clock = later(SAVE_DELTA_MS + 1000);
+    try {
+      await storedPlain(ctl, 'LIE');
+      const P = await freshPersistence(); P.setActiveSlot(1); const s = await P.loadSave();
+      s.xp = 1; await P.saveGame(s); await P.flushSaves(); // migrateSave compacted every area (a dead foe each), so this write puts them plain
+      s.xp = 2; ctl.lie = true; await P.saveGame(s); await quietly(() => P.flushSaves().catch(() => {}));
+      assert.ok(packKeys(ctl).length > 0 && plainKeys(ctl).length < 200, `that write packed buckets and committed (${packKeys(ctl).length} packs, ${plainKeys(ctl).length} plain)`);
+      s.xp = 3; clock.step(); await P.saveGame(s, urgent ? { urgent: true } : {}); await P.flushSaves();
+      await wholeBack(s);
+    } finally { clock.done(); }
+  }
+});
+
+test('two tabs on one journey: a tab that does not know the other packed areas never removes them', async () => {
+  const ctl = fakeIdb(), clock = later(SAVE_DELTA_MS + 1000);
+  try {
+    await storedPlain(ctl, 'TABS');
+    const A = await freshPersistence(), B = await freshPersistence(); A.setActiveSlot(1);
+    const sa = await A.loadSave(), sb = await B.loadSave();
+    for (let i = 0; i < 6; i++) { sa.xp = i + 1; await A.saveGame(sa); await A.flushSaves(); }
+    assert.ok(packKeys(ctl).length >= 40, 'tab A packed');
+    sb.xp = 1; await B.saveGame(sb); await B.flushSaves(); await wholeBack(sb);
+    sb.xp = 2; clock.step(); await B.saveGame(sb, { urgent: true }); await B.flushSaves(); await wholeBack(sb);
+    sa.xp = 9; clock.step(); await A.saveGame(sa); await A.flushSaves(); await wholeBack(sa);
+    sb.xp = 3; clock.step(); await B.saveGame(sb); await B.flushSaves(); await wholeBack(sb);
+  } finally { clock.done(); }
+});
+
+test('listing journeys or exporting during writes leaves the write memory alone', async () => {
+  const ctl = fakeIdb(), P = await freshPersistence(); P.setActiveSlot(1);
+  const s = bigMain('LIST-WRITE'); s.session.areas = Object.fromEntries(Array.from({ length: 60 }, (_, i) => [`overworld:${i}:0:g1`, bigArea(i)]));
+  await settle(P, s, 10); const main = structuredClone(ctl.data.get('journey:1'));
+  for (let i = 0; i < 4; i++) { s.xp++; s.atlas[`x${i}`] = { terrain: 'new' }; const w = P.saveGame(s); const [listed] = await Promise.all([P.listJourneySlots(), P.exportJourney(1), w]); assert.equal(listed[0].health, 'healthy'); await P.flushSaves(); }
+  assert.deepEqual(ctl.data.get('journey:1'), main, 'still deltas: the main record was not rewritten');
+  const back = await (await freshPersistence()).loadSave(); assert.equal(sameJourney(back, migrateSave(structuredClone(s))), null);
 });
 
 // ---------------------------------------------------------------- a real large journey (IC_BIG_SAVE)

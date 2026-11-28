@@ -364,11 +364,12 @@ const writeNow = (value) => urgentSnapshots.has(value) || globalThis.document?.h
 // PACKED_AREAS.storeVersion. Area copies that could not be packed are not tried again while unchanged.
 const packedIn = new Map(), gatedKeys = new Set(), unpackable = new WeakSet(), packSizes = new Map(), coreSizes = new Map();
 // The buckets this write packs again (up to packsPerWrite, none for an urgent write): those holding an area stored plain
-// that this write leaves as it is. Each takes every listed area of its bucket this write does not put. An area under
-// minChars of JSON (a few small records, not worth the stream) stays plain unless its bucket's pack already holds it.
+// that this write leaves as it is. Each takes every listed area of its bucket this write does not put (pre-publish review
+// of 1085: a pack never leaves out an area another page may have packed there). A bucket is chosen only for an area of
+// at least minChars of JSON; a bucket of small areas alone stays plain.
 async function packBuckets(value, keys, putting, held, sizes, P = PACKED_AREAS) {
-  const areas = value.session.areas, chosen = new Set(), packable = (k) => !putting.has(k) && !!areas[k] && typeof areas[k] === "object" && !unpackable.has(areas[k]) && (held.has(k) || sizes.get(k) >= P.minChars);
-  for (const k of keys) { if (chosen.size >= P.packsPerWrite) break; if (!held.has(k) && packable(k)) chosen.add(bucketOf(k)); }
+  const areas = value.session.areas, chosen = new Set(), packable = (k) => !putting.has(k) && !!areas[k] && typeof areas[k] === "object" && !unpackable.has(areas[k]);
+  for (const k of keys) { if (chosen.size >= P.packsPerWrite) break; if (!held.has(k) && packable(k) && sizes.get(k) >= P.minChars) chosen.add(bucketOf(k)); }
   if (!chosen.size) return [];
   const members = new Map([...chosen].map((b) => [b, []]));
   for (const k of keys) { const list = members.get(bucketOf(k)); if (list && packable(k)) list.push([k, areas[k]]); }
@@ -378,7 +379,24 @@ async function packBuckets(value, keys, putting, held, sizes, P = PACKED_AREAS) 
     return { bucket, pack, packed };
   }));
 }
+// Pre-publish review of 1085 (blocker): what this page remembers of the store (storedAreas, packedIn, partState) can be
+// wrong: a write that committed but was reported failed (the stall timer firing mid-commit), or another tab writing the
+// same journey. So no write deletes a record on memory alone. A delta write deletes only plain records of areas no longer
+// listed, or of areas it packs in the same transaction. A whole write's sweep reads the journey's keys and then keeps the
+// store whole: a plain record goes only when its area is no longer listed or is packed in this transaction; a pack goes
+// only when every listed area of its bucket keeps a plain record; a listed area found in neither is put again from the
+// journey in memory; a part bucket the new main record needs and the store lacks is put (plain), and all of them are put
+// again when the stored main record is not the one this page last wrote; any pack kept means the main record is put
+// with the marker. A write reported failed forgets this page's memory of the journey, so the next write puts what it
+// needs. Reads made for anything but loading never change this memory, and a read overlapped by a write is not adopted.
+const writeEpoch = new Map(), lastStamps = new Map();
+const bumpEpoch = (key) => writeEpoch.set(key, (writeEpoch.get(key) || 0) + 1);
+function forgetStore(key) { for (const m of [storedAreas, storedSizes, journals, recordKeys, packedIn, partState, packSizes, coreSizes, lastStamps]) m.delete(key); gatedKeys.delete(key); }
+const plainPart = (e) => ({ [PART_TAG]: 1, plain: { e: e.keys.map((k, i) => [k, e.seqs[i], e.refs[i]]) } });
 async function writeJourney(key, value) {
+  bumpEpoch(key); try { return await writeJourneyNow(key, value); } finally { bumpEpoch(key); }
+}
+async function writeJourneyNow(key, value) {
   await openDb(); const urgent = writeNow(value); if (!urgent) await nextTask(); const { main: splitMain, puts, keys } = splitSnapshot(value, storedAreas.get(key)), prefix = areaPrefix(key);
   const split = splitMain !== value, sizes = split ? sizesFor(key, value.session.areas, puts, keys) : null, live = new Set(keys);
   // Slimmer saves: where each listed area is stored after this write (a put is a plain record; a packed bucket holds its members).
@@ -410,11 +428,12 @@ async function writeJourney(key, value) {
   let packTotal = 0; for (const n of packBytes.values()) packTotal += n;
   const deltaOps = ops ? [...ops.values()].map((q) => [q.path, q.kind, q.value]) : null, stored = { core: ops ? coreSizes.get(key) || 0 : 0, delta: deltaOps ? jsonLength(deltaOps) : 0, plain: plainChars, packs: packTotal, parts: partBytes };
   if (split && !ops) { stored.core = jsonLength(main); main.session[STORED_SIZE] = stored; }
-  if (split && !ops && gate) main = { ...main, version: PACKED_AREAS.storeVersion, session: { ...main.session, [PACKED_FROM]: main.version } };
-  let queuedMs = 0;
+  const marked = split && !ops ? { ...main, version: PACKED_AREAS.storeVersion, session: { ...main.session, [PACKED_FROM]: main.version } } : null;
+  if (split && !ops && gate) main = marked;
+  let queuedMs = 0, heldAfter = held, plainAfter = plainNow, gatedAfter = !!(split && gate);
   try {
     await dbCall("readwrite", (store) => {
-      const t0 = performance.now();
+      const t0 = performance.now(), prior = split && !ops ? store.get(key) : null;
       for (const [k, area] of puts) store.put(area, prefix + k);
       for (const q of packs) store.put(q.pack, packPrefix(key) + q.bucket);
       for (const [k, r] of partPuts) store.put(r, k);
@@ -427,14 +446,34 @@ async function writeJourney(key, value) {
       // pack loses its plain record the same way, and the sweep (one read of the journey's keys) also removes the packs
       // that hold nothing listed.
       const had = ops ? recordKeys.get(key) : null;
-      if (had) { for (const k of had) if (!plainNow.has(k)) store.delete(prefix + k); for (const k of packedNow) store.delete(prefix + k); }
-      else { const pre = packPrefix(key), partPre = partPrefix(key), parts = plan ? new Set(plan.plans.flatMap((q) => [...q.now.keys()].map((b) => partRecordKey(key, q.P.name, b)))) : new Set(), stale = store.getAllKeys(IDBKeyRange.bound(`${key}::`, `${key}::￿`)); stale.onsuccess = () => { for (const k of stale.result) { const t = String(k); if (t.startsWith(prefix) ? !plainNow.has(t.slice(prefix.length)) : t.startsWith(pre) ? !used.has(Number(t.slice(pre.length))) : t.startsWith(partPre) && !(ops ? true : parts.has(t))) store.delete(k); } }; }
+      if (had) { for (const k of had) if (!live.has(k)) store.delete(prefix + k); for (const k of packedNow) store.delete(prefix + k); }
+      else {
+        const pre = packPrefix(key), partPre = partPrefix(key), stale = store.getAllKeys(IDBKeyRange.bound(`${key}::`, `${key}::￿`));
+        stale.onsuccess = () => {
+          const plainThere = new Set(), packsThere = new Set(), partsThere = new Set();
+          for (const k of stale.result) { const t = String(k); if (t.startsWith(prefix)) plainThere.add(t.slice(prefix.length)); else if (t.startsWith(pre)) packsThere.add(Number(t.slice(pre.length))); else if (t.startsWith(partPre)) partsThere.add(t); }
+          const plainKept = new Set(putting), written = new Set(packs.map((q) => q.bucket));
+          for (const k of plainThere) { if (!live.has(k) || packedNow.has(k)) store.delete(prefix + k); else plainKept.add(k); }
+          const needed = new Set(); for (const k of keys) if (!plainKept.has(k)) needed.add(bucketOf(k));
+          let packKept = written.size > 0;
+          for (const b of packsThere) { if (written.has(b) || needed.has(b)) packKept = true; else store.delete(pre + b); }
+          for (const k of keys) { const b = bucketOf(k); if (!plainKept.has(k) && !written.has(b) && !packsThere.has(b)) { const area = value.session.areas[k]; if (area !== undefined) { store.put(area, prefix + k); plainKept.add(k); } } } // found nowhere: put again
+          heldAfter = new Map(); for (const k of keys) if (!plainKept.has(k)) heldAfter.set(k, bucketOf(k)); plainAfter = plainKept;
+          if (!ops) {
+            const want = new Map(), putNow = new Set(partPuts.map(([k]) => k)); if (plan) for (const q of plan.plans) for (const [b, e] of q.now) want.set(partRecordKey(key, q.P.name, b), e);
+            for (const t of partsThere) if (!want.has(t)) store.delete(t);
+            const foreign = !lastStamps.has(key) || prior?.result?.session?.[MAIN_STAMP] !== lastStamps.get(key);
+            for (const [t, e] of want) if (!putNow.has(t) && (foreign || !partsThere.has(t))) store.put(plainPart(e), t);
+            if (packKept && !gatedAfter) { store.put(marked, key); gatedAfter = true; }
+          }
+        };
+      }
     });
-  } catch (error) { journals.delete(key); recordKeys.delete(key); partState.delete(key); throw error; } // dbCall dropped the connection; the next write stores the main record whole (and sweeps)
+  } catch (error) { forgetStore(key); throw error; } // dbCall dropped the connection; the next write stores the main record whole, puts every area it holds and sweeps (the write may have committed all the same)
   storedAreas.set(key, new Map(keys.map((k) => [k, value.session.areas[k]])));
-  if (split) recordKeys.set(key, [...plainNow]); else recordKeys.delete(key);
-  if (split) packedIn.set(key, held); else packedIn.delete(key);
-  if (!ops) { if (split && gate) gatedKeys.add(key); else gatedKeys.delete(key); } // a delta leaves the stored main record as it was
+  if (split) recordKeys.set(key, [...plainAfter]); else recordKeys.delete(key);
+  if (split) packedIn.set(key, heldAfter); else packedIn.delete(key);
+  if (!ops) { if (gatedAfter) gatedKeys.add(key); else gatedKeys.delete(key); lastStamps.set(key, stamp); } // a delta leaves the stored main record as it was
   if (!ops) partState.set(key, new Map(plan ? plan.plans.map((q) => [q.P.name, { next: q.next, seqOf: q.seqOf, buckets: q.now, sizes: q.sizes, dirty: new Set() }]) : []));
   packSizes.set(key, packBytes); if (!ops) coreSizes.set(key, stored.core);
   if (sizes) storedSizes.set(key, sizes); else storedSizes.delete(key);
@@ -445,25 +484,27 @@ async function writeJourney(key, value) {
 // A read of the delta that fails fails the whole read (readJourney throws, so loadSave treats the database as unreadable:
 // the mirror if healthy, else the slot is blocked); a main record is never taken alone while its delta may hold newer play.
 const readDeltas = new Map(); // journey key -> { stamp, ops } as last read: the base a loaded journey's next delta builds on
-async function readMain(key) {
-  let main = await read(key); if (!Array.isArray(main?.session?.[AREA_SPLIT])) { readDeltas.delete(key); return main; }
+// readMainState(key): { main, info } -- the main record put together, and what a load would adopt of the store (the
+// split parts' state, the marker, the delta read); nothing of this page's write memory changes here (review of 1085).
+async function readMainState(key) {
+  let main = await read(key); if (!Array.isArray(main?.session?.[AREA_SPLIT])) return { main, info: null };
   // Main-record split: a split main record is read again with its delta and parts in one transaction, and put together.
   let delta, states = null;
   if (main.session[MAIN_PARTS]) {
     const [m, d, parts] = await dbCall("readonly", (store, finish, fail) => { const a = store.get(key), b = store.get(deltaKey(key)), ks = store.getAllKeys(partRange(key)), vs = store.getAll(partRange(key)); for (const q of [a, b, ks]) q.onerror = () => fail(q.error); vs.onerror = () => fail(vs.error); vs.onsuccess = () => finish([a.result, b.result, new Map((ks.result || []).map((k, i) => [String(k), vs.result[i]]))]); });
-    main = m; delta = d; if (!Array.isArray(main?.session?.[AREA_SPLIT])) { readDeltas.delete(key); return main; }
+    main = m; delta = d; if (!Array.isArray(main?.session?.[AREA_SPLIT])) return { main, info: null };
     if (main.session[MAIN_PARTS]) states = await assembleParts(key, main, parts);
   } else delta = await read(deltaKey(key));
-  partState.set(key, states || new Map()); coreSizes.set(key, Number(main.session[STORED_SIZE]?.core) || 0);
-  const stamp = main.session[MAIN_STAMP], applied = applyDelta(main, delta);
+  const core = Number(main.session[STORED_SIZE]?.core) || 0, stamp = main.session[MAIN_STAMP], applied = applyDelta(main, delta);
   if (applied && Array.isArray(delta.ops)) markDeltaParts(states, delta.ops);
-  readDeltas.set(key, { stamp, ops: applied && Array.isArray(delta.ops) ? delta.ops : [] });
   // Slimmer saves: the marker that keeps older builds off a journey with packed areas comes off here (one without the
   // journey's own version under it stays as it is, and so reads as damaged).
-  const from = main.session[PACKED_FROM];
-  if (main.version === PACKED_AREAS.storeVersion && (typeof from === "number" || typeof from === "string")) { main.version = from; delete main.session[PACKED_FROM]; gatedKeys.add(key); } else gatedKeys.delete(key);
-  return main;
+  const from = main.session[PACKED_FROM]; let gated = false;
+  if (main.version === PACKED_AREAS.storeVersion && (typeof from === "number" || typeof from === "string")) { main.version = from; delete main.session[PACKED_FROM]; gated = true; }
+  return { main, info: { states: states || new Map(), core, stamp, gated, delta: { stamp, ops: applied && Array.isArray(delta.ops) ? delta.ops : [] } } };
 }
+// The main record with its delta applied (areas still apart), or a record from before 555 as it is (the journey list).
+async function readMain(key) { return (await readMainState(key)).main; }
 // Perf pack (follow-up): the first autosave after every boot wrote the 3.9 MB main record whole, because the delta's base
 // was known only to the page that wrote it. A journey loaded from its split records now resumes that base: the stored main
 // record as read (its delta applied, areas left out) stands as the last write, and the stored delta's ops are kept, so the
@@ -478,8 +519,11 @@ function primeJournal(key, stored, save) {
   sharedSnapshots.add(snapshot); journals.set(key, { snapshot, stamp: d.stamp, ops, at });
   countKeys(snapshot); mainCopies.set(save, snapshot); // the first snapshot shares the stored parts that still match, by value
 }
-async function readJourney(key) {
-  const main = await readMain(key); if (!Array.isArray(main?.session?.[AREA_SPLIT])) return main;
+// readJourney(key, adopt): the journey put back together. Only a load (adopt) takes what it read as this page's memory
+// of the store, and only when no write of this journey overlapped the read (review of 1085).
+async function readJourney(key, adopt = false) {
+  const epoch = writeEpoch.get(key) || 0, { main, info } = await readMainState(key);
+  if (!Array.isArray(main?.session?.[AREA_SPLIT])) { if (adopt && (writeEpoch.get(key) || 0) === epoch) { forgetStore(key); readDeltas.delete(key); } return main; }
   const prefix = areaPrefix(key);
   // Slimmer saves: the area packs are read in the same transaction; a listed area without a plain record is taken from
   // its bucket's pack (a pack carrying another journey's seed is not this journey's), and a pack that cannot be read
@@ -491,18 +535,21 @@ async function readJourney(key) {
     pvs.onerror = () => fail(pvs.error);
     pvs.onsuccess = () => finish([new Map((ks.result || []).map((k, i) => [String(k).slice(prefix.length), vs.result[i]])), new Map((pks.result || []).map((k, i) => [Number(String(k).slice(pre.length)), pvs.result[i]]))]);
   });
-  recordKeys.set(key, [...records.keys()]);
-  const held = new Map(), seed = String(main.seed ?? ""), foreign = (p) => isAreaPack(p) && p.seed !== seed;
-  const buckets = gatedKeys.has(key) ? [...new Set(main.session[AREA_SPLIT].filter((k) => !records.has(k)).map(bucketOf))].filter((b) => packs.has(b) && !foreign(packs.get(b))) : []; // an unmarked main record (an older build's) has no packs of its own
+  const plain = [...records.keys()], held = new Map(), seed = String(main.seed ?? ""), foreign = (p) => isAreaPack(p) && p.seed !== seed;
+  const buckets = info.gated ? [...new Set(main.session[AREA_SPLIT].filter((k) => !records.has(k)).map(bucketOf))].filter((b) => packs.has(b) && !foreign(packs.get(b))) : []; // an unmarked main record (an older build's) has no packs of its own
   const opened = await Promise.all(buckets.map((b) => unpackAreas(packs.get(b))));
   for (let i = 0; i < buckets.length; i++) for (const [k, area] of opened[i]) if (!records.has(k) && bucketOf(k) === buckets[i]) { records.set(k, area); held.set(k, buckets[i]); }
-  packedIn.set(key, held); packSizes.set(key, new Map(buckets.map((b) => [b, packs.get(b).data.length])));
-  const sizes = main.session[AREA_SIZES]; if (sizes && typeof sizes === "object") storedSizes.set(key, new Map(Object.entries(sizes).filter(([k, n]) => records.has(k) && Number.isFinite(n))));
-  const save = assembleSave(main, records); assembled.add(save); return save;
+  const adopted = adopt && (writeEpoch.get(key) || 0) === epoch;
+  if (adopted) {
+    forgetStore(key); recordKeys.set(key, plain); packedIn.set(key, held); packSizes.set(key, new Map(buckets.map((b) => [b, packs.get(b).data.length])));
+    partState.set(key, info.states); coreSizes.set(key, info.core); if (info.gated) gatedKeys.add(key); if (typeof info.stamp === "string") lastStamps.set(key, info.stamp); readDeltas.set(key, info.delta);
+    const sizes = main.session[AREA_SIZES]; if (sizes && typeof sizes === "object") storedSizes.set(key, new Map(Object.entries(sizes).filter(([k, n]) => records.has(k) && Number.isFinite(n))));
+  } else if (adopt) readDeltas.delete(key);
+  const save = assembleSave(main, records); if (adopted) assembled.add(save); return save; // a save not adopted is written as new (every area put)
 }
 async function removeJourney(key) {
   try { await dbCall("readwrite", (store) => { store.delete(key); store.delete(deltaKey(key)); store.delete(areaRange(key)); store.delete(packRange(key)); store.delete(partRange(key)); }); }
-  finally { storedAreas.delete(key); storedSizes.delete(key); journals.delete(key); recordKeys.delete(key); packedIn.delete(key); gatedKeys.delete(key); partState.delete(key); packSizes.delete(key); coreSizes.delete(key); } // after a failure too: the next write is whole and sweeps
+  finally { bumpEpoch(key); forgetStore(key); } // after a failure too: the next write is whole and sweeps
 }
 function remove(key){return dbCall("readwrite",(store)=>{store.delete(key)})}
 // Release 734 (S1): the mirror is returned as stored (not migrated), so a damaged or newer-version mirror reads as damaged,
@@ -532,7 +579,7 @@ const replaced=(slot)=>{startFailed.delete(slot);mirrorSkipped.delete(slot)};
 export function getActiveSlot(){try{activeSlot=Math.max(1,Math.min(SLOT_COUNT,Number(localStorage.getItem(ACTIVE_SLOT))||activeSlot))}catch{}return activeSlot}
 export function setActiveSlot(slot){activeSlot=Math.max(1,Math.min(SLOT_COUNT,Number(slot)||1));try{localStorage.setItem(ACTIVE_SLOT,String(activeSlot))}catch{}return activeSlot}
 async function migrateLegacy(){if(await read(slotKey(1)))return;/* perf pack: the main record answers whether slot 1 is taken */let legacy=await read("active");if(!legacy)try{const text=localStorage.getItem(LEGACY_MIRROR);legacy=text?JSON.parse(text):null}catch{}if(validateJourney(legacy).health==="healthy"){await writeJourney(slotKey(1),legacy);mirrorWrite(1,migrateSave(legacy))}}
-export async function loadSave(){activeSlot=getActiveSlot();try{await migrateLegacy()}catch(error){console.warn("Legacy save migration failed",error)}let stored=null,dbFailed=false;try{stored=await readJourney(slotKey(activeSlot))}catch(error){dbFailed=true;console.warn("IndexedDB load failed",error)}const mirrored=mirrorRead(activeSlot),fromDb=stored?validateJourney(stored):{health:"empty",save:null},fromMirror=mirrored?validateJourney(mirrored):{health:"empty",save:null};
+export async function loadSave(){activeSlot=getActiveSlot();try{await migrateLegacy()}catch(error){console.warn("Legacy save migration failed",error)}let stored=null,dbFailed=false;try{stored=await readJourney(slotKey(activeSlot),true)}catch(error){dbFailed=true;console.warn("IndexedDB load failed",error)}const mirrored=mirrorRead(activeSlot),fromDb=stored?validateJourney(stored):{health:"empty",save:null},fromMirror=mirrored?validateJourney(mirrored):{health:"empty",save:null};
   // Release 734: a damaged database record is never replaced by this page. With a healthy mirror it is first kept under
   // damaged:<slot>:<time> (as Recover does) and the mirror plays; otherwise the slot is blocked and a fresh, unsaved journey
   // runs behind the Journeys screen. A damaged mirror with nothing healthy in the database blocks the slot too.
