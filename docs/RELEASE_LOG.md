@@ -15,7 +15,7 @@ merges, publishes or is dropped.** Newest first. Each release number is used exa
 
 ## Next free number
 
-Main is at r1085 (this merge); production serves `r1080-888123c078ea` (Publish run 197, 46008629967, succeeded 2026-11-27; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
+Main is at r1085 (this merge); production serves `r1084-63d231dd5b0b` (Publish run 198, succeeded 2026-11-28; gh-pages identity verified). The next game release number is assigned from freshly fetched main at merge preparation.
 
 ## In flight
 
