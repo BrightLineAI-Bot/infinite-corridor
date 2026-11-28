@@ -10,11 +10,11 @@
 // the shared pose table (TRI_POSES) so the two views agree. Nothing here reads attack timing or changes the game.
 //
 // Body units u are the standard view's (a tile times the actor's scale); the root carries S = scale x closeViewScale.
-import { TRI_ART, TRI_POSES, TRI_KEYS, TRI_FORMS, TRI_FORM_ADULT, triceratopsPoseName, triceratopsTailBounces, triceratopsHornOverlay } from "./triceratops-render.js?v=r1080-888123c078ea";
+import { TRI_ART, TRI_POSES, TRI_KEYS, TRI_FORMS, TRI_FORM_ADULT, triceratopsPoseName, triceratopsTailBounces, triceratopsHornOverlay } from "./triceratops-render.js?v=r1084-63d231dd5b0b";
 import {
   defineSkeleton, createPose, resetPose, setEuler, setOffset, resolveBone, boneLocalToWorld, writeSkin, poseAnimalLeg,
   createGait, stepGait, meshBuilder, clamp01, smooth, kick, wobble, TIER_DETAIL,
-} from "./close-view-beast-rig.js?v=r1080-888123c078ea";
+} from "./close-view-beast-rig.js?v=r1084-63d231dd5b0b";
 
 const hex = (s) => parseInt(s.slice(1), 16);
 export const TRICERATOPS_RIG = Object.freeze({

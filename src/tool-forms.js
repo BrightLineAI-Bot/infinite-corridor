@@ -1,6 +1,6 @@
-import { unharmablePerson } from "./townsfolk.js?v=r1080-888123c078ea"; // Tim (2026-11-20): no non-hostile person can be harmed
-import { stampAttackVisual } from "./action-motion.js?v=r1080-888123c078ea";
-import { hashSeed } from "./random.js?v=r1080-888123c078ea";
+import { unharmablePerson } from "./townsfolk.js?v=r1084-63d231dd5b0b"; // Tim (2026-11-20): no non-hostile person can be harmed
+import { stampAttackVisual } from "./action-motion.js?v=r1084-63d231dd5b0b";
+import { hashSeed } from "./random.js?v=r1084-63d231dd5b0b";
 // Tool forms (release 533; Tim, 2026-10-28: "passive abilities... one can turn the blunderbuss's 3 shot cone spread into an
 // arc... another can turn the great sweep... like 3 swords that float with you... they shoot at the nearest enemy... nanobot
 // daggers... with a yellow sigil, so we can show that they are... physical").

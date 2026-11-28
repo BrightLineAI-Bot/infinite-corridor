@@ -12,16 +12,16 @@
 // CAIRN_LINES.plain) and, taken, the compass follows it to the nearest crossing (nearestCrossing). Classic keeps today's lines and
 // the errand's waymarks; leads and rumours run in both modes, as extras (section 6), and a Classic rumour never points at an
 // ability its own rules already open (awakening, the hatchling).
-import { hashSeed } from "./random.js?v=r1080-888123c078ea";
-import { crossingRolled } from "./world.js?v=r1080-888123c078ea";
-import { nearestWonders, WONDERS, compassWords } from "./wonders.js?v=r1080-888123c078ea";
-import { arcanaHint, arcanaToward, arcanaHas, ARCANA_REGIONS, ARCANA_UNLOCKS } from "./lore.js?v=r1080-888123c078ea";
-import { ensureLeads, exploring, saveFrame, EXPLORATION, LEAD_RECORD } from "./journey-start.js?v=r1080-888123c078ea";
-import { APERTURE_BANDS, apertureBand } from "./items.js?v=r1080-888123c078ea";
-import { HORDE_RUMOUR, RELIQUARY, worldWithheld } from "./world-routes.js?v=r1080-888123c078ea"; // Phase 6: the horde rumour (2.7)
-import { nearestHorde, hordeLeadLive, pityLead, pityLive } from "./world-leads.js?v=r1080-888123c078ea"; // Phase 6: the strong lead (G3)
-import { QUEST_IDS, questOpen, boughtRumour, paidRumourView, storyWithheld } from "./quests.js?v=r1080-888123c078ea"; // Phase 7: quests count as leads; Phase 8: a bought rumour
-import { threadFound } from "./threads.js?v=r1080-888123c078ea"; import { TRAIL_IDS, trailBegun } from "./thread-trails.js?v=r1080-888123c078ea"; // 2026-11-21: the Washing at Sallowby (a rumour, then a quest the compass can follow)
+import { hashSeed } from "./random.js?v=r1084-63d231dd5b0b";
+import { crossingRolled } from "./world.js?v=r1084-63d231dd5b0b";
+import { nearestWonders, WONDERS, compassWords } from "./wonders.js?v=r1084-63d231dd5b0b";
+import { arcanaHint, arcanaToward, arcanaHas, ARCANA_REGIONS, ARCANA_UNLOCKS } from "./lore.js?v=r1084-63d231dd5b0b";
+import { ensureLeads, exploring, saveFrame, EXPLORATION, LEAD_RECORD } from "./journey-start.js?v=r1084-63d231dd5b0b";
+import { APERTURE_BANDS, apertureBand } from "./items.js?v=r1084-63d231dd5b0b";
+import { HORDE_RUMOUR, RELIQUARY, worldWithheld } from "./world-routes.js?v=r1084-63d231dd5b0b"; // Phase 6: the horde rumour (2.7)
+import { nearestHorde, hordeLeadLive, pityLead, pityLive } from "./world-leads.js?v=r1084-63d231dd5b0b"; // Phase 6: the strong lead (G3)
+import { QUEST_IDS, questOpen, boughtRumour, paidRumourView, storyWithheld } from "./quests.js?v=r1084-63d231dd5b0b"; // Phase 7: quests count as leads; Phase 8: a bought rumour
+import { threadFound } from "./threads.js?v=r1084-63d231dd5b0b"; import { TRAIL_IDS, trailBegun } from "./thread-trails.js?v=r1084-63d231dd5b0b"; // 2026-11-21: the Washing at Sallowby (a rumour, then a quest the compass can follow)
 
 export const LEADS = Object.freeze({
   floor: 2, // G2: at least this many leads the player can act on now

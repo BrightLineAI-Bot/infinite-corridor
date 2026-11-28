@@ -3,11 +3,11 @@
 // (through world-leads.ts) tells the horde rumours and the strong (pity) lead. Nothing here changes a generator: a reliquary is an object laid over a place
 // as it loads, from save.feats.reliquary (like the Second Wayfarer's traces and the seed hunts), so every floor generated before
 // is byte for byte what it was.
-import { exploring, ensureFeats, ensureProgression, progressionKept, PROGRESSION_RECORD, FEAT_RECORD, ensureLeads, LEAD_RECORD } from "./journey-start.js?v=r1080-888123c078ea";
-import { MILESTONE_FOR, RELIQUARY, earnedWorld, worldWithheld, addCount, reliquaryOrder, reliquaryDue, WORLD_WITHHELD, MILESTONES } from "./world-routes.js?v=r1080-888123c078ea";
-import { ROW_BY_ID, stateV0, ownership, progressionState } from "./progression.js?v=r1080-888123c078ea";
-import { QUESTS, QUEST_FOR, threadReward, carrierOf, storyWithheld, STORY_WITHHELD, STORY_ROUTE_OF, VISCERA_SHOP, boughtRumour, paidRumourView } from "./quests.js?v=r1080-888123c078ea"; // Phase 7: quests (b) and thread endings (d) grant here too; Phase 8: Viscera (V)
-import { nearestHorde, nearestShaft } from "./world-leads.js?v=r1080-888123c078ea";
+import { exploring, ensureFeats, ensureProgression, progressionKept, PROGRESSION_RECORD, FEAT_RECORD, ensureLeads, LEAD_RECORD } from "./journey-start.js?v=r1084-63d231dd5b0b";
+import { MILESTONE_FOR, RELIQUARY, earnedWorld, worldWithheld, addCount, reliquaryOrder, reliquaryDue, WORLD_WITHHELD, MILESTONES } from "./world-routes.js?v=r1084-63d231dd5b0b";
+import { ROW_BY_ID, stateV0, ownership, progressionState } from "./progression.js?v=r1084-63d231dd5b0b";
+import { QUESTS, QUEST_FOR, threadReward, carrierOf, storyWithheld, STORY_WITHHELD, STORY_ROUTE_OF, VISCERA_SHOP, boughtRumour, paidRumourView } from "./quests.js?v=r1084-63d231dd5b0b"; // Phase 7: quests (b) and thread endings (d) grant here too; Phase 8: Viscera (V)
+import { nearestHorde, nearestShaft } from "./world-leads.js?v=r1084-63d231dd5b0b";
 
 const feats = (save) => (save?.feats?.counts && save.feats.reliquary?.sites && save.feats.earned && save.feats.pity ? save.feats : ensureFeats(save));
 const exploredCount = (save) => Object.keys(save?.explored && typeof save.explored === "object" ? save.explored : {}).length;

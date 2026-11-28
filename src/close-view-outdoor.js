@@ -18,9 +18,9 @@
 //
 // Every number is in OUTDOOR. Nothing here runs per frame except outdoorSignature (a pass over the section's tiles and
 // objects, about a thousand reads) and the palette lookup (cached per map).
-import { ATLAS_TILE_COLORS } from "./atlas-colors.js?v=r1080-888123c078ea";
-import { LIFT_PER_LEVEL, tileLiftScale } from "./landscape.js?v=r1080-888123c078ea";
-import { hashSeed } from "./random.js?v=r1080-888123c078ea";
+import { ATLAS_TILE_COLORS } from "./atlas-colors.js?v=r1084-63d231dd5b0b";
+import { LIFT_PER_LEVEL, tileLiftScale } from "./landscape.js?v=r1084-63d231dd5b0b";
+import { hashSeed } from "./random.js?v=r1084-63d231dd5b0b";
 
 const f = Object.freeze;
 export const OUTDOOR = f({
@@ -109,11 +109,16 @@ export const OUTDOOR = f({
     fells: f({ zenith: [74, 120, 182], horizon: [226, 232, 236], haze: [218, 224, 228], ridge: [118, 134, 148], ridgeH: .05, rough: .55,
       sun: [255, 246, 226], sunAz: 215, sunEl: 30, sunK: .6, ambient: [.54, .58, .64], clouds: .25, grade: [.99, 1, 1.02, 1],
       crown: [58, 86, 58], bark: [74, 62, 50], frost: 0 }),
+    // the Great Ranges (landscape 30): thin, deep-blue high-altitude air, a crisp white sun, and a tall jagged far line of snow-capped
+    // ranges, bluer with distance
+    ranges: f({ zenith: [36, 82, 168], horizon: [184, 206, 232], haze: [170, 194, 224], ridge: [128, 146, 184], ridgeH: .16, rough: 1,
+      sun: [255, 252, 246], sunAz: 200, sunEl: 36, sunK: .75, ambient: [.5, .56, .66], clouds: .2, grade: [.98, 1, 1.04, 1.02],
+      crown: [46, 84, 58], bark: [66, 56, 48], frost: .2 }),
   }),
   // which sky a section's ground takes (its landscape biome or region ground; else its most common tile)
   skyOf: f({ desert: "desert", mountains: "cold", frost: "cold", coast: "sea", sea: "sea", isles: "sea", lake: "temperate", swamp: "fen", blight: "fen",
     alien: "wild", castle: "temperate", forest: "temperate", jungle: "temperate", savanna: "desert", salt: "desert", pillars: "desert", lunar: "moon",
-    volcanic: "fire", obsidian: "fire", amber: "fire", terraces: "spring", reckoning: "rule", glacier: "cold", regolith: "airless", marrow: "marrow", magma: "magma", oasis: "desert", fells: "fells", fog: "fen", fungal: "wild", crystal: "wild", biomech: "waste",
+    volcanic: "fire", obsidian: "fire", amber: "fire", terraces: "spring", reckoning: "rule", glacier: "cold", regolith: "airless", marrow: "marrow", magma: "magma", oasis: "desert", fells: "fells", ranges: "ranges", fog: "fen", fungal: "wild", crystal: "wild", biomech: "waste",
     petrified: "waste", reef: "sea", snowField: "cold", glass: "waste", ash: "waste", ember: "waste" }),
   // Sky moods (Tim, 2026-11-11: "We can have sunset, we can have sunrise, we can have night sky, we can have clouds. We can have
   // stormy, overcast."). A mood is laid over the region's sky, not instead of it: each biome colour is scaled by `light` and
@@ -172,6 +177,7 @@ export const OUTDOOR = f({
     f({ test: /^marrowConduit$/, h: .7, jitter: .05, mat: 1, inset: .1, taper: 0 }), // and its segmented conduits
     f({ test: /Vent$/, h: .45, jitter: .15, mat: 0, inset: .12, taper: .3 }),
     f({ test: /^graniteTor$/, h: 1.5, jitter: .5, perLevel: .1, mat: 0, inset: .08, taper: .35 }), // the Cloudfells: a stack of weathered granite slabs on a top
+    f({ test: /^crestPinnacle$/, h: 2.2, jitter: .6, perLevel: .1, mat: 0, inset: .14, taper: .75 }), // the Great Ranges: a slate pinnacle on a crest
     f({ test: /Tree$|Trunk$|acacia|Cap$/, h: 1.6, jitter: .4, mat: 5, inset: .3, taper: .2 }),
     f({ test: /^glass$/, h: .55, jitter: .55, mat: 6, inset: .03, taper: .1 }),
     f({ test: /^towerStone$/, h: .4, jitter: 0, mat: 1, inset: .04, taper: .03 }), // tall towers (tall-towers.ts): each tile's `towerH` (the tower's drawn height) is added

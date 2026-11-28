@@ -13,7 +13,7 @@
 // - nothing spawns on a cap, the ground's trees and decor under a cap are cleared, and a stand that would wall any ground off from
 //   the plaza is not grown (tried on the tiles, undone if it does).
 // Bounded: at most `stands` stands, `tries` hashed spots, a few hundred tile checks each, once per section.
-import { hashSeed } from "./random.js?v=r1080-888123c078ea";
+import { hashSeed } from "./random.js?v=r1084-63d231dd5b0b";
 
 export const GREAT_MUSHROOMS = {
   version: 17, start: 1000,

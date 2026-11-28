@@ -8,7 +8,7 @@
 // not yet had), because the Corridor meets people out of order; the fifth waits for the Far Sleep and for three earlier
 // meetings. Each meeting is spoken once and remembered in save.lore.ilse (the meetings had, as a string of digits; additive,
 // normalised here). All writing is original to the game. Pure rules: no DOM.
-import { hashSeed } from "./random.js?v=r1080-888123c078ea";
+import { hashSeed } from "./random.js?v=r1084-63d231dd5b0b";
 
 export const ILSE = { chance: .045, minDepth: 3, finalAfter: 3 };
 export const ILSE_MEETINGS = {

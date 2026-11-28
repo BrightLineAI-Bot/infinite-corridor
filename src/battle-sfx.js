@@ -15,8 +15,8 @@
 //   these dinosaurs are silent, as before. When the Spinosaurus roars, the Wild Stegosaurus bellows back (`answer`) if it is not
 //   mid-move: sound only. Under the duel, if DUEL.undercurrent: one sub drone and a slow heartbeat, -30 dB or less, on the music bus.
 // - Muted means nothing is scheduled at all. It never reads or writes the save, and never changes the game.
-import { seededRandom } from "./soundtrack.js?v=r1080-888123c078ea";
-import { DUEL } from "./soundtrack-director.js?v=r1080-888123c078ea";
+import { seededRandom } from "./soundtrack.js?v=r1084-63d231dd5b0b";
+import { DUEL } from "./soundtrack-director.js?v=r1084-63d231dd5b0b";
 
 export const BATTLE_SFX = {
   maxVoices: 12, lowMaxVoices: 8,

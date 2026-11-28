@@ -3,9 +3,9 @@
 // until the Wayfarer strikes one: that creature (and its nearby kin) turns on the player with its normal AI. The wardens are
 // people and cannot be harmed or provoked by the Wayfarer at all (Tim, 2026-11-20).
 // When a side is wiped out the battle is settled for good (a world flag); creature victors then roam as ordinary foes.
-import { rng, pick } from "./random.js?v=r1080-888123c078ea";
-import { LETHAL_KINDS, canStep } from "./landscape.js?v=r1080-888123c078ea";
-import { keepPersonWhole } from "./townsfolk.js?v=r1080-888123c078ea";
+import { rng, pick } from "./random.js?v=r1084-63d231dd5b0b";
+import { LETHAL_KINDS, canStep } from "./landscape.js?v=r1084-63d231dd5b0b";
+import { keepPersonWhole } from "./townsfolk.js?v=r1084-63d231dd5b0b";
 
 export const SKIRMISH_VERSION = 1;
 export const SKIRMISH = { chance: 0.07, warChance: 0.25, minDepth: 3, reach: 1.2, cooldown: 1.4, damageScale: 0.35, speed: 1.5, provokeRadius: 4, spread: 4 };

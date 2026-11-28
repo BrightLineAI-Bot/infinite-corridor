@@ -1,6 +1,6 @@
-import { enemyBodyRadius } from "./combat.js?v=r1080-888123c078ea";
-import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r1080-888123c078ea";
-import { phaseShielded } from "./affixes.js?v=r1080-888123c078ea";
+import { enemyBodyRadius } from "./combat.js?v=r1084-63d231dd5b0b";
+import { liftAt, LIFT_PER_LEVEL } from "./landscape.js?v=r1084-63d231dd5b0b";
+import { phaseShielded } from "./affixes.js?v=r1084-63d231dd5b0b";
 
 export const ACTOR_CONTACT = Object.freeze({ playerRadius: .26, step: .16, maxSteps: 256, epsilon: 1e-7 });
 // Solid dodges (Tim, 2026-11-25: "Dodge should not take you through enemies. Like Elden Ring, you can get boxed in and you

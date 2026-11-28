@@ -7,19 +7,19 @@
 // last piece lay (then, with none there, round the middle of its home), and kept in the save, so the needle never moves while the
 // Wayfarer walks. Only when the next piece is read, or the crossing pointed at is entered without it, is the next one searched
 // for. With none in either window the compass points at the thread's home (lore.ts ARCANA_REGIONS), its nearest edge. Nothing here
-// places a piece or changes a roll: what a crossing holds is threads.js?v=r1080-888123c078ea's alone. Like threadIn, it reads a start-1 journey's frame
+// places a piece or changes a roll: what a crossing holds is threads.js?v=r1084-63d231dd5b0b's alone. Like threadIn, it reads a start-1 journey's frame
 // only for the journey in play (journey-start.ts frameFor; main.ts and game.ts call it with the journey's Game made).
 // Save: save.lore.trails = { threadId: { n, rx, ry, dungeon } | { n, none: true } } (created on first use; additive, normalised by
 // threads.ts ensureThreadTrails with save.lore.threadGifts; unknown ids kept). Pure rules: no DOM.
-import { THREADS, THREAD_TRAILS, STORY_BUDGET, threadIn, threadFound, storyVersionOf, threadHeld, threadDue, certainThread, settleThreadLot, threadRelicFloor } from "./threads.js?v=r1080-888123c078ea";
-import { secondFootprintsIn } from "./second-wayfarer.js?v=r1080-888123c078ea";
-import { ARCANA_REGIONS, arcanaHint, arcanaToward, regionVersionFor, regionVersionOf } from "./lore.js?v=r1080-888123c078ea";
-import { saveStart, saveFrame } from "./journey-start.js?v=r1080-888123c078ea";
-import { crossingAt } from "./quest-places.js?v=r1080-888123c078ea";
-import { dungeonId, regionSettled } from "./world.js?v=r1080-888123c078ea";
-import { openSeaQuick, farSleepSection } from "./landscape.js?v=r1080-888123c078ea";
-import { hamletSection } from "./settlements.js?v=r1080-888123c078ea";
-import { dreamHallRoll } from "./underlands.js?v=r1080-888123c078ea";
+import { THREADS, THREAD_TRAILS, STORY_BUDGET, threadIn, threadFound, storyVersionOf, threadHeld, threadDue, certainThread, settleThreadLot, threadRelicFloor } from "./threads.js?v=r1084-63d231dd5b0b";
+import { secondFootprintsIn } from "./second-wayfarer.js?v=r1084-63d231dd5b0b";
+import { ARCANA_REGIONS, arcanaHint, arcanaToward, regionVersionFor, regionVersionOf } from "./lore.js?v=r1084-63d231dd5b0b";
+import { saveStart, saveFrame } from "./journey-start.js?v=r1084-63d231dd5b0b";
+import { crossingAt } from "./quest-places.js?v=r1084-63d231dd5b0b";
+import { dungeonId, regionSettled } from "./world.js?v=r1084-63d231dd5b0b";
+import { openSeaQuick, farSleepSection } from "./landscape.js?v=r1084-63d231dd5b0b";
+import { hamletSection } from "./settlements.js?v=r1084-63d231dd5b0b";
+import { dreamHallRoll } from "./underlands.js?v=r1084-63d231dd5b0b";
 
 export const TRAIL_IDS = Object.freeze(Object.keys(THREAD_TRAILS));
 // The compass follow of a trail: { kind: "quest", id: "thread:<thread id>" } (types.ts normalizeCompassFollow), and back.

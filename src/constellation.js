@@ -8,18 +8,18 @@
 //
 // Awakenings: a primary or tool at its upgrade cap whose sockets light a Resonance can be awakened at Sela's forge
 // for lumen dust. An awakened weapon keeps its Resonance name and gains a new attack shape.
-import { unharmablePerson } from "./townsfolk.js?v=r1080-888123c078ea"; // Tim (2026-11-20): no non-hostile person can be harmed
-import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade, APERTURE_BANDS, apertureBand, isQuandrixStaff, weaponKey, rangedWeapon, explorationGateOpen } from "./items.js?v=r1080-888123c078ea";
-import { HAMMER_CLAP } from "./brawler-spells.js?v=r1080-888123c078ea"; // the awakened Hammerfall's clap (2026-11-14)
-import { resonancesOf, RESONANCES, normalizeSockets, AWAKENED_SOCKETS, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.js?v=r1080-888123c078ea";
-import { pairingMods } from "./spell-slots.js?v=r1080-888123c078ea";
-import { latticePassives, toggleLatticeSlot } from "./transit-lattice.js?v=r1080-888123c078ea";
-import { fieldForm, FIELD_KEYS, TOOL_FORM_KEYS } from "./lattice-fields.js?v=r1080-888123c078ea";
-import { AWAKENED_ARTS, AWAKENED_IDS } from "./weapon-arts.js?v=r1080-888123c078ea"; // awakened arts: each primary's own move (2026-11-13)
-import { TESSERACTS } from "./tesseracts.js?v=r1080-888123c078ea";
-import { PASSIVE_TEXT } from "./hit-cast-passives.js?v=r1080-888123c078ea"; // the on-cast nodes (Tim, 2026-11-19)
-import { EXPLORATION, exploring } from "./journey-start.js?v=r1080-888123c078ea"; // progression Phase 3: Exploration's Aerial Step and Long Quickening
-import { formFound, formWithheld, worldWithheld } from "./world-routes.js?v=r1080-888123c078ea"; // progression Phase 6: milestones and reliquaries
+import { unharmablePerson } from "./townsfolk.js?v=r1084-63d231dd5b0b"; // Tim (2026-11-20): no non-hostile person can be harmed
+import { APERTURE_SKILLS, skillRank, UPGRADE_CAPS, itemTier, normalizeItemUpgrade, APERTURE_BANDS, apertureBand, isQuandrixStaff, weaponKey, rangedWeapon, explorationGateOpen } from "./items.js?v=r1084-63d231dd5b0b";
+import { HAMMER_CLAP } from "./brawler-spells.js?v=r1084-63d231dd5b0b"; // the awakened Hammerfall's clap (2026-11-14)
+import { resonancesOf, RESONANCES, normalizeSockets, AWAKENED_SOCKETS, skillGlyphMods, skillInfusion, SKILL_INFUSE_AFTER_STEP, armorGlyphBonus } from "./glyphs.js?v=r1084-63d231dd5b0b";
+import { pairingMods } from "./spell-slots.js?v=r1084-63d231dd5b0b";
+import { latticePassives, toggleLatticeSlot } from "./transit-lattice.js?v=r1084-63d231dd5b0b";
+import { fieldForm, FIELD_KEYS, TOOL_FORM_KEYS } from "./lattice-fields.js?v=r1084-63d231dd5b0b";
+import { AWAKENED_ARTS, AWAKENED_IDS } from "./weapon-arts.js?v=r1084-63d231dd5b0b"; // awakened arts: each primary's own move (2026-11-13)
+import { TESSERACTS } from "./tesseracts.js?v=r1084-63d231dd5b0b";
+import { PASSIVE_TEXT } from "./hit-cast-passives.js?v=r1084-63d231dd5b0b"; // the on-cast nodes (Tim, 2026-11-19)
+import { EXPLORATION, exploring } from "./journey-start.js?v=r1084-63d231dd5b0b"; // progression Phase 3: Exploration's Aerial Step and Long Quickening
+import { formFound, formWithheld, worldWithheld } from "./world-routes.js?v=r1084-63d231dd5b0b"; // progression Phase 6: milestones and reliquaries
 // Release 335: Rift Step recovers faster with the same reductions as every other skill (the pairing and armor Chain).
 const riftCooldown = (save, rank, gm) => (APERTURE_SKILLS["rift-step"].cooldown - rank) * gm.cooldown * (altOn(save, "fold") ? ALT_PASSIVES.fold.cooldown : 1) * (1 - pairingMods(save).cooldown) * (1 - armorGlyphBonus(save).spellCooldown);
 

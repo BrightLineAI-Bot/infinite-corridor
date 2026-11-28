@@ -1,8 +1,8 @@
-import { MODEL_FLOATS } from "./close-view-models.js?v=r1080-888123c078ea";
-import { OUTDOOR } from "./close-view-outdoor.js?v=r1080-888123c078ea"; // the towering structures' faces, air and cloud deck (OUTDOOR.towering)
-import { buildVisualRevision } from "./building.js?v=r1080-888123c078ea";
-import { createHeroGL, prepareHeroGL, uploadHeroFrame, drawHeroGL, disposeHeroGL } from './close-view-hero-gl.js?v=r1080-888123c078ea';
-import { createBeastGL, prepareBeastMesh, drawBeastsGL, disposeBeastGL } from './close-view-beast-gl.js?v=r1080-888123c078ea'; // release 891: world beasts' skinned bodies
+import { MODEL_FLOATS } from "./close-view-models.js?v=r1084-63d231dd5b0b";
+import { OUTDOOR } from "./close-view-outdoor.js?v=r1084-63d231dd5b0b"; // the towering structures' faces, air and cloud deck (OUTDOOR.towering)
+import { buildVisualRevision } from "./building.js?v=r1084-63d231dd5b0b";
+import { createHeroGL, prepareHeroGL, uploadHeroFrame, drawHeroGL, disposeHeroGL } from './close-view-hero-gl.js?v=r1084-63d231dd5b0b';
+import { createBeastGL, prepareBeastMesh, drawBeastsGL, disposeBeastGL } from './close-view-beast-gl.js?v=r1084-63d231dd5b0b'; // release 891: world beasts' skinned bodies
 // Close View's GPU scene (version 4, release 793; version 5, release 794).
 //
 // Version 4 (Tim, 2026-11-06: "the floor moves and shifts a lot... it's re-rendered every time you walk... it looks like it's

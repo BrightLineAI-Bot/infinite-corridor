@@ -7,14 +7,14 @@
 // Tome keeps the thread as a book. A crossing holds at most one thread piece (`chance`, by seed; `minDepth` from the Refuge).
 // All writing is original to the game. Pure rules: no DOM. Save: save.lore.threads = { threadId: [dungeonId, ...] } (additive,
 // normalised by ensureThreadState).
-import { hashSeed } from "./random.js?v=r1080-888123c078ea";
-import { IDENTITY_FRAME, saveFrame } from "./journey-start.js?v=r1080-888123c078ea";
-import { READING_BANDS, READINGS, READING_ORDER, ARCANA_REGIONS, ARCANA_UNLOCKS, inArcanaHome, regionVersionOf, regionFrame, arcanaHint, readingRegionHint, readingKnown, arcanaHas, ensureArcanaState } from "./lore.js?v=r1080-888123c078ea";
-import { BELLS, bellsRung } from "./bells.js?v=r1080-888123c078ea";
-import { SURVEYOR, surveyorFound } from "./surveyor.js?v=r1080-888123c078ea";
-import { TORN_PAGES, pagesFound } from "./torn-pages.js?v=r1080-888123c078ea";
-import { FAR_REALMS, farDistance } from "./far-realms.js?v=r1080-888123c078ea";
-import { REWARD_CARRIERS, threadReward } from "./quests.js?v=r1080-888123c078ea"; // progression Phase 7: what finishing a thread (or the Second Wayfarer's trail) gives
+import { hashSeed } from "./random.js?v=r1084-63d231dd5b0b";
+import { IDENTITY_FRAME, saveFrame } from "./journey-start.js?v=r1084-63d231dd5b0b";
+import { READING_BANDS, READINGS, READING_ORDER, ARCANA_REGIONS, ARCANA_UNLOCKS, inArcanaHome, regionVersionOf, regionFrame, arcanaHint, readingRegionHint, readingKnown, arcanaHas, ensureArcanaState } from "./lore.js?v=r1084-63d231dd5b0b";
+import { BELLS, bellsRung } from "./bells.js?v=r1084-63d231dd5b0b";
+import { SURVEYOR, surveyorFound } from "./surveyor.js?v=r1084-63d231dd5b0b";
+import { TORN_PAGES, pagesFound } from "./torn-pages.js?v=r1084-63d231dd5b0b";
+import { FAR_REALMS, farDistance } from "./far-realms.js?v=r1084-63d231dd5b0b";
+import { REWARD_CARRIERS, threadReward } from "./quests.js?v=r1084-63d231dd5b0b"; // progression Phase 7: what finishing a thread (or the Second Wayfarer's trail) gives
 
 export const THREAD_RULES = { chance: .07, minDepth: 3, later: .025, third: .025, fourth: .04, fifth: .025 }; // third (release 707): the wave 3 roll, made only where the first two rolls found nothing; fourth (2026-11-04): the wave 4 roll, made only where the first three found nothing (a little likelier: the near band is small and its crossings are mostly spoken for); fifth (2026-11-05): the wave 5 roll, made only where the first four found nothing
 // later: threads written after release 627 (`wave` 2 and on) are rolled separately, only in crossings that hold none of the first

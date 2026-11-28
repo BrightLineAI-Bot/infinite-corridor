@@ -21,22 +21,22 @@
 // quest-places.ts questPlace may resolve and save a new place, so a quest's place is read as it stands (stepPlace); the Far Array
 // is read raw (far-array.ts ensureFarArray normalises in place); thread and Bells progress are read per set (threads.ts
 // arcanaProgress normalises save.lore.surveyor). A test deep-compares the save before and after.
-import { APERTURE_BANDS, apertureBand, skillRank, APERTURE_SKILLS, weaponKey, toolKey } from "./items.js?v=r1080-888123c078ea";
-import { regionalThreat } from "./world.js?v=r1080-888123c078ea";
-import { tierCap, listenerKills, apertureCeiling, STAGES } from "./stages.js?v=r1080-888123c078ea";
-import { exploring, progressionKept, modeInfo, progressionMode } from "./journey-start.js?v=r1080-888123c078ea";
-import { PROGRESSION_ROWS, ROW_BY_ID, ROW_ALIASES, GROUPS, progressionState, gateV1 } from "./progression.js?v=r1080-888123c078ea";
-import { BRANCHES, BRANCH_IDS, ALT_PASSIVES, ALT_UNLOCK_TIER, altUnlocked, hasNode } from "./constellation.js?v=r1080-888123c078ea";
-import { latticeOpen, TRANSIT_LATTICE } from "./transit-lattice.js?v=r1080-888123c078ea";
-import { AWAKENED_ARTS } from "./weapon-arts.js?v=r1080-888123c078ea";
-import { ARCANA_UNLOCKS } from "./lore.js?v=r1080-888123c078ea";
-import { THREADS, ARCANA_SETS, arcanaWhere, threadFound } from "./threads.js?v=r1080-888123c078ea";
-import { RELAY_TARGET } from "./relay-network.js?v=r1080-888123c078ea";
-import { relaysAwayOf } from "./far-array.js?v=r1080-888123c078ea";
-import { rescueGuidance } from "./hatchling.js?v=r1080-888123c078ea";
-import { compassChoiceIs } from "./types.js?v=r1080-888123c078ea";
-import { WORLD_ROUTE_OF, MILESTONES, MILESTONE_FOR, RELIQUARY, worldWithheld, earnedWorld, featCount, milestoneLine } from "./world-routes.js?v=r1080-888123c078ea";
-import { QUESTS, QUEST_IDS, QUEST_FOR, THREAD_REWARDS, SEEDED_REWARDS, SEEDED_IDS, STORY_ROUTE_OF, STORY_SEEN, VISCERA_SHOP, seededPick, questOpen, questStep, questState, stepCount, stepDone, stepPlace, questFollowId, storyWithheld, boughtRumour } from "./quests.js?v=r1080-888123c078ea";
+import { APERTURE_BANDS, apertureBand, skillRank, APERTURE_SKILLS, weaponKey, toolKey } from "./items.js?v=r1084-63d231dd5b0b";
+import { regionalThreat } from "./world.js?v=r1084-63d231dd5b0b";
+import { tierCap, listenerKills, apertureCeiling, STAGES } from "./stages.js?v=r1084-63d231dd5b0b";
+import { exploring, progressionKept, modeInfo, progressionMode } from "./journey-start.js?v=r1084-63d231dd5b0b";
+import { PROGRESSION_ROWS, ROW_BY_ID, ROW_ALIASES, GROUPS, progressionState, gateV1 } from "./progression.js?v=r1084-63d231dd5b0b";
+import { BRANCHES, BRANCH_IDS, ALT_PASSIVES, ALT_UNLOCK_TIER, altUnlocked, hasNode } from "./constellation.js?v=r1084-63d231dd5b0b";
+import { latticeOpen, TRANSIT_LATTICE } from "./transit-lattice.js?v=r1084-63d231dd5b0b";
+import { AWAKENED_ARTS } from "./weapon-arts.js?v=r1084-63d231dd5b0b";
+import { ARCANA_UNLOCKS } from "./lore.js?v=r1084-63d231dd5b0b";
+import { THREADS, ARCANA_SETS, arcanaWhere, threadFound } from "./threads.js?v=r1084-63d231dd5b0b";
+import { RELAY_TARGET } from "./relay-network.js?v=r1084-63d231dd5b0b";
+import { relaysAwayOf } from "./far-array.js?v=r1084-63d231dd5b0b";
+import { rescueGuidance } from "./hatchling.js?v=r1084-63d231dd5b0b";
+import { compassChoiceIs } from "./types.js?v=r1084-63d231dd5b0b";
+import { WORLD_ROUTE_OF, MILESTONES, MILESTONE_FOR, RELIQUARY, worldWithheld, earnedWorld, featCount, milestoneLine } from "./world-routes.js?v=r1084-63d231dd5b0b";
+import { QUESTS, QUEST_IDS, QUEST_FOR, THREAD_REWARDS, SEEDED_REWARDS, SEEDED_IDS, STORY_ROUTE_OF, STORY_SEEN, VISCERA_SHOP, seededPick, questOpen, questStep, questState, stepCount, stepDone, stepPlace, questFollowId, storyWithheld, boughtRumour } from "./quests.js?v=r1084-63d231dd5b0b";
 
 // ---------------------------------------------------------------- data
 export const PATHS = Object.freeze({
