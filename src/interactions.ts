@@ -105,7 +105,7 @@ export function validActions(o,s){
  if(o.kind==='diveSite')return diveGate(s).ok||underwaterGate(s).ok?diveSiteActions(s).concat((s.boat?.sub||s.boat?.mechSub)&&s.boat?.aboard&&!diveSiteActions(s).includes('dive')?['dive']:[]):['inspect'];/* release 315 */
  if(o.kind==='canopyGate'&&o.state==='open'&&seedCount(s,'fossilized')>0)return[...(o.actions||[]),'plantFossil'];
  if(o.kind==='watcherTomb'&&o.where!=='crypt'){const offers=realmSeedKinds().filter(k=>seedCount(s,k)>0).map(k=>'realmSeed:'+k);if(offers.length)return[...(o.actions||[]),...offers]}/* seed realms: the Watcher's shrines above ground take a Pumice or Crimson Seed *//* travel seeds: a sure way to another crown */
- if(o.kind==='diveExit')return['surface'];if(o.kind==='diveOnward')return['follow'];
+ if(o.kind==='pentWaystone')return[...(o.actions||['rest']),'travelOut'];/* Waystone warp (game.ts WAYSTONE_WARP): Travel out, added here so the generated chamber's actions stay as they were */if(o.kind==='diveExit')return['surface'];if(o.kind==='diveOnward')return['follow'];
  if(o.kind==='airPocket')return[];
  if(o.kind==='shipwreck')return s.worldFlags[o.id]?[]:['salvage'];
  if(o.kind==='skiff')return ensureBoatState(s).owned?['board']:[];
