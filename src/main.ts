@@ -55,6 +55,7 @@ import { READINGS, READING_ORDER, bookProgress, ensureLore, readingAt, readingKn
 import { hamletSection, legacyMouthHamlet, hamletIdentity } from "./settlements.ts";
 import { linksKnown } from "./linked-dungeons.ts";
 import { DIG } from "./digging.ts";
+import { ATLAS_PENTAGONS, knownPentagons, pentagonOnSection, pentagonAtlasText, pentagonCorners, pentagonAtlasRadius } from "./atlas-view.ts";
 import { zoneSections, ATLAS_ZOOM, clampZoom, sectionPixels, worldView, exploredSections, boundsOf, frame as frameSections, panStep, atlasPlaces, MAP_MARKS, mapMarkAt, toggleMapMark, dungeonWayfinding, dungeonNavigationDoors, renderDungeonWayfindingPanel, compassGuidance, compassQuest, seedHuntGuidance, seedHuntObjectives, objectiveKey, compassMenuModel, COMPASS_ARRIVAL, compassTargetArrived, compassArrivalState, compassArrivalReset, compassArrivalStep, COMPASS_RIBBON, RIBBON_CARDINALS, RIBBON_SLOTS, ribbonLayout, compassReadoutState, compassReadout, compassDistanceText, ribbonArc, nearbyPlaces, compassDiscovery, senseRadius } from "./atlas-view.ts";
 import { GLIMPSES, GLIMPSE_ORDER, glimpseFor, witnessGlimpse, witnessedGlimpses, glimpseAllowed } from "./glimpses.ts";
 import { startGlimpse, paintRule } from "./glimpse-render.ts";
@@ -1964,7 +1965,7 @@ let relayOverlay=false;
 // per-device convenience kept in localStorage.
 // Release 209/213 (Tim): Wayglasses have a layer of their own, so everything else can be hidden; Places are towns,
 // crossings and the other sites worth finding; "Waypoint & death" is the manual waypoint and the last death.
-const ATLAS_LAYERS=[["wayglasses","Wayglasses"],["sites","Places"],["signals","Signals"],["objectives","Objectives"],["waypoints","Waypoint & death"],["regions","Regions"]],ATLAS_LAYER_KEY="corridor-atlas-layers";
+const ATLAS_LAYERS=[[ATLAS_PENTAGONS.layer,ATLAS_PENTAGONS.label]/* 2026-11-28 (Tim): the Pentagons found, by whether each is complete (atlas-view.ts knownPentagons); first, beside Relays */,["wayglasses","Wayglasses"],["sites","Places"],["signals","Signals"],["objectives","Objectives"],["waypoints","Waypoint & death"],["regions","Regions"]],ATLAS_LAYER_KEY="corridor-atlas-layers";
 const atlasLayers=(()=>{const all=Object.fromEntries(ATLAS_LAYERS.map(([k])=>[k,true]));try{return{...all,...JSON.parse(localStorage.getItem(ATLAS_LAYER_KEY)||"{}")}}catch{return all}})();
 // Release 213 (Tim): supply caches and shelters are no longer marked on the Atlas.
 const CROSSING_KINDS=new Set(["dungeon","arenaEntrance"]),UNMARKED_SITES=new Set(["supplyCache","shack"]);
@@ -1974,6 +1975,21 @@ function renderAtlasLayerButtons(){
   const save_=()=>{try{localStorage.setItem(ATLAS_LAYER_KEY,JSON.stringify(atlasLayers))}catch{}renderAtlasLayerButtons();drawMap()};
   for(const[k,label]of ATLAS_LAYERS){const b=uiButton(label,()=>{atlasLayers[k]=!atlasLayers[k];save_()});b.setAttribute("aria-pressed",String(atlasLayers[k]));row.append(b)}
   const allOn=ATLAS_LAYERS.every(([k])=>atlasLayers[k]),all=uiButton(allOn?"All off":"All on",()=>{for(const[k]of ATLAS_LAYERS)atlasLayers[k]=!allOn;save_()});row.append(all);
+}
+// 2026-11-28 (Tim): each Pentagon found is drawn over the ground it stands on, a five-sided shape at its real footprint (atlas-view.ts
+// pentagonCorners), never smaller than ATLAS_PENTAGONS.minRadius: an amber outline while unfinished, a jade fill (the land still
+// showing) once its Tesseract is earned. From the save's records only (knownPentagons), under the pins and the Wayfarer.
+// The list is read once each time the Atlas opens (a Pentagon is never found or completed with the Atlas open), not on every pan.
+const atlasPentCorners=[];let atlasPentCache={save:null,at:NaN,list:[]};
+function atlasPentagonList(){if(atlasPentCache.save!==save||atlasPentCache.at!==atlasOpenedAt)atlasPentCache={save,at:atlasOpenedAt,list:knownPentagons(save)};return atlasPentCache.list}
+function drawAtlasPentagons(w,h,cell){
+  if(!atlasLayers[ATLAS_PENTAGONS.layer])return;const list=atlasPentagonList();if(!list.length)return;
+  mctx.save();mctx.lineJoin="round";
+  for(const q of list){const x=w/2+(q.cx-mapView.x)*cell+mapView.panX,y=h/2+(q.cy-mapView.y)*cell+mapView.panY,P=pentagonCorners(x,y,cell,atlasPentCorners),r=Math.abs(P[1]-y)+4;
+    if(x<-r||y<-r||x>w+r||y>h+r)continue;const S=q.complete?ATLAS_PENTAGONS.done:ATLAS_PENTAGONS.open;
+    mctx.beginPath();mctx.moveTo(P[0],P[1]);for(let i=1;i<5;i++)mctx.lineTo(P[i*2],P[i*2+1]);mctx.closePath();
+    mctx.fillStyle=S.fill;mctx.fill();mctx.strokeStyle=S.halo;mctx.lineWidth=S.width+2.5;mctx.stroke();mctx.strokeStyle=S.line;mctx.lineWidth=S.width;mctx.stroke()}
+  mctx.restore();
 }
 function drawRelayOverlay(w,h,cell,cols,rows){
   const at=(rx,ry)=>({x:w/2+(rx-mapView.x)*cell+mapView.panX,y:h/2+(ry-mapView.y)*cell+mapView.panY}),answered=[];
@@ -2069,6 +2085,7 @@ function drawMap() {
       if(openSections.has(key)){mctx.save();mctx.strokeStyle=ATLAS_FRAMES.openChallenge;mctx.lineWidth=2;mctx.setLineDash([5,3]);mctx.strokeRect(x+5,y+5,cell-10,cell-10);mctx.restore()}
       if(key===targetKey){mctx.save();mctx.strokeStyle=ATLAS_FRAMES.compassTarget;mctx.lineWidth=3;mctx.strokeRect(x+1.5,y+1.5,cell-3,cell-3);mctx.restore()}
     }
+  drawAtlasPentagons(w,h,cell);
   if(relayOverlay)drawRelayOverlay(w,h,cell,cols,rows);
   drawLinkedDungeons(w,h,cell);
   {const id=readingAt(mapView.x,mapView.y);if(atlasLayers.regions&&readingKnown(save,id)){mctx.font="bold 13px system-ui, sans-serif";mctx.textAlign="left";mctx.lineWidth=3;mctx.strokeStyle="#091018";mctx.strokeText(READINGS[id].name,10,22);mctx.fillStyle="#f0d58a";mctx.fillText(READINGS[id].name,10,22);mctx.font="11px monospace"}} // release 205: where you are looking
@@ -2213,6 +2230,7 @@ function drawAtlasWorld(w,h,cell,signals){
   drawLinkedDungeons(w,h,cell);
   if(atlasLayers.signals)for(const s of signals)dot(s.targetRx,s.targetRy,2.5,"#b8a0e0");
   if(atlasLayers.waypoints&&save.lastDeath){const[x,y]=at(save.lastDeath.rx,save.lastDeath.ry);drawDeathGlyph(mctx,x,y,5,save.lastDeath.valid===false)}
+  drawAtlasPentagons(w,h,cell); // the Pentagons found: over the small site marks (zoomed out they would hide it), under you and the pins
   if(mapView.selected)dot(mapView.selected.rx,mapView.selected.ry,5,null,"#ffffff");
   dot(game.rx,game.ry,4,"#fff4a8","#091018");dot(game.rx,game.ry,8,null,"rgba(255,244,168,.55)");
   // Region names over their explored land.
@@ -2249,7 +2267,9 @@ function drawAtlasSite(kind,x,y,size){drawAtlasGlyph(mctx,kind,x,y,size)}
 function atlasMark(kind){const canvas=document.createElement("canvas");canvas.width=canvas.height=44;canvas.className="atlas-symbol";canvas.setAttribute("role","img");canvas.setAttribute("aria-label",ATLAS_SYMBOLS.find(q=>q.kind===kind)?.label||kind);const context=canvas.getContext("2d");if(context)drawAtlasGlyph(context,kind,22,22,13);return canvas}
 function deathMark(){const canvas=document.createElement("canvas");canvas.width=canvas.height=44;canvas.className="atlas-symbol";canvas.setAttribute("role","img");canvas.setAttribute("aria-label","Last death");drawDeathGlyph(canvas.getContext("2d"),22,22,13);return canvas}function frameMark(color,dashed){const canvas=document.createElement("canvas");canvas.width=canvas.height=44;canvas.className="atlas-symbol";const c=canvas.getContext("2d");if(c){c.strokeStyle=color;c.lineWidth=dashed?3:5;if(dashed)c.setLineDash([7,4]);c.strokeRect(8,8,28,28)}return canvas}
 function linkMark(){const canvas=document.createElement("canvas");canvas.width=canvas.height=44;canvas.className="atlas-symbol";canvas.setAttribute("role","img");canvas.setAttribute("aria-label","Linked crossing");const c=canvas.getContext("2d");if(c){c.strokeStyle=LINKED_COLOR;c.lineWidth=2.5;c.setLineDash([4,3]);c.beginPath();c.moveTo(11,33);c.lineTo(33,11);c.stroke();c.setLineDash([]);for(const[x,y]of[[11,33],[33,11]]){c.beginPath();c.arc(x,y,7,0,7);c.stroke()}}return canvas}
+function pentagonMark(complete){const canvas=document.createElement("canvas");canvas.width=canvas.height=44;canvas.className="atlas-symbol";canvas.setAttribute("role","img");canvas.setAttribute("aria-label",complete?"Pentagon, completed":"Pentagon, not yet completed");const c=canvas.getContext("2d");if(c){const S=complete?ATLAS_PENTAGONS.done:ATLAS_PENTAGONS.open,P=pentagonCorners(22,24,17/pentagonAtlasRadius(),[]);c.lineJoin="round";c.beginPath();c.moveTo(P[0],P[1]);for(let i=1;i<5;i++)c.lineTo(P[i*2],P[i*2+1]);c.closePath();c.fillStyle=S.fill;c.fill();c.strokeStyle=S.halo;c.lineWidth=S.width*2+3;c.stroke();c.strokeStyle=S.line;c.lineWidth=S.width*2;c.stroke()}return canvas} // 2026-11-28: the Pentagons layer's two states
 function renderAtlasLegend(){const legend=$("#mapLegend");legend.replaceChildren();for(const symbol of ATLAS_SYMBOLS){const item=document.createElement("span");item.className="atlas-legend-item";item.append(symbol.kind==="lastDeath"?deathMark():symbol.kind==="linkedDungeon"?linkMark():atlasMark(symbol.kind),document.createTextNode(symbol.label));legend.append(item)}
+  for(const complete of[false,true]){const item=document.createElement("span");item.className="atlas-legend-item";item.append(pentagonMark(complete),document.createTextNode(complete?"Pentagon, completed (its Tesseract earned)":"Pentagon, not yet completed"));legend.append(item)}
   for(const[color,dashed,label]of[[ATLAS_FRAMES.compassTarget,false,"Compass target (tap the compass for the next)"],[ATLAS_ZONE.line,true,"A rumour: somewhere in this area"],[ATLAS_FRAMES.openChallenge,true,"Unfinished challenge"]]){const item=document.createElement("span");item.className="atlas-legend-item";item.append(frameMark(color,dashed),document.createTextNode(label));legend.append(item)}}
 function refreshWayglassDestinations(){
   const select=$("#mapWayglassSelect"),prior=select.value,entries=Object.entries(save.checkpoints||{}).sort((a,b)=>(a[1].rx-b[1].rx)||(a[1].ry-b[1].ry)||(a[1].name||a[0]).localeCompare(b[1].name||b[0])); // release 443 (Tim: "arranged numerically, so I can just scroll down"): by section, east-west then north-south
@@ -2337,8 +2357,9 @@ function showMapDetail(rx, ry) {
   const sites = s.sites.length ? ` · sites: ${s.sites.map((q) => q.name).join(", ")}` : " · no discovered sites";
   const death=save.lastDeath?.rx===rx&&save.lastDeath?.ry===ry?` · Last death${save.lastDeath.areaKind==="dungeon"?` inside ${save.lastDeath.label.replace(/^Inside /,"")}`:""}${save.lastDeath.valid===false?" (inaccessible)":""}`:"";
   const readingId=readingAt(rx,ry),reading=readingKnown(save,readingId)?` · ${READINGS[readingId].name}${bookProgress(save,readingId).mastered?" (mastered)":""}`:""; // release 191: only Readings already heard
+  const pent=pentagonOnSection(atlasPentagonList(),rx,ry),pentText=pent?` · ${pentagonAtlasText(pent)}`:""; // 2026-11-28: the Pentagon found here, and whether it is complete
   $("#mapDetail").textContent =
-    `Section ${rx}, ${ry}${reading} · ${s.terrain} terrain${sites}${s.checkpoint ? " · checkpoint" : ""}${s.current ? " · current" : ""}${s.waypoint ? " · waypoint" : ""}${death}`;
+    `Section ${rx}, ${ry}${reading} · ${s.terrain} terrain${sites}${pentText}${s.checkpoint ? " · checkpoint" : ""}${s.current ? " · current" : ""}${s.waypoint ? " · waypoint" : ""}${death}`;
   updateMapWaypointButton();
   updateMapTravelButton();
   return true;
