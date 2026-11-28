@@ -406,6 +406,41 @@ test('fuzz: two pages save, rename, import and fail at random; every area surviv
   }
 });
 
+// Third review of 1085: a reader held between its reads while the journey's FIRST packs are written. Transactions run
+// one after another in the order they are made (as IndexedDB orders them on one store); readonly ones made from the
+// `holdFrom`-th on wait for `release`.
+function serialIdb() {
+  const data = new Map(), ls = new Map(), ctl = { data, ls, ro: 0, holdFrom: Infinity, gate: Promise.resolve() };
+  const inRange = (k, r) => r && typeof r === 'object' ? k >= r.lower && k <= r.upper : k === r, keysIn = (r) => [...data.keys()].filter((k) => inRange(k, r)).sort();
+  let chain = Promise.resolve();
+  function transaction(_s, mode) {
+    const tx = { reqs: [], settled: false }, n = mode === 'readonly' ? ++ctl.ro : 0, held = n >= ctl.holdFrom ? ctl.gate : null;
+    const request = (fn) => { const q = { fn }; tx.reqs.push(q); return q; };
+    tx.objectStore = () => ({ get: (k) => request(() => structuredClone(data.get(k))), put: (v, k) => { const c = structuredClone(v); return request(() => { data.set(k, c); }); }, delete: (k) => request(() => { for (const key of keysIn(k)) data.delete(key); }), getAllKeys: (r) => request(() => keysIn(r)), getAll: (r) => request(() => keysIn(r).map((k) => structuredClone(data.get(k)))) });
+    tx.abort = () => { tx.settled = true; setImmediate(() => tx.onabort?.()); };
+    const run = async () => { await new Promise((r) => setImmediate(r)); for (let i = 0; i < tx.reqs.length; i++) { if (tx.settled) return; const q = tx.reqs[i]; q.result = q.fn(); q.onsuccess?.(); await new Promise((r) => setImmediate(r)); } if (!tx.settled) { tx.settled = true; tx.oncomplete?.(); } };
+    if (held) held.then(() => { chain = chain.then(run); }); else chain = chain.then(run);
+    return tx;
+  }
+  globalThis.IDBKeyRange = { bound: (lower, upper) => ({ lower, upper }) };
+  globalThis.indexedDB = { open: () => { const q = {}; setImmediate(() => { q.result = { objectStoreNames: { contains: () => true }, createObjectStore() {}, close() {}, transaction }; q.onsuccess?.(); }); return q; } };
+  globalThis.localStorage = { getItem: (k) => ls.has(k) ? ls.get(k) : null, setItem: (k, v) => { ls.set(k, String(v)); }, removeItem: (k) => { ls.delete(k); } };
+  return ctl;
+}
+for (const how of ['load', 'export', 'duplicate']) test(`${how === "export" ? "an" : "a"} ${how} held between its reads across the first pack write gets every area`, async () => {
+  const ctl = serialIdb(); await smallStored(ctl, `TORN-${how}`);
+  const A = await freshPersistence(); A.setActiveSlot(1); const sa = await A.loadSave(), B = how === 'load' ? await freshPersistence() : A;
+  let release; ctl.gate = new Promise((r) => { release = r; }); ctl.ro = 0; ctl.holdFrom = how === 'load' ? 3 : 2;
+  const reading = how === 'load' ? B.loadSave() : how === 'export' ? B.exportJourney(1).then((t) => JSON.parse(t).save) : B.duplicateJourney(1, 2);
+  await new Promise((r) => setTimeout(r, 30)); // the reader is under way
+  sa.xp = 1; await A.saveGame(sa); await A.flushSaves();
+  assert.ok(packKeys(ctl).length > 0 && ctl.data.get('journey:1').version === PACKED_AREAS.storeVersion, 'the first packs were written');
+  ctl.holdFrom = Infinity; release(); const got = await reading;
+  if (how === 'duplicate') { const Q = await freshPersistence(); Q.setActiveSlot(2); assert.equal(Object.keys((await Q.loadSave()).session.areas).length, 200); return; }
+  assert.equal(Object.keys(got.session.areas).length, 200);
+  if (how === 'load') { got.xp = 5; await B.saveGame(got); await B.flushSaves(); ctl.ls.clear(); await allBack(); }
+});
+
 test('listing journeys or exporting during writes leaves the write memory alone', async () => {
   const ctl = fakeIdb(), P = await freshPersistence(); P.setActiveSlot(1);
   const s = bigMain('LIST-WRITE'); s.session.areas = Object.fromEntries(Array.from({ length: 60 }, (_, i) => [`overworld:${i}:0:g1`, bigArea(i)]));

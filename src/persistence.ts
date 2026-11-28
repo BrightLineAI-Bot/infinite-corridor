@@ -497,15 +497,26 @@ async function writeJourneyNow(key, value, again = false) {
 const readDeltas = new Map(); // journey key -> { stamp, ops } as last read: the base a loaded journey's next delta builds on
 // readMainState(key): { main, info } -- the main record put together, and what a load would adopt of the store (the
 // split parts' state, the marker, the delta read); nothing of this page's write memory changes here (review of 1085).
+// The journey list reads the main record and, for a split one, reads it again with its delta and parts in one transaction.
 async function readMainState(key) {
-  let main = await read(key); if (!Array.isArray(main?.session?.[AREA_SPLIT])) return { main, info: null };
-  // Main-record split: a split main record is read again with its delta and parts in one transaction, and put together.
-  let delta, states = null;
-  if (main.session[MAIN_PARTS]) {
-    const [m, d, parts] = await dbCall("readonly", (store, finish, fail) => { const a = store.get(key), b = store.get(deltaKey(key)), ks = store.getAllKeys(partRange(key)), vs = store.getAll(partRange(key)); for (const q of [a, b, ks]) q.onerror = () => fail(q.error); vs.onerror = () => fail(vs.error); vs.onsuccess = () => finish([a.result, b.result, new Map((ks.result || []).map((k, i) => [String(k), vs.result[i]]))]); });
-    main = m; delta = d; if (!Array.isArray(main?.session?.[AREA_SPLIT])) return { main, info: null };
-    if (main.session[MAIN_PARTS]) states = await assembleParts(key, main, parts);
-  } else delta = await read(deltaKey(key));
+  const main = await read(key); if (!Array.isArray(main?.session?.[AREA_SPLIT])) return { main, info: null };
+  if (!main.session[MAIN_PARTS]) return finishMain(key, main, await read(deltaKey(key)), new Map());
+  const got = await readRecords(key, false); return finishMain(key, got.main, got.delta, got.parts);
+}
+// readRecords(key, areas): the main record, its delta and its parts (and, with areas, every plain area record and pack)
+// in ONE transaction (third review of 1085: a reader that took the main record in one transaction and the areas in
+// another could fall between a write's first packs and its marked main record, and lose those areas).
+function readRecords(key, areas) {
+  return dbCall("readonly", (store, finish, fail) => {
+    const ranges = [["parts", partRange(key), partPrefix(key), String], ...(areas ? [["plain", areaRange(key), areaPrefix(key), String], ["packs", packRange(key), packPrefix(key), Number]] : [])];
+    const m = store.get(key), d = store.get(deltaKey(key)), qs = ranges.map(([name, r, pre, cast]) => [name, store.getAllKeys(r), store.getAll(r), pre, cast]);
+    const all = [m, d, ...qs.flatMap((q) => [q[1], q[2]])]; let left = all.length;
+    for (const q of all) { q.onerror = () => fail(q.error); q.onsuccess = () => { if (--left) return; const out = { main: m.result, delta: d.result }; for (const [name, ks, vs, pre, cast] of qs) out[name] = new Map((ks.result || []).map((k, i) => [cast(String(k).slice(name === "parts" ? 0 : pre.length)), vs.result[i]])); finish(out); }; }
+  });
+}
+async function finishMain(key, main, delta, parts) {
+  if (!Array.isArray(main?.session?.[AREA_SPLIT])) return { main, info: null };
+  const states = main.session[MAIN_PARTS] ? await assembleParts(key, main, parts) : null;
   const core = Number(main.session[STORED_SIZE]?.core) || 0, stamp = main.session[MAIN_STAMP], applied = applyDelta(main, delta);
   if (applied && Array.isArray(delta.ops)) markDeltaParts(states, delta.ops);
   // Slimmer saves: the marker that keeps older builds off a journey with packed areas comes off here (one without the
@@ -533,19 +544,13 @@ function primeJournal(key, stored, save) {
 // readJourney(key, adopt): the journey put back together. Only a load (adopt) takes what it read as this page's memory
 // of the store, and only when no write of this journey overlapped the read (review of 1085).
 async function readJourney(key, adopt = false) {
-  const epoch = writeEpoch.get(key) || 0, { main, info } = await readMainState(key);
+  const epoch = writeEpoch.get(key) || 0, got = await readRecords(key, true), { main, info } = await finishMain(key, got.main, got.delta, got.parts);
   if (!Array.isArray(main?.session?.[AREA_SPLIT])) { if (adopt && (writeEpoch.get(key) || 0) === epoch) { forgetStore(key); readDeltas.delete(key); } return main; }
-  const prefix = areaPrefix(key);
-  // Slimmer saves: the area packs are read in the same transaction; a listed area without a plain record is taken from
-  // its bucket's pack (a pack carrying another journey's seed is not this journey's), and a pack that cannot be read
-  // fails the whole read. Packs holding nothing listed are left unread. A listed area found nowhere is absent, as a missing
-  // area record always was (release 555).
-  const [records, packs] = await dbCall("readonly", (store, finish, fail) => {
-    const ks = store.getAllKeys(areaRange(key)), vs = store.getAll(areaRange(key)), pks = store.getAllKeys(packRange(key)), pvs = store.getAll(packRange(key)), pre = packPrefix(key);
-    for (const q of [ks, vs, pks]) q.onerror = () => fail(q.error);
-    pvs.onerror = () => fail(pvs.error);
-    pvs.onsuccess = () => finish([new Map((ks.result || []).map((k, i) => [String(k).slice(prefix.length), vs.result[i]])), new Map((pks.result || []).map((k, i) => [Number(String(k).slice(pre.length)), pvs.result[i]]))]);
-  });
+  // Slimmer saves: main record, delta, parts, plain area records and packs all come from one transaction; a listed area
+  // without a plain record is taken from its bucket's pack (a pack carrying another journey's seed is not this journey's),
+  // and a pack that cannot be read fails the whole read. Packs holding nothing listed are left unread. A listed area found
+  // nowhere is absent, as a missing area record always was (release 555).
+  const records = got.plain, packs = got.packs;
   const plain = [...records.keys()], held = new Map(), seed = String(main.seed ?? ""), foreign = (p) => isAreaPack(p) && p.seed !== seed;
   const buckets = info.gated ? [...new Set(main.session[AREA_SPLIT].filter((k) => !records.has(k)).map(bucketOf))].filter((b) => packs.has(b) && !foreign(packs.get(b))) : []; // an unmarked main record (an older build's) has no packs of its own
   const opened = await Promise.all(buckets.map((b) => unpackAreas(packs.get(b))));
