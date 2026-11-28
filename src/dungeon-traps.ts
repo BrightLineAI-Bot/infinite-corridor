@@ -39,6 +39,25 @@ export const TRAP_DAMAGE_SHARE = .15; // the old fire, spike and gas traps: at l
 // × `max`. Armor, wards and the robot's plating still take their part afterwards, as they do from any blow.
 export const TRAP_LEVEL_GROWTH = { perLevel: .012, max: 2.2 };
 export const trapShareScale = (level) => Math.min(TRAP_LEVEL_GROWTH.max, 1 + TRAP_LEVEL_GROWTH.perLevel * (Math.max(1, Number(level) || 1) - 1));
+// Traps by distance (Tim, 2026-11-27: "the farther out you go, the harder they hit", as creatures do). Every trap (these, the old fire,
+// spike and gas traps, the Great Ranges' rockslides) multiplies its hit by the ring it lies in (a dungeon's: its entrance section's, as its
+// creatures take), interpolated along `rows` [ring, multiplier] and flat past the last. It goes on top of the level growth, not the
+// creatures' own multipliers (world.ts REGIONAL_THREAT × game.ts ORDINARY_THREAT, ×3 at ring 45 to ×15 at 190): those exist to outrun the
+// Wayfarer's health, and a trap's hit is already a share of that health, so taking them whole would count the same growth twice. The
+// share the level and the ring make together never passes `maxShare` of maximum health; with the Threat Sigil (game.ts) a hit never passes
+// `hardCap`, so no trap takes a whole health bar in one blow. Below the first row nothing changes.
+export const TRAP_REGION = { rows: [[15, 1], [45, 1.15], [100, 1.3], [190, 1.45], [400, 1.6]], maxShare: .5, hardCap: .9 };
+export function trapRingScale(ring) {
+  const R = TRAP_REGION.rows, r = Math.max(0, Number(ring) || 0); if (r <= R[0][0]) return R[0][1];
+  for (let i = 1; i < R.length; i++) if (r <= R[i][0]) { const [a, m0] = R[i - 1], [b, m1] = R[i]; return m0 + (m1 - m0) * (r - a) / (b - a); }
+  return R[R.length - 1][1];
+}
+export const trapScale = (level, ring = 0) => trapShareScale(level) * trapRingScale(ring);
+// A trap's hit: at least `share` of maximum health (by level and ring), at least `floor` (by ring), never past TRAP_REGION.maxShare.
+export function trapHit(share, floor, level, maxHp, ring = 0) {
+  const hp = Number(maxHp) || 0, hit = Math.max(floor * trapRingScale(ring), share * trapScale(level, ring) * hp);
+  return Math.max(1, Math.round(hp > 0 ? Math.min(hit, TRAP_REGION.maxShare * hp) : hit));
+}
 export const TRAP_KINDS_BY_VERSION = { 1: ["sigil", "lava", "dart"], 2: ["sigil", "lava", "dart", "pit"], 3: ["sigil", "lava", "dart", "pit", "vortex"] };
 export const NEW_TRAP_KINDS = TRAP_KINDS_BY_VERSION[DUNGEON_TRAPS.version];
 const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -70,7 +89,7 @@ export function addNewTraps(map, seed, id, version = DUNGEON_TRAPS.version) {
   return placed;
 }
 
-const damageOf = (kind, level, maxHp = 0) => { const K = DUNGEON_TRAPS[kind]; return Math.max(1, Math.round(Math.max(K.base + K.perLevel * Math.max(1, Number(level) || 1), (K.share || 0) * trapShareScale(level) * (Number(maxHp) || 0)))); };
+const damageOf = (kind, level, maxHp = 0, ring = 0) => { const K = DUNGEON_TRAPS[kind]; return trapHit(K.share || 0, K.base + K.perLevel * Math.max(1, Number(level) || 1), level, maxHp, ring); };
 const shot = (id, x, y, a, speed, life, damage, extra = {}) => ({ id, x, y, dx: Math.cos(a), dy: Math.sin(a), speed, life, damage, hostile: true, hits: {}, path: "straight", trapShot: true, ...extra });
 
 // One frame of the new traps. `world`: { player, level, maxHp, now, projectiles, effects, seeds, open?, airborne?, fall? }
@@ -79,7 +98,7 @@ const shot = (id, x, y, a, speed, life, damage, extra = {}) => ({ id, x, y, dx: 
 // kept by the game; open(x, y): whether a point is open floor, so orbs land short of walls). Returns nothing; it pushes hostile projectiles and effects the game already resolves against the
 // Wayfarer.
 export function tickNewTraps(objects, world, dt) {
-  const { player, level, maxHp, now } = world, px = player.x, py = player.y, T = DUNGEON_TRAPS;
+  const { player, level, maxHp, now } = world, ring = world.ring || 0, px = player.x, py = player.y, T = DUNGEON_TRAPS;
   for (const trap of objects || []) {
     if (trap?.kind !== "trap" || !trap.newTrap) continue;
     const K = T[trap.trapType]; if (!K) continue;
@@ -98,7 +117,7 @@ export function tickNewTraps(objects, world, dt) {
         if (d > .15) { const step = Math.min(d, K.pull * dt); world.pull?.(dx / d * step, dy / d * step); }
         if (trap.timer <= 0) {
           trap.phase = "rest"; trap.timer = K.rest; trap.fired = (trap.fired || 0) + 1;
-          const dmg = damageOf("vortex", level, maxHp), tag = `${trap.id}:${trap.fired}`;
+          const dmg = damageOf("vortex", level, maxHp, ring), tag = `${trap.id}:${trap.fired}`;
           world.effects.push({ id: `${tag}:burst`, kind: "enemy-blast", x: cx, y: cy, life: .35, radius: K.blast, untilPulse: 0, pulse: 99, damage: dmg, hostile: true, hits: {} });
           for (let i = 0; i < K.frags; i++) { const a = i * Math.PI * 2 / K.frags + (hashSeed(`${tag}:a`) % 100) / 100; world.projectiles.push(shot(`${tag}:frag:${i}`, cx, cy, a, K.speed, K.fragReach / K.speed, Math.round(dmg * K.fragShare), { path: "grenade", blastRadius: .9 })); }
         }
@@ -111,7 +130,7 @@ export function tickNewTraps(objects, world, dt) {
       continue;
     } else if (trap.phase === "warning" && trap.timer <= 0) {
       trap.phase = "rest"; trap.timer = K.rest; trap.fired = (trap.fired || 0) + 1;
-      const cx = trap.x + .5, cy = trap.y + .5, dmg = damageOf(trap.trapType, level, maxHp), tag = `${trap.id}:${trap.fired}`;
+      const cx = trap.x + .5, cy = trap.y + .5, dmg = damageOf(trap.trapType, level, maxHp, ring), tag = `${trap.id}:${trap.fired}`;
       if (trap.trapType === "sigil") {
         const turn = (hashSeed(tag) % 360) * Math.PI / 180;
         for (let i = 0; i < K.seeds; i++) { const a = turn + i * Math.PI * 2 / K.seeds; let r = K.ring; while (r > .5 && world.open && !world.open(cx + Math.cos(a) * r, cy + Math.sin(a) * r)) r -= .4; /* an orb lands on open floor, short of a wall */ world.seeds.push({ id: `${tag}:seed:${i}`, x: cx, y: cy, fx: cx, fy: cy, tx: cx + Math.cos(a) * r, ty: cy + Math.sin(a) * r, t: 0, spin: a, damage: dmg }); }

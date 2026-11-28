@@ -87,7 +87,7 @@ import { stalkerCaught, stalkerTrapAttempt, cancelStalkerAct, STALKER, ensureSta
 import { applyBossKit, tickBossKit } from "./boss-kit.ts";
 import { wonderRumour, wonderAt, STARFIELD_ROLL, starfieldChance, starfieldRolls, starPlaceAt, starPlaceOfId, setWonderTreeProbe } from "./wonders.ts";
 import { firstJourneyLine, rumourTurn, noteWonderLead, RUMOUR_SPEAKERS } from "./leads.ts"; // progression Phase 4: first-journey lines, rumours and the lead floor
-import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, trapShareScale, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
+import { DUNGEON_TRAPS, TRAP_DAMAGE_SHARE, TRAP_REGION, trapShareScale, trapHit, addNewTraps, tickNewTraps } from "./dungeon-traps.ts";
 import { sectionAtlasColor } from "./atlas-colors.ts";
 import { SEED_REALMS, realmSeedKinds, realmOfSeed, seedRealmId, isSeedRealmId, generateSeedRealm, seedRealmFallback, realmDestination, dropSeedRealms, realmCacheFind, realmViscera } from "./seed-realms.ts"; // seed realms
 import { roofDeckAt, roofDeckById, roofDeckIndex, roofDeckLevelOfTile, roofDeckNear, roofDeckUnderBox, validRoofDeck, normalizeRoofDeck, roofDecksApply, markHeartlandDecks } from "./roof-decks.ts"; // roof decks (Tim, 2026-11-12)
@@ -127,7 +127,7 @@ import { CANYON, canyonIdFor, isCanyonId, canyonHere, isClod, ensureCanyonHistor
 import { KEEPS, keepHere, buildKeep, ARCOLOGY, arcologyHere, buildArcology, exitsOpen } from "./keeps.ts";
 import { TALL_TOWERS, towerHere, placeTower, isTowerId, parseTowerId, generateTowerInterior, tierOf as towerTierOf, lookOut, towerCachePay, ensureSeedHunts, seedHuntCandidates, seedHuntKind, seedHuntWeights, seedHuntWhere, seedHuntPick, seedHuntAt, huntHeading, huntText } from "./tall-towers.ts"; // tall towers (the Upwells)
 import { BUILDINGS, INTERIOR_TERRAIN, buildingHere, buildingHereV2, placeBuilding, placeBuildingV2, isBuildingId, generateBuildingFloor, buildingArrival, buildingScale, parseBuildingId, ROOF_EXIT, roofExitSpot, roofLanding, TOWER_SEAL, towerUnsealed, towerSealText } from "./great-buildings.ts";
-import { closeViewOccludedOnEntry, closeViewShowing, closeViewApplies, overworldCloseViewApplies } from "./close-view.ts"; // Close View places (2026-11-11): "The view is occluded." on entering a refused place
+import { closeViewOccludedOnEntry, closeViewShowing, closeViewApplies, overworldCloseViewApplies, closeViewOn, closeViewPlaceAllowed } from "./close-view.ts"; // Close View places (2026-11-11): "The view is occluded." on entering a refused place
 import { outdoorLevelHeight } from "./close-view-outdoor.ts"; // Close View terrain occlusion (tool-forms.ts RANGED_OCCLUSION): a level's drawn height outdoors
 import { CLOSE_VIEW_ROOM_ROUTING, routingKeepAppearance, roomPaddingFootprint, applyRoomPadding } from "./close-view-room-routing.ts";
 import { COMPOUNDS, compoundHere, placeCompound, isCompoundId, generateCompoundFloor, parseCompoundId, compoundVersionOf } from "./compounds.ts";
@@ -151,7 +151,7 @@ useRoof({ roofAt: pentagonRoofAt, roofSpots: pentagonRoofSpots }); // release 75
 import { THE_DEEP, DEEP_FLOOR_GEN, deepFloorGen, ensureTheDeep, deepIdFor, isDeepId, deepShaft, shaftHere, startFloors, floorPlan, floorScale, floorAffixShare, guardianAffixes, lootBonus, floorSpecial, deepSpecialRow, lairScale, DEEP_SPECIALS } from "./the-deep.ts";
 import { DEEP_ANNEX, annexRecord, annexFloorId, annexThird, annexScale, annexExit } from "./deep-annex.ts";
 import { trackSeason, noteSeasonDiscovery } from "./seasons.ts";
-import { growRiteTree, riteTreeFits, COHERENCE, bridgeLanes, cohereSection, joinToLand, joinsCore, coherenceCore, creatureSpot, creatureRegions, settleSpawns } from "./landscape.ts";
+import { growRiteTree, riteTreeFits, COHERENCE, bridgeLanes, cohereSection, joinToLand, joinsCore, coherenceCore, creatureSpot, creatureRegions, settleSpawns, slideCarry, tickRockslides } from "./landscape.ts";
 import { GREAT_MUSHROOMS } from "./great-mushrooms.ts";
 import { interiorTerrain, interiorSurfaceLevel, interiorSurfaceHeight, LIFT_PER_LEVEL, applyLandscape, applyDream, DREAM_VERSION, sectionRegion, regionName, REGIONS, farSleepSection, biomeFor, openSeaSection, canStep, LANDSCAPE_VERSION, DEEP_WATER, LETHAL_KINDS, elevationAt, fallDamage, tileUnder, nearestReturnable, canReturnTo, safeVoidScarTransition, liftAt, tileLiftScale, mendCanopy, HOT_SPRINGS, springMend, reachableFromPlaza, reachableFrom, crownBarred } from "./landscape.ts";
 import { markArrival, createSquad, squadFrame, squadRequest, behaviourProfile, behaviourState, behaviourGate, behaviourReact, ringVector, shapeBlow, startFeint, afterBlow, BEHAVIOUR } from "./enemy-behaviour.ts"; // ordinary creature behaviour (Tim, 2026-11-14)
@@ -2608,7 +2608,10 @@ export function selectRangedAim(player, enemies, map, width, range = Infinity, r
     .sort((a, b) => a.distance - b.distance || String(a.e.id).localeCompare(String(b.e.id)))
     .map((q) => projectileDirection(q.e.x - player.x, q.e.y - player.y, player.facing))[0] || null;
 }
-export function updateTraps(objects, player, dt, jumping = false, maxHp = 0, level = 1) {
+// `ring`: the trap's ring (TRAP_REGION; a dungeon's entrance section's); `sigil`: the Threat Sigil's damage factor (1 + THREAT_SIGIL.damage ×
+// step), as on a creature's blow, with the hit kept under TRAP_REGION.hardCap of maximum health.
+export const sigilTrapHit = (hit, sigil = 1, maxHp = 0) => { const n = Math.round(hit * (sigil || 1)), cap = Math.floor(TRAP_REGION.hardCap * (Number(maxHp) || 0)); return cap > 0 && sigil > 1 ? Math.max(1, Math.min(n, cap)) : n; };
+export function updateTraps(objects, player, dt, jumping = false, maxHp = 0, level = 1, ring = 0, sigil = 1) {
   for (const trap of objects.filter((o) => o.kind === "trap" && !o.newTrap /* release 523: tickNewTraps runs those */)) {
     trap.hits = trap.hits || {};
     trap.timer = Math.max(0, Number(trap.timer) || 0);
@@ -2640,7 +2643,7 @@ export function updateTraps(objects, player, dt, jumping = false, maxHp = 0, lev
         (inFire || inSpikes)
       ) {
         trap.hits.player = true;
-        player.hp -= Math.max(Number(trap.damage)||14, Math.round((Number(maxHp) || 0) * TRAP_DAMAGE_SHARE * trapShareScale(level))); // release 525: at least a share of maximum health; 557: growing with level
+        player.hp -= sigilTrapHit(trapHit(TRAP_DAMAGE_SHARE, Number(trap.damage)||14, level, maxHp, ring), sigil, maxHp); // release 525: at least a share of maximum health; 557: growing with level; 2026-11-27: and with the ring (TRAP_REGION)
       }
       if (trap.timer <= 0) {
         trap.phase = "recovery";
@@ -2967,7 +2970,7 @@ export function hasLineOfSight(enemy, player, map, width, projectile=false, allo
 }
 // Objects that do not keep Act from building a skiff at the water's edge (release 263).
 export const SHORE_PASSIVE = ["tree", "rock"];
-export const REGION_BANNER = { again: 300, kinds: { wild: "Wild country", sea: "Open sea", mountains: "Mountains", desert: "Desert", alien: "Strange growth", swamp: "Fenland", lakes: "Lake country", isles: "Islands", dream: "The Far Sleep", ashfields: "Ashfields", glasslands: "Glasslands", emberlands: "Emberlands", forest: "Forest", frost: "Frostlands", lunar: "Moonlands", volcanic: "Firelands", pillars: "Pillar lands", fog: "Fog moors", jungle: "Jungle", biomech: "Carapace wastes", salt: "Salt marsh", crystal: "Crystal fields", fungal: "Sporewood", petrified: "Petrified wood", savanna: "Savanna", reef: "Reef flats", amber: "Amberwood", obsidian: "Obsidian fields", terraces: "Terrace springs", reckoning: "Reckoning fields", glacier: "Rimeglacier", regolith: "Lunar waste", marrow: "Marrowworks", magma: "Magma rivers", oasis: "Oasis ergs", fells: "Cloudfells" } }; // release 573; 579; 583
+export const REGION_BANNER = { again: 300, kinds: { wild: "Wild country", sea: "Open sea", mountains: "Mountains", desert: "Desert", alien: "Strange growth", swamp: "Fenland", lakes: "Lake country", isles: "Islands", dream: "The Far Sleep", ashfields: "Ashfields", glasslands: "Glasslands", emberlands: "Emberlands", forest: "Forest", frost: "Frostlands", lunar: "Moonlands", volcanic: "Firelands", pillars: "Pillar lands", fog: "Fog moors", jungle: "Jungle", biomech: "Carapace wastes", salt: "Salt marsh", crystal: "Crystal fields", fungal: "Sporewood", petrified: "Petrified wood", savanna: "Savanna", reef: "Reef flats", amber: "Amberwood", obsidian: "Obsidian fields", terraces: "Terrace springs", reckoning: "Reckoning fields", glacier: "Rimeglacier", regolith: "Lunar waste", marrow: "Marrowworks", magma: "Magma rivers", oasis: "Oasis ergs", fells: "Cloudfells", ranges: "Great ranges" } }; // release 573; 579; 583
 // Release 557 (Tim: "a lot of these weight glasses are on small little... areas... it activates the boat... or if there's
 // someone nearby, it'll talk to them... prioritize the weight glass... a hard rule... there's like an area... around the
 // way glass where... you can't make a boat"): within `reach` tiles of a Wayglass (any checkpoint, the Lighthouse Buoy too)
@@ -3501,8 +3504,9 @@ export class Game {
       }
       update(dt, input, now);
       const hpBeforeInstalledTraps=this.player.hp;
-      updateTraps(this.map.objects, this.player, dt, now < this.jumpUntil, this.save.maxHp, this.save.level);
-      if (this.area === "dungeon") tickNewTraps(this.map.objects, { player: this.player, level: this.save.level, maxHp: this.save.maxHp, airborne: now < (this.jumpUntil || 0) || this.mechBoosting === true || (this.save.magicSkills?.active?.id === 'aerial-step' && this.save.magicSkills.active.remaining > 0) /* release 527 */, pull: (dx, dy) => this.moveGrounded(this.player, dx, dy), fall: () => { if (this.player.hp > 0 && now > (this.player.invulnerableUntil || 0)) { this.player.hp = 0; this.message = "The floor gives way, and the Wayfarer falls into the dark."; } }, now, projectiles: this.projectiles, effects: this.effects, seeds: (this.trapSeeds ||= []), open: (x, y) => { const w = mapWidth(this.map, this.area), q = this.map.tiles[Math.floor(y) * w + Math.floor(x)]; return !!q && !q.blocked && !(this.map.tiles.length && Math.floor(x) >= w); } }, dt); // release 523
+      updateTraps(this.map.objects, this.player, dt, now < this.jumpUntil, this.save.maxHp, this.save.level, this.trapRing(), this.trapSigil());
+      if (this.area === "overworld" && this.map.rockslides) this.tickRockslides(dt, now); // the Great Ranges' rockslides (landscape.ts RANGES.rockslide)
+      if (this.area === "dungeon") tickNewTraps(this.map.objects, { player: this.player, level: this.save.level, maxHp: this.save.maxHp, ring: this.trapRing() /* their hits then land as a creature's (the defence layers, the Threat Sigil) */, airborne: now < (this.jumpUntil || 0) || this.mechBoosting === true || (this.save.magicSkills?.active?.id === 'aerial-step' && this.save.magicSkills.active.remaining > 0) /* release 527 */, pull: (dx, dy) => this.moveGrounded(this.player, dx, dy), fall: () => { if (this.player.hp > 0 && now > (this.player.invulnerableUntil || 0)) { this.player.hp = 0; this.message = "The floor gives way, and the Wayfarer falls into the dark."; } }, now, projectiles: this.projectiles, effects: this.effects, seeds: (this.trapSeeds ||= []), open: (x, y) => { const w = mapWidth(this.map, this.area), q = this.map.tiles[Math.floor(y) * w + Math.floor(x)]; return !!q && !q.blocked && !(this.map.tiles.length && Math.floor(x) >= w); } }, dt); // release 523
       if(this.player.hp<hpBeforeInstalledTraps)this.cancelConsumeVisual(this.player.hp<=0?'death':'hurt');
       if (this.player.hp <= 0 || this.area !== "dungeon") this.traversal = null;
     };
@@ -3879,6 +3883,17 @@ export class Game {
       hamlet:!seen||seen.hamletVersion||town?.mouth?[seen?.hamletVersion||HAMLET_VERSION,!!town,legacyMouthHamlet(save,rx,ry)]:null,
       trails:!seen||!!seen.travelVersion,bridgeLanes:!!coh,...heartlandShackStep(seen,rx,ry)};}
   areaStateId(){const id=this.areaId();return this.area==="dungeon"&&this.map?.multiLevel&&this.save.session.activeDungeonLevelId?`${id}:level:${this.save.session.activeDungeonLevelId}`:id;}
+  // The Great Ranges' rockslides: the dungeon traps' rules (their damage share, growing with level), a jump or a dodge's guard clears
+  // the stones; the rumble is told once a wake.
+  tickRockslides(dt, now) {
+    const p = this.player, w = this._rockWorld ||= { warn: () => { this.message = "Stones shift on the slope above. Get out of their path!"; } }; // one record, reused: nothing allocated a frame
+    w.player = p; w.guarded = now < (this.jumpUntil || 0) || now < (p.invulnerableUntil || 0); w.level = this.save.level; w.maxHp = this.save.maxHp; w.ring = this.trapRing(); w.sigil = this.trapSigil();
+    tickRockslides(this.map, w, dt);
+  }
+  // Traps by distance (dungeon-traps.ts TRAP_REGION): the ring the Wayfarer's section lies in (in a dungeon, its entrance section's, as
+  // scaleFresh takes for its creatures), and the Threat Sigil's damage factor, as it multiplies a creature's blow.
+  trapRing() { return regionalThreat(this.rx, this.ry).ring; }
+  trapSigil() { return 1 + THREAT_SIGIL.damage * threatStep(this.save); }
   snapshotArea(leaving = true) {
     if (!this.map) return;
     if (leaving && this.area === "dungeon") this.tickCharting(); // DUNGEON_CHARTING: Aperture gained on the frame you leave still counts for the floor
@@ -3904,6 +3919,7 @@ export class Game {
       projectiles: this.projectiles.map((p) => ({ ...p })),
       effects: this.effects.map((f) => ({ ...f, hits: { ...f.hits } })),
       eliteHazards:this.eliteHazards.map(h=>({...h,hits:{...h.hits}})),
+      ...(!leaving && this.map.rockslides ? { rockslides: Object.fromEntries(this.map.rockslides.map((z) => [z.id, { phase: z.phase, timer: z.timer, hits: { ...z.hits } }])) } : {}), // the Great Ranges: a rockslide under way is kept with a save in place; leaving the section resets it
     };
     if (leaving) this.respawnState = null; // building respawns: the next visit reads its floor's record afresh
   }
@@ -4296,6 +4312,7 @@ export class Game {
         for (const saved of s.enemies || []) if ((EXTRA_FOE.test(String(saved.id)) || saved.apertureEncounter || (stalkId && saved.stalker && saved.id === stalkId)) && !saved.dead && !isTombstone(saved) && this.enemies.length < RESUME_KEEP.cap && !this.enemies.some((e) => e.id === saved.id)) { const restored = { ...saved, ai: { ...saved.ai } }; ensureAI(restored); resetPackRuntime(restored); this.enemies.push(restored); } }
       for (const o of this.map.objects)
         if (s.objects?.[o.id]) Object.assign(o, s.objects[o.id]);
+      if (s.rockslides && this.map.rockslides) for (const z of this.map.rockslides) { const k = s.rockslides[z.id]; if (k) Object.assign(z, { phase: k.phase, timer: Number(k.timer) || 0, hits: { ...k.hits } }); }
       if (area === "overworld" && this.rite?.key !== riteKey(this.rx, this.ry)) for (const o of this.map.objects) if (o.kind === "saplingDais" && o.state === "burning") { // release 736 (review F7): no rite burns here now
         o.state = "open"; delete o.burn; const rec = riteRecord(this.save, this.rx, this.ry);
         // A rite lost without being broken (a journey saved mid-rite before rites were kept) gives its attempt back; one broken
@@ -9694,7 +9711,7 @@ export class Game {
   penned(now = 0) { if (this.area !== "overworld" || !playerEnclosure(this)) return false; if (now > (this.penNoticeAt || 0)) { this.penNoticeAt = now + 2500; this.message = "No room to fight in the enclosure: dodge out of its open side (items still work)."; } return true; }
   closeViewActionEligible() {
     const m=this.map,b=m?.building,p=this.player,interior=!!b&&!b.finale&&(!m.landscape||(interiorTerrain(m)&&m.tiles?.length<=4096&&m.width<=64&&m.height<=64))&&!m.stillworks&&!m.skyCloud&&!m.movers?.length&&!m.canopy;
-    if(this.save.closeView!==true||this.area!=="dungeon"||!interior||!p||!(p.hp>0))return false;
+    if(!closeViewOn(this.save)||this.area!=="dungeon"||!interior||!p||!(p.hp>0)||!closeViewPlaceAllowed(this))return false;/* 2026-11-27: one switch; a dungeon is Standard View */
     const w=Math.max(1,Number(m.width)||32),t=m.tiles?.[Math.floor(p.y+.75)*w+Math.floor(p.x+.5)];return !(t&&(t.courtyard===true||t.openAir===true||t.pentRoof===true||t.pentBalcony===true||t.kind==="yardGrass"));
   }
   closeViewAttackBufferEligible(now = 0) {
@@ -13126,6 +13143,7 @@ export class Game {
       carrier = raft ? { raft, old: platformPos(raft, ps - dt), current: platformPos(raft, ps) } : null,
       carried = carrier ? { x: carrier.current.x - carrier.old.x, y: carrier.current.y - carrier.old.y } : { x: 0, y: 0 }; // release 613: a raft carries whoever stands on it
     dx += carried.x; dy += carried.y;
+    if (this.area === "overworld" && this.map?.ranges && !dodging && !sailing && !swimming) { const sl = slideCarry(this.map, p.x, p.y, dx, dy, dt); if (sl) { dx = sl.dx; dy = sl.dy; } } // the Great Ranges' scree chutes carry you down (a dodge climbs)
     let
       nx = p.x + dx,
       ny = p.y + dy;
