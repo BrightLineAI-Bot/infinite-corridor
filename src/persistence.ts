@@ -389,9 +389,16 @@ async function packBuckets(value, keys, putting, held, sizes, P = PACKED_AREAS) 
 // again when the stored main record is not the one this page last wrote; any pack kept means the main record is put
 // with the marker. A write reported failed forgets this page's memory of the journey, so the next write puts what it
 // needs. Reads made for anything but loading never change this memory, and a read overlapped by a write is not adopted.
-const writeEpoch = new Map(), lastStamps = new Map();
+// Fourth review of 1085: two tabs can share a main stamp through a run of deltas, so the stamp alone cannot tell this page
+// that another one wrote meanwhile (and packed a bucket with an area this page does not know). Every split write reads
+// the record `${key}::writer` and puts a fresh page-unique id there in its own transaction; a load takes it in the same
+// transaction as everything else. A delta write goes on past its plain puts only when the stored id is the one this page
+// last wrote or read; otherwise it forgets and writes whole, and a whole write that finds another page's id or stamp
+// puts every listed area that has no plain record and is in no pack it writes itself.
+const writeEpoch = new Map(), lastStamps = new Map(), lastWriters = new Map(); // lastWriters: journey key -> the writer id this page last wrote or read (null: none stored)
+const writerKey = (key) => `${key}::writer`, pageId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`; let writerSeq = 0;
 const bumpEpoch = (key) => writeEpoch.set(key, (writeEpoch.get(key) || 0) + 1);
-function forgetStore(key) { for (const m of [storedAreas, storedSizes, journals, recordKeys, packedIn, partState, packSizes, coreSizes, lastStamps]) m.delete(key); gatedKeys.delete(key); }
+function forgetStore(key) { for (const m of [storedAreas, storedSizes, journals, recordKeys, packedIn, partState, packSizes, coreSizes, lastStamps, lastWriters]) m.delete(key); gatedKeys.delete(key); }
 const plainPart = (e) => ({ [PART_TAG]: 1, plain: { e: e.keys.map((k, i) => [k, e.seqs[i], e.refs[i]]) } });
 async function writeJourney(key, value) {
   bumpEpoch(key); try { return await writeJourneyNow(key, value); } finally { bumpEpoch(key); }
@@ -430,7 +437,7 @@ async function writeJourneyNow(key, value, again = false) {
   if (split && !ops) { stored.core = jsonLength(main); main.session[STORED_SIZE] = stored; }
   const marked = split && !ops ? { ...main, version: PACKED_AREAS.storeVersion, session: { ...main.session, [PACKED_FROM]: main.version } } : null;
   if (split && !ops && gate) main = marked;
-  let queuedMs = 0, heldAfter = held, plainAfter = plainNow, gatedAfter = !!(split && gate), verified = true;
+  let queuedMs = 0, wrote = null, heldAfter = held, plainAfter = plainNow, gatedAfter = !!(split && gate), verified = true;
   const had0 = ops ? recordKeys.get(key) : null;
   try {
     await dbCall("readwrite", (store) => {
@@ -439,9 +446,11 @@ async function writeJourneyNow(key, value, again = false) {
       // the one this page wrote and (to put packs) it carries the marker; otherwise it stops after the plain puts, which
       // are always safe, and the journey is written again whole (another tab, a rename or an import replaced the record).
       const t0 = performance.now(), dead = ops && had0 ? had0.filter((k) => !live.has(k)) : null, needsBase = !!ops && (packs.length > 0 || !had0 || dead.length > 0);
-      const prior = split && (!ops || needsBase) ? store.get(key) : null;
+      const wq = split ? store.get(writerKey(key)) : null, prior = split && (!ops || needsBase) ? store.get(key) : null, writerId = `${pageId}-${++writerSeq}`;
+      const mineStill = () => lastWriters.has(key) && (wq.result ?? null) === lastWriters.get(key);
       for (const [k, area] of puts) store.put(area, prefix + k);
       const rest = () => {
+      if (split) { store.put(writerId, writerKey(key)); wrote = writerId; }
       for (const q of packs) store.put(q.pack, packPrefix(key) + q.bucket);
       for (const [k, r] of partPuts) store.put(r, k);
       if (ops) store.put({ base: stamp, areas: keys, sizes: Object.fromEntries(sizes), stored, ops: deltaOps }, deltaKey(key));
@@ -461,21 +470,22 @@ async function writeJourneyNow(key, value, again = false) {
           const plainKept = new Set(putting), written = new Set(packs.map((q) => q.bucket));
           for (const k of plainThere) { if (!live.has(k) || packedNow.has(k)) store.delete(prefix + k); else plainKept.add(k); }
           const needed = new Set(); for (const k of keys) if (!plainKept.has(k)) needed.add(bucketOf(k));
-          let packKept = written.size > 0;
+          const foreignStore = !ops && (!mineStill() || !lastStamps.has(key) || prior?.result?.session?.[MAIN_STAMP] !== lastStamps.get(key)); let packKept = written.size > 0;
           for (const b of packsThere) { if (written.has(b) || needed.has(b)) packKept = true; else store.delete(pre + b); }
-          for (const k of keys) { const b = bucketOf(k); if (!plainKept.has(k) && !written.has(b) && !packsThere.has(b)) { const area = value.session.areas[k]; if (area !== undefined) { store.put(area, prefix + k); plainKept.add(k); } } } // found nowhere: put again
+          for (const k of keys) { const b = bucketOf(k); if (!plainKept.has(k) && !written.has(b) && (foreignStore || !packsThere.has(b))) { const area = value.session.areas[k]; if (area !== undefined) { store.put(area, prefix + k); plainKept.add(k); } } } // found nowhere: put again
           heldAfter = new Map(); for (const k of keys) if (!plainKept.has(k)) heldAfter.set(k, bucketOf(k)); plainAfter = plainKept;
           if (!ops) {
             const want = new Map(), putNow = new Set(partPuts.map(([k]) => k)); if (plan) for (const q of plan.plans) for (const [b, e] of q.now) want.set(partRecordKey(key, q.P.name, b), e);
             for (const t of partsThere) if (!want.has(t)) store.delete(t);
-            const foreign = !lastStamps.has(key) || prior?.result?.session?.[MAIN_STAMP] !== lastStamps.get(key);
+            const foreign = foreignStore;
             for (const [t, e] of want) if (!putNow.has(t) && (foreign || !partsThere.has(t))) store.put(plainPart(e), t);
             if (packKept && !gatedAfter) { store.put(marked, key); gatedAfter = true; }
           }
         };
       }
       };
-      if (needsBase) prior.onsuccess = () => { const m = prior.result; verified = !!m && lastStamps.has(key) && m.session?.[MAIN_STAMP] === lastStamps.get(key) && (!packs.length || m.version === PACKED_AREAS.storeVersion); if (verified) rest(); };
+      if (needsBase) prior.onsuccess = () => { const m = prior.result; verified = mineStill() && !!m && lastStamps.has(key) && m.session?.[MAIN_STAMP] === lastStamps.get(key) && (!packs.length || m.version === PACKED_AREAS.storeVersion); if (verified) rest(); };
+      else if (ops) wq.onsuccess = () => { verified = mineStill(); if (verified) rest(); };
       else rest();
       queuedMs = performance.now() - t0;
     });
@@ -484,6 +494,7 @@ async function writeJourneyNow(key, value, again = false) {
   storedAreas.set(key, new Map(keys.map((k) => [k, value.session.areas[k]])));
   if (split) recordKeys.set(key, [...plainAfter]); else recordKeys.delete(key);
   if (split) packedIn.set(key, heldAfter); else packedIn.delete(key);
+  if (split) lastWriters.set(key, wrote); else lastWriters.delete(key);
   if (!ops) { if (gatedAfter) gatedKeys.add(key); else gatedKeys.delete(key); lastStamps.set(key, stamp); } // a delta leaves the stored main record as it was
   if (!ops) partState.set(key, new Map(plan ? plan.plans.map((q) => [q.P.name, { next: q.next, seqOf: q.seqOf, buckets: q.now, sizes: q.sizes, dirty: new Set() }]) : []));
   packSizes.set(key, packBytes); if (!ops) coreSizes.set(key, stored.core);
@@ -509,9 +520,9 @@ async function readMainState(key) {
 function readRecords(key, areas) {
   return dbCall("readonly", (store, finish, fail) => {
     const ranges = [["parts", partRange(key), partPrefix(key), String], ...(areas ? [["plain", areaRange(key), areaPrefix(key), String], ["packs", packRange(key), packPrefix(key), Number]] : [])];
-    const m = store.get(key), d = store.get(deltaKey(key)), qs = ranges.map(([name, r, pre, cast]) => [name, store.getAllKeys(r), store.getAll(r), pre, cast]);
-    const all = [m, d, ...qs.flatMap((q) => [q[1], q[2]])]; let left = all.length;
-    for (const q of all) { q.onerror = () => fail(q.error); q.onsuccess = () => { if (--left) return; const out = { main: m.result, delta: d.result }; for (const [name, ks, vs, pre, cast] of qs) out[name] = new Map((ks.result || []).map((k, i) => [cast(String(k).slice(name === "parts" ? 0 : pre.length)), vs.result[i]])); finish(out); }; }
+    const m = store.get(key), d = store.get(deltaKey(key)), w = store.get(writerKey(key)), qs = ranges.map(([name, r, pre, cast]) => [name, store.getAllKeys(r), store.getAll(r), pre, cast]);
+    const all = [m, d, w, ...qs.flatMap((q) => [q[1], q[2]])]; let left = all.length;
+    for (const q of all) { q.onerror = () => fail(q.error); q.onsuccess = () => { if (--left) return; const out = { main: m.result, delta: d.result, writer: w.result ?? null }; for (const [name, ks, vs, pre, cast] of qs) out[name] = new Map((ks.result || []).map((k, i) => [cast(String(k).slice(name === "parts" ? 0 : pre.length)), vs.result[i]])); finish(out); }; }
   });
 }
 async function finishMain(key, main, delta, parts) {
@@ -558,13 +569,13 @@ async function readJourney(key, adopt = false) {
   const adopted = adopt && (writeEpoch.get(key) || 0) === epoch;
   if (adopted) {
     forgetStore(key); recordKeys.set(key, plain); packedIn.set(key, held); packSizes.set(key, new Map(buckets.map((b) => [b, packs.get(b).data.length])));
-    partState.set(key, info.states); coreSizes.set(key, info.core); if (info.gated) gatedKeys.add(key); if (typeof info.stamp === "string") lastStamps.set(key, info.stamp); readDeltas.set(key, info.delta);
+    lastWriters.set(key, got.writer); partState.set(key, info.states); coreSizes.set(key, info.core); if (info.gated) gatedKeys.add(key); if (typeof info.stamp === "string") lastStamps.set(key, info.stamp); readDeltas.set(key, info.delta);
     const sizes = main.session[AREA_SIZES]; if (sizes && typeof sizes === "object") storedSizes.set(key, new Map(Object.entries(sizes).filter(([k, n]) => records.has(k) && Number.isFinite(n))));
   } else if (adopt) readDeltas.delete(key);
   const save = assembleSave(main, records); if (adopted) assembled.add(save); return save; // a save not adopted is written as new (every area put)
 }
 async function removeJourney(key) {
-  try { await dbCall("readwrite", (store) => { store.delete(key); store.delete(deltaKey(key)); store.delete(areaRange(key)); store.delete(packRange(key)); store.delete(partRange(key)); }); }
+  try { await dbCall("readwrite", (store) => { store.delete(key); store.delete(deltaKey(key)); store.delete(writerKey(key)); store.delete(areaRange(key)); store.delete(packRange(key)); store.delete(partRange(key)); }); }
   finally { bumpEpoch(key); forgetStore(key); } // after a failure too: the next write is whole and sweeps
 }
 function remove(key){return dbCall("readwrite",(store)=>{store.delete(key)})}

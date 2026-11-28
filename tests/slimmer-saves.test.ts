@@ -441,6 +441,41 @@ for (const how of ['load', 'export', 'duplicate']) test(`${how === "export" ? "a
   if (how === 'load') { got.xp = 5; await B.saveGame(got); await B.flushSaves(); ctl.ls.clear(); await allBack(); }
 });
 
+// Fourth review of 1085: two tabs sharing the main stamp through deltas. B adds an area and packs its bucket; A, which
+// never saw that area, packs the same bucket; B's later saves must still find (or put back) the area.
+test('two tabs sharing a main stamp: an area one adds is never lost to the other packing its bucket', async () => {
+  const ctl = fakeIdb(), clock = later(SAVE_DELTA_MS + 1000); await smallStored(ctl, 'SAMESTAMP');
+  try {
+    { const P0 = await freshPersistence(); P0.setActiveSlot(1); const s0 = await P0.loadSave(); for (let i = 0; i < 2; i++) { s0.xp = 1 + i; await P0.saveGame(s0); await P0.flushSaves(); } }
+    const A = await freshPersistence(), B = await freshPersistence(); A.setActiveSlot(1); const sa = await A.loadSave(), sb = await B.loadSave(), X = 'overworld:5010:0:g1';
+    sb.session.areas[X] = bigArea(777); sb.xp = 100; await B.saveGame(sb); await B.flushSaves();
+    for (let n = 0; n < 30 && ctl.data.has(`journey:1::area::${X}`); n++) { sb.xp++; await B.saveGame(sb); await B.flushSaves(); }
+    for (let i = 0; i < 6; i++) { sa.xp = 10 + i; await A.saveGame(sa); await A.flushSaves(); }
+    const has = async () => { ctl.ls.clear(); const Q = await freshPersistence(); Q.setActiveSlot(1); const b = await Q.loadSave(); assert.equal(Q.saveBlocked(1), null); return X in b.session.areas; };
+    sb.xp = 200; await B.saveGame(sb); await B.flushSaves(); assert.equal(await has(), true, 'after B saves again');
+    clock.step(); sb.xp = 300; await B.saveGame(sb); await B.flushSaves(); assert.equal(await has(), true, 'after B\'s whole write');
+    for (let i = 0; i < 5; i++) { sb.xp++; await B.saveGame(sb); await B.flushSaves(); } clock.step(); sb.xp++; await B.saveGame(sb); await B.flushSaves(); assert.equal(await has(), true, 'as B plays on');
+  } finally { clock.done(); }
+});
+
+test('fuzz: two tabs adding areas, urgent and whole writes, seeds 1-24: every listed area is present after every save', { timeout: 600000 }, async () => {
+  for (let seed = 1; seed <= 24; seed++) {
+    const ctl = fakeIdb(), clock = later(SAVE_DELTA_MS + 1000); await smallStored(ctl, `TABS-${seed}`);
+    let r = seed * 2654435761 >>> 0; const rnd = () => ((r = Math.imul(r ^ (r >>> 15), 2246822507) + 0x9e3779b9 >>> 0) / 4294967296);
+    try {
+      const tabs = []; for (const name of ['A', 'B']) { const P = await freshPersistence(); P.setActiveSlot(1); tabs.push({ name, P, s: await P.loadSave(), n: 0 }); }
+      for (let step = 0; step < 30; step++) {
+        const t = tabs[rnd() < .5 ? 0 : 1], urgent = rnd() < .2, add = rnd() < .35; if (rnd() < .15) clock.step();
+        t.s.xp = (t.s.xp || 0) + 1; if (add) { t.n++; t.s.session.areas[`overworld:${t.name === 'A' ? 1000 + t.n : 2000 + t.n}:0:g1`] = bigArea(t.n); }
+        await t.P.saveGame(t.s, urgent ? { urgent: true } : {}); await quietly(() => t.P.flushSaves().catch(() => {}));
+        ctl.ls.clear(); const Q = await freshPersistence(); Q.setActiveSlot(1); const back = await Q.loadSave(); assert.equal(Q.saveBlocked(1), null, `seed ${seed} step ${step}`);
+        const main = ctl.data.get('journey:1'), delta = ctl.data.get('journey:1::delta'), listed = delta && delta.base === main.session.mainStamp ? delta.areas : main.session.areasSplit;
+        const missing = listed.filter((k) => !(k in back.session.areas)); assert.deepEqual(missing, [], `seed ${seed} step ${step}: every listed area`);
+      }
+    } finally { clock.done(); }
+  }
+});
+
 test('listing journeys or exporting during writes leaves the write memory alone', async () => {
   const ctl = fakeIdb(), P = await freshPersistence(); P.setActiveSlot(1);
   const s = bigMain('LIST-WRITE'); s.session.areas = Object.fromEntries(Array.from({ length: 60 }, (_, i) => [`overworld:${i}:0:g1`, bigArea(i)]));
