@@ -563,7 +563,14 @@ async function readJourney(key, adopt = false) {
   // nowhere is absent, as a missing area record always was (release 555).
   const records = got.plain, packs = got.packs;
   const plain = [...records.keys()], held = new Map(), seed = String(main.seed ?? ""), foreign = (p) => isAreaPack(p) && p.seed !== seed;
-  const buckets = info.gated ? [...new Set(main.session[AREA_SPLIT].filter((k) => !records.has(k)).map(bucketOf))].filter((b) => packs.has(b) && !foreign(packs.get(b))) : []; // an unmarked main record (an older build's) has no packs of its own
+  // Sixth review of 1085 (blocker): an unmarked main record is not proof the packs are stale. An older build's page left
+  // open on the journey writes it whole and unmarked after this build packed areas (and deleted their plain records), and
+  // lists those areas still; they live only in the packs. So the packs are read whatever the marker says: a plain record
+  // still wins, and a pack carrying another seed is never taken. A stale pack of the same seed cannot fill in: every
+  // writer puts a plain record for an area it lists unless it believes one is stored, and only a write that packs an
+  // area into a new pack of its bucket (in the same transaction) deletes a listed area's plain record. Areas taken from a
+  // pack are held, so the next write is whole and marked again.
+  const buckets = [...new Set(main.session[AREA_SPLIT].filter((k) => !records.has(k)).map(bucketOf))].filter((b) => packs.has(b) && !foreign(packs.get(b)));
   const opened = await Promise.all(buckets.map((b) => unpackAreas(packs.get(b))));
   for (let i = 0; i < buckets.length; i++) for (const [k, area] of opened[i]) if (!records.has(k) && bucketOf(k) === buckets[i]) { records.set(k, area); held.set(k, buckets[i]); }
   const adopted = adopt && (writeEpoch.get(key) || 0) === epoch;

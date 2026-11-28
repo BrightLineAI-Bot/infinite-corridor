@@ -485,6 +485,67 @@ test('listing journeys or exporting during writes leaves the write memory alone'
   const back = await (await freshPersistence()).loadSave(); assert.equal(sameJourney(back, migrateSave(structuredClone(s))), null);
 });
 
+// Sixth review of 1085 (blocker): a page of an older build (release 1084: no packs, no writer id) left open on a journey
+// writes it whole and unmarked after this build packed areas and deleted their plain records. It lists every area it
+// holds, puts plain records only for the areas it changed, deletes the delta and the plain records of areas it no longer
+// lists, and never touches the packs, the parts or `::writer`. The packed areas are then only in the packs.
+function oldBuildWrite(ctl, save, changed = [], slot = 1) {
+  const key = `journey:${slot}`, prefix = `${key}::area::`, areas = save.session.areas, keys = Object.keys(areas);
+  const main = structuredClone({ ...save, session: { ...save.session, areas: null, areasSplit: keys, mainStamp: `old-${Date.now().toString(36)}`, areaSizes: Object.fromEntries(keys.map((k) => [k, JSON.stringify(areas[k]).length])) } });
+  ctl.data.set(key, main); ctl.data.delete(`${key}::delta`);
+  for (const k of changed) ctl.data.set(prefix + k, structuredClone(areas[k]));
+  for (const k of [...ctl.data.keys()]) if (k.startsWith(prefix) && !(k.slice(prefix.length) in areas)) ctl.data.delete(k);
+}
+test('an older build\'s page writes the journey whole and unmarked after this build packed areas: every area survives the next load and write', async () => {
+  for (const urgent of [false, true]) {
+    const ctl = fakeIdb(), clock = later(SAVE_DELTA_MS + 1000);
+    try {
+      await smallStored(ctl, `OLDTAB-${urgent}`);
+      const old = structuredClone(await allBack()); // the older build's page loads the journey (all plain then)
+      const A = await freshPersistence(); A.setActiveSlot(1); const sa = await A.loadSave();
+      for (let i = 0; i < 4; i++) { sa.xp = i + 1; await A.saveGame(sa); await A.flushSaves(); }
+      const packedNow = 200 - plainKeys(ctl).length;
+      assert.ok(packKeys(ctl).length > 0 && packedNow > 0 && ctl.data.get('journey:1').version === PACKED_AREAS.storeVersion, `this build packed ${packedNow} areas`);
+      old.xp = 77; old.session.areas['overworld:0:0:g1'] = { ...old.session.areas['overworld:0:0:g1'], leftAt: 9999 }; old.session.areas['overworld:500:0:g1'] = { enemies: [], objects: {}, marker: 'added by the old page' };
+      oldBuildWrite(ctl, old, ['overworld:0:0:g1', 'overworld:500:0:g1']);
+      assert.equal(ctl.data.get('journey:1').version, old.version, 'the main record is unmarked');
+      const want = (back) => { assert.equal(back.xp, 77); assert.equal(back.session.areas['overworld:0:0:g1'].leftAt, 9999, 'a plain record wins over its pack'); assert.equal(back.session.areas['overworld:500:0:g1'].marker, 'added by the old page'); for (let i = 1; i < 200; i++) assert.equal(back.session.areas[`overworld:${i}:0:g1`]?.leftAt, 100 + i, `area ${i}`); };
+      const B = await freshPersistence(); B.setActiveSlot(1); const sb = await B.loadSave(); assert.equal(B.saveBlocked(1), null);
+      assert.equal(Object.keys(sb.session.areas).length, 201, 'the next load has every area'); want(sb);
+      sb.xp = 78; await B.saveGame(sb, urgent ? { urgent: true } : {}); await B.flushSaves();
+      assert.equal(ctl.data.get('journey:1').version, PACKED_AREAS.storeVersion, 'the next write is whole and marked again');
+      ctl.ls.clear(); const back = await allBack(201); want({ ...back, xp: 77 }); assert.equal(back.xp, 78);
+      for (let i = 0; i < 3; i++) { sb.xp = 80 + i; clock.step(); await B.saveGame(sb); await B.flushSaves(); ctl.ls.clear(); await allBack(201); }
+    } finally { clock.done(); }
+  }
+});
+test('packs read under an unmarked main record never bring back another journey\'s areas (another seed, delete and re-create, an older import)', async () => {
+  for (const how of ['seed', 'recreate', 'import']) {
+    const ctl = fakeIdb(); await smallStored(ctl, 'STALE');
+    const exported = structuredClone(await allBack());
+    const A = await freshPersistence(); A.setActiveSlot(1); const sa = await A.loadSave();
+    for (let i = 0; i < 4; i++) { sa.xp = i + 1; for (let k = 0; k < 200; k += 7) sa.session.areas[`overworld:${k}:0:g1`] = { ...sa.session.areas[`overworld:${k}:0:g1`], leftAt: 5000 + i }; await A.saveGame(sa); await A.flushSaves(); }
+    assert.ok(packKeys(ctl).length > 0);
+    let want;
+    if (how === 'seed') { // a different journey's unmarked main record over the same slot, listing areas it holds no plain record for
+      const other = { ...structuredClone(exported), seed: 'OTHER-SEED' }; ctl.data.set('journey:1', { ...structuredClone({ ...other, session: { ...other.session, areas: null } }), session: { ...other.session, areas: null, areasSplit: Object.keys(other.session.areas) } });
+      for (const k of plainKeys(ctl)) ctl.data.delete(k); ctl.data.set('journey:1::area::overworld:3:0:g1', { enemies: [], objects: {}, marker: 'other' });
+      const Q = await freshPersistence(); Q.setActiveSlot(1); const back = await Q.loadSave();
+      assert.deepEqual(Object.keys(back.session.areas), ['overworld:3:0:g1'], 'a pack carrying another seed is never taken'); continue;
+    }
+    if (how === 'recreate') { // an older build deletes the slot (main, delta, plain records; packs stay) and starts a journey of the same seed
+      for (const k of [...ctl.data.keys()]) if (k === 'journey:1' || k === 'journey:1::delta' || k.startsWith('journey:1::area::')) ctl.data.delete(k);
+      want = freshSave(); want.seed = 'STALE'; want.session.areas = { 'overworld:0:0:g1': { enemies: [], objects: {}, marker: 'new journey' }, 'overworld:7:0:g1': { enemies: [], objects: {}, marker: 'new journey' } }; want = migrateSave(want);
+    } else want = exported; // an older build imports an earlier export of this journey (same seed) over the slot
+    oldBuildWrite(ctl, want, Object.keys(want.session.areas));
+    const Q = await freshPersistence(); Q.setActiveSlot(1); const back = await Q.loadSave(); assert.equal(Q.saveBlocked(1), null);
+    const check = (b) => { assert.deepEqual(Object.keys(b.session.areas).sort(), Object.keys(want.session.areas).sort(), `${how}: only the areas it lists`); for (const [k, area] of Object.entries(want.session.areas)) assert.equal(exact(b.session.areas[k], area), null, `${how}: ${k} is the written copy, not the pack's`); };
+    check(back);
+    const clock = later(SAVE_DELTA_MS + 1000);
+    try { for (let i = 0; i < 3; i++) { back.xp = 900 + i; clock.step(); await Q.saveGame(back); await Q.flushSaves(); ctl.ls.clear(); const R = await freshPersistence(); R.setActiveSlot(1); check(await R.loadSave()); } } finally { clock.done(); }
+  }
+});
+
 // ---------------------------------------------------------------- a real large journey (IC_BIG_SAVE)
 const BIG = process.env.IC_BIG_SAVE || '';
 test('a real large journey: packed losslessly, read back area by area, exported and imported, resumed as the same game', { skip: !BIG || !existsSync(BIG) ? 'set IC_BIG_SAVE to a diagnostics or exported journey file' : false, timeout: 600000 }, async () => {
