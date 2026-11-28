@@ -113,3 +113,25 @@ test('drawWayfarerSprite draws the Wayfarer alone and restores the sprite global
   const broken: any = new Proxy({}, { get: () => { throw new Error('no canvas'); }, set: () => true });
   setWayfarerBody(s, 'female'); assert.throws(() => drawWayfarerSprite(broken, s, 40)); assert.deepEqual(wayfarerSpriteGlobals(), before);
 });
+
+test('the framing fits the body and its held gear over a whole turn, with a margin, and does not change with the angle', async () => {
+  const { wardrobeBounds } = await import('../src/wardrobe.ts');
+  const meta = JSON.parse(read('../assets/wayfarer/rogue-v2.json')), file = fs.readFileSync(new URL('../assets/wayfarer/rogue-v2.bin', import.meta.url));
+  const male = decodeCloseViewHero(meta, file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength));
+  const W = 400, H = 500, C = WARDROBE.camera;
+  const project = (cam: any, x: number, y: number, z: number) => { const dx = x - cam.cx, dy = y - cam.cy, u = dx * cam.rx + dy * cam.ry, v = dx * cam.fx + dy * cam.fy, dz = z - cam.hc;
+    const depth = v * cam.cosP - dz * cam.sinP, up = v * cam.sinP + dz * cam.cosP; return [cam.ppx + cam.F * u / depth, cam.ppy - cam.F * up / depth]; };
+  const kits = [['Great Sweep', 'secondary-great-sweep', 'secondary'], ['Cinder Pike', 'primary-cinder-pike', 'primary'], ['Quandrix Staff', 'primary-quandrix-staff', 'primary'], ['Aether Orrery', 'secondary-aether-orrery', 'secondary']];
+  for (const body of ['male', 'female']) for (const [name, id, slot] of kits) {
+    const s = journey(); setWayfarerBody(s, body); s.equipment[slot] = item(id, name, slot);
+    const st = createWardrobePose(closeViewHeroBodyAsset(male, body)); poseWardrobe(st, s, { nowMs: 900 });
+    const b = wardrobeBounds(st), cam = wardrobeCamera(W, H, {}, b); assert.ok(cam.F <= C.lens * H + 1e-9);
+    for (const yaw of [0, .7, Math.PI / 2, 2.2, Math.PI, 4.1, 5.3]) {
+      poseWardrobe(st, s, { yaw: WARDROBE.frontYaw + yaw, nowMs: 900 });
+      const again = wardrobeBounds(st); assert.ok(Math.abs(again.r - b.r) < .04 && Math.abs(again.z1 - b.z1) < 1e-3, `${body} ${name}: the extent holds as it turns`);
+      const pts = [[st.frame.positionsNormals, st.frame.vertexCount * 6, 6], [st.gearVertices, st.gearFloats, 10]] as const;
+      for (const [a, n, k] of pts) for (let i = 0; i < n; i += k) { const [px, py] = project(cam, a[i], a[i + 1], a[i + 2]);
+        assert.ok(px >= W * C.margin / 2 - 1 && px <= W - W * C.margin / 2 + 1 && py >= H * C.margin / 2 - 1 && py <= H - H * C.margin / 2 + 1, `${body} ${name} yaw ${yaw}: inside the margin (${px.toFixed(1)}, ${py.toFixed(1)})`); }
+    }
+  }
+});

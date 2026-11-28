@@ -23,7 +23,10 @@ import { drawWayfarerSprite } from './renderer.ts';
 export const WARDROBE = Object.freeze({
   // the camera: `distance` tiles in front of the Wayfarer, its eye at `eye` tiles, looking at `target` tiles up (a slight
   // downward angle); `lens` is the focal length as a share of the canvas height
-  camera: Object.freeze({ distance: 3.4, eye: 1.18, target: .7, lens: 1.95 }),
+  // The framing (wardrobeCamera): the body and its held gear fit inside the canvas less `margin` (a share of each half), over
+  // a whole turn; `lens` is the closest it comes, so a bare-handed Wayfarer is never blown up; `bounds` is the extent assumed
+  // before the first pose (the bare body's: radius, lowest and highest point, in tiles); `turnSamples` the angles checked.
+  camera: Object.freeze({ distance: 3.4, eye: 1.18, target: .7, lens: 1.95, margin: .08, bounds: Object.freeze({ r: .45, z0: 0, z1: 1.42 }), turnSamples: 24, pad: 1.06 }),
   height: 1.68 * .82, // the Wayfarer's height in tiles, as Close View draws her (close-view.ts input.height)
   frontYaw: -Math.PI / 2, // the yaw that faces the camera
   turnPerPx: .0125, // radians a CSS pixel of drag
@@ -108,13 +111,29 @@ export function poseWardrobe(st, save, { yaw = WARDROBE.frontYaw, nowMs = 0, red
   let o = writeCloseViewHeroEquipment(st.gearVertices, 0, G, fr);
   o = writeCloseViewHeroKit(st.gearVertices, o, G, fr);
   if (h.offhand) o = writeCloseViewHeldTool(st.gearVertices, o, G, st.gearVertices.length);
-  st.gearFloats = o; return true;
+  st.gearFloats = o; st.heldKey = `${h.held}|${h.profile}|${h.offhand}`; return true;
+}
+// The extent of the posed Wayfarer and the held gear over a whole turn: the largest distance from the turning axis (the
+// origin) and the lowest and highest point. A turn about the axis keeps all three, so the framing does not change with the angle.
+export function wardrobeBounds(st, out = {}) {
+  let r = 0, z0 = Infinity, z1 = -Infinity; const take = (a, n, stride) => { for (let i = 0; i < n; i += stride) { const x = a[i], y = a[i + 1], z = a[i + 2]; if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) continue; const d = Math.hypot(x, y); if (d > r) r = d; if (z < z0) z0 = z; if (z > z1) z1 = z; } };
+  take(st.frame.positionsNormals, st.frame.vertexCount * 6, 6); take(st.gearVertices, st.gearFloats, MODEL_FLOATS);
+  if (!(z1 > z0)) { const B = WARDROBE.camera.bounds; out.r = B.r; out.z0 = B.z0; out.z1 = B.z1; return out; }
+  out.r = r * WARDROBE.camera.pad; out.z0 = Math.min(0, z0); out.z1 = z1; return out; // pad: the Orrery's spheres keep their own heading as she turns
 }
 // The camera's projection for close-view-gl.ts's `project()` convention (forward, right = (-fy, fx), pitch down positive).
-export function wardrobeCamera(w, h, out = {}) {
-  const C = WARDROBE.camera, pitch = Math.atan2(C.eye - C.target, C.distance);
-  out.cx = 0; out.cy = -C.distance; out.fx = 0; out.fy = 1; out.rx = -1; out.ry = 0; out.hc = C.eye; out.cosP = Math.cos(pitch); out.sinP = Math.sin(pitch);
-  out.F = C.lens * h; out.ppx = w / 2; out.ppy = h / 2; out.w = w; out.h = h; return out;
+// `bounds` (wardrobeBounds): the camera looks at the middle of the extent from the same slight downward angle, and the lens is
+// the longest (at most C.lens) that keeps every point of the extent's cylinder, at any angle of the turn, inside the margin.
+export function wardrobeCamera(w, h, out = {}, bounds = WARDROBE.camera.bounds) {
+  const C = WARDROBE.camera, pitch = Math.atan2(C.eye - C.target, C.distance), cp = Math.cos(pitch), sp = Math.sin(pitch);
+  const r = Math.max(0, Number(bounds?.r) || 0), z0 = Number.isFinite(bounds?.z0) ? bounds.z0 : 0, z1 = Number.isFinite(bounds?.z1) ? bounds.z1 : C.bounds.z1;
+  const target = (z0 + z1) / 2, eye = target + (C.eye - C.target), dist = Math.max(C.distance, r + 1), hx = w / 2 * (1 - C.margin), hy = h / 2 * (1 - C.margin);
+  let F = C.lens * h;
+  for (let i = 0; i < C.turnSamples; i++) { const a = i / C.turnSamples * Math.PI * 2, x = r * Math.cos(a), y = r * Math.sin(a), v = y + dist;
+    for (const z of [z0, z1]) { const dz = z - eye, depth = v * cp - dz * sp, up = v * sp + dz * cp; if (depth <= .05) continue;
+      if (Math.abs(x) > 1e-6) F = Math.min(F, hx * depth / Math.abs(x)); if (Math.abs(up) > 1e-6) F = Math.min(F, hy * depth / Math.abs(up)); } }
+  out.cx = 0; out.cy = -dist; out.fx = 0; out.fy = 1; out.rx = -1; out.ry = 0; out.hc = eye; out.cosP = cp; out.sinP = sp;
+  out.F = F; out.ppx = w / 2; out.ppy = h / 2; out.w = w; out.h = h; return out;
 }
 
 // ---------------------------------------------------------------------------------------------- the preview's own shaders
@@ -168,7 +187,7 @@ function createPreviewGL(canvas) {
   let gl = null;
   try { gl = canvas.getContext('webgl2', { alpha: true, antialias: true, depth: true, stencil: false, premultipliedAlpha: true, preserveDrawingBuffer: false, powerPreference: 'low-power' }); } catch { gl = null; }
   if (!(gl instanceof WebGL2RenderingContext)) return null;
-  const R = { gl, hero: null, gear: null, vao: null, vbo: null, asset: null, st: null, cam: {}, lost: false };
+  const R = { gl, hero: null, gear: null, vao: null, vbo: null, asset: null, st: null, cam: {}, bounds: null, boundsKey: null, lost: false };
   try {
     R.hero = createHeroGL(gl, compile, VS_COMMON, FS_COMMON); R.gear = compile(gl, GEAR_VS, GEAR_FS);
     R.vbo = gl.createBuffer(); R.vao = gl.createVertexArray(); gl.bindVertexArray(R.vao); gl.bindBuffer(gl.ARRAY_BUFFER, R.vbo); gl.bufferData(gl.ARRAY_BUFFER, WARDROBE_GEAR_FLOATS * 4, gl.DYNAMIC_DRAW);
@@ -186,9 +205,11 @@ function disposePreviewGL(R) {
 function drawPreviewGL(R, save, opts, w, h) {
   const gl = R.gl, source = getCloseViewHeroAsset(), asset = source && closeViewHeroBodyAsset(source, wayfarerBody(save));
   if (!asset || !R.hero || !prepareHeroGL(gl, R.hero, asset)) return false;
-  if (R.st?.asset !== asset) R.st = createWardrobePose(asset);
+  if (R.st?.asset !== asset) { R.st = createWardrobePose(asset); R.boundsKey = null; }
   if (!poseWardrobe(R.st, save, opts) || !uploadHeroFrame(gl, R.hero, R.st.frame)) return false;
-  const F = wardrobeCamera(w, h, R.cam), L = WARDROBE;
+  const key = R.st.heldKey; // the extent is measured once a body and held gear, so the zoom holds still as it turns and breathes
+  if (R.boundsKey !== key) { R.bounds = wardrobeBounds(R.st, R.bounds || {}); R.boundsKey = key; }
+  const F = wardrobeCamera(w, h, R.cam, R.bounds), L = WARDROBE;
   const cam = (P) => { const u = P.U; gl.uniform2f(u.u_cam, F.cx, F.cy); gl.uniform2f(u.u_fwd, F.fx, F.fy); gl.uniform2f(u.u_right, F.rx, F.ry); gl.uniform1f(u.u_hc, F.hc); gl.uniform1f(u.u_cosP, F.cosP); gl.uniform1f(u.u_sinP, F.sinP); gl.uniform1f(u.u_F, F.F); gl.uniform2f(u.u_pp, F.ppx, F.ppy); gl.uniform2f(u.u_size, F.w, F.h); };
   const light = (P) => { const u = P.U; gl.uniform3f(u.u_eye, F.cx, F.cy, F.hc); gl.uniform3fv(u.u_key, L.key); gl.uniform3fv(u.u_keyC, L.keyColor); gl.uniform3fv(u.u_fill, L.fill); gl.uniform3fv(u.u_fillC, L.fillColor); gl.uniform3fv(u.u_amb, L.ambient); if (u.u_water) gl.uniform4f(u.u_water, 0, 0, 0, 0); };
   gl.viewport(0, 0, w, h); gl.clearColor(0, 0, 0, 0); gl.clearDepth(1); gl.disable(gl.BLEND); gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.depthMask(true); gl.disable(gl.CULL_FACE);
