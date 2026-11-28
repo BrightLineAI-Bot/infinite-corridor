@@ -183,11 +183,11 @@ export const WALL_CLING = {
   // one jump (kick.push × a walk, 4.8 tiles a second, × JUMP.base .52 s: 2.5 tiles).
   pentagon: { grip: ["outer", "balcony"], stand: ["balcony", "stair"], below: 3, near: 4 },
 };
-// Triceratops Cunning (Tim, 2026-11-18). The Triceratops stays `noEcho` in MONSTER_PACK: only a Bad (hostile) one leaves this, certain
-// on the first such kill (`from` and `certain`, read by echoDrop). Good and Silly Goose ones, ridden mounts and catches never do.
-// Its rules: ON_HIT_ECHOES.cunning.
-ECHOES.triceratops = { name: "Triceratops Cunning", cost: 2, trigger: "hit", module: "ramCharge", creature: "Triceratops", from: { triceratopsDisposition: "bad" }, certain: true,
-  taken: "Defeat a hostile Triceratops to take it.", text: "Each hit you land marks the foe with a horn. The third hit on the same foe within 3 s gores it for +60% of that hit and staggers it for 0.4 s (once every 2 s a foe)." };
+// Triceratops Chop (Tim, 2026-11-27; it replaces Triceratops Cunning of 2026-11-18, under the same id so owned and set copies carry
+// over). The Triceratops stays `noEcho` in MONSTER_PACK: only a Bad (hostile) one leaves this, certain on the first such kill (`from`
+// and `certain`, read by echoDrop). Good and Silly Goose ones, ridden mounts and catches never do. Its rules: TRICERATOPS_CHOP.
+ECHOES.triceratops = { name: "Triceratops Chop", cost: 2, trigger: "swing", module: "ramCharge", creature: "Triceratops", from: { triceratopsDisposition: "bad" }, certain: true,
+  taken: "Defeat a hostile Triceratops to take it.", text: "Every third melee attack (a swing or a punch), two pale horn spikes form in the air beside your target and chop down onto it, one from each side, each for half of that blow's damage." };
 export const ECHO_IDS = Object.keys(ECHOES).filter((id) => !ECHOES[id].pending);
 // The afterimage of a plunge slam (game.ts plungeLand), or null for anything that is not a Wayfarer's slam: an afterimage
 // never lays another. `id` is the new effect's id; `aim` the facing it slams toward (the Close View afterimage's yaw).
@@ -282,10 +282,6 @@ export const ON_HIT_ECHOES = {
   // A foe's hits closer together than this count once (a volley's shards, a field's simultaneous pulses); the Fourfold
   // Daggers' second cut (80 ms) still counts.
   perFoeGapMs: 60,
-  // Triceratops Cunning: `marks` hits on one foe within `windowMs` gore it for `gore` of the last hit's damage and stagger it
-  // `stagger` s (bosses and elites a `bossStagger` share, as every Wayfarer stagger; the stagger governor still holds). No
-  // knockback. Then the foe takes no marks for `cooldownMs`.
-  cunning: { marks: 3, windowMs: 3000, gore: .6, stagger: .4, bossStagger: .25, cooldownMs: 2000 },
   // Bloblet Mend (Tim, revised 2026-11-18): each hit mends `share` of maximum health, at most `perSecond` times in any second.
   mend: { share: .01, perSecond: 3 },
   // Tentacle Ember (Tim, revised 2026-11-18): each hit lays a stack on that foe; the `stacks`th bursts it in embers, `share` of
@@ -294,7 +290,8 @@ export const ON_HIT_ECHOES = {
   // when the foe goes `lapseMs` without a hit. The burst is never a hit itself.
   ember: { stacks: 3, share: .4, radius: 1.5, burning: 1.75, lapseMs: 3000 },
 };
-export const ON_HIT_IDS = ["triceratops", "bloblet", "wormTentacle"];
+// The Triceratops's Echo was on-hit (Triceratops Cunning) until 2026-11-27; Triceratops Chop counts swings (TRICERATOPS_CHOP).
+export const ON_HIT_IDS = ["bloblet", "wormTentacle"];
 const HIT_MARK = Symbol("onHitMark");
 // Which on-hit Echoes are set (a bit per ON_HIT_IDS entry), worked out once a frame.
 function onHitMask(game, now) {
@@ -305,7 +302,7 @@ function onHitMask(game, now) {
 }
 function hitMark(e) {
   let m = e[HIT_MARK];
-  if (!m) { m = { last: -Infinity, m1: -Infinity, m2: -Infinity, coolUntil: -Infinity, embers: 0, emberAt: -Infinity }; Object.defineProperty(e, HIT_MARK, { value: m, writable: true, configurable: true, enumerable: false }); }
+  if (!m) { m = { last: -Infinity, embers: 0, emberAt: -Infinity }; Object.defineProperty(e, HIT_MARK, { value: m, writable: true, configurable: true, enumerable: false }); }
   return m;
 }
 // The foe's runtime marks (tests and diagnostics); null when it has none.
@@ -317,27 +314,15 @@ export function echoHit(game, now, enemy, damage) {
   if (!(now - (game._hitWindowAt ?? -Infinity) < 1000)) { game._hitWindowAt = now; game._hitWindowN = 0; }
   if (game._hitWindowN >= H.perSecond) return false;
   game._hitWindowN++; mark.last = now;
-  const live = !enemy.dead && enemy.hp > 0, save = game.save, p = game.player;
-  if (mask & 1 && live && now >= mark.coolUntil) { // Triceratops Cunning
-    const C = H.cunning;
-    if (now - mark.m1 <= C.windowMs) {
-      mark.m1 = mark.m2 = -Infinity; mark.coolUntil = now + C.cooldownMs;
-      const gore = Math.max(1, Math.round(damage * C.gore * (game.vulnScale?.(enemy, now) ?? 1))), before = Math.max(0, enemy.hp);
-      enemy.hp -= gore; enemy.hitFlash = .18;
-      enemy.hitStun = Math.max(enemy.hitStun || 0, enemy.boss || enemy.eliteId ? C.stagger * C.bossStagger : C.stagger);
-      game.astralPlayerHit?.(enemy, Math.max(0, before - Math.max(0, enemy.hp)));
-      (game.glyphVisuals ||= []).push({ kind: "burst", x: enemy.x + .5, y: enemy.y + .45, radius: .7, life: .3, max: .3 });
-      if (enemy.hp <= 0 && !enemy.dead) { enemy.dead = true; game.defeatEnemy?.(enemy); }
-    } else { mark.m1 = mark.m2; mark.m2 = now; }
-  }
-  if (mask & 2 && p.hp > 0) { // Bloblet Mend: the last `perSecond` (3) mends' times, oldest first
+  const save = game.save, p = game.player;
+  if (mask & 1 && p.hp > 0) { // Bloblet Mend: the last `perSecond` (3) mends' times, oldest first
     const M = H.mend, max = save.maxHp || p.maxHp || p.hp;
     if (!(now - (game._hitMend0 ?? -Infinity) < 1000)) {
       const before = p.hp; game.grantHitHeal?.(max * M.share, now, enemy); // the shared heal-on-hit budget (TESSERACTS.hitHealCap)
       if (p.hp > before) { game._hitMend0 = game._hitMend1 ?? -Infinity; game._hitMend1 = game._hitMend2 ?? -Infinity; game._hitMend2 = now; if (game._echoLastHp !== undefined) game._echoLastHp += p.hp - before; } // a mend is never read as a wound's absence
     }
   }
-  if (mask & 4) { // Tentacle Ember
+  if (mask & 2) { // Tentacle Ember
     const E = H.ember;
     if (now - mark.emberAt > E.lapseMs) mark.embers = 0;
     mark.embers++; mark.emberAt = now;
@@ -357,6 +342,112 @@ function emberBurst(game, now, at, damage) {
     game.astralPlayerHit?.(e, Math.max(0, before - Math.max(0, e.hp)));
     if (e.hp <= 0 && !e.dead) { e.dead = true; game.defeatEnemy?.(e); }
   }
+}
+
+// ---------------------------------------------------------------- Triceratops Chop (Tim, 2026-11-27)
+// Every `every`th melee attack of the Wayfarer's (a weapon swing, counted once a swing at its contact whatever it strikes, and each
+// Iron Fists step; never a spell, a tool shot, a weapon art, the Shadow Clone or a glyph's Echo copy) sends two horn spikes: they
+// form in the air beside the target, one on the viewer's left and one on the right, hang a moment, then chop down at an angle onto
+// it, the right one `lagMs` after the left. The target: the foe the swing struck, else the locked foe or the nearest one in front
+// within `seek` tiles (`cone`: the cosine the aim must make with it), else the point `ahead` tiles in front (the spikes strike the
+// ground there). While they form and hang they follow the target; once they fall they are committed to where it stood, and a foe
+// more than `reach` tiles (plus its extra body) from that point when they land is missed.
+// Damage: each spike is `share` of the triggering blow's physical damage as the weapon pipeline made it (the weapon's damage,
+// Might, refinement and the swing's own share; an Iron Fist's punch power), before the Wayfarer's damage scale, which it then goes
+// through like any blow (game.ts chopBlow): Tempo's window, the Nanobot Knight's scatter, kill credit. It is never a hit: no
+// on-hit Echo, passive, glyph, Tesseract heal or frenzy blow comes of it, and it never counts as a swing, so nothing chains.
+// A stagger of `stun` s (`bossStun` on bosses and elites). The count is runtime state saved for exact resume (playerRuntime
+// .chopSwings); spikes still in the air when the game is saved are dropped, as every effect is. At most `cap` spikes at once
+// (a fixed pool: the oldest gives way); none survive leaving the area. Drawing: `draw` (renderer.ts drawChopSpikes, close-view.ts).
+export const TRICERATOPS_CHOP = Object.freeze({
+  every: 3, share: .5, sides: Object.freeze([-1, 1]),
+  seek: 3.5, cone: .25, ahead: 1.1, reach: .8,
+  formMs: 160, hangMs: 70, fallMs: 110, lagMs: 70, impactMs: 260,
+  stun: .15, bossStun: .06,
+  cap: 6,
+  // Appearance only: `height` and `side` (tiles) place the hanging spike's centre above and beside the target; `length` and
+  // `radius` its horn; `strike` the height on the target it lands at; `dust` the impact ring's reach.
+  draw: Object.freeze({ height: 1.35, side: .8, length: .7, radius: .1, strike: .3, sink: .12, dust: .55, horn: "#efe6cf", edge: "#8a7a5c", flash: "#fff4d6", dustColor: "#c8b48a" }),
+});
+// The spike pool (game.chopSpikes): `cap` records made once, then reused.
+function chopPool(game) {
+  let pool = game.chopSpikes;
+  if (!Array.isArray(pool) || pool.length !== TRICERATOPS_CHOP.cap) {
+    pool = game.chopSpikes = [];
+    for (let i = 0; i < TRICERATOPS_CHOP.cap; i++) pool.push({ on: false, side: 1, at: 0, fallAt: 0, hitAt: 0, endAt: 0, tx: 0, ty: 0, foe: null, damage: 0, struck: false, landed: false, map: null });
+  }
+  return pool;
+}
+const chopFoeOk = (e) => !!e && !e.dead && !e.untargetable && !e.hidden && e.hp > 0 && !unharmablePerson(e);
+// The spikes' target for a blow along (dx, dy) that struck `hit` (or nothing): see TRICERATOPS_CHOP.
+export function chopTarget(game, hit, dx, dy) {
+  if (chopFoeOk(hit)) return hit;
+  const C = TRICERATOPS_CHOP, p = game.player, cx = p.x + .5, cy = p.y + .45, front = (e) => { const ex = e.x + .5 - cx, ey = e.y + .45 - cy, d = Math.hypot(ex, ey); return d <= C.seek && (d < .05 || (ex * dx + ey * dy) / d >= C.cone); };
+  const lock = game.reachLock?.(); if (chopFoeOk(lock) && front(lock)) return lock;
+  let best = null, bd = Infinity;
+  for (const e of game.enemies || []) { if (!chopFoeOk(e) || e.farBelow || !front(e)) continue; const d = Math.hypot(e.x + .5 - cx, e.y + .45 - cy); if (d < bd) { bd = d; best = e; } }
+  return best;
+}
+// A melee attack landed its contact (game.ts primaryAttack, fistPunch, releasePendingMeleeContact): count it, and every `every`th
+// send the spikes. `base` is the blow's physical damage before the Wayfarer's damage scale; (dx, dy) its aim. Returns true when sent.
+export function chopSwing(game, now, hit, base, dx, dy) {
+  const C = TRICERATOPS_CHOP, p = game.player;
+  if (!p || !(p.hp > 0) || !Number.isFinite(now) || !hasEcho(game.save, "triceratops")) return false;
+  const n = (Math.max(0, Math.floor(Number(p.chopSwings) || 0)) + 1) % C.every; p.chopSwings = n;
+  if (n !== 0) return false;
+  const m = Math.hypot(Number(dx) || 0, Number(dy) || 0), ax = m > 1e-6 ? dx / m : 1, ay = m > 1e-6 ? dy / m : 0, foe = chopTarget(game, hit, ax, ay);
+  const tx = foe ? foe.x + .5 : p.x + .5 + ax * C.ahead, ty = foe ? foe.y + .45 : p.y + .45 + ay * C.ahead, damage = Math.max(1, (Number(base) || 0) * C.share), pool = chopPool(game);
+  for (let i = 0; i < C.sides.length; i++) {
+    let slot = null; for (const q of pool) { if (!q.on) { slot = q; break; } if (!slot || q.at < slot.at) slot = q; } // full: the oldest gives way
+    const lag = i * C.lagMs;
+    slot.on = true; slot.side = C.sides[i]; slot.at = now; slot.fallAt = now + C.formMs + C.hangMs + lag; slot.hitAt = slot.fallAt + C.fallMs; slot.endAt = slot.hitAt + C.impactMs;
+    slot.tx = tx; slot.ty = ty; slot.foe = foe; slot.damage = damage; slot.struck = false; slot.landed = false; slot.map = game.map || null;
+  }
+  return true;
+}
+// Every frame (tickEchoes): the spikes follow their target until they fall, then strike once each.
+export function tickChop(game, now) {
+  const pool = game.chopSpikes; if (!Array.isArray(pool)) return;
+  for (const q of pool) {
+    if (!q.on) continue;
+    if (q.map !== (game.map || null)) { q.on = false; q.foe = null; continue; } // left the area: they are gone
+    if (now < q.fallAt && chopFoeOk(q.foe)) { q.tx = q.foe.x + .5; q.ty = q.foe.y + .45; }
+    if (!q.struck && now >= q.hitAt) {
+      q.struck = true; const e = q.foe, C = TRICERATOPS_CHOP;
+      if (chopFoeOk(e) && Math.hypot(e.x + .5 - q.tx, e.y + .45 - q.ty) <= C.reach + Math.max(0, (Number(e.bodyRadius) || .38) - .38)) { q.landed = true; game.chopBlow?.(e, q.damage, now); }
+      q.foe = null;
+    }
+    if (now >= q.endAt) q.on = false;
+  }
+}
+// Where a spike is drawn at `now` (both views): its horn from base (bx, by, bz) to tip (tx, ty, tz), in tiles, z up from the ground
+// under the target; `alpha`; `impact` 0..1 through its impact flash (0 before it lands). (rx, ry): the viewer's right on the ground
+// (Standard View: 1, 0; Close View: the camera's). Under reduced motion the spike forms without growing and lands without falling
+// through the air. Writes `out` (no allocation); returns null for a spike that is not up.
+export function chopSpikePose(q, now, rx, ry, reduce = false, out = {}) {
+  if (!q?.on || !(now >= q.at)) return null;
+  const C = TRICERATOPS_CHOP, D = C.draw, hx = q.tx + rx * q.side * D.side, hy = q.ty + ry * q.side * D.side, hz = D.height;
+  let ux = q.tx - hx, uy = q.ty - hy, uz = D.strike - hz; const um = Math.hypot(ux, uy, uz) || 1; ux /= um; uy /= um; uz /= um;
+  const grow = reduce ? 1 : Math.min(1, (now - q.at) / C.formMs), fall = now < q.fallAt ? 0 : now >= q.hitAt ? 1 : reduce ? 0 : ((now - q.fallAt) / (q.hitAt - q.fallAt)) ** 2;
+  const L = D.length * (.35 + .65 * grow), travel = (um - D.length * .5 + D.sink) * fall, cx = hx + ux * travel, cy = hy + uy * travel, cz = hz + uz * travel;
+  out.bx = cx - ux * L * .5; out.by = cy - uy * L * .5; out.bz = cz - uz * L * .5; out.tx = cx + ux * L * .5; out.ty = cy + uy * L * .5; out.tz = cz + uz * L * .5;
+  out.ux = ux; out.uy = uy; out.uz = uz; out.radius = D.radius * (.5 + .5 * grow);
+  const impact = now >= q.hitAt ? Math.min(1, (now - q.hitAt) / C.impactMs) : 0;
+  out.impact = impact; out.landed = q.landed; out.gx = q.tx; out.gy = q.ty; out.side = q.side;
+  out.alpha = (reduce ? 1 : Math.min(1, .25 + grow)) * (impact > 0 ? 1 - impact : 1);
+  return out;
+}
+// The horn as Close View draws it, from a pose: 4 triangles (two crossed tapering blades, one across the viewer's right (rx, ry), one
+// across that in the plane of its fall), 12 vertices of x, y, z and a shade (1 the tip, .75 a base corner, .55 the base's centre),
+// written to `out` (a Float32Array of 48). `yo` moves it from the target's centre line to its feet. Returns `out`.
+export function chopHornVerts(P, rx, ry, yo = 0, out = new Float32Array(48)) {
+  const bx = P.bx, by = P.by + yo, bz = P.bz, tx = P.tx, ty = P.ty + yo, tz = P.tz, r = P.radius;
+  const wx = rx * r, wy = ry * r, hx = -P.ux * P.uz * r, hy = -P.uy * P.uz * r, hz = (1 - P.uz * P.uz) * r;
+  for (let i = 0, o = 0; i < 4; i++) { const k = i & 1 ? -1 : 1, ox = i < 2 ? wx : hx, oy = i < 2 ? wy : hy, oz = i < 2 ? 0 : hz;
+    out[o++] = tx; out[o++] = ty; out[o++] = tz; out[o++] = 1;
+    out[o++] = bx + ox * k; out[o++] = by + oy * k; out[o++] = bz + oz * k; out[o++] = .75;
+    out[o++] = bx; out[o++] = by; out[o++] = bz; out[o++] = .55; }
+  return out;
 }
 
 export function echoEvent(game, event, now, data = {}) {
@@ -430,6 +521,7 @@ export function tickEchoes(game, dt, now, moving) {
   // hurt / land detection runs even with nothing equipped so state stays fresh
   const hurt = game._echoLastHp !== undefined && p.hp < game._echoLastHp && p.hp > 0, airborne = now < (game.jumpUntil || 0), landed = game._echoAirborne && !airborne;
   game._echoLastHp = p.hp; game._echoAirborne = airborne;
+  if (game.chopSpikes) tickChop(game, now); // Triceratops Chop: spikes already sent strike even if the Echo is set aside
   if (!eq.length && !(game.echoPatches || []).length) return;
   if (hurt) echoEvent(game, "hurt", now);
   if (landed) echoEvent(game, "land", now);
