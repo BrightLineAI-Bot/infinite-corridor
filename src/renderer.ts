@@ -133,6 +133,19 @@ export const SALVAGE_BLADE_STD = Object.freeze({ blade: "#3f74d8", tine: "#5b8fe
 const salvageX = (facing, from, len) => facing === "left" ? -from - len : from; // body units outward from the hand, either side
 let STD_SALVAGE = false; // set around the Wayfarer's own sprite draw when the Salvage Blade is her primary
 let STD_BODY = "male"; // the same: the Wayfarer's body (journey-start.ts WAYFARER_BODY)
+// The Wardrobe's Standard View preview (wardrobe.ts): the Wayfarer's own sprite alone, facing the viewer and standing still, drawn
+// by actor() with the three globals above set as the game sets them around its own draw, and restored after (even if the draw
+// throws), so the game's drawing never sees the preview's values. `x`, `y` in tiles of `s` device pixels, as actor() takes them.
+export function drawWayfarerSprite(ctx, save, s, x = 0, y = 0, tool = save?.activeWeaponSlot === "secondary") { // tool: the tool in hand (no staff drawn)
+  const handsFree = STD_HANDS_FREE, salvage = STD_SALVAGE, body = STD_BODY, q = save?.equipment?.primary;
+  try {
+    STD_HANDS_FREE = false; STD_SALVAGE = !!q && (q.id === "salvage-blade" || q.name === "Salvage Blade"); STD_BODY = wayfarerBody(save);
+    actor(ctx, x, y, s, "player", "down", 0, "idle");
+    if (!tool && isQuandrixStaff(q)) drawQuandrixStaff(ctx, (x + .5) * s, (y + .45) * s, s, "down", false, save?.lastAim);
+  } finally { STD_HANDS_FREE = handsFree; STD_SALVAGE = salvage; STD_BODY = body; }
+}
+// For tests: the three sprite globals as they stand now.
+export const wayfarerSpriteGlobals = () => ({ handsFree: STD_HANDS_FREE, salvage: STD_SALVAGE, body: STD_BODY });
 // The female Wayfarer in Standard View (Tim, 2026-11-25): a slimmer frame and smaller head, and a small white braid brought
 // forward over the shoulder that is not holding the weapon, hanging down the front to the chest. A few rects, no new cost.
 // Tim (2026-11-26): a gentle hip curve (`hips`, a pixel wider each side than the torso, from below the waist to its foot), the feet
