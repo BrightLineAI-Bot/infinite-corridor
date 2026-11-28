@@ -7,6 +7,7 @@ import { swingIndicator, drawSwingSweep } from "./melee-swing.ts"; // the weight
 import { BLEED } from "./bleed.ts"; // the bleed status line
 import { subGate, droneGate, setMechMode, MECH_POWER } from "./vehicle-gates.ts";
 import { swapPreset, stashForOtherPreset } from "./build-presets.ts"; // release 393; 541: preset gear
+import { mountWardrobe } from "./wardrobe.ts"; // Pack → Wardrobe: the Wayfarer's live preview and quick swap
 import { FRACTURED } from "./fractured.ts"; // release 651: Fractured mode
 import { SLING, ensureSling, toSling, fromSling, equipFromSling } from "./sling.ts"; // release 543
 import { surveyorChainPath, surveyorComplete, SURVEYOR, SURVEYOR_NOTES } from "./surveyor.ts"; // release 551; 559
@@ -102,6 +103,13 @@ export function equipFromInventory(save, index) {
   if (prior && !stashForOtherPreset(save, item.slot, prior)) save.inventory.push(prior); // release 541: or it stays the other preset's
   return true;
 }
+// The Pack's Equip, shared by the Gear tab and the Wardrobe's quick swap: equipFromInventory's rules, the hand's switch
+// presentation cancelled, and saved. True when the piece went on.
+function equipCarried(index) { const ok = equipFromInventory(save, index); if (ok) game.cancelConsumeVisual('equipment-switch'); persist(); return ok; }
+// The sling's Equip, shared by the Gear tab and the Wardrobe (sling.ts equipFromSling).
+function equipSlung(index) { const r = equipFromSling(save, index); game.message = r.message; game.refreshDerivedStats?.(); persist(); return r; }
+// The preset switch, shared by the Arcanum's Preset buttons and the Wardrobe: build-presets.ts swapPreset with its effects.
+function swapPresetNow() { const r = swapPreset(save); game.cancelConsumeVisual('equipment-switch'); game.message = r.message; game.refreshDerivedStats?.(); /* release 541 */ persist(); return r; }
 function drawRangedEffects() { if (closeViewShowing(game)) return; /* Close View drew them on its floor */ drawCombatEffects(ctx,game,innerWidth,innerHeight); }
 // Close View: traps and vines, aperture marks and shots in flight are drawn onto its floor texture, under the billboards.
 const closeViewLayer = { ctx: null, w: 0, h: 0 };
@@ -1651,6 +1659,7 @@ function resume() {
   persistSoon(); // the Briar Stag fight stutter: pause() saved as the game stopped; nothing has run since but the menus, which save their own changes
 }
 pausePanel.addEventListener("cancel",(event)=>event.preventDefault());
+panel.addEventListener("close",closeWardrobe); // the Wardrobe's preview is released with the Pack
 // Release 125: Android's back gesture can close the pause menu even though its cancel is prevented (Chrome skips the
 // cancel event when there was no tap since the menu opened, e.g. after returning from the background). The game then
 // stayed paused with no menu: a freeze. Back on the pause menu now means Continue. Overlay transitions close the menu
@@ -1893,7 +1902,7 @@ async function handOverJourney(button,{yard=null,say=optionMessage,place="the Pr
   if(saveBlocked())return say(`This journey is not being saved just now, so ${place} cannot take a copy of it.`,true);
   const target=new URL(PROVING_GROUND_HANDOFF.entryPath,location.href).href;button.disabled=true;say(`Saving your journey for ${place}…`);
   try{if(!navigator.onLine){const reg=await navigator.serviceWorker?.getRegistration?.(target);if(!reg?.scope?.endsWith("/proving-ground/"))throw new Error("it needs one online visit before it works offline")}
-    const result=await journeyOperation.run(async()=>{await persist();await flushSaves();await writeHandoff(handoffRecord(save,{release:1090,slot:getActiveSlot(),returnUrl:location.href.split("#")[0],yard}))});
+    const result=await journeyOperation.run(async()=>{await persist();await flushSaves();await writeHandoff(handoffRecord(save,{release:1091,slot:getActiveSlot(),returnUrl:location.href.split("#")[0],yard}))});
     if(result.busy){button.disabled=false;return say("Another journey operation is already finishing.",true)}
     leavingForProvingGround=true;setTimeout(()=>{leavingForProvingGround=false},5000);location.assign(target)}
   catch(error){button.disabled=false;say(`Could not enter ${place} (${error?.message||error}). Your journey is unchanged.`,true)}}
@@ -1918,7 +1927,7 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)),settingRow("Soundtrack",selectSetting("soundtrack",[["adaptive","Adaptive"],["calm","Calm only"]]),"Adaptive: the music grows urgent in a fight and settles after. Calm only: no combat lift."),settingRow("Show track titles",toggleSetting("trackTitles"),"When a new song begins, its title scrolls in under the HUD for a few seconds."),settingRow("Music in background",toggleSetting("backgroundMusic"),"Keeps the music playing when you switch apps or lock the screen. The game stays paused and effects are silent. Lock-screen play and pause control the music only."));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:1090,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",closeView:{...closeViewSwitchStats,options:{indoor:save.closeView===true,overworld:save.overworldCloseView===true},render:closeViewRenderDiagnostics()}/* 2026-11-27: how often the camera changed, how often the device failed a frame, and the GPU state */,save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 1090\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${sizeText(report.totalStoredBytes??report.totalJourneyBytes)} stored (${sizeText(report.totalJourneyBytes)} as JSON)\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:1091,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",closeView:{...closeViewSwitchStats,options:{indoor:save.closeView===true,overworld:save.overworldCloseView===true},render:closeViewRenderDiagnostics()}/* 2026-11-27: how often the camera changed, how often the device failed a frame, and the GPU state */,save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 1091\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${sizeText(report.totalStoredBytes??report.totalJourneyBytes)} stored (${sizeText(report.totalJourneyBytes)} as JSON)\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);provingGroundRows(grid); // release 791
@@ -1930,7 +1939,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};{const T=sectionTerrainCacheStats();probeTerrain={hits:T.hits,misses:T.misses,warms:crossWarms}}probePhases={};probePrevious=null;probe.start({release:1090,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};{const T=sectionTerrainCacheStats();probeTerrain={hits:T.hits,misses:T.misses,warms:crossWarms}}probePhases={};probePrevious=null;probe.start({release:1091,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -2412,10 +2421,12 @@ function packSectionFailed(name,error){noteError(error);console.error(`Pack sect
 // should be just buttons to get through things... spells and echoes... under one tab, and then the armor and weapon
 // upgrading system should be another tab"): the Pack is tabbed, and one tab bar runs across the Pack, the Forge and the
 // Arcanum, so everything is a tap apart. The Arcanum keeps its own sub-tabs (Spells & Constellation, Glyphs, Echoes).
-const PACK_TABS=[['wayfarer','Wayfarer'],['gear','Gear'],['forge','Forge'],['arcanum','Arcanum'],['supplies','Supplies']];
+const PACK_TABS=[['wayfarer','Wayfarer'],['gear','Gear'],['wardrobe','Wardrobe'],['forge','Forge'],['arcanum','Arcanum'],['supplies','Supplies']]; // the Wardrobe (wardrobe.ts): after Gear
 let packTab='wayfarer';
 var gearPick=null; // release 469: the pieces chosen to salvage (null: not choosing)
-function packTabBar(current){const bar=document.createElement('nav');bar.className='codex-tabs pack-tabs';bar.setAttribute('aria-label','Pack');
+let wardrobe=null; // the open Wardrobe's preview (wardrobe.ts mountWardrobe), released whenever the Pack shows anything else
+function closeWardrobe(){wardrobe?.dispose();wardrobe=null}
+function packTabBar(current){closeWardrobe();const bar=document.createElement('nav');bar.className='codex-tabs pack-tabs';bar.setAttribute('aria-label','Pack');
  for(const[id,label]of PACK_TABS){const b=uiButton(label,()=>id==='arcanum'?openSkills():id==='forge'?openForge():openPack(id));if(id===current)b.setAttribute('aria-current','page');bar.append(b)}
  return bar}
 function openPack(tab) {
@@ -2425,7 +2436,12 @@ function openPack(tab) {
   pauseForOverlay();
   if (pausePanel.open) pausePanel.close();
   body.replaceChildren(packTabBar(packTab));
-  if (packTab !== "wayfarer") body.append(Object.assign(document.createElement("h2"), { textContent: packTab === "gear" ? "Gear" : "Supplies" }));
+  if (packTab !== "wayfarer") body.append(Object.assign(document.createElement("h2"), { textContent: packTab === "gear" ? "Gear" : packTab === "wardrobe" ? "Wardrobe" : "Supplies" }));
+  if (packTab === "wardrobe") try{ // its own small preview canvas and context, drawn only while this tab is open
+    wardrobe = mountWardrobe(body, { save, fists: () => !!game.fistsEquipped?.(), reduceMotion: () => !!(settings.reduceMotion || settings.safeMode || globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches), sling: () => ensureSling(save),
+      equip: { carried: (i) => equipCarried(i), slung: (i) => equipSlung(i) },
+      swapPreset: () => swapPresetNow(), note: (text) => { game.message = text; } });
+  }catch(error){closeWardrobe();packSectionFailed("Wardrobe",error)}
   if (packTab === "wayfarer") try{
   const heading = document.createElement("h2"),
     summary = document.createElement("p"),
@@ -2645,7 +2661,7 @@ function openPack(tab) {
     const sling = ensureSling(save), box = document.createElement("div"), h = document.createElement("h3"); h.textContent = `Sling (${sling.length}/${SLING.size})`; box.append(h);
     if (!sling.length) { const p = document.createElement("p"); p.className = "arc-hint"; p.textContent = "Keep up to ten pieces here, out of the pack: they take no pack space and can't be sold or salvaged. Use “To sling” on a piece below."; box.append(p); }
     sling.forEach((item, i) => { const row = document.createElement("div"); row.className = "item inventory-card"; const t = document.createElement("strong"); t.textContent = `${itemTier(item).toUpperCase()} · ${item.name} +${item.upgradeRank || 0} · ${item.slot}${item.masterwork ? " · masterwork" : ""}`;
-      row.append(t, uiButton("Equip", () => { const r = equipFromSling(save, i); game.message = r.message; game.refreshDerivedStats?.(); persist(); openPack(); }), uiButton("To pack", () => { const r = fromSling(save, i, EQUIPMENT_CAPACITY); game.message = r.message; persist(); openPack(); })); box.append(row); });
+      row.append(t, uiButton("Equip", () => { equipSlung(i); openPack(); }), uiButton("To pack", () => { const r = fromSling(save, i, EQUIPMENT_CAPACITY); game.message = r.message; persist(); openPack(); })); box.append(row); });
     body.append(box); }
   body.append(inventoryHeading);
   const inventoryTools = document.createElement("div"),
@@ -2697,8 +2713,7 @@ function openPack(tab) {
       title,
       comparison,
       uiButton("Equip", () => {
-        if (equipFromInventory(save, i)) game.cancelConsumeVisual('equipment-switch');
-        persist();
+        equipCarried(i); // the shared Equip (also the Wardrobe's quick swap)
         openPack();
       }),
       uiButton("Salvage", () => {
@@ -3516,7 +3531,7 @@ function openSkills(atShrine=false){arcanumAtShrine=atShrine;if(packDot(save,hin
  // The four slots (release 874: C; 2026-11-15: D, the utility button), and the Pairing the attributes of B and C (save keys a and b) make.
  {const box=el('section','arc-branch arc-slots');box.append(el('h3','','Spell slots'));
   // Release 261: two spell presets; the slots below belong to the active one (the HUD's preset button switches them too).
-  {const row=el('div','codex-tabs arc-presets');for(let i=0;i<PRESETS;i++){const b=uiButton(`Preset ${i+1}`,()=>{if((save.magicSkills.preset||0)!==i){const r=swapPreset(save);game.cancelConsumeVisual('equipment-switch');game.message=r.message;game.refreshDerivedStats?.();/* release 541 */persist()}openSkills(atShrine)});if((save.magicSkills.preset||0)===i)b.setAttribute('aria-current','page');row.append(b)}box.append(row)
+  {const row=el('div','codex-tabs arc-presets');for(let i=0;i<PRESETS;i++){const b=uiButton(`Preset ${i+1}`,()=>{if((save.magicSkills.preset||0)!==i)swapPresetNow()/* release 541; shared with the Wardrobe */;openSkills(atShrine)});if((save.magicSkills.preset||0)===i)b.setAttribute('aria-current','page');row.append(b)}box.append(row)
    // Release 874's per-preset utility row is gone (2026-11-15): the utility button is slot A of each preset, set below like the
    // others, and the Oculus has its own button under the compass.
   }
