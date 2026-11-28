@@ -23,6 +23,9 @@ export const DIRECTOR = {
   dwell: [120, 240], bossLinger: 5,
   // Sea bosses keep no aggro flag (sea-creatures.ts runs their hunt): within seaRange of the Wayfarer they count as fought.
   seaBosses: ["tyrantMosasaur"], seaRange: 14,
+  // Big beasts with no roaming world beast that still bring their own theme when fought (Tim, 2026-11-27: the Pachycephalosaurus of a
+  // big room or an ambush), by kind; never while it lies disguised.
+  themedBeasts: ["pachy"],
   cooldowns: { region: 90, beast: 45, rest: 20, departure: Infinity },
 };
 // Chapters of the journey, from progress the save already holds. The first matching row, from the top, wins.
@@ -39,10 +42,10 @@ export const CHAPTERS = [
 // It ends `linger` s after one falls, they part or the Wayfarer leaves (at once when the Wayfarer lands the kill: the victory
 // stinger then plays), and the music fades back in over `fadeIn` s. `undercurrent`: true keeps one sub drone and a slow heartbeat
 // (battle-sfx.ts BATTLE_SFX.undercurrent, -30 dB or less) under the battle; false is silence.
-export const DUEL = { kinds: ["spinoRex", "wildStego"], apato: "earthApato", range: 16, leadIn: 1.5, linger: 4, fadeOut: 1.5, fadeIn: 2.5, undercurrent: true };
+export const DUEL = { kinds: ["spinoRex", "wildStego"], apato: "earthApato", later: ["pachy", "triceratops"], range: 16, leadIn: 1.5, linger: 4, fadeOut: 1.5, fadeIn: 2.5, undercurrent: true };
 const duelAlive = (e) => !!e && !e.dead && e.hp > 0 && !e.retreating && !e.passingBeast && !e.fleeTo && !e.illusion;
 // Is `a` going for `b`: its focus (SPINO hunt, STEGO rival) or the blow it is throwing?
-const duelTargets = (a, b) => !!a?.pack && (a.pack.spinoFocus === b.id || a.pack.stegoRival === b.id || a.pack.apatoRival === b.id || (!!a.pack.attack && a.pack.data?.prey === b.id));
+const duelTargets = (a, b) => !!a?.pack && (a.pack.spinoFocus === b.id || a.pack.stegoRival === b.id || a.pack.apatoRival === b.id || a.pack.pachyRival === b.id || a.pack.trikeRival === b.id || (!!a.pack.attack && a.pack.data?.prey === b.id));
 // The duelling pair near the Wayfarer, or null: the nearest Spinosaurus and Wild Stegosaurus that meet the rule above.
 export function sampleDuel(game, range = DUEL.range) {
   const p = game?.player || {}, near = (e) => Math.hypot((e.x || 0) - (p.x || 0), (e.y || 0) - (p.y || 0)) <= range;
@@ -52,6 +55,12 @@ export function sampleDuel(game, range = DUEL.range) {
   for (const spino of spinos) for (const stego of stegos) if (meets(spino, stego)) return { spino, stego };
   // the Earth Apatosaurus's duels (Tim, 2026-11-18): the pair by kind, `apato` and the Spinosaurus or the Wild Stegosaurus
   for (const apato of apatos) { for (const spino of spinos) if (meets(apato, spino)) return { apato, spino, stego: null }; for (const stego of stegos) if (meets(apato, stego)) return { apato, spino: null, stego }; }
+  // the later pairs (Tim, 2026-11-27: the Pachycephalosaurus with each, the wild Triceratops with the Spinosaurus and the stego): a pair
+  // in a duel (dino-duel.ts, each keeping it on itself) near the Wayfarer; `a` and `b` are the two (and named by kind where the older
+  // fields name them, so the stego's answer and the falls read as before)
+  for (const a of game?.enemies || []) { const fid = a?.dinoDuel?.foe; if (!fid || !DUEL.later.includes(a.kind) || !duelAlive(a) || !near(a)) continue;
+    const b = (game.enemies || []).find((q) => q.id === fid); if (!b || !duelAlive(b) || !meets(a, b)) continue;
+    const by = (k) => a.kind === k ? a : b.kind === k ? b : null; return { a, b, spino: by("spinoRex"), stego: by("wildStego"), apato: by("earthApato") }; }
   return null;
 }
 // Each world boss's own theme (Phase 2, Tim 2026-11-14): bossKey -> a song id in SONGS with boss: true (soundtrack-songs.ts,
@@ -63,6 +72,7 @@ export const BOSS_THEMES = {
   morphingBlob: "shapeless", mountainTurtle: "mountainWalks", nanobotKnight: "clockworkOath", psychicCrystal: "glassMind",
   tremorWorm: "underTheFloor", voidWalker: "walkerBetween", wildStego: "fernsAndPlates",
   spinoRex: "riverStalker", "spinoRex:fossil": "bonesHunt", earthApato: "rootedColossus", /* the Earth Apatosaurus (Tim, 2026-11-18) */
+  pachy: "skullDrum", /* the Pachycephalosaurus (Tim, 2026-11-27), of a big room or an ambush (DIRECTOR.themedBeasts) */
   astralWorm: "coilOfStars", questingBeast: "quarryBays", stalker: "eyesBehind", listener: "whatListens",
   gloomvast: "gloomRises", gateRevenant: "revenantsReturn", tyrantMosasaur: "deepTide",
 };
@@ -122,7 +132,7 @@ export function sampleMusic(game, memo = {}) {
     if (!e || e.dead || !(e.hp > 0) || e.ambient) continue;
     const d = Math.hypot((e.x || 0) - (p.x || 0), (e.y || 0) - (p.y || 0));
     // Also the Gate Revenants' hunt (gatePredator) and the Ashen Moth's chrysalis, whose quiet theme waits for the hatching.
-    const bossLike = e.boss || e.worldBeast || e.questingBeast || e.gatePredator || e.mothChrysalis;
+    const bossLike = e.boss || e.worldBeast || e.questingBeast || e.gatePredator || e.mothChrysalis || (D.themedBeasts.includes(e.kind) && (e.pachyRoom || e.pachyAmbush) && !e.pachyDisguised);
     const fought = e.aggro || e.pentArenaAwake || (D.seaBosses.includes(e.seaKind) && d < D.seaRange);
     if (bossLike && fought && d < D.bossRange && d < bossD) { boss = e; bossD = d; }
     if (e.aggro && d < D.engagedRange) { engaged++; foeHp += Number(e.hp) || 0; }
@@ -133,12 +143,12 @@ export function sampleMusic(game, memo = {}) {
   let bossDefeated = false;
   const was = memo.boss;
   // A duellist felled by the other beast (its kill pays nothing: noRewards) is no victory of the Wayfarer's either.
-  if (was && was !== boss && (was.dead || !(was.hp > 0)) && (game?.enemies || []).includes(was) && !was.mothChrysalis && !was.gatePredator && !(DUEL.kinds.includes(was.kind) && was.noRewards)) bossDefeated = true;
+  if (was && was !== boss && (was.dead || !(was.hp > 0)) && (game?.enemies || []).includes(was) && !was.mothChrysalis && !was.gatePredator && !((DUEL.kinds.includes(was.kind) || DUEL.later.includes(was.kind)) && was.noRewards)) bossDefeated = true;
   memo.boss = boss;
   // The dino duel: the pair (kept in memo for battle-sfx.ts), and a fall of one of the last pair: by the Wayfarer, or by a beast.
   const pair = sampleDuel(game), last = memo.duelPair;
   let duelFall = null;
-  if (last && !pair) for (const e of [last.spino, last.stego, last.apato]) if (e && (e.dead || !(e.hp > 0))) duelFall = e.noRewards ? "beast" : "wayfarer";
+  if (last && !pair) for (const e of [last.spino, last.stego, last.apato, last.a, last.b]) if (e && (e.dead || !(e.hp > 0))) duelFall = e.noRewards ? "beast" : "wayfarer";
   memo.duelPair = pair;
   const cp = save.activeCheckpoint, home = save.hometowns?.home || "0,0";
   return {
@@ -230,5 +240,29 @@ export class MusicDirector {
     // `hush`: the score's level (soundtrack.ts setHush), 0 while the dinosaurs duel.
     return { songId: this.songId, intensity: this.intensity, change: this.change || "context", stingers, duel: this.duel, hush: dueling ? 0 : 1 };
   }
+}
+// The HUD's now-playing label (Tim, 2026-11-27: "scroll the title of the track in the heads-up display when a new song comes
+// up"). The engine's own events say when a song is actually heard: "start" (the first song, and again after a mute) and "switch"
+// (a new song on a bar line). A song only counts as new when it differs from the last one counted, so a song looping, resuming
+// after a mute or picking up again after nothing else played never shows twice. It is passed over (not shown later) while the
+// music is muted or at volume 0, while the dinosaurs duel (the score is hushed), or with Options -> Audio -> Show track titles
+// off; while the game is paused it waits and shows once play resumes. main.ts draws it: `seconds` on screen, the title sliding
+// in from the right at `speed` px/s, holding, then sliding out; `fade` s in and out. With Reduce motion it never moves.
+export const NOW_PLAYING = { seconds: 8, minSeconds: 5, fade: .6, speed: 42 };
+// memo: { shown, pending } kept by the caller. state: { muted, level (the music's level, 0 is silent), enabled, duel (DIRECTOR
+// duel state), paused }. event: a soundtrack.ts event, or null to check a waiting title. Returns { id, title } to show, or null.
+export function nowPlayingCue(memo, state = {}, event = null, songs = SONGS) {
+  const id = event?.type === "start" ? event.songId : event?.type === "switch" ? event.to : null;
+  if (id && songs[id] && id !== memo.shown) { memo.shown = id; memo.pending = id; }
+  if (!memo.pending) return null;
+  if (state.muted || !(Number(state.level) > 0) || state.enabled === false || (state.duel && state.duel !== "off")) { memo.pending = null; return null; }
+  if (state.paused) return null;
+  const song = songs[memo.pending]; memo.pending = null;
+  return song ? { id: song.id, title: song.name } : null;
+}
+// How long the label stays up for a title `width` px wide in a window `room` px wide: long enough to slide the whole title past.
+export function nowPlayingSeconds(width, room, reduceMotion = false, N = NOW_PLAYING) {
+  if (reduceMotion) return N.seconds;
+  return Math.max(N.minSeconds, Math.min(14, (Math.max(0, room) + Math.max(0, width)) / N.speed + 2.5));
 }
 export { MUSIC_CONTEXTS };

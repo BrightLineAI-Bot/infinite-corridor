@@ -9,8 +9,8 @@ const mirrorKey = (slot) => `infinite-corridor:slot-mirror:${slot}`;
 export const slotKey = (slot) => `journey:${Math.max(1, Math.min(SLOT_COUNT, Number(slot) || 1))}`;
 let activeSlot = 1, writeQueue = Promise.resolve();
 
-export const DEFAULT_SETTINGS = Object.freeze({damageNumbers:true,quality:"auto",safeMode:false,reduceMotion:false,weather:true,highContrast:false,uiScale:1,textScale:1,controlSensitivity:1,controlDeadzone:.08,controlSmoothing:30,masterVolume:.8,musicVolume:.7,effectsVolume:.8,soundtrack:"adaptive",backgroundMusic:false,diagnostics:false,familySafe:false,beastTries:true,provingGround:true,hints:"on"/* Progression Phase 4: Options → Hints (on, abilities, off) */});
-export function normalizeSettings(raw = {}) { const q=["auto","low","balanced","full"].includes(raw.quality)?raw.quality:"auto",clamp=(v,min,max,fallback)=>Math.max(min,Math.min(max,Number.isFinite(Number(v))?Number(v):fallback));return{...DEFAULT_SETTINGS,...raw,quality:q,safeMode:!!raw.safeMode,reduceMotion:!!raw.reduceMotion,weather:raw.weather!==false,highContrast:!!raw.highContrast,diagnostics:!!raw.diagnostics,familySafe:!!raw.familySafe,beastTries:raw.beastTries!==false,provingGround:raw.provingGround!==false,/* release 791: Proving Ground access, on unless turned off */damageNumbers:raw.damageNumbers!==false,/* release 461 */uiScale:clamp(raw.uiScale,.85,1.3,1),textScale:clamp(raw.textScale,.9,1.35,1),controlSensitivity:clamp(raw.controlSensitivity,.7,1.8,1),controlDeadzone:clamp(raw.controlDeadzone,0,.3,.08),controlSmoothing:clamp(raw.controlSmoothing,10,60,30),masterVolume:clamp(raw.masterVolume,0,1,.8),musicVolume:clamp(raw.musicVolume,0,1,.7),effectsVolume:clamp(raw.effectsVolume,0,1,.8),soundtrack:raw.soundtrack==="calm"?"calm":"adaptive"/* 2026-11-14: Soundtrack, Adaptive or Calm only (no combat lift) */,backgroundMusic:raw.backgroundMusic===true/* 2026-11-19: Music in background (background-music.ts), off unless turned on */,hints:["on","abilities","off"].includes(raw.hints)?raw.hints:"on"}; }
+export const DEFAULT_SETTINGS = Object.freeze({damageNumbers:true,quality:"auto",safeMode:false,reduceMotion:false,weather:true,highContrast:false,uiScale:1,textScale:1,controlSensitivity:1,controlDeadzone:.08,controlSmoothing:30,masterVolume:.8,musicVolume:.7,effectsVolume:.8,soundtrack:"adaptive",backgroundMusic:false,diagnostics:false,familySafe:false,beastTries:true,provingGround:true,trackTitles:true/* 2026-11-27: Options → Audio → Show track titles (the HUD now-playing label) */,hints:"on"/* Progression Phase 4: Options → Hints (on, abilities, off) */});
+export function normalizeSettings(raw = {}) { const q=["auto","low","balanced","full"].includes(raw.quality)?raw.quality:"auto",clamp=(v,min,max,fallback)=>Math.max(min,Math.min(max,Number.isFinite(Number(v))?Number(v):fallback));return{...DEFAULT_SETTINGS,...raw,quality:q,safeMode:!!raw.safeMode,reduceMotion:!!raw.reduceMotion,weather:raw.weather!==false,highContrast:!!raw.highContrast,diagnostics:!!raw.diagnostics,familySafe:!!raw.familySafe,beastTries:raw.beastTries!==false,provingGround:raw.provingGround!==false,/* release 791: Proving Ground access, on unless turned off */damageNumbers:raw.damageNumbers!==false,/* release 461 */uiScale:clamp(raw.uiScale,.85,1.3,1),textScale:clamp(raw.textScale,.9,1.35,1),controlSensitivity:clamp(raw.controlSensitivity,.7,1.8,1),controlDeadzone:clamp(raw.controlDeadzone,0,.3,.08),controlSmoothing:clamp(raw.controlSmoothing,10,60,30),masterVolume:clamp(raw.masterVolume,0,1,.8),musicVolume:clamp(raw.musicVolume,0,1,.7),effectsVolume:clamp(raw.effectsVolume,0,1,.8),soundtrack:raw.soundtrack==="calm"?"calm":"adaptive"/* 2026-11-14: Soundtrack, Adaptive or Calm only (no combat lift) */,backgroundMusic:raw.backgroundMusic===true/* 2026-11-19: Music in background (background-music.ts), off unless turned on */,trackTitles:raw.trackTitles!==false/* 2026-11-27: Show track titles, on unless turned off */,hints:["on","abilities","off"].includes(raw.hints)?raw.hints:"on"}; }
 // Reduce Motion follows the system's prefers-reduced-motion only where no choice is stored yet (2026-11-19, first-hour fixes):
 // first settings on a device, or stored settings from before the option existed. A stored choice, on or off, always wins.
 export function systemReducedMotion(env=globalThis){try{return!!env?.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches}catch{return false}}
@@ -365,7 +365,7 @@ const writeNow = (value) => urgentSnapshots.has(value) || globalThis.document?.h
 const packedIn = new Map(), gatedKeys = new Set(), unpackable = new WeakSet(), packSizes = new Map(), coreSizes = new Map();
 // The buckets this write packs again (up to packsPerWrite, none for an urgent write): those holding an area stored plain
 // that this write leaves as it is. Each takes every listed area of its bucket this write does not put (pre-publish review
-// of 1085: a pack never leaves out an area another page may have packed there). A bucket is chosen only for an area of
+// of 1088: a pack never leaves out an area another page may have packed there). A bucket is chosen only for an area of
 // at least minChars of JSON; a bucket of small areas alone stays plain.
 async function packBuckets(value, keys, putting, held, sizes, P = PACKED_AREAS) {
   const areas = value.session.areas, chosen = new Set(), packable = (k) => !putting.has(k) && !!areas[k] && typeof areas[k] === "object" && !unpackable.has(areas[k]);
@@ -379,7 +379,7 @@ async function packBuckets(value, keys, putting, held, sizes, P = PACKED_AREAS) 
     return { bucket, pack, packed };
   }));
 }
-// Pre-publish review of 1085 (blocker): what this page remembers of the store (storedAreas, packedIn, partState) can be
+// Pre-publish review of 1088 (blocker): what this page remembers of the store (storedAreas, packedIn, partState) can be
 // wrong: a write that committed but was reported failed (the stall timer firing mid-commit), or another tab writing the
 // same journey. So no write deletes a record on memory alone. A delta write deletes only plain records of areas no longer
 // listed, or of areas it packs in the same transaction. A whole write's sweep reads the journey's keys and then keeps the
@@ -389,7 +389,7 @@ async function packBuckets(value, keys, putting, held, sizes, P = PACKED_AREAS) 
 // again when the stored main record is not the one this page last wrote; any pack kept means the main record is put
 // with the marker. A write reported failed forgets this page's memory of the journey, so the next write puts what it
 // needs. Reads made for anything but loading never change this memory, and a read overlapped by a write is not adopted.
-// Fourth review of 1085: two tabs can share a main stamp through a run of deltas, so the stamp alone cannot tell this page
+// Fourth review of 1088: two tabs can share a main stamp through a run of deltas, so the stamp alone cannot tell this page
 // that another one wrote meanwhile (and packed a bucket with an area this page does not know). Every split write reads
 // the record `${key}::writer` and puts a fresh page-unique id there in its own transaction; a load takes it in the same
 // transaction as everything else. A delta write goes on past its plain puts only when the stored id is the one this page
@@ -441,7 +441,7 @@ async function writeJourneyNow(key, value, again = false) {
   const had0 = ops ? recordKeys.get(key) : null;
   try {
     await dbCall("readwrite", (store) => {
-      // Second review of 1085 (blocker): a delta write builds on the stored main record this page last wrote. When it
+      // Second review of 1088 (blocker): a delta write builds on the stored main record this page last wrote. When it
       // packs or deletes anything, it reads that record first in the same transaction and goes on only when its stamp is
       // the one this page wrote and (to put packs) it carries the marker; otherwise it stops after the plain puts, which
       // are always safe, and the journey is written again whole (another tab, a rename or an import replaced the record).
@@ -507,7 +507,7 @@ async function writeJourneyNow(key, value, again = false) {
 // the mirror if healthy, else the slot is blocked); a main record is never taken alone while its delta may hold newer play.
 const readDeltas = new Map(); // journey key -> { stamp, ops } as last read: the base a loaded journey's next delta builds on
 // readMainState(key): { main, info } -- the main record put together, and what a load would adopt of the store (the
-// split parts' state, the marker, the delta read); nothing of this page's write memory changes here (review of 1085).
+// split parts' state, the marker, the delta read); nothing of this page's write memory changes here (review of 1088).
 // The journey list reads the main record and, for a split one, reads it again with its delta and parts in one transaction.
 async function readMainState(key) {
   const main = await read(key); if (!Array.isArray(main?.session?.[AREA_SPLIT])) return { main, info: null };
@@ -515,7 +515,7 @@ async function readMainState(key) {
   const got = await readRecords(key, false); return finishMain(key, got.main, got.delta, got.parts);
 }
 // readRecords(key, areas): the main record, its delta and its parts (and, with areas, every plain area record and pack)
-// in ONE transaction (third review of 1085: a reader that took the main record in one transaction and the areas in
+// in ONE transaction (third review of 1088: a reader that took the main record in one transaction and the areas in
 // another could fall between a write's first packs and its marked main record, and lose those areas).
 function readRecords(key, areas) {
   return dbCall("readonly", (store, finish, fail) => {
@@ -553,7 +553,7 @@ function primeJournal(key, stored, save) {
   countKeys(snapshot); mainCopies.set(save, snapshot); // the first snapshot shares the stored parts that still match, by value
 }
 // readJourney(key, adopt): the journey put back together. Only a load (adopt) takes what it read as this page's memory
-// of the store, and only when no write of this journey overlapped the read (review of 1085).
+// of the store, and only when no write of this journey overlapped the read (review of 1088).
 async function readJourney(key, adopt = false) {
   const epoch = writeEpoch.get(key) || 0, got = await readRecords(key, true), { main, info } = await finishMain(key, got.main, got.delta, got.parts);
   if (!Array.isArray(main?.session?.[AREA_SPLIT])) { if (adopt && (writeEpoch.get(key) || 0) === epoch) { forgetStore(key); readDeltas.delete(key); } return main; }
@@ -563,7 +563,7 @@ async function readJourney(key, adopt = false) {
   // nowhere is absent, as a missing area record always was (release 555).
   const records = got.plain, packs = got.packs;
   const plain = [...records.keys()], held = new Map(), seed = String(main.seed ?? ""), foreign = (p) => isAreaPack(p) && p.seed !== seed;
-  // Sixth review of 1085 (blocker): an unmarked main record is not proof the packs are stale. An older build's page left
+  // Sixth review of 1088 (blocker): an unmarked main record is not proof the packs are stale. An older build's page left
   // open on the journey writes it whole and unmarked after this build packed areas (and deleted their plain records), and
   // lists those areas still; they live only in the packs. So the packs are read whatever the marker says: a plain record
   // still wins, and a pack carrying another seed is never taken. A stale pack of the same seed cannot fill in: every

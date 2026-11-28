@@ -34,6 +34,9 @@ import { CLOSE_VIEW_BEASTS, closeViewBeastEligible, BEAST_SLOT, DUELIST_SLOT, TR
 import { createTriceratopsTrack, sampleTriceratops, triceratopsMesh, TRICERATOPS_RIG } from "./close-view-beast-triceratops.ts";
 import { MOUNT_DRAW } from "./beast-mounts-render.ts";
 import { HATCH_DRAW, hatchlingPresentation } from "./hatchling-render.ts"; // the Triceratops hatchling's skinned body
+import { drawPachyGolemClose, drawPachyDazeClose } from "./close-view-beast-pachy.ts"; // Dome Rush's Earth Golem (cards); the Pachycephalosaurus's daze (stars)
+import { pachyDazeLeft } from "./pachy-render.ts"; // the daze: no knockdown tip
+import { golemScale } from "./echoes.ts"; // Dome Rush's Earth Golem: the Wayfarer drawn larger
 import { drawApatoCloseFx, admitApatoProps } from "./close-view-beast-apato.ts"; // the Earth Apatosaurus's standing hazards (cards)
 import { stageDuel } from "./close-view-duel.ts"; // the dino duel: the two bodies spaced and the held one in the other's jaws // release 891: world beasts' skinned bodies (and the Gaunt's)
 import { closeViewGLReady, closeViewGLFrameReady, closeViewGLDiagnostics, noteCloseViewGLFrameAbort, resetCloseViewGL, prepareCloseViewHeroGL, prepareCloseViewBeastMesh, closeViewGLCanvas, closeViewGLStats, drawSceneGL, glMask, glGrit, glEnsure, glStaticWalls, glOutdoor, glProps, closeViewPropsAvailable, glRelief, closeViewReliefAvailable, closeViewOutdoorAvailable, closeViewOccluderAvailable, closeViewMask, closeViewHazardCode, GLB, GLF, WALL_FLOATS, BOARD_FLOATS, DECAL_FLOATS } from "./close-view-gl.ts"; // version 4: the GPU scene
@@ -42,6 +45,8 @@ import { lanternReach, lanternNightReach } from "./spell-slots.ts"; // the Lante
 import { OUTDOOR, outdoorScene, outdoorInsideHouse, outdoorTreeObject, outdoorPropObject, propScene, outdoorRelief, outdoorSurfaceZ, outdoorLightning, LIGHTNING, outdoorRoofZ, outdoorRoofTopAt, OUTDOOR_FLOATS, outdoorTowerAir, outdoorMoodId } from "./close-view-outdoor.ts";
 import { CLOSE_VIEW_POLISH, smoothDamp, softTilt, recentreStep, fadeToward, smoothstep01, crossfadeAlpha, inertiaRelease, inertiaDecay, inertiaTravel } from "./close-view-polish.ts"; // the polish pass (2026-11-19): smooth pitch, zoom, recentre, fades, cross-fades and hit-stop
 import { roofDeckAt, roofDeckById } from "./roof-decks.ts"; // roof decks: the Wayfarer on a roof, the roof kept, the tap on a roof
+import { chopSpikePose, chopHornVerts, TRICERATOPS_CHOP } from "./echoes.ts"; // Triceratops Chop's spikes (drawn with the floor's decals)
+const CHOP_CV_POSE = {}, CHOP_CV_VERTS = new Float32Array(48), CHOP_CV_COLORS = Object.freeze({ horn: parseInt(TRICERATOPS_CHOP.draw.horn.slice(1), 16), flash: parseInt(TRICERATOPS_CHOP.draw.flash.slice(1), 16) });
 // The overworld's heightfield (OUTDOOR.terrain): while it is drawn, everything that stands on the ground (the Wayfarer, the
 // creatures, their shadows, shots, the camera's floor) stands at its height; elsewhere the interiors' own heights, as before.
 const RELIEF = { map: null, R: null };
@@ -4485,7 +4490,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     if (winding && !track.winding) track.windAt = now;
     if (attack && !track.attacking) track.attackAt = now;
     const defeat = who === player ? ordinaryDefeatPresentation(g, now) : null;
-    const knock = stunned && !defeat ? knockdownPose(now - (player.stunnedAt || now), (player.stunnedUntil || now) - (player.stunnedAt || now), reduce) : null;
+    const knock = stunned && !defeat ? knockdownPose(pachyDazeLeft(player, now) > 0 ? 0 /* dazed by the Pachycephalosaurus: held at the start of the fall, on her feet, stars over her head */ : now - (player.stunnedAt || now), (player.stunnedUntil || now) - (player.stunnedAt || now), reduce) : null;
     const profilePose = fisting ? 'fist' : visualProfile?.startsWith("orrery-") ? "cast" : tool ? "tool" : "attack";
     const ordinary = who === player && (!form || form.kind === 'playerIronFists') && !g.save.boat?.aboard && !g.mountRide?.();
     let hurtPhase = null;
@@ -4600,7 +4605,7 @@ function buildActorModels(g, draws, n, Q, now, reduce) {
     const actor = { kind: (pose==='shovelDig'?'playerShovel':formKind) || activeKind || (tool || (who === player && g.save.activeWeaponSlot === "secondary" && !attack && !cast) ? "playerTool" : presentation?.modelKey || kind),
       x: boardWX[it] - recoil * Math.cos(track.yaw) + dashDX, y: boardWY[it] - recoil * Math.sin(track.yaw) + dashDY, z: surfaceZ(g.map, who.x + .5 + dashDX, who.y + .75 + dashDY) + closeViewActorLift(d, true) + (presentation?.bodyLift || 0) + waterZ, yaw: track.yaw,
       phase: watched ? 0 : track.phase + ((presentation?.bodyLift > 0 || presentation?.action === 'pack' && ['hover', 'fly', 'phase'].includes(who.movement)) && !reduce ? now / 500 : 0), pace: carried ? 0 : track.pace, pose, amount, turn: stunned || watched ? 0 : turn, reduceMotion: reduce,
-      scale: who === player && form ? form.scale : presentation?.scale ?? 1, stagger: presentation?.stagger || 0,
+      scale: (who === player && form ? form.scale : presentation?.scale ?? 1) * (who === player ? golemScale(player, now, reduce) : 1) /* Dome Rush's Earth Golem (echoes.ts PACHY_ECHO) */, stagger: presentation?.stagger || 0,
       primaryStep: visualRecord?.primaryStep, primaryMotion: visualRecord?.primaryMotion, primaryStage, meleeAction, cleaverFrame,
       jumpAir: who===player&&pose==='jump'?ordinaryJumpPresentation(g,now,d.jumpLift,d.jumpBaseMs):null,
       toolAction: who===player&&visualAttack&&acceptedTool&&visualRecord?.toolUse&&!stunned&&!bodyHit&&now>=(player.dodgeUntil||0)?visualRecord:null,
@@ -5254,7 +5259,7 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     if (itemKind[it] !== 1 || draw !== capturedPlayer || !MODEL_STATE.admitted.has(it)) continue;
     const X = boardWX[it], Y = boardWY[it], support = surfaceZ(g.map, X, Y - .07) + closeViewActorLift(draw, true);
     const statusNow = g.paused && Number.isFinite(g.pauseStarted) ? g.pauseStarted : now;
-    const knocked = statusNow < (g.player.stunnedUntil || 0), form = closeViewPlayerForm(g), body = knocked ? .35 : form ? form.head * .52 : .72;
+    const knocked = statusNow < (g.player.stunnedUntil || 0) && !(pachyDazeLeft(g.player, statusNow) > 0), form = closeViewPlayerForm(g), body = knocked ? .35 : form ? form.head * .52 : .72;
     for (let i = 0; i < 3; i++) {
       const phase = reduce ? i * 2.094 : statusNow / 150 + i * 2.094;
       const side = (i - 1) * .15 + (reduce ? 0 : Math.sin(phase) * .035);
@@ -5326,6 +5331,8 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
   for (const f of g.packEffects || []) { if (f.kind !== "dinoRock" || !(f.arming > 0) || !finite(f.x) || !finite(f.y)) continue;
     const k = 1 - Math.max(0, f.arming) / (f.armTotal || 1), r = Math.max(.25, (f.radius || .7) * DINO_ROCK_DRAW.size), z = reduce ? DINO_ROCK_DRAW.still : DINO_ROCK_DRAW.from * (1 - k * k);
     card(f.x + .5, f.y + .62, z, z + r * 2, r, 0, DINO_ROCK_DRAW.alpha, 0, 0); }
+  drawPachyDazeClose(g.player, card, reduce, now); // the Pachycephalosaurus's daze: stars circling over the Wayfarer's head (close-view-beast-pachy.ts)
+  drawPachyGolemClose(g.player, card, reduce, now); // Dome Rush's Earth Golem: rocky plates and an amber glow round the Wayfarer (close-view-beast-pachy.ts)
   drawApatoCloseFx(g.enemies, card, reduce, now, g.earthResolve || null); // the Earth Apatosaurus: its spires, hands, rocks, leaves, seeds, roots and beam stand up from the floor (close-view-beast-apato.ts)
   { const A = CONTINUOUS_ASSAULT; for (const fx of g.effects) { if (fx.kind !== "assault-lance" || !(fx.life > 0) || !finite(fx.x) || !finite(fx.y)) continue; // Continuous Assault: columns of light from high above (tool-forms.ts; the rings and scorch are on the floor)
     if (fx.delay > 0) { const fall = 1 - Math.min(1, fx.delay / A.lead); if (fall > 0) card(fx.x, fx.y, A.height * (1 - fall), A.height, A.width * .55, 11, .35 + .45 * fall, A.colors.glow, 0); continue; }
@@ -5338,6 +5345,15 @@ function glScene(ctx, g, w, h, now, Q, n, draws, geo, reduce, lightR, fogNear, f
     if(!reduce&&release.profile==='fan-release'&&age<=120){let shot=null;for(const e of shots?.entries||[])if(e.kind==='fire'&&e.source.id===release.sourceId){shot=e.source;break;}if(shot&&!shot.dead&&!shot.impact&&!shot.returning&&!shot.shadow&&!shot.echo){const X=shot.x,Y=shot.y,Z=surfaceZ(g.map,X,Y)+SHOT_DRAW.height,dx=X-at[0],dy=Y-at[1],dz=Z-at[2],forward=dx*release.aim.x+dy*release.aim.y;if(forward>0&&Math.hypot(dx,dy)<=.9&&Math.hypot(dx,dy,dz)<=.9&&toolCueSegmentOpen(g.map,at[0],at[1],X,Y)){const r=.014,a=.45*(1-age/120)*MODEL_STATE.spellAlpha;room(6);DV(at[0],at[1],at[2]-r,-1,-1,11,a,0xff9a4a,1,true);DV(X,Y,Z-r,1,-1,11,a,0xff9a4a,1,true);DV(X,Y,Z+r,1,1,11,a,0xff9a4a,1,true);DV(at[0],at[1],at[2]-r,-1,-1,11,a,0xff9a4a,1,true);DV(X,Y,Z+r,1,1,11,a,0xff9a4a,1,true);DV(at[0],at[1],at[2]+r,-1,1,11,a,0xff9a4a,1,true);}}}
   }
   // Project a latched launch offset, when present, into the same depth-tested flame batch. Physics stays untouched.
+  // Triceratops Chop (echoes.ts TRICERATOPS_CHOP): each spike a pale horn hanging beside its target on the camera's left or right,
+  // chopping down onto it at an angle: two crossed tapering blades (echoes.ts chopHornVerts), a flash where it lands. The ground mark and the dust
+  // ring are on the floor (renderer.ts drawChopSpikes). The pose is the shared sampler's; under reduced motion it neither grows nor falls.
+  if (g.chopSpikes) { const P = CHOP_CV_POSE, yo = .3 /* the target's centre line to its feet */;
+    for (const q of g.chopSpikes) { if (!chopSpikePose(q, now, RX, RY, reduce, P)) continue;
+      const V = chopHornVerts(P, RX, RY, yo, CHOP_CV_VERTS), a = P.alpha * .9;
+      room(12); for (let o = 0; o < 48; o += 4) DV(V[o], V[o + 1], V[o + 2], 0, 0, 11, a * V[o + 3], CHOP_CV_COLORS.horn, 0); // the shade fades the base into the air
+      if (P.landed && P.impact > 0 && P.impact < .6) { const f = 1 - P.impact / .6, w = .22 * (reduce ? 1 : .6 + .8 * P.impact); card(P.tx, P.ty + yo, P.tz - w, P.tz + w, w, 11, .9 * f, CHOP_CV_COLORS.flash, 0); }
+    } }
   // the Triceratops's Bash arc at its horns' height (glyphVisuals `z`: renderer.ts leaves it off the floor layer): two ribbon segments
   for (const v of g.glyphVisuals || []) { if (v?.kind !== "arc" || !(v.z > 0) || !(v.max > 0)) continue;
     const a = Math.max(0, v.life / v.max) * .8, t = reduce ? 0 : now / 1000, ax = v.x, ay = v.y + .37, bx = v.tx, by = v.ty + .37, mx = (ax + bx) / 2 + Math.sin(t * 40) * .15, my = (ay + by) / 2 + Math.cos(t * 37) * .15, w = .05, col = SHOT_COLORS.get(v.color) ?? (SHOT_COLORS.set(v.color, parseInt(String(v.color).slice(1), 16)), SHOT_COLORS.get(v.color));

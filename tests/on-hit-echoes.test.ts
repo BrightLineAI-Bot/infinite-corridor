@@ -20,18 +20,17 @@ function arena(echoes, foes = [[12, 10]], kind = 'rootBrute') {
   return { s, g };
 }
 const hit = (g, e, damage, now) => echoEvent(g, 'hit', now, { enemy: e, damage });
-const C = ON_HIT_ECHOES.cunning, M = ON_HIT_ECHOES.mend, E = ON_HIT_ECHOES.ember;
+const M = ON_HIT_ECHOES.mend, E = ON_HIT_ECHOES.ember;
 const trice = (disposition, extra = {}) => Object.assign(createCombatant('triceratops', 5, 5), { id: `tri-${disposition}`, triceratopsDisposition: disposition }, extra);
 
 test('the three on-hit Echoes: data, costs and triggers', () => {
-  assert.deepEqual(ON_HIT_IDS, ['triceratops', 'bloblet', 'wormTentacle']);
+  assert.deepEqual(ON_HIT_IDS, ['bloblet', 'wormTentacle']);
   for (const id of ON_HIT_IDS) assert.equal(ECHOES[id].trigger, 'hit', id);
-  assert.equal(ECHOES.triceratops.name, 'Triceratops Cunning'); assert.equal(ECHOES.triceratops.cost, 2);
+  assert.equal(ECHOES.triceratops.name, 'Triceratops Chop'); assert.equal(ECHOES.triceratops.trigger, 'swing'); assert.equal(ECHOES.triceratops.cost, 2);
   assert.equal(ECHOES.bloblet.name, 'Bloblet Mend'); assert.equal(ECHOES.bloblet.cost, 1);
   assert.equal(ECHOES.wormTentacle.name, 'Tentacle Ember'); assert.equal(ECHOES.wormTentacle.cost, 1);
   assert.ok(ECHO_IDS.includes('triceratops'), 'on the Echoes screen');
   assert.equal(MONSTER_PACK.triceratops.noEcho, true, 'the Triceratops keeps noEcho');
-  assert.deepEqual([C.marks, C.windowMs, C.gore, C.stagger, C.cooldownMs], [3, 3000, .6, .4, 2000]);
   assert.deepEqual([M.share, M.perSecond], [.01, 3]);
   assert.deepEqual([E.stacks, E.share, E.radius, E.burning, E.lapseMs], [3, .4, 1.5, 1.75, 3000]);
   assert.match(ECHOES.bloblet.text, /1% of your maximum health/); assert.match(ECHOES.wormTentacle.text, /third bursts/);
@@ -59,25 +58,6 @@ test('a Bad Triceratops slain in play leaves the Echo; a Good, a Silly one, a ca
   assert.ok(e.caught && !g.enemies.includes(e)); assert.equal(s.echoes.owned.triceratops, undefined, 'caught: no Echo');
   assert.ok(s.mounts.stable.some((m) => m.beast === 'triceratops'), 'it went to the stable');
   const before = { ...s.echoes.owned }; g.defeatEnemy(e); assert.deepEqual(s.echoes.owned, before, 'a caught (rewarded) beast is never paid again');
-});
-
-test('Cunning: the 3rd hit on one foe within 3 s gores it for +60% and staggers it 0.4 s; no knockback; 2 s per-foe cooldown', () => {
-  const { g } = arena(['triceratops']); const e = g.enemies[0];
-  hit(g, e, 10, 1000); hit(g, e, 10, 1500); assert.equal(e.hp, 1000, 'two marks: nothing yet');
-  const x = e.x, y = e.y; hit(g, e, 20, 2000);
-  assert.equal(e.hp, 1000 - 12, 'gored for 60% of the third hit'); assert.ok(e.hitStun >= .4 - 1e-9); assert.equal(e.x, x); assert.equal(e.y, y);
-  hit(g, e, 10, 2200); hit(g, e, 10, 2600); hit(g, e, 10, 3000); hit(g, e, 10, 3900); assert.equal(e.hp, 988, 'no marks during the cooldown');
-  hit(g, e, 10, 4100); hit(g, e, 10, 4300); hit(g, e, 10, 4500); assert.equal(e.hp, 982, 'gores again after the cooldown');
-  // the window: three hits spread over more than 3 s never gore
-  const b = arena(['triceratops']), f = b.g.enemies[0];
-  hit(b.g, f, 10, 1000); hit(b.g, f, 10, 2600); hit(b.g, f, 10, 4100); assert.equal(f.hp, 1000, 'first and third 3.1 s apart');
-  hit(b.g, f, 10, 4200); assert.equal(f.hp, 994, 'the last three within 3 s gore');
-  // marks are per foe
-  const c = arena(['triceratops'], [[12, 10], [13, 10]]), [p, q] = c.g.enemies;
-  hit(c.g, p, 10, 1000); hit(c.g, q, 10, 1100); hit(c.g, p, 10, 1200); hit(c.g, q, 10, 1300); assert.equal(p.hp + q.hp, 2000);
-  // a boss is staggered for the boss share, as every Wayfarer stagger
-  const d = arena(['triceratops']), boss = Object.assign(d.g.enemies[0], { boss: true });
-  hit(d.g, boss, 10, 0); hit(d.g, boss, 10, 100); hit(d.g, boss, 10, 200); assert.ok(Math.abs(boss.hitStun - C.stagger * C.bossStagger) < 1e-9);
 });
 
 test('Bloblet Mend: 1% of maximum health a hit, at most 3 mends in any second', () => {

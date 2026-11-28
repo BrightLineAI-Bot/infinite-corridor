@@ -322,7 +322,7 @@ test('export, import, the mirror and a recovery copy carry the whole split journ
   await P.deleteJourney(1); assert.equal(partKeys(ctl).length, 0, 'parts go with the journey');
 });
 
-// ---------------------------------------------------------------- the store stays whole whatever a page remembers (review of 1085)
+// ---------------------------------------------------------------- the store stays whole whatever a page remembers (review of 1088)
 // 200 large areas and split collections, stored first by a build without packs (every area a plain record).
 async function storedPlain(ctl, seed) {
   const s = bigMain(seed); s.session.areas = Object.fromEntries(Array.from({ length: 200 }, (_, i) => [`overworld:${i}:0:g1`, bigArea(i)]));
@@ -367,7 +367,7 @@ test('two tabs on one journey: a tab that does not know the other packed areas n
   } finally { clock.done(); }
 });
 
-// Second review of 1085: another page stores the journey whole and unmarked (every area plain, its packs swept); this
+// Second review of 1088: another page stores the journey whole and unmarked (every area plain, its packs swept); this
 // page still remembers "marked" and its next delta must not pack into a record older builds' rules then ignore.
 async function smallStored(ctl, seed) {
   const s = freshSave(); s.seed = seed; s.session.areas = Object.fromEntries(Array.from({ length: 200 }, (_, i) => [`overworld:${i}:0:g1`, { ...bigArea(i), enemies: bigArea(i).enemies.map((e) => ({ ...e, dead: false, rewarded: false, hp: 9 })) }]));
@@ -406,7 +406,7 @@ test('fuzz: two pages save, rename, import and fail at random; every area surviv
   }
 });
 
-// Third review of 1085: a reader held between its reads while the journey's FIRST packs are written. Transactions run
+// Third review of 1088: a reader held between its reads while the journey's FIRST packs are written. Transactions run
 // one after another in the order they are made (as IndexedDB orders them on one store); readonly ones made from the
 // `holdFrom`-th on wait for `release`.
 function serialIdb() {
@@ -441,7 +441,7 @@ for (const how of ['load', 'export', 'duplicate']) test(`${how === "export" ? "a
   if (how === 'load') { got.xp = 5; await B.saveGame(got); await B.flushSaves(); ctl.ls.clear(); await allBack(); }
 });
 
-// Fourth review of 1085: two tabs sharing the main stamp through deltas. B adds an area and packs its bucket; A, which
+// Fourth review of 1088: two tabs sharing the main stamp through deltas. B adds an area and packs its bucket; A, which
 // never saw that area, packs the same bucket; B's later saves must still find (or put back) the area.
 test('two tabs sharing a main stamp: an area one adds is never lost to the other packing its bucket', async () => {
   const ctl = fakeIdb(), clock = later(SAVE_DELTA_MS + 1000); await smallStored(ctl, 'SAMESTAMP');
@@ -485,7 +485,7 @@ test('listing journeys or exporting during writes leaves the write memory alone'
   const back = await (await freshPersistence()).loadSave(); assert.equal(sameJourney(back, migrateSave(structuredClone(s))), null);
 });
 
-// Sixth review of 1085 (blocker): a page of an older build (release 1084: no packs, no writer id) left open on a journey
+// Sixth review of 1088 (blocker): a page of an older build (release 1084: no packs, no writer id) left open on a journey
 // writes it whole and unmarked after this build packed areas and deleted their plain records. It lists every area it
 // holds, puts plain records only for the areas it changed, deletes the delta and the plain records of areas it no longer
 // lists, and never touches the packs, the parts or `::writer`. The packed areas are then only in the packs.

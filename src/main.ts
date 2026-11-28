@@ -1,6 +1,6 @@
 import { BOAT, forgeSubmersible } from "./boats.ts"; // release 311
 import { createSoundtrack } from "./soundtrack.ts";
-import { MusicDirector, sampleMusic, DUEL } from "./soundtrack-director.ts";
+import { MusicDirector, sampleMusic, DUEL, NOW_PLAYING, nowPlayingCue, nowPlayingSeconds } from "./soundtrack-director.ts";
 import { createBackgroundMusic } from "./background-music.ts"; // 2026-11-19: Music in background
 import { createBattleSfx } from "./battle-sfx.ts"; // the dino duel's sounds of battle (Tim, 2026-11-14)
 import { swingIndicator, drawSwingSweep } from "./melee-swing.ts"; // the weighted swing's sweep, on the Close View floor (2026-11-14)
@@ -364,7 +364,7 @@ function currentQuality(){return effectiveQuality(settings,{width:innerWidth,hei
 game.deathPause = true; // release 329: the played game pauses after a world beast fells the Wayfarer (Game.tickFallen)
 game.deathBeat = VIEWPORT_CLOSED.fall; // Viewport Closed (2026-11-04): every death holds a short beat of the fall, then the sequence (viewportFrame)
 game.deathBeastBeat = VIEWPORT_CLOSED.fall + VIEWPORT_CLOSED.close; // with a great beast there, the world stays live (it looms over the corpse) until black
-function applyPresentationSettings(){/* release 345 beastTries: retired 2026-11-18 (world-beasts.ts BEAST_ENGAGEMENT); the setting is still kept in saved settings */game.damageNumbers=settings.damageNumbers!==false;/* release 461 */document.documentElement.style.setProperty("--ui-scale",String(settings.uiScale));document.documentElement.style.fontSize=`${16*settings.textScale}px`;document.body.classList.toggle("high-contrast",settings.highContrast);document.body.classList.toggle("reduce-motion",settings.reduceMotion||settings.safeMode);game.presentation={...settings,effectiveQuality:currentQuality()};if(audioGain)audioGain.gain.value=masterLevel();backgroundMusic.setMasterLevel(masterLevel());backgroundMusic.setEnabled(settings.backgroundMusic);if(musicBus)musicBus.gain.value=AUDIO_MIX.music*settings.musicVolume;if(director)director.calmOnly=settings.soundtrack==="calm";if(soundtrack)soundtrack.setQuality(currentQuality());if(battleSfx){battleSfx.setVolume(settings.effectsVolume);battleSfx.setQuality(currentQuality())}resize()}
+function applyPresentationSettings(){/* release 345 beastTries: retired 2026-11-18 (world-beasts.ts BEAST_ENGAGEMENT); the setting is still kept in saved settings */game.damageNumbers=settings.damageNumbers!==false;/* release 461 */document.documentElement.style.setProperty("--ui-scale",String(settings.uiScale));document.documentElement.style.fontSize=`${16*settings.textScale}px`;document.body.classList.toggle("high-contrast",settings.highContrast);document.body.classList.toggle("reduce-motion",settings.reduceMotion||settings.safeMode);game.presentation={...settings,effectiveQuality:currentQuality()};if(audioGain)audioGain.gain.value=masterLevel();backgroundMusic.setMasterLevel(masterLevel());backgroundMusic.setEnabled(settings.backgroundMusic);if(musicBus)musicBus.gain.value=AUDIO_MIX.music*settings.musicVolume;if(director)director.calmOnly=settings.soundtrack==="calm";if(settings.trackTitles===false||!(masterLevel()*settings.musicVolume>0))hideNowPlaying();/* the now-playing label: off, or the music silent */if(soundtrack)soundtrack.setQuality(currentQuality());if(battleSfx){battleSfx.setVolume(settings.effectsVolume);battleSfx.setQuality(currentQuality())}resize()}
 // Diagnostic probe (release 165): a timed recording started from Options → System; see diagnostic-probe.ts.
 const probe = createProbe(), probeDodge = createDodgeWatch(), PROBE_REPORT_KEY = "corridor-probe-report";
 setWriteTimingListener((t)=>probe.save(t)); // release 555: each save write, with the database's main-thread copy time
@@ -1141,7 +1141,38 @@ function directMusic() {
     // the dino duel: the score fades out under the battle and back after it (soundtrack-director.ts DUEL); its sounds follow the duel
     soundtrack.setHush(out.hush, out.hush ? DUEL.fadeIn : DUEL.fadeOut);
     battleSfx?.setPaused(game.paused); battleSfx?.setDuel(out.duel, musicMemo.duelPair);
+    musicDuel = out.duel; if (out.duel !== "off") hideNowPlaying(); // the duel is music-free: no title over it
+    nowPlaying(); // a title that waited for the game to resume
   } catch (error) { console.warn("Soundtrack director failed", error); }
+}
+// The now-playing label (Tim, 2026-11-27; soundtrack-director.ts NOW_PLAYING and nowPlayingCue): when the engine starts a new
+// song, its title slides in under the HUD, holds, slides out and fades. Driven by the engine's own events on the music timer,
+// never by the game loop; one layout read per new song. Reduce motion: a still label that fades in and out.
+const nowPlayingEl = $("#nowPlaying"), nowPlayingText = $("#nowPlayingTitle"), nowPlayingMemo = {};
+let nowPlayingTimer = 0, musicDuel = "off";
+function nowPlayingState() { return { muted: muted || backgroundMusic.musicPaused, level: masterLevel() * settings.musicVolume, enabled: settings.trackTitles !== false, duel: musicDuel, paused: game.paused || document.hidden }; }
+function nowPlaying(event = null) { try { const cue = nowPlayingCue(nowPlayingMemo, nowPlayingState(), event); if (cue) showNowPlaying(cue.title); } catch (error) { console.warn("Now playing failed", error); } }
+function showNowPlaying(title) {
+  if (!nowPlayingEl || !nowPlayingText) return;
+  clearTimeout(nowPlayingTimer);
+  const reduce = document.body.classList.contains("reduce-motion"), ribbon = document.querySelector(".compass-ribbon");
+  // Below the HUD and its expand button, and below Close View's compass ribbon when it shows; never over the controls.
+  const bottom = (el) => el && el.offsetParent !== null && getComputedStyle(el).display !== "none" ? el.getBoundingClientRect().bottom : 0;
+  nowPlayingEl.style.setProperty("--np-top", `${Math.round(Math.max(bottom($("#hud")), bottom($("#hudExpand")), bottom(ribbon)) + 6)}px`);
+  nowPlayingText.textContent = title; nowPlayingEl.hidden = false;
+  nowPlayingEl.classList.remove("visible", "scrolling");
+  const room = nowPlayingText.parentElement.clientWidth, width = nowPlayingText.scrollWidth, seconds = nowPlayingSeconds(width, room, reduce);
+  nowPlayingEl.style.setProperty("--np-room", `${room}px`); nowPlayingEl.style.setProperty("--np-width", `${width}px`);
+  nowPlayingEl.style.setProperty("--np-seconds", `${seconds}s`); nowPlayingEl.style.setProperty("--np-fade", `${NOW_PLAYING.fade}s`);
+  void nowPlayingEl.offsetWidth; // restart the slide for a song that follows quickly
+  nowPlayingEl.classList.add("visible"); if (!reduce) nowPlayingEl.classList.add("scrolling");
+  nowPlayingTimer = setTimeout(hideNowPlaying, Math.max(0, seconds - NOW_PLAYING.fade) * 1000);
+}
+function hideNowPlaying() {
+  if (!nowPlayingEl || nowPlayingEl.hidden || !nowPlayingEl.classList.contains("visible")) return; // gone, or already fading
+  clearTimeout(nowPlayingTimer);
+  nowPlayingEl.classList.remove("visible");
+  nowPlayingTimer = setTimeout(() => { nowPlayingEl.hidden = true; nowPlayingEl.classList.remove("scrolling"); }, NOW_PLAYING.fade * 1000);
 }
 function startAmbience() {
   if (audio) {
@@ -1177,7 +1208,7 @@ function startAmbience() {
     .connect(audio.destination);
   delay.connect(echo).connect(compressor);
   try {
-    soundtrack = createSoundtrack(audio, { out: musicBus, echo: delay, quality: currentQuality(), seed: hashSeed(`${save.seed}:soundtrack`) });
+    soundtrack = createSoundtrack(audio, { out: musicBus, echo: delay, quality: currentQuality(), seed: hashSeed(`${save.seed}:soundtrack`), onEvent: (e) => { if (e.type === "start" || e.type === "switch") nowPlaying(e); } });
     director = new MusicDirector({ seed: hashSeed(`${save.seed}:director`), calmOnly: settings.soundtrack === "calm" });
     // the battle's own bus into the master (mute and the master volume hold; Effects volume sets it; "Calm only" leaves it be)
     try { battleSfx = createBattleSfx(audio, { out: audioGain, musicOut: musicBus, noise: soundtrack.noise, seed: hashSeed(`${save.seed}:battle`), quality: currentQuality(), volume: settings.effectsVolume }); battleSfx.setMuted(muted); }
@@ -1262,6 +1293,7 @@ mute.onclick = () => {
   if (!audio && !muted) startAmbience();
   if (audio && !muted && audio.state === "suspended") audio.resume();
   soundtrack?.setMuted(muted);
+  if (muted) hideNowPlaying();
   if (backgroundMusic.musicPaused) soundtrack?.setMuted(true); // paused from the lock screen: the music stays paused
   battleSfx?.setMuted(muted);
   backgroundMusic.setMasterLevel(masterLevel(), 0.35);
@@ -1839,7 +1871,7 @@ async function handOverJourney(button,{yard=null,say=optionMessage,place="the Pr
   if(saveBlocked())return say(`This journey is not being saved just now, so ${place} cannot take a copy of it.`,true);
   const target=new URL(PROVING_GROUND_HANDOFF.entryPath,location.href).href;button.disabled=true;say(`Saving your journey for ${place}…`);
   try{if(!navigator.onLine){const reg=await navigator.serviceWorker?.getRegistration?.(target);if(!reg?.scope?.endsWith("/proving-ground/"))throw new Error("it needs one online visit before it works offline")}
-    const result=await journeyOperation.run(async()=>{await persist();await flushSaves();await writeHandoff(handoffRecord(save,{release:1085,slot:getActiveSlot(),returnUrl:location.href.split("#")[0],yard}))});
+    const result=await journeyOperation.run(async()=>{await persist();await flushSaves();await writeHandoff(handoffRecord(save,{release:1088,slot:getActiveSlot(),returnUrl:location.href.split("#")[0],yard}))});
     if(result.busy){button.disabled=false;return say("Another journey operation is already finishing.",true)}
     leavingForProvingGround=true;setTimeout(()=>{leavingForProvingGround=false},5000);location.assign(target)}
   catch(error){button.disabled=false;say(`Could not enter ${place} (${error?.message||error}). Your journey is unchanged.`,true)}}
@@ -1861,10 +1893,10 @@ async function renderSettings(category){const grid=document.createElement("div")
   if(category==="Accessibility")grid.append(settingRow("Damage numbers (what you deal, in gold; what you take, in red)",toggleSetting("damageNumbers")),settingRow("Child-safe Glimpses (no horror or violence scenes; creatures stay)",toggleSetting("familySafe")),settingRow("Reduce motion",toggleSetting("reduceMotion")),settingRow("High contrast",toggleSetting("highContrast")),settingRow("Interface scale",rangeSetting("uiScale",.85,1.3,.05)),settingRow("Text scale",rangeSetting("textScale",.9,1.35,.05)));
   // Progression Phase 4 (4A.2): Options → Hints, per device. Turning hints back on never replays one already seen.
   if(category==="Hints")grid.append(settingRow("Hints",selectSetting("hints",HINT_MODES),"One short line the first time you get or use something new, once each, never in a fight. Only new abilities leaves out statuses. The Journal's how-to pages stay readable either way."));
-  if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)),settingRow("Soundtrack",selectSetting("soundtrack",[["adaptive","Adaptive"],["calm","Calm only"]]),"Adaptive: the music grows urgent in a fight and settles after. Calm only: no combat lift."),settingRow("Music in background",toggleSetting("backgroundMusic"),"Keeps the music playing when you switch apps or lock the screen. The game stays paused and effects are silent. Lock-screen play and pause control the music only."));
+  if(category==="Audio")grid.append(settingRow("Master volume",rangeSetting("masterVolume",0,1,.05)),settingRow("Music volume",rangeSetting("musicVolume",0,1,.05)),settingRow("Effects volume",rangeSetting("effectsVolume",0,1,.05)),settingRow("Soundtrack",selectSetting("soundtrack",[["adaptive","Adaptive"],["calm","Calm only"]]),"Adaptive: the music grows urgent in a fight and settles after. Calm only: no combat lift."),settingRow("Show track titles",toggleSetting("trackTitles"),"When a new song begins, its title scrolls in under the HUD for a few seconds."),settingRow("Music in background",toggleSetting("backgroundMusic"),"Keeps the music playing when you switch apps or lock the screen. The game stays paused and effects are silent. Lock-screen play and pause control the music only."));
   // Release 149: Copy diagnostics always works (performance recording is a separate, optional part) and carries what a
   // bug report needs: release, browser, screen, recent errors and the active journey's save.
-  if(category==="System"){wayfarerBodyRow(grid);const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:1085,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",closeView:{...closeViewSwitchStats,options:{indoor:save.closeView===true,overworld:save.overworldCloseView===true},render:closeViewRenderDiagnostics()}/* 2026-11-27: how often the camera changed, how often the device failed a frame, and the GPU state */,save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 1085\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${sizeText(report.totalStoredBytes??report.totalJourneyBytes)} stored (${sizeText(report.totalJourneyBytes)} as JSON)\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
+  if(category==="System"){wayfarerBodyRow(grid);const report=await storageReport(),pre=document.createElement("pre"),browser=navigator.userAgent,standalone=matchMedia?.("(display-mode: standalone)")?.matches||false,copy=uiButton("Copy diagnostics",async()=>{const data={release:1088,copiedAt:new Date().toISOString(),browser,standalone,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},quality:currentQuality(),settings,storage:report,recentErrors,performance:perfEnabled?globalThis.corridorPerfReport():"off",closeView:{...closeViewSwitchStats,options:{indoor:save.closeView===true,overworld:save.overworldCloseView===true},render:closeViewRenderDiagnostics()}/* 2026-11-27: how often the camera changed, how often the device failed a frame, and the GPU state */,save},text=JSON.stringify(data);try{await navigator.clipboard.writeText(text);optionMessage(`Diagnostics copied (${Math.ceil(text.length/1024)} KB), including your save. Paste it to Claude.`)}catch{downloadText(`corridor-diagnostics-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the diagnostics were downloaded as a file instead.")}});pre.textContent=`Release 1088\nBrowser: ${browser}\nInstalled app: ${standalone?"yes":"no"}\nActive journey: ${getActiveSlot()}\nJourney storage: ${sizeText(report.totalStoredBytes??report.totalJourneyBytes)} stored (${sizeText(report.totalJourneyBytes)} as JSON)\nBrowser storage: ${report.usage==null?"unavailable":`${Math.ceil(report.usage/1048576)} / ${Math.ceil(report.quota/1048576)} MB`}\nRecent errors: ${recentErrors.length?recentErrors.map((e)=>e.message).join(" | "):"none"}\nPerformance recording: ${perfEnabled?"on":"off (optional; Copy diagnostics works without it)"}`;// Release 185 (Tim): the home-screen app has no reload button. "Get latest release" asks the service worker to fetch
     // a new build, waits for it to take over (at most 15 s), saves, and reloads; with nothing new it simply reloads.
     const latest=uiButton("Get latest release",async()=>{latest.disabled=true;optionMessage("Checking for the latest release…");try{const reg=await navigator.serviceWorker?.getRegistration?.();if(reg){await reg.update();const worker=reg.installing||reg.waiting;if(worker){optionMessage("Downloading the latest release…");await new Promise((done)=>{const check=()=>{if(worker.state==="activated"||worker.state==="redundant")done()};worker.addEventListener("statechange",check);check();setTimeout(done,15000)})}}}catch(error){console.warn("Release check failed; reloading the current build.",error)}optionMessage("Reloading…");await persist();await flushSaves?.();location.reload()});
     grid.append(pre,copy,latest);provingGroundRows(grid); // release 791
@@ -1876,7 +1908,7 @@ async function renderSettings(category){const grid=document.createElement("div")
    probeNote.textContent=probe.running?`Probe running: ${Math.ceil(probe.remaining)} s left. Close this and keep playing.`:saved?`Last probe: ${saved.started} · ${saved.seconds} s · ${saved.frames} frames.`:`The diagnostic probe records ${PROBE.durationSeconds/60} minutes of play (frame times, what each part of the game costs, where you were, touches) so slowdowns can be traced. Start it, then play normally: walk, sail, fight, enter a dungeon.`;
    grid.append(probeNote);
    if(probe.running)grid.append(uiButton("Stop probe now",()=>{probe.stop();try{localStorage.setItem(PROBE_REPORT_KEY,JSON.stringify(probe.report))}catch{}renderOptions("System")}));
-   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};{const T=sectionTerrainCacheStats();probeTerrain={hits:T.hits,misses:T.misses,warms:crossWarms}}probePhases={};probePrevious=null;probe.start({release:1085,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
+   else grid.append(uiButton(`Start diagnostic probe (${PROBE.durationSeconds/60} min)`,()=>{probeGround={builds:rendererDiagnostics().groundBuilds||0,patches:rendererDiagnostics().groundPatches||0};{const T=sectionTerrainCacheStats();probeTerrain={hits:T.hits,misses:T.misses,warms:crossWarms}}probePhases={};probePrevious=null;probe.start({release:1088,browser:navigator.userAgent,screen:{width:innerWidth,height:innerHeight,pixelRatio:devicePixelRatio},canvas:{width:canvas.width,height:canvas.height},quality:currentQuality(),settings:{...settings},standalone:matchMedia?.("(display-mode: standalone)")?.matches||false,hardwareConcurrency:navigator.hardwareConcurrency,deviceMemory:navigator.deviceMemory});resume();game.message=`Diagnostic probe running for ${PROBE.durationSeconds/60} minutes: play normally. Menus pause it.`}));
    if(storedProbeReport()&&!probe.running)grid.append(uiButton("Copy probe report",async()=>{const text=JSON.stringify(storedProbeReport());try{await navigator.clipboard.writeText(text);optionMessage(`Probe report copied (${Math.ceil(text.length/1024)} KB). Paste it to Claude.`)}catch{downloadText(`corridor-probe-${Date.now()}.json`,text);optionMessage("Copying was blocked, so the probe report was downloaded as a file instead.")}}));
 }
   optionsBody.append(grid);
@@ -2896,7 +2928,7 @@ function updateHud(now) { closePan.sync(); // Close View's crescent and lock but
   hudSet(hudEl("#staminaBar"),"value",stamina);
   // Release 257: Lightning Giant shock pips (shown only while charged or knocked down).
   { const pips = hudEl("#reloadPips"), n = reloadPips(game); hudSet(pips,"class:off",n < 0); hudSet(pips,"data-count",String(Math.max(0, n))); } // Rapid Reload (hit-cast-passives.ts): charged releases that hit, toward the refund
-  { const pips = hudEl("#shockPips"), stunned = now < (game.player.stunnedUntil || 0), count = stunned ? 3 : Math.max(0, Math.min(3, game.player.shockCount || 0)); hudSet(pips,"class:off",!count); hudSet(pips,"class:stunned",stunned); hudSet(pips,"data-count",String(count)); }
+  { const pips = hudEl("#shockPips"), stunned = now < (game.player.stunnedUntil || 0) && !(now < (game.player.dazedUntil || 0)) /* a Pachycephalosaurus daze is no lightning stun */, count = stunned ? 3 : Math.max(0, Math.min(3, game.player.shockCount || 0)); hudSet(pips,"class:off",!count); hudSet(pips,"class:stunned",stunned); hudSet(pips,"data-count",String(count)); }
   const aperture = save.perception?.aperture || 0,
     tier = apertureTier(aperture),
     apertureNext = APERTURE_THRESHOLDS[tier];
