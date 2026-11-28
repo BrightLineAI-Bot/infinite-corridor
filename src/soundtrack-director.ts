@@ -1,7 +1,7 @@
 // The soundtrack's director (Tim, 2026-11-14): reads the game, never changes it, and tells soundtrack.ts which song should
 // play, how urgent it should be, and which story beat (stinger) just happened.
 //
-// - Place: musicContext() turns the area, the dungeon id, the landscape, the sea and the far realms into one of
+// - Place: musicContext() turns the area, the dungeon id, a town, the landscape, the sea and the far realms into one of
 //   MUSIC_CONTEXTS. Chapter: journeyChapter() reads progress the save already keeps (Aperture tier, world beasts slain,
 //   the Pentagon and the far realms reached), so a journey moves through the album (soundtrack-songs.ts LINER_NOTES).
 // - Song: the heaviest song MUSIC_SELECTION allows for the place and chapter; after DIRECTOR.dwell seconds of calm it rotates
@@ -13,6 +13,7 @@
 //   and battle-sfx.ts carries the fight; no boss theme starts until it is over.
 import { SONGS, MUSIC_SELECTION, MUSIC_CONTEXTS } from "./soundtrack-songs.ts";
 import { apertureTier } from "./world.ts";
+import { townAt } from "./hometowns.ts";
 import { seededRandom } from "./soundtrack.ts";
 
 export const DIRECTOR = {
@@ -91,7 +92,20 @@ export function bossSongFor(kind, themes = BOSS_THEMES, songs = SONGS) {
 
 const DARK = new Set(["swamp", "blight", "fog", "volcanic", "obsidian", "fungal", "marrow", "biomech", "petrified", "reckoning"]);
 const STRANGE = new Set(["alien", "crystal", "lunar", "regolith", "dream", "glacier"]);
-// The place, as one of MUSIC_CONTEXTS.
+// A town (Tim, 2026-11-28: "when the Wayfarer enters a town ... a town song"): on the overworld, the section of Ember Refuge (0,0),
+// of a settlement the map holds (map.settlement: a hamlet, village, outpost or market town, settlements.ts applyHamlet, and the old
+// settlements, world.ts addSettlement) or of a town raised where a Listener fell (hometowns.ts townAt; a hometown is one of these).
+// The whole section counts, as it does on the Atlas, so walking about the edge of a town never flips the music back and forth.
+// Never in a far realm (its own folk keep the realm's music) or aboard the boat (sailing past is the sea's); a dungeon, a dive or a
+// sky hold entered from a town is not the town.
+export function inTown(game) {
+  if (game?.area !== "overworld" || game.farRealm) return false;
+  const save = game.save || {};
+  if (save.boat?.owned === true && save.boat.aboard === true) return false;
+  return !!game.map?.settlement || (game.rx === 0 && game.ry === 0) || !!townAt(save, game.rx, game.ry);
+}
+// The place, as one of MUSIC_CONTEXTS. A town (inTown) comes before the overworld's other places; a boss or the dino duel in a
+// town still takes over as anywhere (MusicDirector.update).
 export function musicContext(game) {
   const map = game?.map || {}, save = game?.save || {}, id = String(save.session?.activeDungeonId || "");
   if (game?.area === "dungeon") {
@@ -102,6 +116,7 @@ export function musicContext(game) {
     return "dungeon";
   }
   const biome = map.landscape?.biome || null;
+  if (inTown(game)) return "town";
   if (game?.swimming || (save.boat?.owned === true && save.boat.aboard === true) || biome === "sea") return "sea";
   if (game?.farRealm || STRANGE.has(biome)) return "sky";
   if (biome === "castle") return "halls";
