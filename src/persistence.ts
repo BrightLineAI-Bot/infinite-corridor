@@ -396,7 +396,7 @@ const plainPart = (e) => ({ [PART_TAG]: 1, plain: { e: e.keys.map((k, i) => [k, 
 async function writeJourney(key, value) {
   bumpEpoch(key); try { return await writeJourneyNow(key, value); } finally { bumpEpoch(key); }
 }
-async function writeJourneyNow(key, value) {
+async function writeJourneyNow(key, value, again = false) {
   await openDb(); const urgent = writeNow(value); if (!urgent) await nextTask(); const { main: splitMain, puts, keys } = splitSnapshot(value, storedAreas.get(key)), prefix = areaPrefix(key);
   const split = splitMain !== value, sizes = split ? sizesFor(key, value.session.areas, puts, keys) : null, live = new Set(keys);
   // Slimmer saves: where each listed area is stored after this write (a put is a plain record; a packed bucket holds its members).
@@ -430,22 +430,28 @@ async function writeJourneyNow(key, value) {
   if (split && !ops) { stored.core = jsonLength(main); main.session[STORED_SIZE] = stored; }
   const marked = split && !ops ? { ...main, version: PACKED_AREAS.storeVersion, session: { ...main.session, [PACKED_FROM]: main.version } } : null;
   if (split && !ops && gate) main = marked;
-  let queuedMs = 0, heldAfter = held, plainAfter = plainNow, gatedAfter = !!(split && gate);
+  let queuedMs = 0, heldAfter = held, plainAfter = plainNow, gatedAfter = !!(split && gate), verified = true;
+  const had0 = ops ? recordKeys.get(key) : null;
   try {
     await dbCall("readwrite", (store) => {
-      const t0 = performance.now(), prior = split && !ops ? store.get(key) : null;
+      // Second review of 1085 (blocker): a delta write builds on the stored main record this page last wrote. When it
+      // packs or deletes anything, it reads that record first in the same transaction and goes on only when its stamp is
+      // the one this page wrote and (to put packs) it carries the marker; otherwise it stops after the plain puts, which
+      // are always safe, and the journey is written again whole (another tab, a rename or an import replaced the record).
+      const t0 = performance.now(), dead = ops && had0 ? had0.filter((k) => !live.has(k)) : null, needsBase = !!ops && (packs.length > 0 || !had0 || dead.length > 0);
+      const prior = split && (!ops || needsBase) ? store.get(key) : null;
       for (const [k, area] of puts) store.put(area, prefix + k);
+      const rest = () => {
       for (const q of packs) store.put(q.pack, packPrefix(key) + q.bucket);
       for (const [k, r] of partPuts) store.put(r, k);
       if (ops) store.put({ base: stamp, areas: keys, sizes: Object.fromEntries(sizes), stored, ops: deltaOps }, deltaKey(key));
       else { store.put(main, key); store.delete(deltaKey(key)); }
-      queuedMs = performance.now() - t0;
       // Perf spikes: the stale area records are known from the last write (or the load) of this journey, so a delta write
       // deletes those no longer listed without reading back every area key (~1,700 in a mature journey, every 8 s); a full
       // write, or a journey this page has not written or read yet, still sweeps the store. Slimmer saves: an area now in a
       // pack loses its plain record the same way, and the sweep (one read of the journey's keys) also removes the packs
       // that hold nothing listed.
-      const had = ops ? recordKeys.get(key) : null;
+      const had = had0;
       if (had) { for (const k of had) if (!live.has(k)) store.delete(prefix + k); for (const k of packedNow) store.delete(prefix + k); }
       else {
         const pre = packPrefix(key), partPre = partPrefix(key), stale = store.getAllKeys(IDBKeyRange.bound(`${key}::`, `${key}::￿`));
@@ -468,8 +474,13 @@ async function writeJourneyNow(key, value) {
           }
         };
       }
+      };
+      if (needsBase) prior.onsuccess = () => { const m = prior.result; verified = !!m && lastStamps.has(key) && m.session?.[MAIN_STAMP] === lastStamps.get(key) && (!packs.length || m.version === PACKED_AREAS.storeVersion); if (verified) rest(); };
+      else rest();
+      queuedMs = performance.now() - t0;
     });
   } catch (error) { forgetStore(key); throw error; } // dbCall dropped the connection; the next write stores the main record whole, puts every area it holds and sweeps (the write may have committed all the same)
+  if (!verified) { forgetStore(key); if (!again) return writeJourneyNow(key, value, true); throw new Error("The journey was changed elsewhere while it was being saved; it will be saved whole next time."); }
   storedAreas.set(key, new Map(keys.map((k) => [k, value.session.areas[k]])));
   if (split) recordKeys.set(key, [...plainAfter]); else recordKeys.delete(key);
   if (split) packedIn.set(key, heldAfter); else packedIn.delete(key);

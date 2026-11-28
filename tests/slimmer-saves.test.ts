@@ -101,7 +101,8 @@ test('areas left unchanged are packed a few buckets a write; the journey reads b
   assert.equal(main.version, PACKED_AREAS.storeVersion, 'the main record carries the marker with its first pack'); assert.equal(main.session[PACKED_FROM], 14);
   assert.equal(ctl.data.has('journey:1::delta'), false, 'that write was whole');
   await settle(P, s);
-  assert.ok(plainKeys(ctl).length <= 1, 'every area is packed (a small one only when its bucket is packed for a larger one)');
+  assert.equal([...Array(40).keys()].some((i) => areaBucket(`overworld:${i}:0:g1`) === areaBucket('overworld:99:0:g1')), false, 'the small area has a bucket of its own');
+  assert.deepEqual(plainKeys(ctl), ['journey:1::area::overworld:99:0:g1'], 'every area is packed but the small one alone in its bucket');
   const delta = ctl.data.get('journey:1::delta'); assert.ok(delta, 'later writes are deltas again');
   assert.equal(delta.ops.some(([path]) => path[0] === 'version' || path.includes(PACKED_FROM)), false, 'a delta never touches the marker');
   const Q = await freshPersistence(), back = await Q.loadSave();
@@ -364,6 +365,45 @@ test('two tabs on one journey: a tab that does not know the other packed areas n
     sa.xp = 9; clock.step(); await A.saveGame(sa); await A.flushSaves(); await wholeBack(sa);
     sb.xp = 3; clock.step(); await B.saveGame(sb); await B.flushSaves(); await wholeBack(sb);
   } finally { clock.done(); }
+});
+
+// Second review of 1085: another page stores the journey whole and unmarked (every area plain, its packs swept); this
+// page still remembers "marked" and its next delta must not pack into a record older builds' rules then ignore.
+async function smallStored(ctl, seed) {
+  const s = freshSave(); s.seed = seed; s.session.areas = Object.fromEntries(Array.from({ length: 200 }, (_, i) => [`overworld:${i}:0:g1`, { ...bigArea(i), enemies: bigArea(i).enemies.map((e) => ({ ...e, dead: false, rewarded: false, hp: 9 })) }]));
+  const CS = globalThis.CompressionStream; globalThis.CompressionStream = undefined;
+  try { const P0 = await freshPersistence(); P0.setActiveSlot(1); await P0.saveGame(migrateSave(s)); await P0.flushSaves(); } finally { globalThis.CompressionStream = CS; }
+}
+async function allBack(n = 200) { const Q = await freshPersistence(); Q.setActiveSlot(1); const back = await Q.loadSave(); assert.equal(Q.saveBlocked(1), null); assert.equal(Object.keys(back.session.areas).length, n); return back; }
+for (const how of ['rename', 'import', 'lie']) test(`another page stores the journey unmarked (${how}); this page's next deltas keep every area`, async () => {
+  const ctl = fakeIdb(); await smallStored(ctl, `UNMARK-${how}`);
+  const A = await freshPersistence(), B = await freshPersistence(); A.setActiveSlot(1); const sa = await A.loadSave(), sb = await B.loadSave();
+  for (let i = 0; i < 3; i++) { sa.xp = i + 1; await A.saveGame(sa); await A.flushSaves(); }
+  assert.ok(packKeys(ctl).length > 0 && ctl.data.get('journey:1').version === PACKED_AREAS.storeVersion);
+  if (how === 'rename') await B.renameJourney(1, 'Renamed in B');
+  else if (how === 'import') await B.importJourney(1, await B.exportJourney(1), true);
+  else { sb.xp = 50; ctl.lie = true; await B.saveGame(sb); await quietly(() => B.flushSaves().catch(() => {})); sb.xp = 51; await B.saveGame(sb); await B.flushSaves(); }
+  for (let i = 0; i < 4; i++) { sa.xp = 10 + i; await A.saveGame(sa, i === 3 ? { urgent: true } : {}); await A.flushSaves(); ctl.ls.clear(); await allBack(); }
+  const back = await allBack(); assert.equal(back.xp, 13, 'this page\'s saves reached the store');
+});
+
+test('fuzz: two pages save, rename, import and fail at random; every area survives every step', async () => {
+  for (const seed of [1, 2, 3]) {
+    const ctl = fakeIdb(), clock = later(40000); await smallStored(ctl, `FUZZ-${seed}`);
+    let r = seed * 7919; const rnd = (n) => (r = (r * 48271) % 2147483647) % n;
+    try {
+      const pages = [await freshPersistence(), await freshPersistence()]; pages[0].setActiveSlot(1);
+      const saves = [await pages[0].loadSave(), await pages[1].loadSave()];
+      for (let step = 0; step < 30; step++) {
+        const p = rnd(2), P = pages[p], s = saves[p], what = rnd(10);
+        if (what === 0) await P.renameJourney(1, `Fuzz ${step}`);
+        else if (what === 1) await P.importJourney(1, await P.exportJourney(1), true);
+        else if (what === 2) { saves[p] = await (pages[p] = await freshPersistence()).loadSave(); }
+        else { s.xp = step; if (what === 3) s.session.areas[`overworld:${rnd(200)}:0:g1`] = { ...bigArea(step), leftAt: step }; if (what === 4) ctl.lie = true; if (rnd(4) === 0) clock.step(); await P.saveGame(s, what === 5 ? { urgent: true } : {}); await quietly(() => P.flushSaves().catch(() => {})); }
+        ctl.ls.clear(); await allBack();
+      }
+    } finally { clock.done(); }
+  }
 });
 
 test('listing journeys or exporting during writes leaves the write memory alone', async () => {
